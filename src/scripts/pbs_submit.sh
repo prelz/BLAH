@@ -13,6 +13,7 @@
 #     8-Jul-2004: Try a chmod u+x on the file shipped as executable
 #                 -w option added (cd into submission directory)
 #    20-Sep-2004: -q option added (queue selection)
+#    29-Sep-2004: -g option added (gianduiotto selection) and job_ID=job_ID_log
 # 
 #
 # Description:
@@ -32,6 +33,9 @@ logpath=/var/spool/pbs/server_logs
 stgcmd="yes"
 stgproxy="yes"
 
+#default is to create file for gianduiotto 
+giandu="yes"
+
 ###############################################################
 # Parse parameters
 ###############################################################
@@ -48,6 +52,7 @@ do
     d) debug="yes" ;;
     w) workdir="$OPTARG";;
     q) queue="$OPTARG";;
+    g) giandu="yes" ;;
     -) break ;;
     ?) echo $usage_string
        exit 1 ;;
@@ -79,6 +84,16 @@ then
 else
     # Just print to stderr if in debug
     tmp_file="/proc/$$/fd/2"
+fi
+
+#search for gianduiotto conf file
+
+if [ "x$giandu" == "xyes" ] ; then
+  giandupath=${GLITE_LOCATION:-/opt/glite}
+  gianduconf=$giandupath/etc/dgas_gianduia.conf
+  if [ -f $gianduconf ] ; then
+    giandudir=`cat $gianduconf|grep chocolateBox| awk -F"=" '{ print $2 }'|sed 's/\"//g'`
+  fi
 fi
 
 # Write wrapper preamble
@@ -195,10 +210,21 @@ if [ "$jobID_log" != "$jobID" ]; then
     echo "WARNING: JobID in log file is different from the one returned by qsub!" >&2
     echo "($jobID_log != $jobID)" >&2
     echo "I'll be using the one in the log ($jobID_log)..." >&2
+    $jobID=$jobID_log
 fi
 
 # Compose the blahp jobID (log file + pbs jobid)
 echo `basename $logfile`"/"$jobID
+
+#Create info file for gianduiotto
+
+if [ "x$giandu" == "xyes" ] && [ -f $gianduconf ]; then
+  cp $proxy_string ${giandudir}/pbs_${jobID}.proxy
+  cat > ${giandudir}/pbs_${jobID} <<end_gianduiotto
+EDG_JOB_ID=$EDG_WL_JOBID
+HLR_LOCATION=$HLR_LOCATION
+end_gianduiotto
+fi
 
 # Clean temporay files
 cd $curdir

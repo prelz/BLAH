@@ -13,6 +13,7 @@
 #     8-Jul-2004: Try a chmod u+x on the file shipped as executable
 #                 -w option added (cd into submission directory)
 #    21-Sep-2004: -q option added (queue selection)
+#    29-Sep-2004: -g option added (gianduiotto selection) and job_ID=job_ID_log
 # 
 #
 # Description:
@@ -49,11 +50,14 @@ workdir="."
 
 stgproxy="yes"
 
+#default is to create file for gianduiotto 
+giandu="yes"
+
 ###############################################################
 # Parse parameters
 ###############################################################
 
-while getopts "i:o:e:c:s:v:dw:q:" arg 
+while getopts "i:o:e:c:s:v:dw:q:g" arg 
 do
     case "$arg" in
     i) stdin="$OPTARG" ;;
@@ -65,6 +69,8 @@ do
     d) debug="yes" ;;
     w) workdir="$OPTARG";;
     q) queue="$OPTARG";;
+    g) giandu="yes" ;;
+
     -) break ;;
     ?) echo $usage_string
        exit 1 ;;
@@ -98,6 +104,16 @@ else
     tmp_file="/proc/$$/fd/2"
 fi
 
+#search for gianduiotto conf file
+
+if [ "x$giandu" == "xyes" ] ; then
+  giandupath=${GLITE_LOCATION:-/opt/glite}
+  gianduconf=$giandupath/etc/dgas_gianduia.conf
+  if [ -f $gianduconf ] ; then
+    giandudir=`cat $gianduconf|grep chocolateBox| awk -F"=" '{ print $2 }'|sed 's/\"//g'`
+  fi
+fi
+
 # Write wrapper preamble
 cat > $tmp_file << end_of_preamble
 #!/bin/bash
@@ -107,7 +123,7 @@ cat > $tmp_file << end_of_preamble
 # LSF directives:
 #BSUB -L /bin/bash
 #BSUB -N
-#BSUB -u prelz@mi.infn.it
+#BSUB -u /dev/null
 #BSUB -J $tmp_file
 end_of_preamble
 
@@ -223,10 +239,21 @@ if [ "$jobID_log" != "$jobID" ]; then
     echo "WARNING: JobID in log file is different from the one returned by bsub!" >&2
     echo "($jobID_log != $jobID)" >&2
     echo "I'll be using the one in the log ($jobID_log)..." >&2
+    $jobID=$jobID_log
 fi
 
 # Compose the blahp jobID (log file + lsf jobid)
 echo `basename $logfile`"/"$jobID
+
+#Create info file for gianduiotto
+
+if [ "x$giandu" == "xyes" ] && [ -f $gianduconf ]; then
+  cp $proxy_string ${giandudir}/lsf_${jobID}.proxy
+  cat > ${giandudir}/lsf_${jobID} <<end_gianduiotto
+EDG_JOB_ID=$EDG_WL_JOBID
+HLR_LOCATION=$HLR_LOCATION
+end_gianduiotto
+fi
 
 # Clean temporary files
 cd $curdir
