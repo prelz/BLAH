@@ -4,6 +4,6 @@
         
 	<project name="configure options">                                                                        
         <property name="configure.args"
-               value="--with-classad=${with.classads.prefix}"/>
+               value="--with-classads-prefix=${with.classads.prefix}"/>
 
 	</project>

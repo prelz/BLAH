@@ -15,14 +15,17 @@
 	Common build properties file for the GLite ce blahp component
 	
 	Authors: Joachim Flammer <Joachim.Flammer@cern.ch>
-	Version info: $Id: properties.xml,v 1.1 2004/09/14 14:29:25 mezzadri Exp $
+	Version info: $Id: properties.xml,v 1.2 2004/09/15 10:10:15 mezzadri Exp $
 	Release: $Name:  $	
 	
 	Revision history:
 	$Log: properties.xml,v $
+	Revision 1.2  2004/09/15 10:10:15  mezzadri
+	*** empty log message ***
+
 	Revision 1.1  2004/09/14 14:29:25  mezzadri
 	new files for blahp
-
+	
 	Revision 1.4  2004/07/20 16:08:30  flammer
 	Changed incorrect my_... instead of .._template entries for subsystem and component.
 	
@@ -72,5 +75,6 @@
 	      Define extra properties here ...
 	     ====================================================== -->
 	
+        <property name="m4files.list" value="classads.m4"/>
 		
 </project>
