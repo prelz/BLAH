@@ -149,19 +149,19 @@ stderr_unique=$stderr.$uni_ext
 [ -z "$stdout" ] || echo "#BSUB -f \"$stdout < `basename $stdout_unique`\"" >> $tmp_file
 [ -z "$stderr" ] || echo "#BSUB -f \"$stderr < `basename $stderr_unique`\"" >> $tmp_file
 
-proxy_string=`echo ';'$envir | sed -e 's/.*;[^X]*X509_USER_PROXY[^=]*\= *\([^\; ]*\).*/\1/'`
+# Setup proxy transfer
+proxy_string=`echo ';'$envir | sed --quiet -e 's/.*;[^X]*X509_USER_PROXY[^=]*\= *\([^\; ]*\).*/\1/p'`
 
-if [ "x$stgproxy" == "xyes" ] && [ "x$proxy_string" != "x" ] ; then
-    proxy_unique=${tmp_file}.${uni_ext}.proxy
-    if [ "x$workdir" != "x" ] ; then
-        proxy_local_file=${workdir}"/"`basename $proxy_string`;
-    else
-        proxy_local_file=$proxy_string;
-    fi
-    if [ -r $proxy_local_file ] ; then
+if [ "x$stgproxy" == "xyes" ] ; then
+    proxy_local_file=${workdir}"/"`basename "$proxy_string"`
+    [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] || proxy_local_file=$proxy_string
+    [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] || proxy_local_file=/tmp/x509up_u`id -u`
+    if [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] ; then
+        proxy_unique=${tmp_file}.${uni_ext}.proxy
         echo "#BSUB -f \"$proxy_local_file > $proxy_unique\"" >> $tmp_file
     fi
 fi
+
 
 # Set the required environment variables (escape values with double quotes)
 if [ "x$envir" != "x" ]  
@@ -175,7 +175,7 @@ then
 fi
 
 # Set the path to the user proxy
-if [ "x$stgproxy" == "xyes" ]; then 
+if [ ! -z $proxy_unique ]; then 
     echo "export X509_USER_PROXY=\`pwd\`/$proxy_unique" >> $tmp_file
 fi
 
