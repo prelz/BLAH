@@ -18,6 +18,8 @@
 
 if [ ! -z "$LSF_BIN_PATH" ]; then
     binpath=${LSF_BIN_PATH}/
+else
+    binpath=/usr/local/lsf/bin/
 fi
 
 pars=$*
@@ -49,7 +51,7 @@ BEGIN {
     current_status = "1"
 }
 
-/Job/ {
+/^Job/ {
     current_job = substr($0, index($0, "Job <") + 5, index($0, ">") - index($0, "Job <") - 5)
     print "[\nBatchjobId = \"" current_job "\";"
 }
@@ -90,6 +92,8 @@ BEGIN {
     print "ExitCode = " current_exit ";"
     if(current_status == 3){
      current_status = "3"
+    }else{
+     current_status = "4"
     }
 }
 
