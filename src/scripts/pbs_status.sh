@@ -33,14 +33,48 @@ else
     spoolpath=/usr/spool/PBS/
 fi
 
+if [ ! -z "$PBS_BIN_DIR" ]; then
+    pbsbinpath=${PBS_BIN_DIR}/
+else
+    pbsbinpath=/usr/pbs/bin/
+fi
+
+usage_string="Usage: $0 [-w]"
+
 logpath=${spoolpath}server_logs
+
+#get worker node info
+getwn=""
+
+###############################################################
+# Parse parameters
+###############################################################
+
+while getopts "w" arg 
+do
+    case "$arg" in
+    w) getwn="yes" ;;
+
+    -) break ;;
+    ?) echo $usage_string
+       exit 1 ;;
+    esac
+done
+
+shift `expr $OPTIND - 1`
+
+###################################################################
 
 pars=$*
 requested=`echo $pars | sed -e 's/^.*\///'`
 logfile=`echo $pars | sed 's/\/.*//'`
 logs="$logpath/$logfile `find $logpath -type f -newer $logpath/$logfile`"
 
-result=`awk -v jobId=$requested '
+if [ "x$getwn" == "xyes" ] ; then
+ workernode=`${pbsbinpath}/qstat -f $requested 2> /dev/null | grep exec_host| sed "s/exec_host = //" | awk -F"/" '{ print $1 }'`
+fi
+
+result=`awk -v jobId=$requested -v wn=$workernode '
 BEGIN {
 	rex_queued   = jobId ";Job Queued "
 	rex_running  = jobId ";Job Run "
@@ -80,10 +114,16 @@ $0 ~ rex_hold {
 END {
 	if (jobstatus == 0) { exit 1 }
 	print "JobStatus = " jobstatus ";"
+	if (jobstatus == 2) {
+		print "WorkerNode = \"" wn "\";"
+	}
 	if (jobstatus == 4) {
 		print "ExitCode = " exitcode ";"
 	}
 	print "]"
+	if (jobstatus == 3 || jobstatus == 4) {
+		system("rm " proxyDir "/" jobId ".proxy")
+	}
 }
 ' $logs`
 

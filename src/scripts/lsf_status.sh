@@ -43,22 +43,51 @@ logpath=$lsf_base_path/$lsf_clustername/logdir
 
 logeventfile=lsb.events
 
+usage_string="Usage: $0 [-w]"
+
+#get worker node info (dummy for LSF)
+getwn=""
+
+###############################################################
+# Parse parameters
+###############################################################
+
+while getopts "w" arg 
+do
+    case "$arg" in
+    w) getwn="yes" ;;
+
+    -) break ;;
+    ?) echo $usage_string
+       exit 1 ;;
+    esac
+done
+
+shift `expr $OPTIND - 1`
+
+###################################################################
+
 pars=$*
 requested=`echo $pars | sed -e 's/^.*\///'`
-logfile=`echo $pars | sed 's/\/.*//'`
+datenow=`echo $pars | sed 's/\/.*//'`
 
-typeset -i lognum=`echo $logfile | sed 's/^.*\.//'`
-
-# Create the list of log files to scan
-# in the right order (older first)
-if [ $lognum -gt 1 ]; then
-	for i in `seq $lognum -1 1`; do
-		logs="$logs $logpath/$logeventfile.$i"
-	done
-elif [ $lognum -eq 1 ]; then
-	logs="$logpath/$logeventfile.1"
+datefile=`mktemp -q blahjob_XXXXXX`
+if [ $? -ne 0 ]; then
+   echo 'Error creating temporary file'
+   exit 1
 fi
-logs="$logs $logpath/$logeventfile"
+
+proxy_dir=~/.blah_jobproxy_dir
+
+touch -t $datenow $datefile
+ulogs=`find $logpath/$logeventfile.[0-9]* -type f -newer $datefile -print`
+rm $datefile
+
+for i in `echo $ulogs | sed "s|${logpath}/${logeventfile}\.||g" | sort -nr`; do
+ logs="$logs$logpath/$logeventfile.$i "
+done
+
+logs="$logs$logpath/$logeventfile"
 
 #/* job states */
 #define JOB_STAT_NULL         0x00
@@ -74,7 +103,7 @@ logs="$logs $logpath/$logeventfile"
 #define JOB_STAT_WAIT         (0x200) /* Chunk job waiting its turn to exec */
 #define JOB_STAT_UNKWN        0x10000
 
-result=`awk -v jobId=$requested '
+result=`awk -v jobId=$requested -v proxyDir=$proxy_dir '
 BEGIN {
 	rex_queued   = "\"JOB_NEW\" \"[0-9\.]+\" [0-9]+ " jobId
 	rex_running  = "\"JOB_START\" \"[0-9\.]+\" [0-9]+ " jobId
@@ -96,6 +125,7 @@ $0 ~ rex_queued {
 
 $0 ~ rex_running {
 	jobstatus = 2
+        print "WorkerNode = " $10 ";"
 }
 
 $0 ~ rex_deleted {
@@ -130,6 +160,9 @@ END {
 		print "ExitCode = " exitcode ";"
 	}
 	print "]"
+	if (jobstatus == 3 || jobstatus == 4) {
+		system("rm " proxyDir "/" jobId ".proxy")
+	}
 }
 ' $logs`
 

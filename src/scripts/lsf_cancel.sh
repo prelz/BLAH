@@ -16,4 +16,4 @@ else
 fi
 
 requested=`echo $1 | sed 's/^.*\///'`
-${binpath}bkill $requested
+${binpath}bkill $requested >/dev/null 2>&1

@@ -27,18 +27,19 @@
 /* Initialise commands array (strict alphabetical order)
  * handler functions prototypes are in commands.h
  * */    
-#define COMMANDS_NUM 9
+#define COMMANDS_NUM 10
 command_t commands_array[COMMANDS_NUM] = {
-	/* cmd string, # pars, threaded, handler */
-	{ "ASYNC_MODE_OFF",  0, 0, cmd_async_off },
-	{ "ASYNC_MODE_ON",   0, 0, cmd_async_on },
-	{ "BLAH_JOB_CANCEL", 2, 1, cmd_cancel_job },
-	{ "BLAH_JOB_STATUS", 2, 1, cmd_status_job },
-	{ "BLAH_JOB_SUBMIT", 2, 1, cmd_submit_job },
-	{ "COMMANDS",        0, 0, cmd_commands },
-	{ "QUIT",            0, 0, cmd_quit },
-	{ "RESULTS",         0, 0, cmd_results },
-	{ "VERSION",         0, 0, cmd_version }
+	/* cmd string, # of pars, threaded, handler */
+	{ "ASYNC_MODE_OFF",               0, 0, cmd_async_off },
+	{ "ASYNC_MODE_ON",                0, 0, cmd_async_on },
+	{ "BLAH_JOB_CANCEL",              2, 1, cmd_cancel_job },
+	{ "BLAH_JOB_REFRESH_PROXY",       3, 1, cmd_renew_proxy },
+	{ "BLAH_JOB_STATUS",              2, 1, cmd_status_job },
+	{ "BLAH_JOB_SUBMIT",              2, 1, cmd_submit_job },
+	{ "COMMANDS",                     0, 0, cmd_commands },
+	{ "QUIT",                         0, 0, cmd_quit },
+	{ "RESULTS",                      0, 0, cmd_results },
+	{ "VERSION",                      0, 0, cmd_version }
 };
 
 /* Key comparison function 

@@ -15,6 +15,7 @@
 #    20-Sep-2004: -q option added (queue selection)
 #    29-Sep-2004: -g option added (gianduiotto selection) and job_ID=job_ID_log
 #    13-Jan-2005: -n option added (MPI job selection)
+#     9-Mar-2005:  Dgas(gianduia) removed. Proxy renewal stuff added (-r -p -l flags)
 # 
 #
 # Description:
@@ -28,6 +29,7 @@
 #  See http://grid.infn.it/grid/license.html for license details.
 #
 #
+
 # Initialize env
 if  [ -f ~/.bashrc ]; then
  . ~/.bashrc
@@ -57,11 +59,27 @@ logpath=${spoolpath}server_logs
 stgcmd="yes"
 stgproxy="yes"
 
+proxyrenewald="${GLITE_LOCATION:-/opt/glite}/bin/BPRserver"
+
+#default is to stage proxy renewal daemon 
+proxyrenew="yes"
+
+if [ ! -r "$proxyrenewald" ]
+then
+  unset proxyrenew
+fi
+
+proxy_dir=~/.blah_jobproxy_dir
+
+#default values for polling interval and min proxy lifetime
+prnpoll=30
+prnlifetime=0
+
 ###############################################################
 # Parse parameters
 ###############################################################
 original_args=$@
-while getopts "i:o:e:c:s:v:dw:q:n:" arg 
+while getopts "i:o:e:c:s:v:dw:q:n:rp:l:" arg 
 do
     case "$arg" in
     i) stdin="$OPTARG" ;;
@@ -74,6 +92,9 @@ do
     w) workdir="$OPTARG";;
     q) queue="$OPTARG";;
     n) mpinodes="$OPTARG";;
+    r) proxyrenew="yes" ;;
+    p) prnpoll="$OPTARG" ;;
+    l) prnlifetime="$OPTARG" ;;
     -) break ;;
     ?) echo $usage_string
        exit 1 ;;
@@ -107,15 +128,30 @@ else
     tmp_file="/proc/$$/fd/2"
 fi
 
+# Create unique extension for filenames
+uni_uid=`id -u`
+uni_pid=$$
+uni_time=`date +%s`
+uni_ext=$uni_uid.$uni_pid.$uni_time
+
 # Put executable into inputsandbox
-[ "x$stgcmd" == "xno" ] || blahpd_inputsandbox="`basename $the_command`@`hostname -f`:$the_command"
+[ "x$stgcmd" != "xyes" ] || blahpd_inputsandbox="`basename $the_command`@`hostname -f`:$the_command"
+
+# Put BPRserver into sandbox
+if [ "x$proxyrenew" == "xyes" ] ; then
+    if [ -r "$proxyrenewald" ] ; then
+        remote_BPRserver=`basename $proxyrenewald`.$uni_ext
+        if [ ! -z $blahpd_inputsandbox ]; then blahpd_inputsandbox="${blahpd_inputsandbox},"; fi
+        blahpd_inputsandbox="${blahpd_inputsandbox}${remote_BPRserver}@`hostname -f`:$proxyrenewald"
+    else
+        unset proxyrenew
+    fi
+fi
 
 # Setup proxy transfer
 proxy_string=`echo ';'$envir | sed --quiet -e 's/.*;[^X]*X509_USER_PROXY[^=]*\= *\([^\; ]*\).*/\1/p'`
-
 need_to_reset_proxy=no
 proxy_remote_file=
-
 if [ "x$stgproxy" == "xyes" ] ; then
     proxy_local_file=${workdir}"/"`basename "$proxy_string"`;
     [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] || proxy_local_file=$proxy_string
@@ -127,13 +163,6 @@ if [ "x$stgproxy" == "xyes" ] ; then
         need_to_reset_proxy=yes
     fi
 fi
-
-#create unique extension for filename
-
-uni_uid=`id -u`
-uni_pid=$$
-uni_time=`date +%s`
-uni_ext=$uni_uid.$uni_pid.$uni_time
 
 # Write wrapper preamble
 cat > $tmp_file << end_of_preamble
@@ -164,6 +193,7 @@ then
     echo "# Setting the environment:" >> $tmp_file
     echo "`echo ';'$envir | sed -e 's/;\([^=]*\)=\([^;]*\)/;export \1=\"\2\"/g' | awk 'BEGIN { RS = ";" } ; { print $0 }'`" >> $tmp_file
 fi
+#'#
 
 # Set the path to the user proxy
 if [ "x$need_to_reset_proxy" == "xyes" ] ; then
@@ -179,7 +209,42 @@ then
     the_command="./`basename $the_command`"
     echo "if [ ! -x $the_command ]; then chmod u+x $the_command; fi" >> $tmp_file
 fi
-echo "$the_command $arguments" >> $tmp_file
+echo "$the_command $arguments &" >> $tmp_file
+
+echo "job_pid=\$!" >> $tmp_file
+
+if [ ! -z $proxyrenew ]
+then
+    echo "" >> $tmp_file
+    echo "# Start the proxy renewal server" >> $tmp_file
+    echo "if [ ! -x $remote_BPRserver ]; then chmod u+x $remote_BPRserver; fi" >> $tmp_file
+    echo "\`pwd\`/$remote_BPRserver \$job_pid $prnpoll $prnlifetime \${PBS_JOBID} &" >> $tmp_file
+    echo "server_pid=\$!" >> $tmp_file
+fi
+
+echo "" >> $tmp_file
+echo "# Wait for the user job to finish" >> $tmp_file
+echo "wait \$job_pid" >> $tmp_file
+
+if [ ! -z $proxyrenew ]
+then
+    echo "# Prepare to clean up the watchdog when done" >> $tmp_file
+    echo "sleep 1" >> $tmp_file
+    echo "kill \$server_pid 2> /dev/null" >> $tmp_file
+    echo "if [ -e \"$remote_BPRserver\" ]" >> $tmp_file
+    echo "then" >> $tmp_file
+    echo "    rm $remote_BPRserver" >> $tmp_file
+    echo "fi" >> $tmp_file
+fi
+
+echo "# Clean up the proxy" >> $tmp_file
+echo "if [ -e \"$proxy_unique\" ]" >> $tmp_file
+echo "then" >> $tmp_file
+echo "    rm $proxy_unique" >> $tmp_file
+echo "fi" >> $tmp_file
+echo "" >> $tmp_file
+
+echo "exit 0" >> $tmp_file
 
 # Exit if it was just a test
 if [ "x$debug" == "xyes" ]
@@ -242,6 +307,12 @@ echo "pbs/`basename $logfile`/$jobID"
 
 # Clean temporary files
 cd $curdir
-#rm $tmp_file
+rm $tmp_file
 
+# Create a softlink to proxy file for proxy renewal
+if [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] ; then
+    [ -d "$proxy_dir" ] || mkdir $proxy_dir
+    ln -s $proxy_local_file $proxy_dir/$jobID.proxy
+fi
+                                                                                                                                                                                    
 exit $retcode

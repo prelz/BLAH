@@ -16,4 +16,4 @@ else
 fi
 
 requested=`echo $1 | sed 's/^.*\///'`
-${binpath}qdel $requested
+${binpath}qdel $requested >/dev/null 2>&1

@@ -16,6 +16,7 @@
 #    29-Sep-2004: -g option added (gianduiotto selection) and job_ID=job_ID_log
 #    13-Jan-2005: -n option added (MPI job selection) and changed prelz@mi.infn.it with
 #                    blahp_sink@mi.infn.it
+#     4-Mar-2005:  Dgas(gianduia) removed. Proxy renewal stuff added (-r -p -l flags)
 # 
 #
 # Description:
@@ -59,13 +60,29 @@ logfilename=lsb.events
 stgcmd="yes"
 workdir="."
 
+proxyrenewald="${GLITE_LOCATION:-/opt/glite}/bin/BPRserver"
+
+proxy_dir=~/.blah_jobproxy_dir
+
 stgproxy="yes"
+
+#default is to stage proxy renewal daemon 
+proxyrenew="yes"
+
+if [ ! -r $proxyrenewald ]
+then
+  unset proxyrenew
+fi
+
+#default values for polling interval and min proxy lifetime
+prnpoll=30
+prnlifetime=0
 
 ###############################################################
 # Parse parameters
 ###############################################################
 
-while getopts "i:o:e:c:s:v:dw:q:n:" arg 
+while getopts "i:o:e:c:s:v:dw:q:n:rp:l:" arg 
 do
     case "$arg" in
     i) stdin="$OPTARG" ;;
@@ -78,6 +95,9 @@ do
     w) workdir="$OPTARG";;
     q) queue="$OPTARG";;
     n) mpinodes="$OPTARG";;
+    r) proxyrenew="yes" ;;
+    p) prnpoll="$OPTARG" ;;
+    l) prnlifetime="$OPTARG" ;;
 
     -) break ;;
     ?) echo $usage_string
@@ -113,10 +133,15 @@ else
 fi
 
 #create unique extension for filename
+
 uni_uid=`id -u`
 uni_pid=$$
 uni_time=`date +%s`
 uni_ext=$uni_uid.$uni_pid.$uni_time
+
+#create date for output string
+
+datenow=`date +%Y%m%d%H%M.%S`
 
 # Write wrapper preamble
 cat > $tmp_file << end_of_preamble
@@ -143,7 +168,9 @@ stderr_unique=$stderr.$uni_ext
 [ -z "$queue" ]    || echo "#BSUB -q $queue" >> $tmp_file
 [ -z "$mpinodes" ] || echo "#BSUB -n $mpinodes" >> $tmp_file
 
-[ -z "$stgcmd" ] || echo "#BSUB -f \"$the_command > `basename $the_command`\"" >> $tmp_file
+[ -z "$proxyrenew" ] || echo "#BSUB -f \"$proxyrenewald > `basename $proxyrenewald`.$uni_ext\"" >> $tmp_file
+
+[ "x$stgcmd" != "xyes" ] || echo "#BSUB -f \"$the_command > `basename $the_command`\"" >> $tmp_file
 [ -z "$stdout" ] || echo "#BSUB -f \"$stdout < `basename $stdout_unique`\"" >> $tmp_file
 [ -z "$stderr" ] || echo "#BSUB -f \"$stderr < `basename $stderr_unique`\"" >> $tmp_file
 
@@ -167,8 +194,6 @@ then
     echo "" >> $tmp_file
     echo "# Setting the environment:" >> $tmp_file
     echo "export `echo ';'$envir | sed -e 's/;\([^=]*\)=\([^;]*\)/ \1=\"\2\"/g'`" >> $tmp_file
-    echo "# Finding a working globus-url-copy on AFS" >> $tmp_file
-    echo "source /afs/infn.it/project/datamat/ui/setup_ui.sh" >> $tmp_file
 #'#
 fi
 
@@ -186,10 +211,37 @@ then
     echo "if [ ! -x $the_command ]; then chmod u+x $the_command; fi" >> $tmp_file
 # God *really* knows why LSF doesn't like a 'dot' in here
 # To be investigated further. prelz@mi.infn.it 20040911
-    echo "\`pwd\`/`basename $the_command` $arguments" >> $tmp_file
+    echo "\`pwd\`/`basename $the_command` $arguments &" >> $tmp_file
 else
-    echo "$the_command $arguments" >> $tmp_file
+    echo "$the_command $arguments &" >> $tmp_file
 fi
+
+echo "job_pid=\$!" >> $tmp_file
+
+if [ ! -z $proxyrenew ]
+then
+    echo "if [ ! -x `basename $proxyrenewald`.$uni_ext ]; then chmod u+x `basename $proxyrenewald`.$uni_ext; fi" >> $tmp_file
+    
+    echo "\`pwd\`/`basename $proxyrenewald`.$uni_ext \$job_pid $prnpoll $prnlifetime \${LSB_JOBID} &" >> $tmp_file
+    echo "server_pid=\$!" >> $tmp_file
+fi
+echo "wait \$job_pid" >> $tmp_file
+if [ ! -z $proxyrenew ]
+then
+    echo "sleep 1" >> $tmp_file
+    echo "kill \$server_pid 2> /dev/null" >> $tmp_file
+    echo "if [ -e \"`basename $proxyrenewald`.$uni_ext\" ]" >> $tmp_file
+    echo "then" >> $tmp_file
+    echo "rm `basename $proxyrenewald`.$uni_ext" >> $tmp_file
+    echo "fi" >> $tmp_file
+fi
+
+echo "if [ -e \"$proxy_unique\" ]" >> $tmp_file
+echo "then" >> $tmp_file
+echo "rm $proxy_unique" >> $tmp_file
+echo "fi" >> $tmp_file
+
+echo "exit 0" >> $tmp_file
 
 # Exit if it was just a test
 if [ "x$debug" == "xyes" ]
@@ -227,10 +279,10 @@ log_check_retry_count=0
 while [ "x$logfile" == "x" ]; do 
 
 # Sleep for a while to allow job enter the queue
-    sleep 2
+    sleep 5
     logfile=`find $logpath/$logfilename* -type f -newer $curdir/$tmp_file -exec grep -lP "\"JOB_NEW\" \"[0-9\.]+\" [0-9]+ $jobID " {} \;`
 
-    if (( log_check_retry_count++ >= 5 )); then
+    if (( log_check_retry_count++ >= 12 )); then
         ${binpath}bkill $jobID
         echo "Error: job not found in logs" >&2
         echo Error # for the sake of waiting fgets in blahpd
@@ -252,11 +304,17 @@ if [ "$jobID_log" != "$jobID" ]; then
     $jobID=$jobID_log
 fi
 
-# Compose the blahp jobID (log file + lsf jobid)
-echo "lsf/`basename $logfile`/$jobID"
+# Compose the blahp jobID (date + lsf jobid)
+echo "lsf/${datenow}/$jobID"
 
 # Clean temporary files
 cd $curdir
 rm $tmp_file
+
+# Create a softlink to proxy file for proxy renewal
+if [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] ; then
+    [ -d "$proxy_dir" ] || mkdir $proxy_dir
+    ln -s $proxy_local_file $proxy_dir/$jobID.proxy
+fi
 
 exit $retcode

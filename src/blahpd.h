@@ -5,7 +5,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
-#define RCSID_VERSION		"$GahpVersion: %s Oct 05 2004 INFN\\ blahpd\\ (%s) $"
+#define RCSID_VERSION		"$GahpVersion: %s Mar 22 2005 INFN\\ blahpd\\ (%s) $"
 #define BUFFER_FILE		"/tmp/blahp_result_buffer"
 #define FLUSHED_BUFFER		"/tmp/blahp_result_buffer.flushed"
 

@@ -32,6 +32,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <errno.h>
 #include <netdb.h>
@@ -484,7 +485,7 @@ cmd_status_job(void *args)
 	char *jobDescr = argv[2];
 	int jobStatus, retcode;
 
-	retcode = get_status(jobDescr, &status_ad, errstr);
+	retcode = get_status(jobDescr, &status_ad, errstr, 0);
 	if (esc_errstr = escape_spaces(errstr))
 	{
 		if (!retcode)
@@ -522,8 +523,140 @@ cmd_status_job(void *args)
 	return;
 }
 
+void *
+cmd_renew_proxy(void *args)
+{
+	classad_context status_ad;
+	char *resultLine;
+	char **argv = (char **)args;
+	char **arg_ptr;
+	char errstr[ERROR_MAX_LEN] = "No error";
+	char *esc_errstr;
+	char *reqId = argv[1];
+	char *jobDescr = argv[2];
+	char *proxyFileName = argv[3];
+	char *workernode;
+	char *command;
+	char *server_lrms;
+	char *esc_strerr;
+	char *proxy_link;
+	char old_proxy[FILENAME_MAX];
+	int jobStatus, retcode, result;
 
-/* Utility functions 
+	retcode = get_status(jobDescr, &status_ad, errstr, 1);
+	if (esc_errstr = escape_spaces(errstr))
+	{
+		if (!retcode)
+		{
+			classad_get_int_attribute(status_ad, "JobStatus", &jobStatus);
+			jobDescr = strrchr(jobDescr, '/') + 1;
+			switch(jobStatus)
+			{
+			case 1: /* job queued */
+				/* copy the proxy locally */
+				if ((proxy_link = make_message("%s/.blah_jobproxy_dir/%s.proxy", getenv("HOME"), jobDescr)) != NULL)
+				{
+					if ((result = readlink(proxy_link, old_proxy, sizeof(old_proxy) - 1)) == -1)
+					{
+						esc_strerr = escape_spaces(strerror(errno));
+						resultLine = make_message("%s 1 Error\\ locating\\ original\\ proxy: %s", reqId, esc_strerr);
+						if (esc_strerr) free (esc_strerr);
+					}
+					else
+					{
+						old_proxy[result] = '\0'; /* readlink doesn't append the NULL char */
+						if (strcmp(proxyFileName, old_proxy) != 0) /* If Condor didn't change the old proxy file already */
+						{
+							if (rename(proxyFileName, old_proxy) == 0) /* FIXME with a safe portable rotation */
+							{
+								resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
+							}
+							else
+							{
+								esc_strerr = escape_spaces(strerror(errno));
+								resultLine = make_message("%s 1 Error\\ rotating\\ proxy: %s", reqId, esc_strerr);
+								if (esc_strerr) free (esc_strerr);
+							}
+						}
+						else
+						{
+							resultLine = make_message("%s 0 Proxy\\ renewed\\ (in\\ place\\ -\\ job\\ pending)", reqId);
+						}
+					}
+					free (proxy_link);
+				}
+				else
+				{
+					resultLine = make_message("%s 1 Out\\ of\\ memory", reqId);
+				}
+				break;
+			case 2: /* job running */
+				/* send the proxy to remote host */
+				if ((result = classad_get_dstring_attribute(status_ad, "WorkerNode", &workernode)) == C_CLASSAD_NO_ERROR)
+				{
+					if (command = make_message("export LD_LIBRARY_PATH=%s/lib; %s/BPRclient %s %s %s",
+					                           getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus",
+					                           blah_script_location, proxyFileName, jobDescr, workernode))
+					{
+						fprintf(stderr, "DEBUG: renewing proxy with cmd '%s'\n", command);
+						retcode = system(command);
+						resultLine = make_message("%s %d %s", reqId, retcode, retcode ? "Error" : "No\\ error");
+						free (command);
+					}
+					else
+					{
+						resultLine = make_message("%s 1 Out\\ of\\ memory", reqId);
+					}
+				}
+				else
+				{
+					resultLine = make_message("%s 1 Cannot\\ retrieve\\ executing\\ host", reqId);
+				}
+				break;
+			case 3: /* job deleted */
+				/* no need to refresh the proxy */
+				resultLine = make_message("%s 0 No\\ proxy\\ to\\ renew\\ -\\ Job\\ was\\ deleted", reqId);
+				break;
+			case 4: /* job completed */
+				/* no need to refresh the proxy */
+				resultLine = make_message("%s 0 No\\ proxy\\ to\\ renew\\ -\\ Job\\ completed", reqId);
+				break;
+			case 5: /* job hold */
+				/* FIXME not yet supported */
+				resultLine = make_message("%s 0 No\\ support\\ for\\ renewing\\ held\\ jobs\\ yet", reqId);
+				break;
+			default:
+				resultLine = make_message("%s 1 Wrong\\ state\\ (%d)", reqId, jobStatus);
+			}
+		}
+		else
+		{
+			resultLine = make_message("%s %d %s", reqId, retcode, esc_errstr);
+		}
+
+		if (resultLine)
+		{
+			enqueue_result(resultLine);
+			free(resultLine);
+		}
+		else
+		{
+			enqueue_result("Missing result line due to memory error");
+			free(esc_errstr);
+		}
+	}
+	else
+		enqueue_result("Missing result line due to memory error");
+	
+	/* Free up all arguments */
+	classad_free(status_ad);
+	free_args(argv);
+	
+	return;
+}
+
+
+/* Utility functions
  * */
 
 char 

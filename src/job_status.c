@@ -30,9 +30,8 @@
 extern char *blah_script_location;
 
 int
-get_status(const char *jobDesc, classad_context *cad, char *error_str)
+get_status(const char *jobDesc, classad_context *cad, char *error_str, int get_workernode)
 {
-	const char *status_command = "/home/rebatto/blahp/status";
 	FILE *cmd_out;
 	char buffer[1024];
 	char *command;
@@ -50,7 +49,7 @@ get_status(const char *jobDesc, classad_context *cad, char *error_str)
         server_lrms[3] = '\0';
         jobId = jobDesc + 4;
 
-        command = make_message("%s/%s_status.sh %s", blah_script_location, server_lrms, jobId);
+        command = make_message("%s/%s_status.sh %s %s", blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobId);
 	if (command == NULL)
 	{
 		fprintf(stderr, "Malloc error in get_status\n");
