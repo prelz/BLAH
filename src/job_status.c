@@ -69,13 +69,13 @@ get_status(const char *jobDesc, classad_context *cad, char *error_str)
 
 	cad_str = malloc(1);
 	cad_str[0] = '\000';
-	fgets(buffer, sizeof(buffer), cmd_out);
-	while (strcmp(buffer, "*** END ***\n"))
+	while (fgets(buffer, sizeof(buffer), cmd_out))
 	{
+		/* This line is for backward compatibility */
+		if (strcmp(buffer, "*** END ***\n") == 0) break;
 		if (buffer[strlen(buffer) - 1] == '\n') buffer[strlen(buffer) - 1] = ' ';
 		cad_str = (char *) realloc (cad_str, strlen(cad_str) + strlen(buffer) + 1);
 		strcat(cad_str, buffer);
-		fgets(buffer, sizeof(buffer), cmd_out);
 	}
 
 	retcode = pclose(cmd_out);
