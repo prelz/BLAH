@@ -1,0 +1,9 @@
+	<!-- ======================================================
+             Define extra properties here ...
+             ====================================================== -->
+        
+	<project name="configure options">                                                                        
+        <property name="configure.args"
+               value="--with-classad=${with.classads.prefix}"/>
+
+	</project>

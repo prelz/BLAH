@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	Copyright (c) 2004 on behalf of the EU EGEE Project: 
+	The European Organization for Nuclear Research (CERN), 
+	Istituto Nazionale di Fisica Nucleare (INFN), Italy
+	Datamat Spa, Italy
+	Centre National de la Recherche Scientifique (CNRS), France
+	CS Systeme d'Information (CSSI), France
+	Royal Institute of Technology, Center for Parallel Computers (KTH-PDC), Sweden
+	Universiteit van Amsterdam (UvA), Netherlands
+	University of Helsinki (UH.HIP), Finland
+	University of Bergen (UiB), Norway
+	Council for the Central Laboratory of the Research Councils (CCLRC), United Kingdom
+
+	Common build properties file for the GLite ce blahp component
+	
+	Authors: Joachim Flammer <Joachim.Flammer@cern.ch>
+	Version info: $Id: properties.xml,v 1.1 2004/09/14 14:29:25 mezzadri Exp $
+	Release: $Name:  $	
+	
+	Revision history:
+	$Log: properties.xml,v $
+	Revision 1.1  2004/09/14 14:29:25  mezzadri
+	new files for blahp
+
+	Revision 1.4  2004/07/20 16:08:30  flammer
+	Changed incorrect my_... instead of .._template entries for subsystem and component.
+	
+	Revision 1.3  2004/07/16 14:56:55  flammer
+	Corrected input path of build.properties.
+	
+	Revision 1.2  2004/07/16 14:36:49  flammer
+	
+	Corrected build.properties include.
+	
+	Revision 1.1.1.1  2004/06/18 12:40:17  flammer
+	Added general component template.
+	
+	
+-->
+
+<project name="ce blahp component common properties">
+
+	<!-- Include build properties to allow overwriting 
+	     of properties for subsystem                    -->
+	<property file="project/build.properties" />	
+
+	<!-- ======================================================
+              Define corresponding subsystem properties
+	     ====================================================== -->
+
+	<!-- Subsystem name -->
+	<property name="subsystem.name" value="${ce.subsystem.name}"/>
+		
+	<!-- Subsystem prefix -->
+	<property name="subsystem.prefix" value="${ce.subsystem.prefix}"/>
+
+	<!-- ======================================================
+              Define component properties
+	     ====================================================== -->
+		 		
+	<!-- Component name prefix -->
+	<property name="component.prefix" value="blahp" />
+			
+	<!-- ======================================================
+              Define general component properties
+	     ====================================================== -->
+	
+	<import file="${component.general.properties.file}" />
+						
+	<!-- ======================================================
+	      Define extra properties here ...
+	     ====================================================== -->
+	
+		
+</project>
