@@ -12,11 +12,14 @@
 #       Council for the Central Laboratory of the Research Councils (CCLRC), United Kingdom
 #
 #       Authors: Francesco Prelz <francesco.prelz@mi.infn.it>
-#       Version info: $Id: configure.ac,v 1.7 2004/09/22 00:15:23 dimeglio Exp $
+#       Version info: $Id: configure.ac,v 1.8 2004/09/22 01:54:20 dimeglio Exp $
 #       Release: $Name:  $
 #
 #       Revision history:
 #       $Log: configure.ac,v $
+#       Revision 1.8  2004/09/22 01:54:20  dimeglio
+#       Added AM_CONFIG_HEADER
+#
 #       Revision 1.7  2004/09/22 00:15:23  dimeglio
 #       Fixed missing parenthesis in AC_INIT
 #       Added default prefix
@@ -71,6 +74,7 @@ AC_DEFINE(BLAHPD_BINDIR,"@bindir@")
 
 # Configuration items
 AC_PREFIX_DEFAULT([/opt/glite])
+AM_CONFIG_HEADER([src/autogen/config.h])
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([src/Makefile])
 
