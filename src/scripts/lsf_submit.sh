@@ -121,6 +121,9 @@ uni_pid=$$
 uni_time=`date +%s`
 uni_ext=$uni_uid.$uni_pid.$uni_time
 
+#tar file for gianduia
+tar_file="giandu.$uni_ext.tar.gz"
+
 # Write wrapper preamble
 cat > $tmp_file << end_of_preamble
 #!/bin/bash
@@ -148,6 +151,16 @@ stderr_unique=$stderr.$uni_ext
 [ -z "$stgcmd" ] || echo "#BSUB -f \"$the_command > `basename $the_command`\"" >> $tmp_file
 [ -z "$stdout" ] || echo "#BSUB -f \"$stdout < `basename $stdout_unique`\"" >> $tmp_file
 [ -z "$stderr" ] || echo "#BSUB -f \"$stderr < `basename $stderr_unique`\"" >> $tmp_file
+
+if [ "x$giandu" == "xyes" ] && [ -f $gianduconf ]; then
+    echo "#BSUB -f \"${giandudir}/${tar_file} < ${tar_file}\"" >> $tmp_file
+fi
+
+#end of BSUB commands
+
+if [ "x$giandu" == "xyes" ] && [ -f $gianduconf ]; then
+    echo "export GLITE_GIANDUIA_TAR_FILE=${giandudir}/${tar_file}" >> $tmp_file
+fi
 
 # Setup proxy transfer
 proxy_string=`echo ';'$envir | sed --quiet -e 's/.*;[^X]*X509_USER_PROXY[^=]*\= *\([^\; ]*\).*/\1/p'`
@@ -256,16 +269,6 @@ fi
 
 # Compose the blahp jobID (log file + lsf jobid)
 echo "lsf/`basename $logfile`/$jobID"
-
-#Create info file for gianduiotto
-
-if [ "x$giandu" == "xyes" ] && [ -f $gianduconf ]; then
-  cp $proxy_string ${giandudir}/lsf_${jobID}.proxy
-  cat > ${giandudir}/lsf_${jobID} <<end_gianduiotto
-EDG_JOB_ID=$EDG_WL_JOBID
-HLR_LOCATION=$HLR_LOCATION
-end_gianduiotto
-fi
 
 # Clean temporary files
 cd $curdir

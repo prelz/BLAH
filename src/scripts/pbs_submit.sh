@@ -117,6 +117,16 @@ if [ "x$stgproxy" == "xyes" ] ; then
     fi
 fi
 
+#create unique extension for filename
+
+uni_uid=`id -u`
+uni_pid=$$
+uni_time=`date +%s`
+uni_ext=$uni_uid.$uni_pid.$uni_time
+
+#tar file for gianduia
+tar_file="giandu.$uni_ext.tar.gz"
+
 # Write wrapper preamble
 cat > $tmp_file << end_of_preamble
 #!/bin/bash
@@ -140,6 +150,16 @@ end_of_preamble
 [ -z "$stderr" ] || echo "#PBS -e $stderr" >> $tmp_file
 [ -z "$queue" ] || echo "#PBS -q $queue" >> $tmp_file
 [ -z "$blahpd_inputsandbox" ] || echo "#PBS -W stagein=$blahpd_inputsandbox" >> $tmp_file
+
+if [ "x$giandu" == "xyes" ] && [ -f $gianduconf ]; then
+    echo "#PBS -W stageout=${tar_file}@`hostname -f`:${giandudir}/${tar_file}" >> $tmp_file
+fi
+
+#end of #PBS commands
+
+if [ "x$giandu" == "xyes" ] && [ -f $gianduconf ]; then
+    echo "export GLITE_GIANDUIA_TAR_FILE=${giandudir}/${tar_file}" >> $tmp_file
+fi
 
 # Set the required environment variables (escape values with double quotes)
 if [ "x$envir" != "x" ]  
@@ -223,16 +243,6 @@ fi
 
 # Compose the blahp jobID ("pbs/" + log file + pbs jobid)
 echo "pbs/`basename $logfile`/$jobID"
-
-#Create info file for gianduiotto
-
-if [ "x$giandu" == "xyes" ] && [ -f $gianduconf ]; then
-  cp $proxy_string ${giandudir}/pbs_${jobID}.proxy
-  cat > ${giandudir}/pbs_${jobID} <<end_gianduiotto
-EDG_JOB_ID=$EDG_WL_JOBID
-HLR_LOCATION=$HLR_LOCATION
-end_gianduiotto
-fi
 
 # Clean temporary files
 cd $curdir
