@@ -5,12 +5,15 @@ AC_CONFIG_AUX_DIR([./project])
 AM_INIT_AUTOMAKE([1.6.3 subdir-objects])
 AC_CONFIG_SRCDIR([src/main.c])
                                                                                 
-# Initialize automake
-#AM_INIT_AUTOMAKE(blahpd,0.12)
-
+#Environment.
+WORKDIR=`pwd`
+AC_SUBST(WORKDIR)
+                                                                                                                          
 dnl Checks for programs.
 AC_PROG_AWK
 AC_PROG_CC
+AC_PROG_CXX
+AC_PROG_LIBTOOL
 
 dnl Checks for libraries.
 dnl Replace `main' with a function in -lpthread:
@@ -29,13 +32,11 @@ AC_HEADER_TIME
 dnl Checks for library functions.
 AC_CHECK_FUNCS(select socket strdup strerror bsearch vsnprintf)
 
+AC_GLITE
+
 have_classads=no
 
 AC_CLASSADS([], have_classads=yes, have_classads=no)
-
-AC_PROG_CXX
-AC_PROG_LIBTOOL
-AC_PROG_INSTALL
 
 dnl Temporarily built with no optimisation
 
