@@ -12,11 +12,12 @@
 #                 Result buffer made persistent between sessions
 #   29 Apr 2004 - Handling of Job arguments as list in classad removed
 #                 Result buffer no longer persistant
-#    7 May 2004 - Write commands embedded in locks to avoid output corruption
+#    7 May 2004 - 'Write' commands embedded in locks to avoid output corruption
 #                 Uses dynamic strings to retrieve classad attributes' value
 #   12 Jul 2004 - (prelz@mi.infn.it). Fixed quoting style for environment.
 #   13 Jul 2004 - (prelz@mi.infn.it). Make sure an entire command is assembled 
 #                                     before forwarding it.
+#   20 Sep 2004 - Added support for Queue attribute.
 #
 #  Description:
 #   Serve a connection to a blahp client, performing appropriate
@@ -48,7 +49,7 @@
 #include "job_status.h"
 #include "resbuffer.h"
 
-#define COMMAND_PREFIX " -c "
+#define COMMAND_PREFIX "-c"
 #define PERSISTENT_BUFFER BUFFER_DONT_SAVE
 
 t_resline *first_job = NULL;
@@ -346,13 +347,14 @@ cmd_submit_job(void *args)
 		return;
 	}
 	
-	/* All other attributes are optional: stop only on memory error */
+	/* All other attributes are optional: fail only on memory error */
 	if ((set_cmd_string_option(&command, cad, "In",       "-i", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "Out",      "-o", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "Err",      "-e", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "Iwd",      "-w", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "Env",      "-v", SINGLE_QUOTE)  == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "Args",     "--", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_string_option(&command, cad, "Queue",    "-q", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_bool_option  (&command, cad, "StageCmd", "-s", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY))
 	{
 		/* PUSH A FAILURE */

@@ -12,6 +12,7 @@
 #    18-May-2004: Search job by name in log file (instead of searching by jobid)
 #     8-Jul-2004: Try a chmod u+x on the file shipped as executable
 #                 -w option added (cd into submission directory)
+#    20-Sep-2004: -q option added (queue selection)
 # 
 #
 # Description:
@@ -35,7 +36,7 @@ stgproxy="yes"
 # Parse parameters
 ###############################################################
 
-while getopts "i:o:e:c:s:v:dw:" arg 
+while getopts "i:o:e:c:s:v:dw:q:" arg 
 do
     case "$arg" in
     i) stdin="$OPTARG" ;;
@@ -46,6 +47,7 @@ do
     s) stgcmd="$OPTARG" ;;
     d) debug="yes" ;;
     w) workdir="$OPTARG";;
+    q) queue="$OPTARG";;
     -) break ;;
     ?) echo $usage_string
        exit 1 ;;
@@ -93,6 +95,7 @@ end_of_preamble
 [ -z "$stdin" ]  || arguments="$arguments < $stdin"
 [ -z "$stdout" ] || echo "#PBS -o $stdout" >> $tmp_file
 [ -z "$stderr" ] || echo "#PBS -e $stderr" >> $tmp_file
+[ -z "$queue" ] || echo "#PBS -q $queue" >> $tmp_file
 [ -z "$stgcmd" ] || blahpd_inputsandbox="`basename $the_command`@`hostname -f`:$the_command"
 
 proxy_string=`echo ';'$envir | sed -e 's/.*;[^X]*X509_USER_PROXY[^=]*\= *\([^\; ]*\).*/\1/'`
