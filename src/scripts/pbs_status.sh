@@ -15,6 +15,27 @@
 #  All rights reserved.
 #  See http://grid.infn.it/grid/license.html for license details.
 #
+#
+# Initialize env
+if  [ -f ~/.bashrc ]; then
+ . ~/.bashrc
+fi
+
+if  [ -f ~/.login ]; then
+ . ~/.login
+fi
+
+if [ ! -z "$PBS_BIN_PATH" ]; then
+    binpath=${PBS_BIN_PATH}/
+else
+    binpath=/usr/pbs/bin/
+fi
+
+if [ ! -z "$PBS_SPOOL_DIR" ]; then
+    spoolpath=${PBS_SPOOL_DIR}/
+else
+    spoolpath=/usr/spool/PBS/
+fi
 
 pars=$*
 requested=`echo $pars | sed 's/^.*\///'`
@@ -22,7 +43,7 @@ logfile=`echo $pars | sed 's/\/.*//'`
 
 # Try with qstat first, if job is found
 # format output as a classad
-result=`qstat -f $requested | awk '
+result=`${binpath}qstat -f $requested | awk '
 BEGIN {
     current_job = ""
     current_attr = ""
@@ -68,7 +89,7 @@ echo $result
 # let's search it in log files
 if [ -z "$result" ]; then
   # Try to find an exit code in log files
-  logpath=/var/spool/pbs/server_logs
+  logpath=${spoolpath}server_logs
   logs=$logpath/$logfile
   logs="$logs "`find $logpath -type f -newer $logs`
   exitcode=`grep "$requested;Exit_status=" $logs | sed 's/.*Exit_status=\([0-9]*\).*/\1/'`

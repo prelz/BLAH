@@ -15,6 +15,15 @@
 #  All rights reserved.
 #  See http://grid.infn.it/grid/license.html for license details.
 #
+#
+# Initialize env
+if  [ -f ~/.bashrc ]; then
+ . ~/.bashrc
+fi
+
+if  [ -f ~/.login ]; then
+ . ~/.login
+fi
 
 if [ ! -z "$LSF_BIN_PATH" ]; then
     binpath=${LSF_BIN_PATH}/

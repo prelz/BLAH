@@ -26,6 +26,15 @@
 #  All rights reserved.
 #  See http://grid.infn.it/grid/license.html for license details.
 #
+#
+# Initialize env
+if  [ -f ~/.bashrc ]; then
+ . ~/.bashrc
+fi
+
+if  [ -f ~/.login ]; then
+ . ~/.login
+fi
 
 usage_string="Usage: $0 -c <command> [-i <stdin>] [-o <stdout>] [-e <stderr>] [-v <environment>] [-- command_arguments]"
 

@@ -26,9 +26,32 @@
 #  All rights reserved.
 #  See http://grid.infn.it/grid/license.html for license details.
 #
+#
+# Initialize env
+if  [ -f ~/.bashrc ]; then
+ . ~/.bashrc
+fi
+
+if  [ -f ~/.login ]; then
+ . ~/.login
+fi
+
+if [ ! -z "$PBS_BIN_PATH" ]; then
+    binpath=${PBS_BIN_PATH}/
+else
+    binpath=/usr/pbs/bin/
+fi
+
+if [ ! -z "$PBS_SPOOL_DIR" ]; then
+    spoolpath=${PBS_SPOOL_DIR}/
+else
+    spoolpath=/usr/spool/PBS/
+fi
 
 usage_string="Usage: $0 -c <command> [-i <stdin>] [-o <stdout>] [-e <stderr>] [-v <environment>] [-s <yes | no>] [-- command_arguments]"
-logpath=/var/spool/pbs/server_logs
+
+
+logpath=${spoolpath}server_logs
 
 stgcmd="yes"
 stgproxy="yes"
@@ -211,7 +234,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-jobID=`qsub $curdir/$tmp_file` # actual submission
+jobID=`${binpath}qsub $curdir/$tmp_file` # actual submission
 retcode=$?
 
 # Sleep for a while to allow job enter the queue

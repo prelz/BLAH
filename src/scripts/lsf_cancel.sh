@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# Initialize env
+if  [ -f ~/.bashrc ]; then
+ . ~/.bashrc
+fi
+
+if  [ -f ~/.login ]; then
+ . ~/.login
+fi
+
 if [ ! -z "$LSF_BIN_PATH" ]; then
     binpath=${LSF_BIN_PATH}/
 else
