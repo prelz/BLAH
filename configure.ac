@@ -1,8 +1,12 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT(src/main.c)
+AC_PREREQ(2.57)
+AC_INIT([GLite CE blahp], [0.0.0])
+AC_CONFIG_AUX_DIR([./project])
+AM_INIT_AUTOMAKE([1.6.3 subdir-objects])
+AC_CONFIG_SRCDIR([src/main.c])
                                                                                 
 # Initialize automake
-AM_INIT_AUTOMAKE(blahpd,0.12)
+#AM_INIT_AUTOMAKE(blahpd,0.12)
 
 dnl Checks for programs.
 AC_PROG_AWK
@@ -26,7 +30,7 @@ dnl Checks for library functions.
 AC_CHECK_FUNCS(select socket strdup strerror bsearch vsnprintf)
 
 AC_PROG_CXX
-
+AC_PROG_LIBTOOL
 AC_PROG_INSTALL
 
 dnl Temporarily built with no optimisation
@@ -87,7 +91,13 @@ if test $ac_cv_classad_program_builds_with_namespace = yes && test $ac_cv_classa
   CXXFLAGS="$CXXFLAGS -DWANT_NAMESPACES"
 fi
 
-AC_DEFINE(BLAHPD_INSTALL,"@prefix@")
-AC_DEFINE(BLAHPD_BINDIR,"@bindir@")
+#AC_DEFINE(BLAHPD_INSTALL,"@prefix@")
+#AC_DEFINE(BLAHPD_BINDIR,"@bindir@")
 
-AC_OUTPUT(Makefile)
+#AC_OUTPUT(Makefile)
+AC_PREFIX_DEFAULT([/opt/glite])
+AM_CONFIG_HEADER([src/autogen/config.h])
+AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([src/Makefile])
+
+AC_OUTPUT
