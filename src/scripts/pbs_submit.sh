@@ -155,11 +155,6 @@ if [ "x$giandu" == "xyes" ] && [ -f $gianduconf ]; then
     echo "#PBS -W stageout=${tar_file}@`hostname -f`:${giandudir}/${tar_file}" >> $tmp_file
 fi
 
-#end of #PBS commands
-
-if [ "x$giandu" == "xyes" ] && [ -f $gianduconf ]; then
-    echo "export GLITE_GIANDUIA_TAR_FILE=${giandudir}/${tar_file}" >> $tmp_file
-fi
 
 # Set the required environment variables (escape values with double quotes)
 if [ "x$envir" != "x" ]  
@@ -173,6 +168,11 @@ fi
 if [ "x$need_to_reset_proxy" == "xyes" ] ; then
     echo "# Resetting proxy to local position" >> $tmp_file
     echo "export X509_USER_PROXY=\`pwd\`/${proxy_remote_file}" >> $tmp_file
+fi
+
+# Export gianduia tar file location
+if [ "x$giandu" == "xyes" ] && [ -f $gianduconf ]; then
+    echo "export GLITE_GIANDUIA_TAR_FILE=${giandudir}/${tar_file}" >> $tmp_file
 fi
 
 # Add the command (with full path if not staged)

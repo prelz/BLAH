@@ -156,12 +156,6 @@ if [ "x$giandu" == "xyes" ] && [ -f $gianduconf ]; then
     echo "#BSUB -f \"${giandudir}/${tar_file} < ${tar_file}\"" >> $tmp_file
 fi
 
-#end of BSUB commands
-
-if [ "x$giandu" == "xyes" ] && [ -f $gianduconf ]; then
-    echo "export GLITE_GIANDUIA_TAR_FILE=${giandudir}/${tar_file}" >> $tmp_file
-fi
-
 # Setup proxy transfer
 proxy_string=`echo ';'$envir | sed --quiet -e 's/.*;[^X]*X509_USER_PROXY[^=]*\= *\([^\; ]*\).*/\1/p'`
 
@@ -190,6 +184,11 @@ fi
 # Set the path to the user proxy
 if [ ! -z $proxy_unique ]; then 
     echo "export X509_USER_PROXY=\`pwd\`/$proxy_unique" >> $tmp_file
+fi
+
+# Export gianduia tar file location
+if [ "x$giandu" == "xyes" ] && [ -f $gianduconf ]; then
+    echo "export GLITE_GIANDUIA_TAR_FILE=${giandudir}/${tar_file}" >> $tmp_file
 fi
 
 # Add the command (with full path if not staged)
