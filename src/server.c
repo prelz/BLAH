@@ -85,7 +85,7 @@ static int async_mode = 0;
 static int async_notice = 0;
 static int exit_program = 0;
 static pthread_mutex_t send_lock  = PTHREAD_MUTEX_INITIALIZER;
-char *server_lrms;
+/* char *server_lrms; */
 char *blah_script_location;
 char *blah_version;
 
@@ -132,11 +132,11 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 		result = DEFAULT_GLITE_LOCATION;
 	}
 	blah_script_location = make_message(BINDIR_LOCATION, result);
-	if ((server_lrms = getenv("BLAH_LRMS")) == NULL)
+/*	if ((server_lrms = getenv("BLAH_LRMS")) == NULL)
 	{
 		server_lrms = DEFAULT_LRMS;
-	}
-	blah_version = make_message(RCSID_VERSION, VERSION, server_lrms);
+	} */
+	blah_version = make_message(RCSID_VERSION, VERSION, "poly");
 
 	write(server_socket, blah_version, strlen(blah_version));
 	write(server_socket, "\r\n", 2);
@@ -318,14 +318,27 @@ cmd_submit_job(void *args)
 	classad_context cad;
 	char *reqId = argv[1];
 	char *jobDescr = argv[2];
+	char *server_lrms = NULL;
 	int r;
+	int result;
 
 	cad = classad_parse(jobDescr);
 	if (cad == NULL)
 	{
 		/* PUSH A FAILURE */
-		sprintf(resultLine, "%s 1 Error\\ parsing\\ classad N/A", reqId);
+		snprintf(resultLine, RESLN_MAX_LEN, "%s 1 Error\\ parsing\\ classad N/A", reqId);
 		enqueue_result(resultLine);
+		if (server_lrms) free (server_lrms);
+		return;
+	}
+
+	/* Get the lrms type from classad attribute "gridtype" */
+	if ((result = classad_get_dstring_attribute(cad, "gridtype", &server_lrms)) != C_CLASSAD_NO_ERROR)
+	{
+		/* PUSH A FAILURE */
+		snprintf(resultLine, RESLN_MAX_LEN, "%s 1 Missing\\ gridtype\\ in\\ submission\\ classAd N/A", reqId);
+		enqueue_result(resultLine);
+		if (server_lrms) free (server_lrms);
 		return;
 	}
 
@@ -333,8 +346,9 @@ cmd_submit_job(void *args)
 	if (command == NULL)
 	{
 		/* PUSH A FAILURE */
-		sprintf(resultLine, "%s 1 Out\\ of\\ Memory N/A", reqId);
+		snprintf(resultLine, RESLN_MAX_LEN, "%s 1 Out\\ of\\ Memory N/A", reqId);
 		enqueue_result(resultLine);
+		if (server_lrms) free (server_lrms);
 		return;
 	}
 
@@ -342,24 +356,28 @@ cmd_submit_job(void *args)
 	if (set_cmd_string_option(&command, cad, "Cmd", COMMAND_PREFIX, NO_QUOTE) != C_CLASSAD_NO_ERROR)
 	{
 		/* PUSH A FAILURE */
-		sprintf(resultLine, "%s 7 Cannot\\ parse\\ Cmd\\ attribute\\ in\\ classad N/A", reqId);
+		snprintf(resultLine, RESLN_MAX_LEN, "%s 7 Cannot\\ parse\\ Cmd\\ attribute\\ in\\ classad N/A", reqId);
 		enqueue_result(resultLine);
+		if (server_lrms) free (server_lrms);
 		return;
 	}
 	
-	/* All other attributes are optional: fail only on memory error */
+	/* All other attributes are optional: fail only on memory error 
+	   IMPORTANT: Args must alway be the last!
+	*/
 	if ((set_cmd_string_option(&command, cad, "In",       "-i", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "Out",      "-o", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "Err",      "-e", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "Iwd",      "-w", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "Env",      "-v", SINGLE_QUOTE)  == C_CLASSAD_OUT_OF_MEMORY) ||
-	    (set_cmd_string_option(&command, cad, "Args",     "--", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "Queue",    "-q", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
-	    (set_cmd_bool_option  (&command, cad, "StageCmd", "-s", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY))
+	    (set_cmd_bool_option  (&command, cad, "StageCmd", "-s", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_string_option(&command, cad, "Args",     "--", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY))
 	{
 		/* PUSH A FAILURE */
 		sprintf(resultLine, "%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
 		enqueue_result(resultLine);
+		if (server_lrms) free (server_lrms);
 		return;
 	}
 
@@ -369,6 +387,7 @@ cmd_submit_job(void *args)
 		/* PUSH A FAILURE */
 		sprintf(resultLine, "%s 3 Unable\\ to\\ open\\ pipe\\ for\\ submit N/A", reqId);
 		enqueue_result(resultLine);
+		if (server_lrms) free (server_lrms);
 		return;
 	}
 	fgets(jobId, sizeof(jobId), cmd_out);
@@ -379,6 +398,7 @@ cmd_submit_job(void *args)
 		/* PUSH A FAILURE */
 		sprintf(resultLine, "%s 2 Submit\\ command\\ exit\\ with\\ retcode\\ %d N/A", reqId, retcod);
 		enqueue_result(resultLine);
+		if (server_lrms) free (server_lrms);
 		return;
 	}
 	/* PUSH A SUCCESS */
@@ -389,6 +409,7 @@ cmd_submit_job(void *args)
 	classad_free(cad);
 	free(command);
 	free_args(argv);
+	if (server_lrms) free (server_lrms);
 
 	return;
 }
@@ -401,9 +422,23 @@ cmd_cancel_job(void* args)
 	char *resultLine = NULL;
 	char **argv = (char **)args;
 	char **arg_ptr;
-
+	char *server_lrms;
 	char *reqId = argv[1];
 	char *jobDescr = argv[2];
+
+	if (strlen(jobDescr) < 4)
+	{
+		/* PUSH A FAILURE */
+		if (resultLine = make_message("%s 1 Malformed\\ jobId %s", reqId, jobDescr))
+		{
+			enqueue_result(resultLine);
+			free(resultLine);
+		}
+		return;
+	}
+	server_lrms = strdup(jobDescr);
+	server_lrms[3] = '\0';
+	jobDescr += 4;
 
 	command = make_message("%s/%s_cancel.sh %s", blah_script_location, server_lrms, jobDescr);
 	if (command == NULL)
@@ -414,6 +449,7 @@ cmd_cancel_job(void* args)
 			enqueue_result(resultLine);
 			free(resultLine);
 		}
+		free (server_lrms);
 		return;
 	}
 
@@ -425,6 +461,7 @@ cmd_cancel_job(void* args)
 	}
 	free(command);
 	free_args(argv);
+	free (server_lrms);
 
 	return;
 }

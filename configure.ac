@@ -12,11 +12,15 @@
 #       Council for the Central Laboratory of the Research Councils (CCLRC), United Kingdom
 #
 #       Authors: Francesco Prelz <francesco.prelz@mi.infn.it>
-#       Version info: $Id: configure.ac,v 1.10 2004/09/22 11:44:20 pandreet Exp $
+#       Version info: $Id: configure.ac,v 1.11 2004/10/05 16:05:45 drebatto Exp $
 #       Release: $Name:  $
 #
 #       Revision history:
 #       $Log: configure.ac,v $
+#       Revision 1.11  2004/10/05 16:05:45  drebatto
+#       Support for "gridtype" added.
+#       Patched a bug preventing classad with both "Args" and "Queue" to be parsed correctly.
+#
 #       Revision 1.10  2004/09/22 11:44:20  pandreet
 #       Runtime scripts in tarball and rpms
 #
@@ -33,7 +37,7 @@
 #
 
 AC_PREREQ(2.57)
-AC_INIT([GLite CE blahp], [0.1.0])
+AC_INIT([GLite CE blahp], [0.2.1])
 AC_CONFIG_AUX_DIR([./project])
 AM_INIT_AUTOMAKE([1.6.3 subdir-objects])
 AC_CONFIG_SRCDIR([src/main.c])

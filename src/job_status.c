@@ -27,11 +27,10 @@
 #include "classad_c_helper.h"
 #include "blahpd.h"
 
-extern char *server_lrms;
 extern char *blah_script_location;
 
 int
-get_status(const char *jobId, classad_context *cad, char *error_str)
+get_status(const char *jobDesc, classad_context *cad, char *error_str)
 {
 	const char *status_command = "/home/rebatto/blahp/status";
 	FILE *cmd_out;
@@ -39,6 +38,17 @@ get_status(const char *jobId, classad_context *cad, char *error_str)
 	char *command;
 	char *cad_str = NULL;
 	int retcode = 0;
+	char *server_lrms;
+	char *jobId;
+
+        if (strlen(jobDesc) < 4)
+        {
+		strncpy(error_str, "Malformed jobId", ERROR_MAX_LEN);
+                return(255);
+        }
+        server_lrms = strdup(jobDesc);
+        server_lrms[3] = '\0';
+        jobId = jobDesc + 4;
 
         command = make_message("%s/%s_status.sh %s", blah_script_location, server_lrms, jobId);
 	if (command == NULL)
@@ -48,12 +58,12 @@ get_status(const char *jobId, classad_context *cad, char *error_str)
 		return(MALLOC_ERROR);
 	};
 	fprintf(stderr, "DEBUG: status cmd = %s\n", command);
-	
+
 	if ((cmd_out=popen(command, "r")) == NULL)
 	{
 		fprintf(stderr, "Unable to execute '%s': ", command);
 		perror("");
-		strncpy(error_str, "Unable to open pipe for qstat", ERROR_MAX_LEN);
+		strncpy(error_str, "Unable to open pipe for status command", ERROR_MAX_LEN);
 		return(255);
 	}
 

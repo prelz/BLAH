@@ -213,8 +213,8 @@ if [ "$jobID_log" != "$jobID" ]; then
     $jobID=$jobID_log
 fi
 
-# Compose the blahp jobID (log file + pbs jobid)
-echo `basename $logfile`"/"$jobID
+# Compose the blahp jobID ("pbs/" + log file + pbs jobid)
+echo "pbs/`basename $logfile`/$jobID"
 
 #Create info file for gianduiotto
 

@@ -243,7 +243,7 @@ if [ "$jobID_log" != "$jobID" ]; then
 fi
 
 # Compose the blahp jobID (log file + lsf jobid)
-echo `basename $logfile`"/"$jobID
+echo "lsf/`basename $logfile`/$jobID"
 
 #Create info file for gianduiotto
 
