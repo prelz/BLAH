@@ -1,6 +1,30 @@
-dnl Process this file with autoconf to produce a configure script.
+#
+#       Copyright (c) 2004 on behalf of the EU EGEE Project:
+#       The European Organization for Nuclear Research (CERN),
+#       Istituto Nazionale di Fisica Nucleare (INFN), Italy
+#       Datamat Spa, Italy
+#       Centre National de la Recherche Scientifique (CNRS), France
+#       CS Systeme d'Information (CSSI), France
+#       Royal Institute of Technology, Center for Parallel Computers (KTH-PDC), Sweden
+#       Universiteit van Amsterdam (UvA), Netherlands
+#       University of Helsinki (UH.HIP), Finland
+#       University of Bergen (UiB), Norway
+#       Council for the Central Laboratory of the Research Councils (CCLRC), United Kingdom
+#
+#       Authors: Francesco Prelz <francesco.prelz@mi.infn.it>
+#       Version info: $Id: configure.ac,v 1.7 2004/09/22 00:15:23 dimeglio Exp $
+#       Release: $Name:  $
+#
+#       Revision history:
+#       $Log: configure.ac,v $
+#       Revision 1.7  2004/09/22 00:15:23  dimeglio
+#       Fixed missing parenthesis in AC_INIT
+#       Added default prefix
+#
+#
+
 AC_PREREQ(2.57)
-AC_INIT([GLite CE blahp], [0.1.0]
+AC_INIT([GLite CE blahp], [0.1.0])
 AC_CONFIG_AUX_DIR([./project])
 AM_INIT_AUTOMAKE([1.6.3 subdir-objects])
 AC_CONFIG_SRCDIR([src/main.c])
@@ -45,6 +69,9 @@ CFLAGS="-g -O0"
 
 AC_DEFINE(BLAHPD_BINDIR,"@bindir@")
 
-AC_OUTPUT(Makefile)
-AC_OUTPUT(src/Makefile)
+# Configuration items
+AC_PREFIX_DEFAULT([/opt/glite])
+AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([src/Makefile])
 
+AC_OUTPUT
