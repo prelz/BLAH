@@ -1,4 +1,24 @@
-** SECOND DRAFT ** SECOND DRAFT ** SECOND DRAFT ** SECOND DRAFT ** SECOND DRAFT **
+1.0   COMPONENT DESCRIPTION
+
+	BLAHPD is a light component accepting commands according to the
+	BLAH (Batch Local Ascii Helper) protocol to manage
+	jobs on different Local Resources Management Systems (LRMS). 
+	In section 3 a detailed descripion of the protocol is given.
+	BLAHPD has to be installed on a Computing Element (the head node 
+	of a farm) and exposes a BLAH interface for job controllers
+	like CREAM and Condor gridmanager. BLAHPD is completely stateless,
+	so it is not a job controller itself. It can be regarded as
+	a modular interface between job state machines and LRMSs.
+	Currently, modules for PBS and LSF have been implemented.
+
+
+2.0   INSTALLATION
+
+	The RPM package for BLAHPD can be downloaded from the official
+	repository at http://glite.web.cern.ch/glite/packages.
+	It has no dependencies on other components, so it can be installed
+	on the target machine without any preliminary step.
+
 
 3.0   BLAHP COMMANDS
 
@@ -17,7 +37,6 @@
 		BLAH_JOB_CANCEL
 		BLAH_JOB_SIGNAL
 		BLAH_JOB_STATUS
-		BLAH_JOB_STATUS_ALL
 		BLAH_JOB_SUBMIT
 		COMMANDS
 		QUIT
@@ -547,50 +566,6 @@
 
 		    *********************************************
 			TO BE DEFINED
-		    *********************************************
-
-	-----------------------------------------------
-
-	BLAH_JOB_STATUS_ALL
-
-	Query and report the current status of all jobs managed by the
-	BLAH server.
-
-	+ Request Line:
-
-		BLAH_JOB_STATUS_ALL <SP> <reqid> <CRLF>
-		
-		* reqid = non-zero integer Request ID 
-
-	+ Return Line:
-
-		<result> <CRLF>
-
-		* result = the character "S" (no quotes) for successful
-		    submission of the request (meaning that the request is
-		    now pending), or an "E" for error on the
-		    parse of the request or its arguments (e.g. an
-		    unrecognized or unsupported command, or for missing or
-		    malformed arguments).  
-
-	+ Result Line:
-			
-		<reqid> <SP> <result-code> <SP> <error-string> <SP>
-			<result-classad> <CRLF>
-			
-		* reqid = integer Request ID, set to the value specified in
-		    the corresponding Request Line.
-
-		* result-code = integer equal to 0 on success, or an error code
-
-		* error-string = description of error
-
-		* result-classad = List of classads containing aggregate 
-		    information about the job status.
-		    At least the following attributes are defined:
-
-		    *********************************************
-			TO BE DEFINED (has to include 
 		    *********************************************
 
 	-----------------------------------------------
