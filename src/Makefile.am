@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.1 2004/09/14 15:20:54 pandreet Exp $ 
+# $Id: Makefile.am,v 1.2 2004/09/15 08:36:40 pandreet Exp $ 
 #
 # File:           Makefile.am
 #
@@ -18,7 +18,7 @@ INCLUDES = -I.
 
 bin_PROGRAMS = blahpd blahpd_daemon
 
-common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_c_helper.C
+common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_c_helper.c
 
 blahpd_SOURCES = main.c $(common_sources)
 
