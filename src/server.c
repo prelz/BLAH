@@ -59,6 +59,7 @@ int num_jobs = 0;
 #define NO_QUOTE     0
 #define SINGLE_QUOTE 1
 #define DOUBLE_QUOTE 2
+#define INT_NOQUOTE  3
 
 #ifndef FALSE
 #define FALSE 0
@@ -67,10 +68,11 @@ int num_jobs = 0;
 #define TRUE  1
 #endif
 
-const char *opt_format[3] = {
+const char *opt_format[4] = {
 	" %s %s",               /* NO_QUOTE */
 	" %s \"%s\"",           /* SINGLE_QUOTE */
-	" %s \"\\\"%s\\\"\""    /* DOUBLE_QUOTE */
+	" %s \"\\\"%s\\\"\"",   /* DOUBLE_QUOTE */
+	" %s %d"                /* INT_NOQUOTE */
 };
 
 /* Function prototypes */
@@ -371,6 +373,7 @@ cmd_submit_job(void *args)
 	    (set_cmd_string_option(&command, cad, "Iwd",      "-w", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "Env",      "-v", SINGLE_QUOTE)  == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "Queue",    "-q", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_int_option   (&command, cad, "Mpi",      "-n", INT_NOQUOTE)   == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_bool_option  (&command, cad, "StageCmd", "-s", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "Args",     "--", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY))
 	{
@@ -677,6 +680,35 @@ set_cmd_string_option(char **command, classad_context cad, const char *attribute
 		}
 		else
 			result = C_CLASSAD_VALUE_NOT_FOUND;
+	}
+
+	if (result == C_CLASSAD_NO_ERROR)
+		if (new_command = (char *) realloc (*command, strlen(*command) + strlen(to_append) + 1))
+		{
+			strcat(new_command, to_append);
+			*command = new_command;
+		}
+		else
+			result = C_CLASSAD_OUT_OF_MEMORY;
+
+	if (to_append) free (to_append);
+	return(result);
+}
+
+int
+set_cmd_int_option(char **command, classad_context cad, const char *attribute, const char *option, const int quote_style)
+{
+	int argument;
+	char *to_append = NULL;
+	char *new_command;
+	int result;
+	
+	if ((result = classad_get_int_attribute(cad, attribute, &argument)) == C_CLASSAD_NO_ERROR)
+	{
+		if ((to_append = make_message(opt_format[quote_style], option, argument)) == NULL)
+		{
+			result = C_CLASSAD_OUT_OF_MEMORY;
+		}
 	}
 
 	if (result == C_CLASSAD_NO_ERROR)
