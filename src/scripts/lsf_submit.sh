@@ -205,6 +205,7 @@ while [ "x$logfile" == "x" ]; do
     logfile=`find $logpath/$logfilename* -type f -newer $curdir/$tmp_file -exec grep -lP "\"JOB_NEW\" \"[0-9\.]+\" [0-9]+ $jobID " {} \;`
 
     if (( log_check_retry_count++ >= 5 )); then
+        ${binpath}bkill $jobID
         echo "Error: job not found in logs" >&2
         echo Error # for the sake of waiting fgets in blahpd
         exit 1
