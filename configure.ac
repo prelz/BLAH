@@ -12,25 +12,26 @@
 #       Council for the Central Laboratory of the Research Councils (CCLRC), United Kingdom
 #
 #       Authors: Francesco Prelz <francesco.prelz@mi.infn.it>
-#       Version info: $Id: configure.ac,v 1.19 2005/02/25 14:22:29 mezzadri Exp $
+#       Version info: $Id: configure.ac,v 1.20 2005/03/23 11:12:19 drebatto Exp $
 #       Release: $Name:  $
 #
 #       Revision history:
 #       $Log: configure.ac,v $
-#       Revision 1.19  2005/02/25 14:22:29  mezzadri
+#       Revision 1.20  2005/03/23 11:12:19  drebatto
+#       Some more files to align...
+#
+#       Revision 1.14.2.4  2005/03/11 19:42:26  fprelz
+#       Added support for the BLAH_JOB_REFRESH_PROXY command in blahpd.
+#       Revised the batch system submit and status scripts.
+#
+#       Revision 1.14.2.3  2005/02/25 14:25:37  mezzadri
 #       changed minor version number
 #
-#       Revision 1.18  2005/02/03 16:24:25  drebatto
+#       Revision 1.14.2.2  2005/02/03 16:19:04  drebatto
 #       Version number incremented
 #
-#       Revision 1.17  2005/01/14 13:48:12  drebatto
-#       Changed version number
-#
-#       Revision 1.16  2005/01/04 15:31:28  drebatto
-#       Increased minor version number.
-#
-#       Revision 1.15  2004/12/21 14:56:42  pandreet
-#       Incremented version number
+#       Revision 1.14.2.1  2005/02/01 13:54:26  drebatto
+#       Aligned to MAIN
 #
 #       Revision 1.14  2004/12/09 13:59:13  mezzadri
 #       changed version number
@@ -61,7 +62,7 @@
 #
 
 AC_PREREQ(2.57)
-AC_INIT([GLite CE blahp], [1.1.4])
+AC_INIT([GLite CE blahp], [1.2.2])
 AC_CONFIG_AUX_DIR([./project])
 AM_INIT_AUTOMAKE([1.6.3 subdir-objects])
 AC_CONFIG_SRCDIR([src/main.c])
@@ -73,6 +74,7 @@ AC_SUBST(WORKDIR)
 dnl Checks for programs.
 AC_PROG_AWK
 AC_PROG_CC
+AM_PROG_CC_C_O
 AC_PROG_CXX
 AC_PROG_LIBTOOL
 
@@ -96,8 +98,13 @@ AC_CHECK_FUNCS(select socket strdup strerror bsearch vsnprintf)
 AC_GLITE
 
 have_classads=no
+have_globus=no
 
 AC_CLASSADS([], have_classads=yes, have_classads=no)
+AC_GLOBUS([], have_globus=yes, have_globus=no)
+
+AC_MSG_RESULT(["CLASSADS found $have_classads"])
+AC_MSG_RESULT(["GLOBUS found $have_globus"])
 
 dnl Temporarily built with no optimisation
 
