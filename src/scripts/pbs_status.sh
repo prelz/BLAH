@@ -7,117 +7,78 @@
 #
 #
 #  Revision history:
+#    20-Mar-2004: Original release
+#    04-Jan-2005: Totally rewritten, qstat command not used anymore
 #
 #  Description:
+#    Return a classad describing the status of a PBS job
 #
 #
 #  Copyright (c) 2004 Istituto Nazionale di Fisica Nucleare (INFN).
 #  All rights reserved.
 #  See http://grid.infn.it/grid/license.html for license details.
 #
-#
-# Initialize env
-if  [ -f ~/.bashrc ]; then
- . ~/.bashrc
-fi
 
-if  [ -f ~/.login ]; then
- . ~/.login
-fi
-
-if [ ! -z "$PBS_BIN_PATH" ]; then
-    binpath=${PBS_BIN_PATH}/
-else
-    binpath=/usr/pbs/bin/
-fi
-
-if [ ! -z "$PBS_SPOOL_DIR" ]; then
-    spoolpath=${PBS_SPOOL_DIR}/
-else
-    spoolpath=/usr/spool/PBS/
-fi
+logpath=/var/spool/pbs/server_logs
 
 pars=$*
-requested=`echo $pars | sed 's/^.*\///'`
+requested=`echo $pars | sed -e 's/^.*\///'`
 logfile=`echo $pars | sed 's/\/.*//'`
+logs="$logpath/$logfile `find $logpath -type f -newer $logpath/$logfile`"
 
-# Try with qstat first, if job is found
-# format output as a classad
-result=`${binpath}qstat -f $requested | awk '
+result=`awk -v jobId=$requested '
 BEGIN {
-    current_job = ""
-    current_attr = ""
-    current_value = ""
-    curent_delimiter = ""
-    value_ended = 1
+	rex_queued   = jobId ";Job Queued "
+	rex_running  = jobId ";Job Run "
+	rex_deleted  = jobId ";Job deleted "
+	rex_finished = jobId ";Exit_status="
+	rex_hold     = jobId ";Holds "
+
+	print "["
+	print "BatchjobId = \"" jobId "\";"
 }
 
-function new_attr(attr_name, delimiter) {
-    if (current_attr != "") {
-        print current_attr " = " current_delimiter current_value current_delimiter ";"
-        value_ended = 1
-    }
-    current_attr = attr_name
-    current_value = substr($0, index($0, "=") + 2)
-    current_delimiter = delimiter
+$0 ~ rex_queued {
+	jobstatus = 1
 }
 
-/Job Id:/ {
-    current_job = substr($0, index($0, ":") + 2)
-    print "[\nBatchjobId = \"" current_job "\";"
+$0 ~ rex_running {
+	jobstatus = 2
 }
 
-/Error_Path =/     { new_attr("Err", "\"") }
-/Output_Path =/    { new_attr("Out", "\"") }
-/etime =/          { new_attr("Started", "\"") }
-/job_state =/      { new_attr("JobStatus", "")
-                     if (current_value == "Q") current_value = 1
-                     if (current_value == "R") current_value = 2
-                     if (current_value == "H") current_value = 5
-                   }
-
-/^$/ {
-    print current_attr " = " current_delimiter current_value current_delimiter ";"
-    value_ended = 1
-    print "]"
+$0 ~ rex_deleted {
+	jobstatus = 3
+	exit
 }
-'
-`
-echo $result
 
-# If qstat doesn't know about the job,
-# let's search it in log files
-if [ -z "$result" ]; then
-  # Try to find an exit code in log files
-  logpath=${spoolpath}server_logs
-  logs=$logpath/$logfile
-  logs="$logs "`find $logpath -type f -newer $logs`
-  exitcode=`grep "$requested;Exit_status=" $logs | sed 's/.*Exit_status=\([0-9]*\).*/\1/'`
-  if [ -n "$exitcode" ]
-  then
-    cat <<FINE_OK
-[
-BatchjobId = "$requested";
-ExitCode = $exitcode;
-JobStatus = 4;
-]
-FINE_OK
-    retcode=0
-  # Try to see if job has been deleted
-  elif grep -q "$requested;Job deleted" $logs
-  then
-    cat <<FINE_DEL
-[
-BatchjobId = "$requested";
-JobStatus = 3;
-]
-FINE_DEL
-    retcode=0
-  else
-    echo "Error: cannot retrieve job status"
-    retcode=1
-  fi
+$0 ~ rex_finished {
+	jobstatus = 4
+	s = substr($0, index($0, "Exit_status="))
+	s = substr(s, 1, index(s, " ")-1)
+	exitcode = substr(s, index(s, "=")+1)
+	exit
+}
+
+$0 ~ rex_hold {
+	jobstatus = 5
+}
+
+END {
+	if (jobstatus == 0) { exit 1 }
+	print "JobStatus = " jobstatus ";"
+	if (jobstatus == 4) {
+		print "ExitCode = " exitcode ";"
+	}
+	print "]"
+}
+' $logs`
+
+if [ "$?" == "0" ] ; then
+	echo $result
+	retcode=0
+else
+	echo "ERROR: Job not found"
+	retcode=1
 fi
 
-echo \*\*\* END \*\*\*
 exit $retcode
