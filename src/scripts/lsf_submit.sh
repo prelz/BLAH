@@ -123,7 +123,7 @@ cat > $tmp_file << end_of_preamble
 # LSF directives:
 #BSUB -L /bin/bash
 #BSUB -N
-#BSUB -u /dev/null
+#BSUB -u prelz@mi.infn.it
 #BSUB -J $tmp_file
 end_of_preamble
 
