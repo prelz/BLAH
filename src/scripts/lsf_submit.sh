@@ -14,6 +14,8 @@
 #                 -w option added (cd into submission directory)
 #    21-Sep-2004: -q option added (queue selection)
 #    29-Sep-2004: -g option added (gianduiotto selection) and job_ID=job_ID_log
+#    13-Jan-2005: -n option added (MPI job selection) and changed prelz@mi.infn.it with
+#                    blahp_sink@mi.infn.it
 # 
 #
 # Description:
@@ -66,7 +68,7 @@ giandu="yes"
 # Parse parameters
 ###############################################################
 
-while getopts "i:o:e:c:s:v:dw:q:g" arg 
+while getopts "i:o:e:c:s:v:dw:q:gn:" arg 
 do
     case "$arg" in
     i) stdin="$OPTARG" ;;
@@ -79,6 +81,7 @@ do
     w) workdir="$OPTARG";;
     q) queue="$OPTARG";;
     g) giandu="yes" ;;
+    n) mpinodes="$OPTARG";;
 
     -) break ;;
     ?) echo $usage_string
@@ -142,7 +145,7 @@ cat > $tmp_file << end_of_preamble
 # LSF directives:
 #BSUB -L /bin/bash
 #BSUB -N
-#BSUB -u prelz@mi.infn.it
+#BSUB -u blahp_sink@mi.infn.it
 #BSUB -J $tmp_file
 end_of_preamble
 
@@ -152,10 +155,11 @@ end_of_preamble
 stdout_unique=$stdout.$uni_ext
 stderr_unique=$stderr.$uni_ext
 
-[ -z "$stdin" ]  || arguments="$arguments < $stdin"
-[ -z "$stdout" ] || echo "#BSUB -o `basename $stdout_unique`" >> $tmp_file
-[ -z "$stderr" ] || echo "#BSUB -e `basename $stderr_unique`" >> $tmp_file
-[ -z "$queue" ]  || echo "#BSUB -q $queue" >> $tmp_file
+[ -z "$stdin" ]    || arguments="$arguments < $stdin"
+[ -z "$stdout" ]   || echo "#BSUB -o `basename $stdout_unique`" >> $tmp_file
+[ -z "$stderr" ]   || echo "#BSUB -e `basename $stderr_unique`" >> $tmp_file
+[ -z "$queue" ]    || echo "#BSUB -q $queue" >> $tmp_file
+[ -z "$mpinodes" ] || echo "#BSUB -n $mpinodes" >> $tmp_file
 
 [ -z "$stgcmd" ] || echo "#BSUB -f \"$the_command > `basename $the_command`\"" >> $tmp_file
 [ -z "$stdout" ] || echo "#BSUB -f \"$stdout < `basename $stdout_unique`\"" >> $tmp_file

@@ -14,6 +14,7 @@
 #                 -w option added (cd into submission directory)
 #    20-Sep-2004: -q option added (queue selection)
 #    29-Sep-2004: -g option added (gianduiotto selection) and job_ID=job_ID_log
+#    13-Jan-2005: -n option added (MPI job selection)
 # 
 #
 # Description:
@@ -63,7 +64,7 @@ giandu="yes"
 # Parse parameters
 ###############################################################
 original_args=$@
-while getopts "i:o:e:c:s:v:dw:q:g" arg 
+while getopts "i:o:e:c:s:v:dw:q:gn:" arg 
 do
     case "$arg" in
     i) stdin="$OPTARG" ;;
@@ -76,6 +77,7 @@ do
     w) workdir="$OPTARG";;
     q) queue="$OPTARG";;
     g) giandu="yes" ;;
+    n) mpinodes="$OPTARG";;
     -) break ;;
     ?) echo $usage_string
        exit 1 ;;
@@ -172,6 +174,7 @@ end_of_preamble
 [ -z "$stdout" ] || echo "#PBS -o $stdout" >> $tmp_file
 [ -z "$stderr" ] || echo "#PBS -e $stderr" >> $tmp_file
 [ -z "$queue" ] || echo "#PBS -q $queue" >> $tmp_file
+[ -z "$mpinodes" ] || echo "#PBS -l nodes=$mpinodes" >> $tmp_file
 [ -z "$blahpd_inputsandbox" ] || echo "#PBS -W stagein=$blahpd_inputsandbox" >> $tmp_file
 
 if [ "x$giandu" == "xyes" ] && [ -f $gianduconf ]; then
