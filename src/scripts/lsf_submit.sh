@@ -114,6 +114,13 @@ if [ "x$giandu" == "xyes" ] ; then
   fi
 fi
 
+#create unique extension for filename
+
+uni_uid=`id -u`
+uni_pid=$$
+uni_time=`date +%s`
+uni_ext=$uni_uid.$uni_pid.$uni_time
+
 # Write wrapper preamble
 cat > $tmp_file << end_of_preamble
 #!/bin/bash
@@ -127,27 +134,32 @@ cat > $tmp_file << end_of_preamble
 #BSUB -J $tmp_file
 end_of_preamble
 
+
 # Write LSF directives according to command line options
 
+stdout_unique=$stdout.$uni_ext
+stderr_unique=$stderr.$uni_ext
+
 [ -z "$stdin" ]  || arguments="$arguments < $stdin"
-[ -z "$stdout" ] || echo "#BSUB -o `basename $stdout`" >> $tmp_file
-[ -z "$stderr" ] || echo "#BSUB -e `basename $stderr`" >> $tmp_file
+[ -z "$stdout" ] || echo "#BSUB -o `basename $stdout_unique`" >> $tmp_file
+[ -z "$stderr" ] || echo "#BSUB -e `basename $stderr_unique`" >> $tmp_file
 [ -z "$queue" ]  || echo "#BSUB -q $queue" >> $tmp_file
 
 [ -z "$stgcmd" ] || echo "#BSUB -f \"$the_command > `basename $the_command`\"" >> $tmp_file
-[ -z "$stdout" ] || echo "#BSUB -f \"$stdout < `basename $stdout`\"" >> $tmp_file
-[ -z "$stderr" ] || echo "#BSUB -f \"$stderr < `basename $stderr`\"" >> $tmp_file
+[ -z "$stdout" ] || echo "#BSUB -f \"$stdout < `basename $stdout_unique`\"" >> $tmp_file
+[ -z "$stderr" ] || echo "#BSUB -f \"$stderr < `basename $stderr_unique`\"" >> $tmp_file
 
 proxy_string=`echo ';'$envir | sed -e 's/.*;[^X]*X509_USER_PROXY[^=]*\= *\([^\; ]*\).*/\1/'`
 
 if [ "x$stgproxy" == "xyes" ] && [ "x$proxy_string" != "x" ] ; then
+    proxy_unique=${tmp_file}.${uni_ext}.proxy
     if [ "x$workdir" != "x" ] ; then
         proxy_local_file=${workdir}"/"`basename $proxy_string`;
     else
         proxy_local_file=$proxy_string;
     fi
     if [ -r $proxy_local_file ] ; then
-        echo "#BSUB -f \"$proxy_local_file > ${tmp_file}.proxy\"" >> $tmp_file
+        echo "#BSUB -f \"$proxy_local_file > $proxy_unique\"" >> $tmp_file
     fi
 fi
 
@@ -164,7 +176,7 @@ fi
 
 # Set the path to the user proxy
 if [ "x$stgproxy" == "xyes" ]; then 
-    echo "export X509_USER_PROXY=\`pwd\`/${tmp_file}.proxy" >> $tmp_file
+    echo "export X509_USER_PROXY=\`pwd\`/$proxy_unique" >> $tmp_file
 fi
 
 # Add the command (with full path if not staged)
