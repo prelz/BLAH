@@ -384,7 +384,7 @@ cmd_submit_job(void *args)
 		return;
 	}
 
-	fprintf(stderr, "DEBUG: submission cmd = '%s'\n", command);
+	/* fprintf(stderr, "DEBUG: submission cmd = '%s'\n", command); */
 	if((cmd_out = popen(command, "r")) == NULL)
 	{
 		/* PUSH A FAILURE */
@@ -456,7 +456,7 @@ cmd_cancel_job(void* args)
 		return;
 	}
 
-	fprintf(stderr, "DEBUG: executing %s\n", command);
+	/* fprintf(stderr, "DEBUG: executing %s\n", command); */
 	retcod = system(command);
 	if (resultLine = make_message("%s %d %s", reqId, retcod, retcod ? "Error" : "No\\ error")) {
 		enqueue_result(resultLine);

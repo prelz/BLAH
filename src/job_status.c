@@ -57,7 +57,7 @@ get_status(const char *jobDesc, classad_context *cad, char *error_str)
 		strncpy(error_str, "Out of memory", ERROR_MAX_LEN);
 		return(MALLOC_ERROR);
 	};
-	fprintf(stderr, "DEBUG: status cmd = %s\n", command);
+	/* fprintf(stderr, "DEBUG: status cmd = %s\n", command); */
 
 	if ((cmd_out=popen(command, "r")) == NULL)
 	{
