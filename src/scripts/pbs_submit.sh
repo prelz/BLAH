@@ -57,14 +57,11 @@ logpath=${spoolpath}server_logs
 stgcmd="yes"
 stgproxy="yes"
 
-#default is to create file for gianduiotto 
-giandu="yes"
-
 ###############################################################
 # Parse parameters
 ###############################################################
 original_args=$@
-while getopts "i:o:e:c:s:v:dw:q:gn:" arg 
+while getopts "i:o:e:c:s:v:dw:q:n:" arg 
 do
     case "$arg" in
     i) stdin="$OPTARG" ;;
@@ -76,7 +73,6 @@ do
     d) debug="yes" ;;
     w) workdir="$OPTARG";;
     q) queue="$OPTARG";;
-    g) giandu="yes" ;;
     n) mpinodes="$OPTARG";;
     -) break ;;
     ?) echo $usage_string
@@ -111,16 +107,6 @@ else
     tmp_file="/proc/$$/fd/2"
 fi
 
-#search for gianduiotto conf file
-
-if [ "x$giandu" == "xyes" ] ; then
-  giandupath=${GLITE_LOCATION:-/opt/glite}
-  gianduconf=$giandupath/etc/dgas_gianduia.conf
-  if [ -f $gianduconf ] ; then
-    giandudir=`sed --silent -e 's/^[[:blank:]]*chocolateBox[[:blank:]]*=[[:blank:]]*"\([^"]*\)"/\1/p' $gianduconf`
-  fi
-fi
-
 # Put executable into inputsandbox
 [ "x$stgcmd" == "xno" ] || blahpd_inputsandbox="`basename $the_command`@`hostname -f`:$the_command"
 
@@ -149,9 +135,6 @@ uni_pid=$$
 uni_time=`date +%s`
 uni_ext=$uni_uid.$uni_pid.$uni_time
 
-#tar file for gianduia
-tar_file="giandu.$uni_ext.tar.gz"
-
 # Write wrapper preamble
 cat > $tmp_file << end_of_preamble
 #!/bin/bash
@@ -174,11 +157,6 @@ end_of_preamble
 [ -z "$mpinodes" ] || echo "#PBS -l nodes=$mpinodes" >> $tmp_file
 [ -z "$blahpd_inputsandbox" ] || echo "#PBS -W stagein=$blahpd_inputsandbox" >> $tmp_file
 
-if [ "x$giandu" == "xyes" ] && [ -f $gianduconf ]; then
-    echo "#PBS -W stageout=${tar_file}@`hostname -f`:${giandudir}/${tar_file}" >> $tmp_file
-fi
-
-
 # Set the required environment variables (escape values with double quotes)
 if [ "x$envir" != "x" ]  
 then
@@ -191,11 +169,6 @@ fi
 if [ "x$need_to_reset_proxy" == "xyes" ] ; then
     echo "# Resetting proxy to local position" >> $tmp_file
     echo "export X509_USER_PROXY=\`pwd\`/${proxy_remote_file}" >> $tmp_file
-fi
-
-# Export gianduia tar file location
-if [ "x$giandu" == "xyes" ] && [ -f $gianduconf ]; then
-    echo "export GLITE_GIANDUIA_TAR_FILE=${giandudir}/${tar_file}" >> $tmp_file
 fi
 
 # Add the command (with full path if not staged)

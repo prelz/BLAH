@@ -61,14 +61,11 @@ workdir="."
 
 stgproxy="yes"
 
-#default is to create file for gianduiotto 
-giandu="yes"
-
 ###############################################################
 # Parse parameters
 ###############################################################
 
-while getopts "i:o:e:c:s:v:dw:q:gn:" arg 
+while getopts "i:o:e:c:s:v:dw:q:n:" arg 
 do
     case "$arg" in
     i) stdin="$OPTARG" ;;
@@ -80,7 +77,6 @@ do
     d) debug="yes" ;;
     w) workdir="$OPTARG";;
     q) queue="$OPTARG";;
-    g) giandu="yes" ;;
     n) mpinodes="$OPTARG";;
 
     -) break ;;
@@ -116,25 +112,11 @@ else
     tmp_file="/proc/$$/fd/2"
 fi
 
-#search for gianduiotto conf file
-
-if [ "x$giandu" == "xyes" ] ; then
-  giandupath=${GLITE_LOCATION:-/opt/glite}
-  gianduconf=$giandupath/etc/dgas_gianduia.conf
-  if [ -f $gianduconf ] ; then
-    giandudir=`sed --silent -e 's/^[[:blank:]]*chocolateBox[[:blank:]]*=[[:blank:]]*"\([^"]*\)"/\1/p' $gianduconf`
-  fi
-fi
-
 #create unique extension for filename
-
 uni_uid=`id -u`
 uni_pid=$$
 uni_time=`date +%s`
 uni_ext=$uni_uid.$uni_pid.$uni_time
-
-#tar file for gianduia
-tar_file="giandu.$uni_ext.tar.gz"
 
 # Write wrapper preamble
 cat > $tmp_file << end_of_preamble
@@ -165,10 +147,6 @@ stderr_unique=$stderr.$uni_ext
 [ -z "$stdout" ] || echo "#BSUB -f \"$stdout < `basename $stdout_unique`\"" >> $tmp_file
 [ -z "$stderr" ] || echo "#BSUB -f \"$stderr < `basename $stderr_unique`\"" >> $tmp_file
 
-if [ "x$giandu" == "xyes" ] && [ -f $gianduconf ]; then
-    echo "#BSUB -f \"${giandudir}/${tar_file} < ${tar_file}\"" >> $tmp_file
-fi
-
 # Setup proxy transfer
 proxy_string=`echo ';'$envir | sed --quiet -e 's/.*;[^X]*X509_USER_PROXY[^=]*\= *\([^\; ]*\).*/\1/p'`
 
@@ -197,11 +175,6 @@ fi
 # Set the path to the user proxy
 if [ ! -z $proxy_unique ]; then 
     echo "export X509_USER_PROXY=\`pwd\`/$proxy_unique" >> $tmp_file
-fi
-
-# Export gianduia tar file location
-if [ "x$giandu" == "xyes" ] && [ -f $gianduconf ]; then
-    echo "export GLITE_GIANDUIA_TAR_FILE=${giandudir}/${tar_file}" >> $tmp_file
 fi
 
 # Add the command (with full path if not staged)
