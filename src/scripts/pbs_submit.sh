@@ -40,7 +40,7 @@ giandu="yes"
 # Parse parameters
 ###############################################################
 original_args=$@
-while getopts "i:o:e:c:s:v:dw:q:" arg 
+while getopts "i:o:e:c:s:v:dw:q:g" arg 
 do
     case "$arg" in
     i) stdin="$OPTARG" ;;
@@ -234,7 +234,7 @@ HLR_LOCATION=$HLR_LOCATION
 end_gianduiotto
 fi
 
-# Clean temporay files
+# Clean temporary files
 cd $curdir
 #rm $tmp_file
 
