@@ -12,11 +12,14 @@
 #       Council for the Central Laboratory of the Research Councils (CCLRC), United Kingdom
 #
 #       Authors: Francesco Prelz <francesco.prelz@mi.infn.it>
-#       Version info: $Id: configure.ac,v 1.9 2004/09/22 09:16:56 glbuild Exp $
+#       Version info: $Id: configure.ac,v 1.10 2004/09/22 11:44:20 pandreet Exp $
 #       Release: $Name:  $
 #
 #       Revision history:
 #       $Log: configure.ac,v $
+#       Revision 1.10  2004/09/22 11:44:20  pandreet
+#       Runtime scripts in tarball and rpms
+#
 #       Revision 1.9  2004/09/22 09:16:56  glbuild
 #       Removed AM_CONFIG_HEADER
 #
@@ -79,5 +82,6 @@ AC_DEFINE(BLAHPD_BINDIR,"@bindir@")
 AC_PREFIX_DEFAULT([/opt/glite])
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([src/Makefile])
+AC_CONFIG_FILES([src/scripts/Makefile])
 
 AC_OUTPUT

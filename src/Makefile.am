@@ -2,11 +2,11 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.3 2004/09/15 10:15:15 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.4 2004/09/22 11:44:20 pandreet Exp $ 
 #
 # File:           Makefile.am
 #
-# Author(s):      Francesco Prelz ($Author: mezzadri $)
+# Author(s):      Francesco Prelz ($Author: pandreet $)
 #        e-mail: "Francesco.Prelz@mi.infn.it"
 #
 # Revision history:
@@ -15,6 +15,8 @@
 #
 
 INCLUDES = -I. $(CLASSAD_CFLAGS)
+
+SUBDIRS = scripts
 
 bin_PROGRAMS = blahpd blahpd_daemon
 
