@@ -367,15 +367,15 @@ cmd_submit_job(void *args)
 	/* All other attributes are optional: fail only on memory error 
 	   IMPORTANT: Args must alway be the last!
 	*/
-	if ((set_cmd_string_option(&command, cad, "In",       "-i", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
-	    (set_cmd_string_option(&command, cad, "Out",      "-o", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
-	    (set_cmd_string_option(&command, cad, "Err",      "-e", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
-	    (set_cmd_string_option(&command, cad, "Iwd",      "-w", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
-	    (set_cmd_string_option(&command, cad, "Env",      "-v", SINGLE_QUOTE)  == C_CLASSAD_OUT_OF_MEMORY) ||
-	    (set_cmd_string_option(&command, cad, "Queue",    "-q", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
-	    (set_cmd_int_option   (&command, cad, "Mpi",      "-n", INT_NOQUOTE)   == C_CLASSAD_OUT_OF_MEMORY) ||
-	    (set_cmd_bool_option  (&command, cad, "StageCmd", "-s", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
-	    (set_cmd_string_option(&command, cad, "Args",     "--", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY))
+	if ((set_cmd_string_option(&command, cad, "In",         "-i", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_string_option(&command, cad, "Out",        "-o", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_string_option(&command, cad, "Err",        "-e", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_string_option(&command, cad, "Iwd",        "-w", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_string_option(&command, cad, "Env",        "-v", SINGLE_QUOTE)  == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_string_option(&command, cad, "Queue",      "-q", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_int_option   (&command, cad, "NodeNumber", "-n", INT_NOQUOTE)   == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_bool_option  (&command, cad, "StageCmd",   "-s", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_string_option(&command, cad, "Args",       "--", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY))
 	{
 		/* PUSH A FAILURE */
 		sprintf(resultLine, "%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
