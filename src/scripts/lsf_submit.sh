@@ -122,7 +122,7 @@ if [ "x$giandu" == "xyes" ] ; then
   giandupath=${GLITE_LOCATION:-/opt/glite}
   gianduconf=$giandupath/etc/dgas_gianduia.conf
   if [ -f $gianduconf ] ; then
-    giandudir=`cat $gianduconf|grep chocolateBox| awk -F"=" '{ print $2 }'|sed 's/\"//g'`
+    giandudir=`sed --silent -e 's/^[[:blank:]]*chocolateBox[[:blank:]]*=[[:blank:]]*"\([^"]*\)"/\1/p' $gianduconf`
   fi
 fi
 
