@@ -5,9 +5,12 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
-#define RCSID_VERSION	"$GahpVersion: %s Sep 13 2004 INFN\\ blahpd\\ (%s) $"
-#define BUFFER_FILE	"/tmp/blahp_result_buffer"
-#define FLUSHED_BUFFER	"/tmp/blahp_result_buffer.flushed"
+#define RCSID_VERSION		"$GahpVersion: %s Sep 13 2004 INFN\\ blahpd\\ (%s) $"
+#define BUFFER_FILE		"/tmp/blahp_result_buffer"
+#define FLUSHED_BUFFER		"/tmp/blahp_result_buffer.flushed"
+
+#define DEFAULT_GLITE_LOCATION	"/opt/glite"
+#define BINDIR_LOCATION		"%s/bin"
 
 /* Change this in order to select the default batch system
  * (overridden by BLAH_LRMS env variable)*/

@@ -85,6 +85,7 @@ static int async_notice = 0;
 static int exit_program = 0;
 static pthread_mutex_t send_lock  = PTHREAD_MUTEX_INITIALIZER;
 char *server_lrms;
+char *blah_script_location;
 char *blah_version;
 
 
@@ -124,6 +125,12 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	if (cli_socket == 0) server_socket = 1;
 	else                 server_socket = cli_socket;
 
+	/* Get values from environment */
+	if ((result = getenv("GLITE_LOCATION")) == NULL)
+	{
+		result = DEFAULT_GLITE_LOCATION;
+	}
+	blah_script_location = make_message(BINDIR_LOCATION, result);
 	if ((server_lrms = getenv("BLAH_LRMS")) == NULL)
 	{
 		server_lrms = DEFAULT_LRMS;
@@ -321,7 +328,7 @@ cmd_submit_job(void *args)
 		return;
 	}
 
-	command = make_message("%s/%s_submit.sh", BLAHPD_BINDIR, server_lrms);
+	command = make_message("%s/%s_submit.sh", blah_script_location, server_lrms);
 	if (command == NULL)
 	{
 		/* PUSH A FAILURE */
@@ -396,7 +403,7 @@ cmd_cancel_job(void* args)
 	char *reqId = argv[1];
 	char *jobDescr = argv[2];
 
-	command = make_message("%s/%s_cancel.sh %s", BLAHPD_BINDIR, server_lrms, jobDescr);
+	command = make_message("%s/%s_cancel.sh %s", blah_script_location, server_lrms, jobDescr);
 	if (command == NULL)
 	{
 		/* PUSH A FAILURE */

@@ -28,6 +28,7 @@
 #include "blahpd.h"
 
 extern char *server_lrms;
+extern char *blah_script_location;
 
 int
 get_status(const char *jobId, classad_context *cad, char *error_str)
@@ -39,7 +40,7 @@ get_status(const char *jobId, classad_context *cad, char *error_str)
 	char *cad_str = NULL;
 	int retcode = 0;
 
-        command = make_message("%s/%s_status.sh %s", BLAHPD_BINDIR, server_lrms, jobId);
+        command = make_message("%s/%s_status.sh %s", blah_script_location, server_lrms, jobId);
 	if (command == NULL)
 	{
 		fprintf(stderr, "Malloc error in get_status\n");
