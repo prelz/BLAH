@@ -43,15 +43,7 @@ dnl Temporarily built with no optimisation
 CXXFLAGS="-g -O0"
 CFLAGS="-g -O0"
 
-
-#AC_DEFINE(BLAHPD_INSTALL,"@prefix@")
 AC_DEFINE(BLAHPD_BINDIR,"@bindir@")
 
 AC_OUTPUT(Makefile)
 AC_OUTPUT(src/Makefile)
-#AC_PREFIX_DEFAULT([/opt/glite])
-#AM_CONFIG_HEADER([src/autogen/config.h])
-#AC_CONFIG_FILES([Makefile])
-#AC_CONFIG_FILES([src/Makefile])
-
-#AC_OUTPUT
