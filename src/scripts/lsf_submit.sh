@@ -12,6 +12,7 @@
 #    18-May-2004: Search job by name in log file (instead of searching by jobid)
 #     8-Jul-2004: Try a chmod u+x on the file shipped as executable
 #                 -w option added (cd into submission directory)
+#    21-Sep-2004: -q option added (queue selection)
 # 
 #
 # Description:
@@ -52,7 +53,7 @@ stgproxy="yes"
 # Parse parameters
 ###############################################################
 
-while getopts "i:o:e:c:s:v:dw:" arg 
+while getopts "i:o:e:c:s:v:dw:q:" arg 
 do
     case "$arg" in
     i) stdin="$OPTARG" ;;
@@ -63,6 +64,7 @@ do
     s) stgcmd="$OPTARG" ;;
     d) debug="yes" ;;
     w) workdir="$OPTARG";;
+    q) queue="$OPTARG";;
     -) break ;;
     ?) echo $usage_string
        exit 1 ;;
@@ -114,6 +116,7 @@ end_of_preamble
 [ -z "$stdin" ]  || arguments="$arguments < $stdin"
 [ -z "$stdout" ] || echo "#BSUB -o `basename $stdout`" >> $tmp_file
 [ -z "$stderr" ] || echo "#BSUB -e `basename $stderr`" >> $tmp_file
+[ -z "$queue" ]  || echo "#BSUB -q $queue" >> $tmp_file
 
 [ -z "$stgcmd" ] || echo "#BSUB -f \"$the_command > `basename $the_command`\"" >> $tmp_file
 [ -z "$stdout" ] || echo "#BSUB -f \"$stdout < `basename $stdout`\"" >> $tmp_file
