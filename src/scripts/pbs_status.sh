@@ -19,7 +19,21 @@
 #  See http://grid.infn.it/grid/license.html for license details.
 #
 
-logpath=/var/spool/pbs/server_logs
+if  [ -f ~/.bashrc ]; then
+ . ~/.bashrc
+fi
+
+if  [ -f ~/.login ]; then
+ . ~/.login
+fi
+
+if [ ! -z "$PBS_SPOOL_DIR" ]; then
+    spoolpath=${PBS_SPOOL_DIR}/
+else
+    spoolpath=/usr/spool/PBS/
+fi
+
+logpath=${spoolpath}server_logs
 
 pars=$*
 requested=`echo $pars | sed -e 's/^.*\///'`
