@@ -74,7 +74,9 @@ if [ "x$getwn" == "xyes" ] ; then
  workernode=`${pbsbinpath}/qstat -f $requested 2> /dev/null | grep exec_host| sed "s/exec_host = //" | awk -F"/" '{ print $1 }'`
 fi
 
-result=`awk -v jobId=$requested -v wn=$workernode '
+proxy_dir=~/.blah_jobproxy_dir
+
+result=`awk -v jobId=$requested -v wn=$workernode -v proxyDir=$proxy_dir '
 BEGIN {
 	rex_queued   = jobId ";Job Queued "
 	rex_running  = jobId ";Job Run "
@@ -122,7 +124,7 @@ END {
 	}
 	print "]"
 	if (jobstatus == 3 || jobstatus == 4) {
-		system("rm " proxyDir "/" jobId ".proxy")
+		system("rm " proxyDir "/" jobId ".proxy 2>/dev/null")
 	}
 }
 ' $logs`

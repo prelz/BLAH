@@ -161,7 +161,7 @@ END {
 	}
 	print "]"
 	if (jobstatus == 3 || jobstatus == 4) {
-		system("rm " proxyDir "/" jobId ".proxy")
+		system("rm " proxyDir "/" jobId ".proxy 2>/dev/null")
 	}
 }
 ' $logs`
