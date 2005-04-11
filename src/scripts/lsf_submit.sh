@@ -301,7 +301,7 @@ if [ "$jobID_log" != "$jobID" ]; then
     echo "WARNING: JobID in log file is different from the one returned by bsub!" >&2
     echo "($jobID_log != $jobID)" >&2
     echo "I'll be using the one in the log ($jobID_log)..." >&2
-    $jobID=$jobID_log
+    jobID=$jobID_log
 fi
 
 # Compose the blahp jobID (date + lsf jobid)
