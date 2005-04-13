@@ -33,8 +33,8 @@ else
     spoolpath=/usr/spool/PBS/
 fi
 
-if [ ! -z "$PBS_BIN_DIR" ]; then
-    pbsbinpath=${PBS_BIN_DIR}/
+if [ ! -z "$PBS_BIN_PATH" ]; then
+    pbsbinpath=${PBS_BIN_PATH}/
 else
     pbsbinpath=/usr/pbs/bin/
 fi
@@ -76,7 +76,7 @@ fi
 
 proxy_dir=~/.blah_jobproxy_dir
 
-result=`awk -v jobId=$requested -v wn=$workernode -v proxyDir=$proxy_dir '
+result=`awk -v jobId="$requested" -v wn="$workernode" -v proxyDir="$proxy_dir" '
 BEGIN {
 	rex_queued   = jobId ";Job Queued "
 	rex_running  = jobId ";Job Run "
