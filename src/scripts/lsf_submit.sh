@@ -16,7 +16,8 @@
 #    29-Sep-2004: -g option added (gianduiotto selection) and job_ID=job_ID_log
 #    13-Jan-2005: -n option added (MPI job selection) and changed prelz@mi.infn.it with
 #                    blahp_sink@mi.infn.it
-#     4-Mar-2005:  Dgas(gianduia) removed. Proxy renewal stuff added (-r -p -l flags)
+#     4-Mar-2005: Dgas(gianduia) removed. Proxy renewal stuff added (-r -p -l flags)
+#     3-May-2005: Added support for Blah Log Parser daemon (using the BLParser flag)
 # 
 #
 # Description:
@@ -77,6 +78,13 @@ fi
 #default values for polling interval and min proxy lifetime
 prnpoll=30
 prnlifetime=0
+
+#set to yes if BLParser is present in the installation 
+BLParser=""
+
+BLPserver="127.0.0.1"
+BLPport=33333
+BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 
 ###############################################################
 # Parse parameters
@@ -296,7 +304,12 @@ done
 
 # Search for the job in the logfile using job name
 
-jobID_log=`grep \"JOB_NEW\" $logfile | awk -F" " '{ print $4" " $42 }' | grep $tmp_file|awk -F" " '{ print $1 }'`
+if [ "x$BLParser" == "xyes" ] ; then
+ jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $BLPserver -p $BLPport`
+else
+ jobID_log=`grep \"JOB_NEW\" $logfile | awk -F" " '{ print $4" " $42 }' | grep $tmp_file|awk -F" " '{ print $1 }'`
+fi
+
 if [ "$jobID_log" != "$jobID" ]; then
     echo "WARNING: JobID in log file is different from the one returned by bsub!" >&2
     echo "($jobID_log != $jobID)" >&2

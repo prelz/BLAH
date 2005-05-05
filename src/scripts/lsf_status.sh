@@ -9,6 +9,7 @@
 #  Revision history:
 #    20-Mar-2004: Original release
 #    22-Feb-2005: Totally rewritten, bhist command not used anymore
+#     3-May-2005: Added support for Blah Log Parser daemon (using the BLParser flag)
 #
 #  Description:
 #    Return a classad describing the status of a LSF job
@@ -33,20 +34,17 @@ else
 	binpath=/usr/local/lsf/bin/
 fi
 
-confpath=${LSF_CONF_PATH:-/etc}
-conffile=$confpath/lsf.conf
-
-lsf_base_path=`cat $conffile|grep LSB_SHAREDIR| awk -F"=" '{ print $2 }'`
-
-lsf_clustername=`${binpath}lsid | grep 'My cluster name is'|awk -F" " '{ print $5 }'`
-logpath=$lsf_base_path/$lsf_clustername/logdir
-
-logeventfile=lsb.events
-
 usage_string="Usage: $0 [-w]"
 
 #get worker node info (dummy for LSF)
 getwn=""
+
+#set to yes if BLParser is present in the installation 
+BLParser=""
+
+BLPserver="127.0.0.1"
+BLPport=33333
+BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 
 ###############################################################
 # Parse parameters
@@ -78,6 +76,22 @@ if [ $? -ne 0 ]; then
 fi
 
 proxy_dir=~/.blah_jobproxy_dir
+
+if [ "x$BLParser" == "xyes" ] ; then
+
+    result=`echo $pars| $BLClient -a $BLPserver -p $BLPport`
+
+else
+
+confpath=${LSF_CONF_PATH:-/etc}
+conffile=$confpath/lsf.conf
+
+lsf_base_path=`cat $conffile|grep LSB_SHAREDIR| awk -F"=" '{ print $2 }'`
+
+lsf_clustername=`${binpath}lsid | grep 'My cluster name is'|awk -F" " '{ print $5 }'`
+logpath=$lsf_base_path/$lsf_clustername/logdir
+
+logeventfile=lsb.events
 
 touch -t $datenow $datefile
 ulogs=`find $logpath/$logeventfile.[0-9]* -type f -newer $datefile -print`
@@ -166,13 +180,38 @@ END {
 }
 ' $logs`
 
-if [ "$?" == "0" ] ; then
+
+   if [ "$?" == "0" ] ; then
         echo $result
         retcode=0
-else
+   else
         echo "ERROR: Job not found"
         retcode=1
+   fi
+  
+   exit $retcode
+
+fi #close if on BLParser
+
+if [ "x$BLParser" == "xyes" ] ; then
+
+    pr_removal=`echo $result | sed -e 's/^.*\///'`
+    result=`echo $result | sed 's/\/.*//'`
+
+    if [ "x$pr_removal" == "xYes" ] ; then
+        rm ${proxy_dir}/${requested}.proxy 2>/dev/null
+
+    fi
+
+        echo $result
+        exit $retcode
+
 fi
 
-exit $retcode
+
+
+
+
+
+
 

@@ -9,6 +9,7 @@
 #  Revision history:
 #    20-Mar-2004: Original release
 #    04-Jan-2005: Totally rewritten, qstat command not used anymore
+#    03-May-2005: Added support for Blah Log Parser daemon (using the BLParser flag)
 #
 #  Description:
 #    Return a classad describing the status of a PBS job
@@ -46,6 +47,13 @@ logpath=${spoolpath}server_logs
 #get worker node info
 getwn=""
 
+#set to yes if BLParser is present in the installation
+BLParser=""
+
+BLPserver="127.0.0.1"
+BLPport=33332
+BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
+
 ###############################################################
 # Parse parameters
 ###############################################################
@@ -67,14 +75,22 @@ shift `expr $OPTIND - 1`
 
 pars=$*
 requested=`echo $pars | sed -e 's/^.*\///'`
-logfile=`echo $pars | sed 's/\/.*//'`
-logs="$logpath/$logfile `find $logpath -type f -newer $logpath/$logfile`"
 
 if [ "x$getwn" == "xyes" ] ; then
  workernode=`${pbsbinpath}/qstat -f $requested 2> /dev/null | grep exec_host| sed "s/exec_host = //" | awk -F"/" '{ print $1 }'`
 fi
+workernode=peppa
 
 proxy_dir=~/.blah_jobproxy_dir
+
+if [ "x$BLParser" == "xyes" ] ; then
+
+    result=`echo $pars| $BLClient -a $BLPserver -p $BLPport`
+
+else
+
+logfile=`echo $pars | sed 's/\/.*//'`
+logs="$logpath/$logfile `find $logpath -type f -newer $logpath/$logfile`"
 
 result=`awk -v jobId="$requested" -v wn="$workernode" -v proxyDir="$proxy_dir" '
 BEGIN {
@@ -129,12 +145,28 @@ END {
 }
 ' $logs`
 
-if [ "$?" == "0" ] ; then
+  if [ "$?" == "0" ] ; then
 	echo $result
 	retcode=0
-else
+  else
 	echo "ERROR: Job not found"
 	retcode=1
-fi
+  fi
+  
+  exit $retcode
 
-exit $retcode
+fi #close if on BLParser
+
+if [ "x$BLParser" == "xyes" ] ; then
+
+    pr_removal=`echo $result | sed -e 's/^.*\///'`
+    result=`echo $result | sed 's/\/.*//'`
+
+    if [ "x$pr_removal" == "xYes" ] ; then
+        rm ${proxy_dir}/${requested}.proxy 2>/dev/null
+
+    fi
+        echo $result "Workernode=\"$workernode\";]"
+        exit $retcode
+
+fi
