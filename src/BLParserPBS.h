@@ -48,7 +48,7 @@ void eprint(int err, char *fmt, va_list args);
 char *chopfmt(char *fmt);
 void syserror(char *fmt, ...);
 void sysfatal(char *fmt, ...);
-void *LookupAndSend (); 
+void *LookupAndSend (int m_sock); 
 char *GetLogDir();
 char *GetLogList(char *logdate);
 int GetEventsInOldLogs(char *logdate);
@@ -70,9 +70,6 @@ int rcounter=0;
 
 pthread_mutex_t read_mutex  = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t write_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-int	  conn_s;
-int	  list_s;
 
 char *lsbevents="lsb.events";
 char *ldir;

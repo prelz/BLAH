@@ -7,7 +7,10 @@ int main(int argc, char *argv[]) {
     char      *endptr;                /*  for strtol()              */
     int       i;
     int       status;
+    int       list_s;
+    
     char      eventsfile[MAX_CHARS]="\0";
+    
     char      *spooldir;
 
     time_t now;
@@ -25,7 +28,7 @@ int main(int argc, char *argv[]) {
     if ( argc == 2 ) {
 	port = strtol(argv[1], &endptr, 0);
 	if ( *endptr ) {
-	    fprintf(stderr, "ECHOSERV: Invalid port number.\n");
+	    fprintf(stderr, "BLParserPBS: Invalid port number.\n");
 	    exit(EXIT_FAILURE);
 	}
     }
@@ -33,7 +36,7 @@ int main(int argc, char *argv[]) {
 	port = ECHO_PORT;
     }
     else {
-	fprintf(stderr, "ECHOSERV: Invalid arguments.\n");
+	fprintf(stderr, "BLParserPBS: Invalid arguments.\n");
 	exit(EXIT_FAILURE);
     }
     
@@ -66,7 +69,7 @@ int main(int argc, char *argv[]) {
     /*  Create the listening socket  */
 
     if ( (list_s = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
-	fprintf(stderr, "ECHOSERV: Error creating listening socket.\n");
+	fprintf(stderr, "BLParserPBS: Error creating listening socket.\n");
 	exit(EXIT_FAILURE);
     }
 
@@ -84,12 +87,18 @@ int main(int argc, char *argv[]) {
 	listening socket, and call listen()  */
 
     if ( bind(list_s, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0 ) {
-	fprintf(stderr, "ECHOSERV: Error calling bind()\n");
+	fprintf(stderr, "BLParserPBS: Error calling bind()\n");
 	exit(EXIT_FAILURE);
     }
+    
+    if ( listen(list_s, LISTENQ) < 0 ) {
+    	fprintf(stderr, "BLParserPBS: Error calling listen()\n");
+    	exit(EXIT_FAILURE);
+    }
+	
    
     for(i=0;i<NUMTHRDS;i++){
-     pthread_create(&ReadThd[i], NULL, LookupAndSend, NULL);
+     pthread_create(&ReadThd[i], NULL, LookupAndSend, (void *)list_s);
     }
 
     pthread_create(&UpdateThd, NULL, mytail, (void *)eventsfile);
@@ -501,7 +510,7 @@ char *GetAllEvents(char *file){
 
 }
 
-void *LookupAndSend(){ 
+void *LookupAndSend(int m_sock){ 
     
     char      *buffer;
     char      *out_buf;
@@ -511,19 +520,15 @@ void *LookupAndSend(){
     char      *pr_removal="Not";
     int       i;
     int       id;
+    int       conn_s;
     
     while ( 1 ) {
 
 
-        if ( listen(list_s, LISTENQ) < 0 ) {
-	    fprintf(stderr, "ECHOSERV: Error calling listen()\n");
-	    exit(EXIT_FAILURE);
-        }
-	
 	/*  Wait for a connection, then accept() it  */
 	
-	if ( (conn_s = accept(list_s, NULL, NULL) ) < 0 ) {
-	    fprintf(stderr, "ECHOSERV: Error calling accept()\n");
+	if ( (conn_s = accept(m_sock, NULL, NULL) ) < 0 ) {
+	    fprintf(stderr, "BLParserPBS: Error calling accept()\n");
 	    exit(EXIT_FAILURE);
 	}
 
@@ -656,7 +661,7 @@ close:
 	/*  Close the connected socket  */
 
 	if ( close(conn_s) < 0 ) {
-	    fprintf(stderr, "ECHOSERV: Error calling close()\n");
+	    fprintf(stderr, "BLParserPBS: Error calling close()\n");
 	    exit(EXIT_FAILURE);
 	}
 	
