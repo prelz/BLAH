@@ -24,7 +24,7 @@
 #define NUM_CHARS          300
 #define HASHSIZE           500000 
 #define NUMTHRDS           20
-#define NLINES             20  /* lines for tail */
+#define NLINES             2000  /* lines for tail */
 #define ERRMAX             80
 #define WRETRIES           10
 #define PURGE_INTERVAL     10
