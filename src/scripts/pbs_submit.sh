@@ -142,6 +142,10 @@ uni_pid=$$
 uni_time=`date +%s`
 uni_ext=$uni_uid.$uni_pid.$uni_time
 
+#create date for output string
+
+datenow=`date +%Y%m%d%H%M.%S`
+
 # Put executable into inputsandbox
 [ "x$stgcmd" != "xyes" ] || blahpd_inputsandbox="`basename $the_command`@`hostname -f`:$the_command"
 
@@ -317,8 +321,8 @@ if [ "$jobID_log" != "$jobID" ]; then
     jobID=$jobID_log
 fi
 
-# Compose the blahp jobID ("pbs/" + log file + pbs jobid)
-echo "pbs/`basename $logfile`/$jobID"
+# Compose the blahp jobID ("pbs/" + datenow + pbs jobid)
+echo "pbs/${datenow}/$jobID"
 
 # Clean temporary files
 cd $curdir
