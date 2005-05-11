@@ -79,7 +79,6 @@ requested=`echo $pars | sed -e 's/^.*\///'`
 if [ "x$getwn" == "xyes" ] ; then
  workernode=`${pbsbinpath}/qstat -f $requested 2> /dev/null | grep exec_host| sed "s/exec_host = //" | awk -F"/" '{ print $1 }'`
 fi
-workernode=peppa
 
 proxy_dir=~/.blah_jobproxy_dir
 
