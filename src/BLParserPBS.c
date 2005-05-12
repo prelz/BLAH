@@ -552,8 +552,12 @@ void *LookupAndSend(int m_sock){
         logdate=strtok(buffer,"/");
         jobid=strtok(NULL,"/");
         strtok(jobid,"\n");
-        
-/* get jobid from blahjob id (needed by lsf_submit.sh) */
+    
+/* now jobid has also the machine part after the numeric part
+but atoi does the same if the machine part is there or not and we need 
+all the jobid in the output classad */
+
+/* get jobid from blahjob id (needed by *_submit.sh) */
        
 	if(strcmp(logdate,"BLAHJOB")==0){
          for(i=0;i<WRETRIES;i++){
@@ -582,7 +586,6 @@ void *LookupAndSend(int m_sock){
 	  goto close;
 	 }
 	}
-	
 	
 /* get all info from jobid */
 
@@ -714,8 +717,8 @@ char *GetLogList(char *logdate){
   }
  }
  pclose(mktemp_output);
- 
- sprintf(command_string,"touch -t %s %s",logdate,datefile);
+
+ sprintf(command_string,"touch -d %s %s",logdate,datefile);
  touch_output = popen(command_string,"r");
  if (touch_output != NULL){
   len = fread(touch_out, sizeof(char), sizeof(touch_out) - 1 , touch_output);
