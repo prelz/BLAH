@@ -322,7 +322,11 @@ if [ "$jobID_log" != "$jobID" ]; then
 fi
 
 # Compose the blahp jobID ("pbs/" + datenow + pbs jobid)
-echo "pbs/${datenow}/$jobID"
+if [ "x$BLParser" == "xyes" ] ; then
+ echo "pbs/${datenow}/$jobID"
+else
+ echo "pbs/`basename $logfile`/$jobID"
+fi
 
 # Clean temporary files
 cd $curdir
