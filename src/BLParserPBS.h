@@ -71,8 +71,8 @@ int rcounter=0;
 pthread_mutex_t read_mutex  = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t write_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-char *lsbevents="lsb.events";
 char *ldir;
+char *spooldir;
 
 char *LastLog=NULL;
 
