@@ -11,8 +11,6 @@ int main(int argc, char *argv[]) {
     
     char      eventsfile[MAX_CHARS]="\0";
     
-    char      *spooldir;
-
     time_t now;
     struct tm *tptr;
     char cnow[30];
@@ -46,7 +44,7 @@ int main(int argc, char *argv[]) {
     if((ldir=malloc(STR_CHARS)) == 0){
      sysfatal("can't malloc line: %r");
     }
-
+    
     if((spooldir=getenv("PBS_SPOOL_DIR"))==NULL){
      spooldir="/usr/spool/PBS/";
     }
@@ -62,7 +60,7 @@ int main(int argc, char *argv[]) {
     strcat(eventsfile,"/");
     strcat(eventsfile,cnow);
     
-    /* Get all events from lsb.events */
+    /* Get all events from last log */
     
      GetAllEvents(eventsfile);
 
@@ -212,10 +210,39 @@ follow(char *infile, char *lines[], int n)
     long old_off = 0;
     long real_off = 0;
 
+    char   *tdir;
+    time_t lnow;
+    struct tm *timeptr;
+    char   tnow[30];
+    char   evfile[MAX_CHARS]="\0";
+   
+    if((tdir=calloc(STR_CHARS,1)) == 0){
+     sysfatal("can't malloc tdir: %r");
+    }
+    strcat(tdir,spooldir);
+    strcat(tdir,"/server_logs");
+
     for(;;){
+     
+        lnow=time(NULL);
+        timeptr=localtime(&lnow);
+        strftime(tnow,sizeof(tnow),"%Y%m%d",timeptr);
+
+        evfile[0]=NUL;
+        strcat(evfile,tdir);
+        strcat(evfile,"/");
+        strcat(evfile,tnow);
+
+        if(strcmp(evfile,infile) != 0){
+         infile = evfile;
+         off = 0;
+        }
+
         if((fp=fopen((char *)infile, "r")) == 0){
          syserror("error opening %s: %r", infile);
+         exit(EXIT_FAILURE);
         }
+
         if(fseek(fp, off, SEEK_SET) < 0){
          sysfatal("couldn't seek: %r");
         }
