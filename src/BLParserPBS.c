@@ -6,6 +6,7 @@ int main(int argc, char *argv[]) {
     struct    sockaddr_in servaddr;  /*  socket address structure  */
     char      *endptr;                /*  for strtol()              */
     int       i;
+    int       set = 1;
     int       status;
     int       list_s;
     
@@ -71,6 +72,9 @@ int main(int argc, char *argv[]) {
 	exit(EXIT_FAILURE);
     }
 
+    if(setsockopt(list_s, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0) {
+        fprintf(stderr,"BLParserPBS: setsockopt() failed\n");
+    }
 
     /*  Set all bytes in socket address structure to
         zero, and fill in the relevant data members   */
@@ -223,6 +227,10 @@ follow(char *infile, char *lines[], int n)
     strcat(tdir,"/server_logs");
 
     for(;;){
+
+/* In each cycle a new date file is costructed and is tested with the existing one
+   when the date changes the new log file can be created later so we test if it is there
+*/
      
         lnow=time(NULL);
         timeptr=localtime(&lnow);
@@ -234,13 +242,24 @@ follow(char *infile, char *lines[], int n)
         strcat(evfile,tnow);
 
         if(strcmp(evfile,infile) != 0){
+
          infile = evfile;
          off = 0;
-        }
 
-        if((fp=fopen((char *)infile, "r")) == 0){
-         syserror("error opening %s: %r", infile);
-         exit(EXIT_FAILURE);
+         while(1){
+          if((fp=fopen((char *)infile, "r")) != 0){
+           break;
+          }
+          sleep (1);
+         }
+
+        }else{
+
+         if((fp=fopen((char *)infile, "r")) == 0){
+          syserror("error opening %s: %r", infile);
+          exit(EXIT_FAILURE);
+         }
+
         }
 
         if(fseek(fp, off, SEEK_SET) < 0){
@@ -745,7 +764,14 @@ char *GetLogList(char *logdate){
  }
  pclose(mktemp_output);
 
- sprintf(command_string,"touch -d %s %s",logdate,datefile);
+/* We deal with both date format (20050513 and 200505130000.00) even if it is not needed */
+
+ if(strlen(logdate) > 9){
+  sprintf(command_string,"touch -t %s %s",logdate,datefile);
+ } else {
+  sprintf(command_string,"touch -d %s %s",logdate,datefile);
+ }
+
  touch_output = popen(command_string,"r");
  if (touch_output != NULL){
   len = fread(touch_out, sizeof(char), sizeof(touch_out) - 1 , touch_output);

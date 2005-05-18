@@ -1,15 +1,13 @@
-#include <sys/socket.h>       /*  socket definitions        */
-#include <sys/types.h>        /*  socket types              */
-#include <netinet/in.h>
-#include <arpa/inet.h>        /*  inet (3) funtions         */
-#include <unistd.h>           /*  misc. UNIX functions      */
-
-#include "BLhelper.h"           /*  Our own helper functions  */
-
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 
+#include "BLhelper.h"
 
 /*  Global constants  */
 
@@ -43,7 +41,7 @@ int main(int argc, char *argv[]) {
 
     port = strtol(szPort, &endptr, 0);
     if ( *endptr ) {
-	printf("ECHOCLNT: Invalid port supplied.\n");
+	printf("BLClient: Invalid port supplied.\n");
 	exit(EXIT_FAILURE);
     }
 	
@@ -51,7 +49,7 @@ int main(int argc, char *argv[]) {
     /*  Create the listening socket  */
 
     if ( (conn_s = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
-	fprintf(stderr, "ECHOCLNT: Error creating listening socket.\n");
+	fprintf(stderr, "BLClient: Error creating listening socket.\n");
 	exit(EXIT_FAILURE);
     }
 
@@ -67,7 +65,7 @@ int main(int argc, char *argv[]) {
     /*  Set the remote IP address  */
 
     if ( inet_aton(szAddress, &servaddr.sin_addr) <= 0 ) {
-	printf("ECHOCLNT: Invalid remote IP address.\n");
+	printf("BLClient: Invalid remote IP address.\n");
 	exit(EXIT_FAILURE);
     }
 
@@ -75,7 +73,7 @@ int main(int argc, char *argv[]) {
     /*  connect() to the remote echo server  */
 
     if ( connect(conn_s, (struct sockaddr *) &servaddr, sizeof(servaddr) ) < 0 ) {
-	printf("ECHOCLNT: Error calling connect()\n");
+	printf("BLClient: Error calling connect()\n");
 	exit(EXIT_FAILURE);
     }
 
@@ -96,6 +94,14 @@ int main(int argc, char *argv[]) {
 
     printf("%s", buffer);
 
+   /*  Close the connected socket  */
+
+   if ( close(conn_s) < 0 ) {
+     fprintf(stderr, "BLClient: Error calling close()\n");
+     exit(EXIT_FAILURE);
+   }
+
+
     return EXIT_SUCCESS;
 }
 
@@ -113,7 +119,7 @@ int ParseCmdLine(int argc, char *argv[], char **szAddress, char **szPort) {
 	}
 	else if ( !strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2) ) {
 	    printf("Usage:\n\n");
-	    printf("    timeclnt -a (remote IP) -p (remote port)\n\n");
+	    printf("BLClient -a (remote IP) -p (remote port)\n\n");
 	    exit(EXIT_SUCCESS);
 	}
 	++n;
