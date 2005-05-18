@@ -82,12 +82,18 @@ fi
 
 proxy_dir=~/.blah_jobproxy_dir
 
+$?=0
+
 if [ "x$BLParser" == "xyes" ] ; then
 
+    usingBLP="yes"
     result=`echo $pars| $BLClient -a $BLPserver -p $BLPport`
 
-else
+fi
 
+if [ "$?" =="1" || "x$BLParser" != "xyes"] ; then
+
+usingBLP="no"
 logfile=`echo $pars | sed 's/\/.*//'`
 logs="$logpath/$logfile `find $logpath -type f -newer $logpath/$logfile`"
 
@@ -156,7 +162,7 @@ END {
 
 fi #close if on BLParser
 
-if [ "x$BLParser" == "xyes" ] ; then
+if [ "x$usingBLP" == "xyes" ] ; then
 
     pr_removal=`echo $result | sed -e 's/^.*\///'`
     result=`echo $result | sed 's/\/.*//'`

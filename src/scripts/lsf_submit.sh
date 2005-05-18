@@ -304,9 +304,12 @@ done
 
 # Search for the job in the logfile using job name
 
+$?=0
 if [ "x$BLParser" == "xyes" ] ; then
  jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $BLPserver -p $BLPport`
-else
+fi
+
+if [ "$?" == "1" || "x$BLParser" != "xyes"] ; then
  jobID_log=`grep \"JOB_NEW\" $logfile | awk -F" " '{ print $4" " $42 }' | grep $tmp_file|awk -F" " '{ print $1 }'`
 fi
 

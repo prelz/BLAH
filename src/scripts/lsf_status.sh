@@ -77,12 +77,17 @@ fi
 
 proxy_dir=~/.blah_jobproxy_dir
 
+$?=0
+
 if [ "x$BLParser" == "xyes" ] ; then
 
+    usingBLP="yes"
     result=`echo $pars| $BLClient -a $BLPserver -p $BLPport`
+fi
 
-else
+if [ "$?" =="1" || "x$BLParser" != "xyes"] ; then
 
+usingBLP="no"
 confpath=${LSF_CONF_PATH:-/etc}
 conffile=$confpath/lsf.conf
 
@@ -193,7 +198,7 @@ END {
 
 fi #close if on BLParser
 
-if [ "x$BLParser" == "xyes" ] ; then
+if [ "x$usingBLP" == "xyes" ] ; then
 
     pr_removal=`echo $result | sed -e 's/^.*\///'`
     result=`echo $result | sed 's/\/.*//'`
