@@ -307,12 +307,11 @@ fi
 
 # Search for the job in the logfile using job name
 
-$?=0
 if [ "x$BLParser" == "xyes" ] ; then
  jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $BLPserver -p $BLPport`
 fi
 
-if [ "$?" == "1" || "x$BLParser" != "xyes"] ; then
+if [ "$?" == "1" -o  "x$BLParser" != "xyes" ] ; then
  jobID_log=`grep "job name = $tmp_file" $logfile | awk -F";" '{ print $5 }'`
 fi
 

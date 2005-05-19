@@ -82,8 +82,6 @@ fi
 
 proxy_dir=~/.blah_jobproxy_dir
 
-$?=0
-
 if [ "x$BLParser" == "xyes" ] ; then
 
     usingBLP="yes"
@@ -91,7 +89,7 @@ if [ "x$BLParser" == "xyes" ] ; then
 
 fi
 
-if [ "$?" =="1" || "x$BLParser" != "xyes"] ; then
+if [ "$?"=="1" -o "x$BLParser"!="xyes" ] ; then
 
 usingBLP="no"
 logfile=`echo $pars | sed 's/\/.*//'`
