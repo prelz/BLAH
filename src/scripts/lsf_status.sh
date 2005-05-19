@@ -77,15 +77,13 @@ fi
 
 proxy_dir=~/.blah_jobproxy_dir
 
-$?=0
-
 if [ "x$BLParser" == "xyes" ] ; then
-
+    
     usingBLP="yes"
     result=`echo $pars| $BLClient -a $BLPserver -p $BLPport`
 fi
 
-if [ "$?" =="1" || "x$BLParser" != "xyes"] ; then
+if [ "$?" == "1" -o "x$BLParser" != "xyes" ] ; then
 
 usingBLP="no"
 confpath=${LSF_CONF_PATH:-/etc}

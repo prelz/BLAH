@@ -88,8 +88,7 @@ if [ "x$BLParser" == "xyes" ] ; then
     result=`echo $pars| $BLClient -a $BLPserver -p $BLPport`
 
 fi
-
-if [ "$?"=="1" -o "x$BLParser"!="xyes" ] ; then
+if [ "$?" == "1" -o "x$BLParser" != "xyes" ] ; then
 
 usingBLP="no"
 logfile=`echo $pars | sed 's/\/.*//'`
