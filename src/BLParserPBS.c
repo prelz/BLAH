@@ -243,7 +243,7 @@ follow(char *infile, char *lines[], int n)
 
         if(strcmp(evfile,infile) != 0){
 
-         infile = evfile;
+         infile = strdup(evfile);
          off = 0;
 
          while(1){
