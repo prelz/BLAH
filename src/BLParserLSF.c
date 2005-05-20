@@ -517,7 +517,7 @@ void *LookupAndSend(int m_sock){
            if((out_buf=malloc(STR_CHARS)) == 0){
             sysfatal("can't malloc out_buf in LookupAndSend: %r");
            }
-     	   sprintf(out_buf,"%s/Not\n",bjl[hash(h_jobid)]);
+     	   sprintf(out_buf,"%s\n",bjl[hash(h_jobid)]);
 	   goto close;
 	  }else{
 	   sleep(1);
@@ -527,7 +527,7 @@ void *LookupAndSend(int m_sock){
           if((out_buf=malloc(STR_CHARS)) == 0){
            sysfatal("can't malloc out_buf in LookupAndSend: %r");
           }
-	  sprintf(out_buf,"Blahjob id %s not found/Not\n",h_jobid);
+	  sprintf(out_buf,"Blahjob id %s not found\n",h_jobid);
 	  goto close;
 	 }
 	}
