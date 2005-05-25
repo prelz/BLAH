@@ -144,7 +144,7 @@ uni_ext=$uni_uid.$uni_pid.$uni_time
 
 #create date for output string
 
-datenow=`date +%Y%m%d%H%M.%S`
+datenow=`date +%Y%m%d`
 
 # Put executable into inputsandbox
 [ "x$stgcmd" != "xyes" ] || blahpd_inputsandbox="`basename $the_command`@`hostname -f`:$the_command"
@@ -290,17 +290,6 @@ retcode=$?
 # Sleep for a while to allow job enter the queue
 sleep 2
 
-# find the correct logfile (it must have been modified
-# *more* recently than the wrapper script)
-logfile=`find $logpath -type f -newer $curdir/$tmp_file -exec grep -l "job name = $tmp_file" {} \;`
-
-if [ -z "$logfile" ]; then
-    echo "Error: job not found in logs" >&2
-    echo Error # for the sake of waiting fgets in blahpd
-    exit 1
-fi
-
-                                                                                                                                                             
 # Don't trust qsub retcode, it could have crashed
 # between submission and id output, and we would
 # loose track of the job
@@ -309,10 +298,23 @@ fi
 
 if [ "x$BLParser" == "xyes" ] ; then
  jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $BLPserver -p $BLPport`
+ logfile=$datenow
 fi
 
 if [ "$?" == "1" -o "x$BLParser" != "xyes" ] ; then
+
+# find the correct logfile (it must have been modified
+# *more* recently than the wrapper script)
+ logfile=`find $logpath -type f -newer $curdir/$tmp_file -exec grep -l "job name = $tmp_file" {} \;`
+
+ if [ -z "$logfile" ]; then
+    echo "Error: job not found in logs" >&2
+    echo Error # for the sake of waiting fgets in blahpd
+    exit 1
+ fi
+
  jobID_log=`grep "job name = $tmp_file" $logfile | awk -F";" '{ print $5 }'`
+
 fi
 
 if [ "$jobID_log" != "$jobID" ]; then
