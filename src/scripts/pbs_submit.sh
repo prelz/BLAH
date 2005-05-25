@@ -296,12 +296,14 @@ sleep 2
 
 # Search for the job in the logfile using job name
 
+cliretcode=0
 if [ "x$BLParser" == "xyes" ] ; then
  jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $BLPserver -p $BLPport`
+ cliretcode=$? 
  logfile=$datenow
 fi
 
-if [ "$?" == "1" -o "x$BLParser" != "xyes" ] ; then
+if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
 
 # find the correct logfile (it must have been modified
 # *more* recently than the wrapper script)

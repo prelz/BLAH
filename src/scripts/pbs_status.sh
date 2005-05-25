@@ -82,13 +82,15 @@ fi
 
 proxy_dir=~/.blah_jobproxy_dir
 
+cliretcode=0
 if [ "x$BLParser" == "xyes" ] ; then
 
     usingBLP="yes"
     result=`echo $pars| $BLClient -a $BLPserver -p $BLPport`
+    cliretcode=$?
 
 fi
-if [ "$?" == "1" -o "x$BLParser" != "xyes" ] ; then
+if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
 
 usingBLP="no"
 logfile=`echo $pars | sed 's/\/.*//'`

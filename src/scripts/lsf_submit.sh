@@ -304,11 +304,13 @@ done
 
 # Search for the job in the logfile using job name
 
+cliretcode=0
 if [ "x$BLParser" == "xyes" ] ; then
  jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $BLPserver -p $BLPport`
+ cliretcode=$?
 fi
 
-if [ "$?" == "1" -o "x$BLParser" != "xyes" ] ; then
+if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
  jobID_log=`grep \"JOB_NEW\" $logfile | awk -F" " '{ print $4" " $42 }' | grep $tmp_file|awk -F" " '{ print $1 }'`
 fi
 
