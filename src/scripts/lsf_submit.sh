@@ -18,6 +18,7 @@
 #                    blahp_sink@mi.infn.it
 #     4-Mar-2005: Dgas(gianduia) removed. Proxy renewal stuff added (-r -p -l flags)
 #     3-May-2005: Added support for Blah Log Parser daemon (using the BLParser flag)
+#    31-May-2005: Separated job's standard streams from wrapper's ones
 # 
 #
 # Description:
@@ -140,15 +141,13 @@ else
     tmp_file="/proc/$$/fd/2"
 fi
 
-#create unique extension for filename
-
+# Create unique extension for filename
 uni_uid=`id -u`
 uni_pid=$$
 uni_time=`date +%s`
 uni_ext=$uni_uid.$uni_pid.$uni_time
 
-#create date for output string
-
+# Create date for output string
 datenow=`date +%Y%m%d%H%M.%S`
 
 # Write wrapper preamble
@@ -167,24 +166,39 @@ end_of_preamble
 
 # Write LSF directives according to command line options
 
-stdout_unique=$stdout.$uni_ext
-stderr_unique=$stderr.$uni_ext
+# Setup the standard streams
+if [ ! -z "$stdin" ] ; then
+    if [ -f "$stdin" ] ; then
+        stdin_unique=`basename $stdin`.$uni_ext
+        echo "#BSUB -f \"$stdin > $stdin_unique\"" >> $tmp_file
+        arguments="$arguments <\"$stdin_unique\""
+    else
+        arguments="$arguments <$stdin"
+    fi
+fi
+if [ ! -z "$stdout" ] ; then
+    stdout_unique=`basename $stdout`.$uni_ext
+    arguments="$arguments >\"$stdout_unique\""
+    echo "#BSUB -f \"$stdout < $stdout_unique\"" >> $tmp_file
+fi
+if [ ! -z "$stderr" ] ; then
+    if [ "$stderr" == "$stdout" ]; then
+        arguments="$arguments 2>&1"
+    else
+        stderr_unique=`basename $stderr`.$uni_ext
+        arguments="$arguments 2>\"$stderr_unique\""
+        echo "#BSUB -f \"$stderr < $stderr_unique\"" >> $tmp_file
+    fi
+fi
 
-[ -z "$stdin" ]    || arguments="$arguments < $stdin"
-[ -z "$stdout" ]   || echo "#BSUB -o `basename $stdout_unique`" >> $tmp_file
-[ -z "$stderr" ]   || echo "#BSUB -e `basename $stderr_unique`" >> $tmp_file
-[ -z "$queue" ]    || echo "#BSUB -q $queue" >> $tmp_file
-[ -z "$mpinodes" ] || echo "#BSUB -n $mpinodes" >> $tmp_file
-
-[ -z "$proxyrenew" ] || echo "#BSUB -f \"$proxyrenewald > `basename $proxyrenewald`.$uni_ext\"" >> $tmp_file
-
+# Set the remaining parameters
+[ -z "$proxyrenew" ]     || echo "#BSUB -f \"$proxyrenewald > `basename $proxyrenewald`.$uni_ext\"" >> $tmp_file
 [ "x$stgcmd" != "xyes" ] || echo "#BSUB -f \"$the_command > `basename $the_command`\"" >> $tmp_file
-[ -z "$stdout" ] || echo "#BSUB -f \"$stdout < `basename $stdout_unique`\"" >> $tmp_file
-[ -z "$stderr" ] || echo "#BSUB -f \"$stderr < `basename $stderr_unique`\"" >> $tmp_file
+[ -z "$queue" ]          || echo "#BSUB -q $queue" >> $tmp_file
+[ -z "$mpinodes" ]       || echo "#BSUB -n $mpinodes" >> $tmp_file
 
 # Setup proxy transfer
 proxy_string=`echo ';'$envir | sed --quiet -e 's/.*;[^X]*X509_USER_PROXY[^=]*\= *\([^\; ]*\).*/\1/p'`
-
 if [ "x$stgproxy" == "xyes" ] ; then
     proxy_local_file=${workdir}"/"`basename "$proxy_string"`
     [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] || proxy_local_file=$proxy_string
@@ -195,10 +209,8 @@ if [ "x$stgproxy" == "xyes" ] ; then
     fi
 fi
 
-
 # Set the required environment variables (escape values with double quotes)
-if [ "x$envir" != "x" ]  
-then
+if [ "x$envir" != "x" ] ; then
     echo "" >> $tmp_file
     echo "# Setting the environment:" >> $tmp_file
     echo "export `echo ';'$envir | sed -e 's/;\([^=]*\)=\([^;]*\)/ \1=\"\2\"/g'`" >> $tmp_file
@@ -206,19 +218,18 @@ then
 fi
 
 # Set the path to the user proxy
-if [ ! -z $proxy_unique ]; then 
+if [ ! -z $proxy_unique ] ; then 
     echo "export X509_USER_PROXY=\`pwd\`/$proxy_unique" >> $tmp_file
 fi
 
 # Add the command (with full path if not staged)
 echo "" >> $tmp_file
 echo "# Command to execute:" >> $tmp_file
-if [ "x$stgcmd" == "xyes" ] 
-then
+if [ "x$stgcmd" == "xyes" ] ; then
     the_command="./`basename $the_command`"
     echo "if [ ! -x $the_command ]; then chmod u+x $the_command; fi" >> $tmp_file
-# God *really* knows why LSF doesn't like a 'dot' in here
-# To be investigated further. prelz@mi.infn.it 20040911
+    # God *really* knows why LSF doesn't like a 'dot' in here
+    # To be investigated further. prelz@mi.infn.it 20040911
     echo "\`pwd\`/`basename $the_command` $arguments &" >> $tmp_file
 else
     echo "$the_command $arguments &" >> $tmp_file
@@ -226,30 +237,34 @@ fi
 
 echo "job_pid=\$!" >> $tmp_file
 
-if [ ! -z $proxyrenew ]
-then
+if [ ! -z $proxyrenew ] ; then
     echo "if [ ! -x `basename $proxyrenewald`.$uni_ext ]; then chmod u+x `basename $proxyrenewald`.$uni_ext; fi" >> $tmp_file
-    
     echo "\`pwd\`/`basename $proxyrenewald`.$uni_ext \$job_pid $prnpoll $prnlifetime \${LSB_JOBID} &" >> $tmp_file
     echo "server_pid=\$!" >> $tmp_file
 fi
 echo "wait \$job_pid" >> $tmp_file
-if [ ! -z $proxyrenew ]
-then
+echo "user_retcode=\$?" >> $tmp_file
+
+if [ ! -z $proxyrenew ] ; then
+    echo ""  >> $tmp_file
+    echo "# Wait for the proxy renewal daemon to exit" >> $tmp_file
+    echo "# (or kill it), then delete it" >> $tmp_file
     echo "sleep 1" >> $tmp_file
     echo "kill \$server_pid 2> /dev/null" >> $tmp_file
     echo "if [ -e \"`basename $proxyrenewald`.$uni_ext\" ]" >> $tmp_file
     echo "then" >> $tmp_file
-    echo "rm `basename $proxyrenewald`.$uni_ext" >> $tmp_file
+    echo "    rm `basename $proxyrenewald`.$uni_ext" >> $tmp_file
     echo "fi" >> $tmp_file
 fi
 
+echo ""  >> $tmp_file
+echo "# Remove the proxy file" >> $tmp_file
 echo "if [ -e \"$proxy_unique\" ]" >> $tmp_file
 echo "then" >> $tmp_file
-echo "rm $proxy_unique" >> $tmp_file
+echo "    rm $proxy_unique" >> $tmp_file
 echo "fi" >> $tmp_file
-
-echo "exit 0" >> $tmp_file
+echo ""  >> $tmp_file
+echo "exit \$user_retcode" >> $tmp_file
 
 # Exit if it was just a test
 if [ "x$debug" == "xyes" ]
