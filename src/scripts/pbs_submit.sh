@@ -176,6 +176,34 @@ if [ "x$stgproxy" == "xyes" ] ; then
     fi
 fi
 
+
+# Setup stdout & stderr
+if [ ! -z "$stdin" ] ; then
+    if [ -f "$stdin" ] ; then
+        stdin_unique=`basename $stdin`.$uni_ext
+        if [ ! -z $blahpd_inputsandbox ]; then blahpd_inputsandbox="${blahpd_inputsandbox},"; fi
+        blahpd_inputsandbox="${blahpd_inputsandbox}${$stdin}@`hostname -f`:${stdin_unique}"
+        arguments="$arguments <\"$stdin_unique\""
+    else
+        arguments="$arguments <$stdin"
+    fi
+fi
+if [ ! -z "$stdout" ] ; then
+    arguments="$arguments >`basename $stdout`"
+    if [ ! -z $blahpd_outputsandbox ]; then blahpd_outputsandbox="${blahpd_outputsandbox},"; fi
+    blahpd_outputsandbox="${blahpd_outputsandbox}`basename $stdout`@`hostname -f`:$stdout"
+fi
+if [ ! -z "$stderr" ] ; then
+    if [ "$stderr" == "$stdout" ]; then
+        arguments="$arguments 2>&1"
+    else
+        arguments="$arguments 2>`basename $stderr`"
+        if [ ! -z $blahpd_outputsandbox ]; then blahpd_outputsandbox="${blahpd_outputsandbox},"; fi
+        blahpd_outputsandbox="${blahpd_outputsandbox}`basename $stderr`@`hostname -f`:$stderr"
+    fi
+fi
+
+
 # Write wrapper preamble
 cat > $tmp_file << end_of_preamble
 #!/bin/bash
@@ -191,12 +219,10 @@ cat > $tmp_file << end_of_preamble
 end_of_preamble
 
 # Write PBS directives according to command line options
-[ -z "$stdin" ]  || arguments="$arguments < $stdin"
-[ -z "$stdout" ] || echo "#PBS -o $stdout" >> $tmp_file
-[ -z "$stderr" ] || echo "#PBS -e $stderr" >> $tmp_file
 [ -z "$queue" ] || echo "#PBS -q $queue" >> $tmp_file
 [ -z "$mpinodes" ] || echo "#PBS -l nodes=$mpinodes" >> $tmp_file
 [ -z "$blahpd_inputsandbox" ] || echo "#PBS -W stagein=$blahpd_inputsandbox" >> $tmp_file
+[ -z "$blahpd_outputsandbox" ] || echo "#PBS -W stageout=$blahpd_outputsandbox" >> $tmp_file
 
 # Set the required environment variables (escape values with double quotes)
 if [ "x$envir" != "x" ]  
@@ -237,6 +263,7 @@ fi
 echo "" >> $tmp_file
 echo "# Wait for the user job to finish" >> $tmp_file
 echo "wait \$job_pid" >> $tmp_file
+echo "user_retcode=\$?" >> $tmp_file
 
 if [ ! -z $proxyrenew ]
 then
@@ -250,13 +277,13 @@ then
 fi
 
 echo "# Clean up the proxy" >> $tmp_file
-echo "if [ -e \"$proxy_unique\" ]" >> $tmp_file
+echo "if [ -e \"\$X509_USER_PROXY\" ]" >> $tmp_file
 echo "then" >> $tmp_file
-echo "    rm $proxy_unique" >> $tmp_file
+echo "    rm \$X509_USER_PROXY" >> $tmp_file
 echo "fi" >> $tmp_file
 echo "" >> $tmp_file
 
-echo "exit 0" >> $tmp_file
+echo "exit \$user_retcode" >> $tmp_file
 
 # Exit if it was just a test
 if [ "x$debug" == "xyes" ]
