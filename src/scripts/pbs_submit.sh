@@ -142,10 +142,6 @@ uni_pid=$$
 uni_time=`date +%s`
 uni_ext=$uni_uid.$uni_pid.$uni_time
 
-#create date for output string
-
-datenow=`date +%Y%m%d`
-
 # Put executable into inputsandbox
 [ "x$stgcmd" != "xyes" ] || blahpd_inputsandbox="`basename $the_command`@`hostname -f`:$the_command"
 
@@ -219,9 +215,9 @@ cat > $tmp_file << end_of_preamble
 end_of_preamble
 
 # Write PBS directives according to command line options
-[ -z "$queue" ] || echo "#PBS -q $queue" >> $tmp_file
-[ -z "$mpinodes" ] || echo "#PBS -l nodes=$mpinodes" >> $tmp_file
-[ -z "$blahpd_inputsandbox" ] || echo "#PBS -W stagein=$blahpd_inputsandbox" >> $tmp_file
+[ -z "$queue" ]                || echo "#PBS -q $queue" >> $tmp_file
+[ -z "$mpinodes" ]             || echo "#PBS -l nodes=$mpinodes" >> $tmp_file
+[ -z "$blahpd_inputsandbox" ]  || echo "#PBS -W stagein=$blahpd_inputsandbox" >> $tmp_file
 [ -z "$blahpd_outputsandbox" ] || echo "#PBS -W stageout=$blahpd_outputsandbox" >> $tmp_file
 
 # Set the required environment variables (escape values with double quotes)
@@ -308,9 +304,11 @@ fi
 if [ $? -ne 0 ]; then
     echo "Failed to CD to Initial Working Directory." >&2
     echo Error # for the sake of waiting fgets in blahpd
+    rm $curdir/$tmp_file
     exit 1
 fi
 
+datenow=`date +%Y%m%d`
 jobID=`${binpath}qsub $curdir/$tmp_file` # actual submission
 retcode=$?
 
@@ -325,25 +323,22 @@ sleep 2
 
 cliretcode=0
 if [ "x$BLParser" == "xyes" ] ; then
- jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $BLPserver -p $BLPport`
- cliretcode=$? 
- logfile=$datenow
+    jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $BLPserver -p $BLPport`
+    cliretcode=$? 
+    logfile=$datenow
 fi
 
 if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
-
 # find the correct logfile (it must have been modified
 # *more* recently than the wrapper script)
- logfile=`find $logpath -type f -newer $curdir/$tmp_file -exec grep -l "job name = $tmp_file" {} \;`
-
- if [ -z "$logfile" ]; then
-    echo "Error: job not found in logs" >&2
-    echo Error # for the sake of waiting fgets in blahpd
-    exit 1
- fi
-
- jobID_log=`grep "job name = $tmp_file" $logfile | awk -F";" '{ print $5 }'`
-
+    logfile=`find $logpath -type f -newer $curdir/$tmp_file -exec grep -l "job name = $tmp_file" {} \;`
+    if [ -z "$logfile" ]; then
+        echo "Error: job not found in logs" >&2
+        echo Error # for the sake of waiting fgets in blahpd
+        rm $curdir/$tmp_file
+        exit 1
+    fi
+    jobID_log=`grep "job name = $tmp_file" $logfile | awk -F";" '{ print $5 }'`
 fi
 
 if [ "$jobID_log" != "$jobID" ]; then

@@ -321,12 +321,12 @@ done
 
 cliretcode=0
 if [ "x$BLParser" == "xyes" ] ; then
- jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $BLPserver -p $BLPport`
- cliretcode=$?
+    jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $BLPserver -p $BLPport`
+    cliretcode=$?
 fi
 
 if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
- jobID_log=`grep \"JOB_NEW\" $logfile | awk -F" " '{ print $4" " $42 }' | grep $tmp_file|awk -F" " '{ print $1 }'`
+    jobID_log=`grep \"JOB_NEW\" $logfile | awk -F" " '{ print $4" " $42 }' | grep $tmp_file|awk -F" " '{ print $1 }'`
 fi
 
 if [ "$jobID_log" != "$jobID" ]; then
