@@ -292,27 +292,6 @@ fi
 jobID=`${binpath}bsub < $curdir/$tmp_file | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"` # actual submission
 retcode=$?
 
-
-# find the correct logfile (it must have been modified
-# *more* recently than the wrapper script)
-
-logfile=""
-log_check_retry_count=0
-
-while [ "x$logfile" == "x" ]; do 
-
-# Sleep for a while to allow job enter the queue
-    sleep 5
-    logfile=`find $logpath/$logfilename* -type f -newer $curdir/$tmp_file -exec grep -lP "\"JOB_NEW\" \"[0-9\.]+\" [0-9]+ $jobID " {} \;`
-
-    if (( log_check_retry_count++ >= 12 )); then
-        ${binpath}bkill $jobID
-        echo "Error: job not found in logs" >&2
-        echo Error # for the sake of waiting fgets in blahpd
-        exit 1
-    fi
-done
-
 # Don't trust bsub retcode, it could have crashed
 # between submission and id output, and we would
 # loose track of the job
@@ -326,6 +305,27 @@ if [ "x$BLParser" == "xyes" ] ; then
 fi
 
 if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
+
+# find the correct logfile (it must have been modified
+# *more* recently than the wrapper script)
+
+ logfile=""
+ log_check_retry_count=0
+
+ while [ "x$logfile" == "x" ]; do
+
+# Sleep for a while to allow job enter the queue
+    sleep 5
+    logfile=`find $logpath/$logfilename* -type f -newer $curdir/$tmp_file -exec grep -lP "\"JOB_NEW\" \"[0-9\.]+\" [0-9]+ $jobID " {} \;`
+
+    if (( log_check_retry_count++ >= 12 )); then
+        ${binpath}bkill $jobID
+        echo "Error: job not found in logs" >&2
+        echo Error # for the sake of waiting fgets in blahpd
+        exit 1
+    fi
+ done
+
     jobID_log=`grep \"JOB_NEW\" $logfile | awk -F" " '{ print $4" " $42 }' | grep $tmp_file|awk -F" " '{ print $1 }'`
 fi
 
