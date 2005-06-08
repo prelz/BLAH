@@ -12,11 +12,14 @@
 #       Council for the Central Laboratory of the Research Councils (CCLRC), United Kingdom
 #
 #       Authors: Francesco Prelz <francesco.prelz@mi.infn.it>
-#       Version info: $Id: configure.ac,v 1.20 2005/03/23 11:12:19 drebatto Exp $
+#       Version info: $Id: configure.ac,v 1.21 2005/06/08 14:12:30 mezzadri Exp $
 #       Release: $Name:  $
 #
 #       Revision history:
 #       $Log: configure.ac,v $
+#       Revision 1.21  2005/06/08 14:12:30  mezzadri
+#       changed version from 1.2.2 to 1.2.4
+#
 #       Revision 1.20  2005/03/23 11:12:19  drebatto
 #       Some more files to align...
 #
@@ -62,7 +65,7 @@
 #
 
 AC_PREREQ(2.57)
-AC_INIT([GLite CE blahp], [1.2.2])
+AC_INIT([GLite CE blahp], [1.2.4])
 AC_CONFIG_AUX_DIR([./project])
 AM_INIT_AUTOMAKE([1.6.3 subdir-objects])
 AC_CONFIG_SRCDIR([src/main.c])
