@@ -291,7 +291,7 @@ int InfoAdd(int id, char *value, const char * flag){
   
  } else if(strcmp(flag,"JOBSTATUS")==0){
  
-  j2js[id] = value;
+  j2js[id] = strdup(value);
  
  } else if(strcmp(flag,"EXITCODE")==0){
 
