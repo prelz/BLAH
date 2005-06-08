@@ -449,7 +449,7 @@ int AddToStruct(char *line){
  } /* close rex_queued if */
 
  if(rex && (strstr(rex,rex_finished)!=NULL)){
-  trex=rex;
+  trex=strdup(rex);
   n=0;
   r_tok=strtok(trex,blank);
    while(r_tok!=NULL){
