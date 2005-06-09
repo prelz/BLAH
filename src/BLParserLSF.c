@@ -786,8 +786,10 @@ char *GetLogList(char *logdate){
   }
  }
  pclose(rm_output);
+
+/* this is done to avoid ls -tr to run without args so that local dir is listed */
  
- if(logs == NULL){
+ if((logs == NULL) || (strlen(logs) < 2)){
   return NULL;
  }
  sprintf(command_string,"ls -tr %s", logs);

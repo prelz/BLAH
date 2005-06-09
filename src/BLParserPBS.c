@@ -376,6 +376,8 @@ int AddToStruct(char *line){
  char *	rex;
  
  int id;
+ int is_queued=0;
+ int is_finished=0;
  
  char *	tjobid=NULL;
  char *	jobid=NULL;
@@ -398,13 +400,14 @@ int AddToStruct(char *line){
   if(n==4){
    tjobid=strdup(s_tok);
   }else if(n==5){
-   trex=strdup(s_tok);
-   rex=strdup(trex);
+   rex=strdup(s_tok);
+   trex=strdup(rex);
   }
   s_tok=strtok(NULL,";");
   n++;
  }
- 
+
+/* get jobid */ 
  if(tjobid){
  
   n=0;
@@ -421,9 +424,10 @@ int AddToStruct(char *line){
   id=atoi(jobid);
 
  } /* close tjobid if */
- 
+
+/* get j_blahjob */
  if(rex && (strstr(rex,rex_queued)!=NULL)){
- 
+  is_queued=1; 
   n=0;
   b_tok=strtok(trex,",");
    while(b_tok!=NULL){
@@ -448,7 +452,9 @@ int AddToStruct(char *line){
  
  } /* close rex_queued if */
 
+/* get ex_status */
  if(rex && (strstr(rex,rex_finished)!=NULL)){
+  is_finished=1;
   trex=strdup(rex);
   n=0;
   r_tok=strtok(trex,blank);
@@ -481,7 +487,7 @@ int AddToStruct(char *line){
   sleep(1);
  } 
  
- if((strstr(rex,rex_queued)!=NULL) && (has_blah) && (j2js[id]==NULL)){
+ if((is_queued==1) && (has_blah) && (j2js[id]==NULL)){
 
   InfoAdd(id,jobid,"JOBID");
  
@@ -498,7 +504,7 @@ int AddToStruct(char *line){
   
    InfoAdd(id,"3","JOBSTATUS");
 
-  } else if(strstr(rex,rex_finished)!=NULL){
+  } else if(is_finished==1){
   
    InfoAdd(id,"4","JOBSTATUS");
    InfoAdd(id,ex_status,"EXITCODE");
@@ -806,9 +812,12 @@ char *GetLogList(char *logdate){
  }
  pclose(rm_output);
  
- if(logs == NULL){
+/* this is done to avoid ls -tr to run without args so that local dir is listed */
+
+ if((logs == NULL) || (strlen(logs) < 2)){
   return NULL;
  }
+ 
  sprintf(command_string,"ls -tr %s", logs);
  ls_output = popen(command_string,"r");
  if (ls_output != NULL){
