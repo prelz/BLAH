@@ -455,7 +455,6 @@ int AddToStruct(char *line){
 /* get ex_status */
  if(rex && (strstr(rex,rex_finished)!=NULL)){
   is_finished=1;
-  trex=strdup(rex);
   n=0;
   r_tok=strtok(trex,blank);
    while(r_tok!=NULL){
@@ -496,7 +495,7 @@ int AddToStruct(char *line){
   
  } else if(j2js[id]!=NULL){
  
-  if(strstr(rex,rex_running)!=NULL){
+  if(rex && strstr(rex,rex_running)!=NULL){
 
    InfoAdd(id,"2","JOBSTATUS");
    
@@ -509,7 +508,7 @@ int AddToStruct(char *line){
    InfoAdd(id,"4","JOBSTATUS");
    InfoAdd(id,ex_status,"EXITCODE");
 
-  } else if(strstr(rex,rex_hold)!=NULL){
+  } else if(rex && strstr(rex,rex_hold)!=NULL){
   
    InfoAdd(id,"5","JOBSTATUS");
 
