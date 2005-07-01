@@ -99,7 +99,7 @@ logpath=$lsf_base_path/$lsf_clustername/logdir
 logeventfile=lsb.events
 
 touch -t $datenow $datefile
-ulogs=`find $logpath/$logeventfile.[0-9]* -type f -newer $datefile -print`
+ulogs=`find $logpath -name $logeventfile.[0-9]* -maxdepth 1 -type f -newer $datefile -print 2>/dev/null`
 rm $datefile
 
 for i in `echo $ulogs | sed "s|${logpath}/${logeventfile}\.||g" | sort -nr`; do
