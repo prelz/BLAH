@@ -399,7 +399,7 @@ int AddToStruct(char *line){
      InfoAdd(id,ex_status,"EXITCODE");
     }
 
-   } else if(strstr(j_status,"16")!=NULL){
+   } else if((strstr(j_status,"16")!=NULL) || (strstr(j_status,"8")!=NULL)){
 
     InfoAdd(id,"5","JOBSTATUS");
 
