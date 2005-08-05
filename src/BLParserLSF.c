@@ -2,9 +2,8 @@
 
 int main(int argc, char *argv[]) {
 
-    short int port;                  /*  port number               */
     struct    sockaddr_in servaddr;  /*  socket address structure  */
-    char      *endptr;                /*  for strtol()              */
+    int       set = 1;
     int       i;
     int       status;
     int       list_s;
@@ -16,27 +15,10 @@ int main(int argc, char *argv[]) {
 
     argv0 = argv[0];
 
-    /*  Get port number from the command line, and
-        set to default port if no arguments were supplied  */
+   /* Get log dir name and port from conf file*/
 
-    if ( argc == 2 ) {
-	port = strtol(argv[1], &endptr, 0);
-	if ( *endptr ) {
-	    fprintf(stderr, "BLParserLSF: Invalid port number.\n");
-	    exit(EXIT_FAILURE);
-	}
-    }
-    else if ( argc < 2 ) {
-	port = ECHO_PORT;
-    }
-    else {
-	fprintf(stderr, "BLParserLSF: Invalid arguments.\n");
-	exit(EXIT_FAILURE);
-    }
+    ldir=GetLogDir(argc,argv);
     
-    /* Get log dir name */
-
-   ldir=GetLogDir();
     /* For local tests */
    //ldir="/home/mezzadri/src/logserver/final/logs";
     
@@ -55,6 +37,9 @@ int main(int argc, char *argv[]) {
 	exit(EXIT_FAILURE);
     }
 
+    if(setsockopt(list_s, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0) {
+        fprintf(stderr,"BLParserLSF: setsockopt() failed\n");
+    }
 
     /*  Set all bytes in socket address structure to
         zero, and fill in the relevant data members   */
@@ -63,7 +48,6 @@ int main(int argc, char *argv[]) {
     servaddr.sin_family      = AF_INET;
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     servaddr.sin_port        = htons(port);
-
 
     /*  Bind our socket addresss to the 
 	listening socket, and call listen()  */
@@ -206,7 +190,7 @@ follow(char *infile, char *lines[], int n)
         real_off=ftell(fp);
 
         if(real_off < old_off){
-         off=real_off;
+         off=0;
         }else{
          off=old_off;
         }
@@ -262,28 +246,21 @@ tail(FILE *fp, char *lines[], int n)
 
 int InfoAdd(int id, char *value, const char * flag){
 
-/*
- time_t now;
- struct tm *tptr;
- char cnow[30];
- 
-
- now=time(NULL); 
- tptr=localtime(&now);
- strftime(cnow,sizeof(cnow),"%s",tptr);
-*/
-
  if((id <= 0) || (id >= HASHSIZE)){
   return -1;
  }
   
  /* set write lock */
-  wlock=1;
- if((strcmp(flag,"JOBID")==0) && j2js[id] == NULL){
+ wlock=1;
  
-  j2js[id] = strdup("1");
+ if((strcmp(flag,"JOBID")==0) && j2js[id] == NULL){
+  
+  j2js[id] = strdup("1");  
   j2wn[id] = strdup("\0");
   j2ec[id] = strdup("\0");
+  j2st[id] = strdup("\0");
+  j2rt[id] = strdup("\0");
+  j2ct[id] = strdup("\0");
   
  } else if(strcmp(flag,"WN")==0){
  
@@ -296,6 +273,18 @@ int InfoAdd(int id, char *value, const char * flag){
  } else if(strcmp(flag,"EXITCODE")==0){
 
   j2ec[id] = strdup(value);
+ 
+ } else if(strcmp(flag,"STARTTIME")==0){
+
+  j2st[id] = strdup(value);
+ 
+ } else if(strcmp(flag,"RUNNINGTIME")==0){
+
+  j2rt[id] = strdup(value);
+ 
+ } else if(strcmp(flag,"COMPLTIME")==0){
+
+  j2ct[id] = strdup(value);
  
  } else {
  
@@ -322,6 +311,8 @@ int AddToStruct(char *line){
  int id;
  
  char *	jobid=NULL;
+ char *	tj_time=NULL;
+ char *	j_time=NULL;
  char *	j_status=NULL;
  char *	ex_status=NULL;
  char *	sig_status=NULL;
@@ -337,6 +328,9 @@ int AddToStruct(char *line){
  while(s_tok!=NULL){
   if(n==0){
    rex=strdup(s_tok);
+  }else if(n==2){
+   tj_time=strdup(s_tok);
+   j_time=epoch2str(tj_time);
   }else if(n==3){
    jobid=strdup(s_tok);
    id=atoi(jobid);
@@ -365,6 +359,7 @@ int AddToStruct(char *line){
  if((strcmp(rex,rex_queued)==0) && (has_blah) && (j2js[id]==NULL)){
 
   InfoAdd(id,jobid,"JOBID");
+  InfoAdd(id,j_time,"STARTTIME");
  
   h_blahjob=hash(j_blahjob);
   bjl[h_blahjob]=strdup(jobid);
@@ -376,6 +371,7 @@ int AddToStruct(char *line){
 
    InfoAdd(id,"2","JOBSTATUS");
    InfoAdd(id,wnode,"WN");
+   InfoAdd(id,j_time,"RUNNINGTIME");
    
   } else if(strcmp(rex,rex_signal)==0){
   
@@ -391,12 +387,14 @@ int AddToStruct(char *line){
 
     InfoAdd(id,"4","JOBSTATUS");
     InfoAdd(id,"0","EXITCODE");
+    InfoAdd(id,j_time,"COMPLTIME");
 
    }  else if(strstr(j_status,"32")!=NULL){
 
     if(strcmp(j2js[id],"3")!=0){
      InfoAdd(id,"4","JOBSTATUS");
      InfoAdd(id,ex_status,"EXITCODE");
+     InfoAdd(id,j_time,"COMPLTIME");
     }
 
    } else if((strstr(j_status,"16")!=NULL) || (strstr(j_status,"8")!=NULL)){
@@ -411,6 +409,7 @@ int AddToStruct(char *line){
   } /* closes if-else if on rex_ */
  } /* closes if-else if on jobid lookup */
    free(rex);
+   free(j_time);
    free(jobid);
    free(j_status);
    free(sig_status);
@@ -491,10 +490,12 @@ void *LookupAndSend(int m_sock){
 	//printf("thread/0x%08lx\n",pthread_self());
 	
 	if((strlen(buffer)==0) || (strcmp(buffer,"\n")==0) || (strstr(buffer,"/")==0)){
+         
          if((out_buf=malloc(STR_CHARS)) == 0){
           sysfatal("can't malloc out_buf in LookupAndSend: %r");
          }
-     	 sprintf(out_buf,"Wrong string format/Not\n");
+	 sprintf(out_buf,"\n");
+
 	 goto close;
 	}
         logdate=strtok(buffer,"/");
@@ -524,10 +525,12 @@ void *LookupAndSend(int m_sock){
 	  } 
 	 }
 	 if(i==WRETRIES){
+
           if((out_buf=malloc(STR_CHARS)) == 0){
            sysfatal("can't malloc out_buf in LookupAndSend: %r");
           }
-	  sprintf(out_buf,"Blahjob id %s not found\n",h_jobid);
+	  sprintf(out_buf,"\n");
+
 	  goto close;
 	 }
 	}
@@ -558,9 +561,11 @@ void *LookupAndSend(int m_sock){
             pr_removal="Not";
            }
            if(strcmp(j2js[id],"4")==0){
-            sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; ExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2ec[id], pr_removal);
+            sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSubmissionTime=\"%s\"; LRMStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\"; ExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], j2ct[id], j2ec[id], pr_removal);
+           }else if(strcmp(j2rt[id],"\0")!=0){
+            sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSubmissionTime=\"%s\"; LRMStartRunningTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], pr_removal);
            }else{
-            sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s;]/%s\n",jobid, t_wnode, j2js[id], pr_removal);
+            sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSubmissionTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], pr_removal);
            }
 	   
 	  } else {
@@ -584,9 +589,11 @@ void *LookupAndSend(int m_sock){
              pr_removal="Not";
             }
             if(strcmp(j2js[id],"4")==0){
-             sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; ExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2ec[id], pr_removal);
+             sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSubmissionTime=\"%s\"; LRMStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\"; ExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], j2ct[id], j2ec[id], pr_removal);
+            }else if(strcmp(j2rt[id],"\0")!=0){
+             sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSubmissionTime=\"%s\"; LRMStartRunningTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], pr_removal);
             }else{
-             sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s;]/%s\n",jobid, t_wnode, j2js[id], pr_removal);
+             sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSubmissionTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], pr_removal);
             }
 	    
 	   } else {
@@ -641,10 +648,8 @@ int GetEventsInOldLogs(char *logdate){
  
 }
 
-char *GetLogDir(){
+char *GetLogDir(int largc, char *largv[]){
 
- char *confpath;
- char *binpath;
  char *lsf_base_path;
  char conffile[STR_CHARS];
  char lsf_clustername[STR_CHARS];
@@ -653,6 +658,15 @@ char *GetLogDir(){
  char *line;
  char command_string[STR_CHARS];
  int len;
+ 
+ char *endptr;
+ char *szPort;
+ char *szBinPath;
+ char *szConfPath;
+ 
+ char *ebinpath;
+ char *econfpath;
+ 
  FILE *fp;
  FILE *file_output;
  FILE *ls_output;
@@ -664,15 +678,30 @@ char *GetLogDir(){
     sysfatal("can't malloc line: %r");
  }
 
- /*  setting defaults */
- 
- if((binpath=getenv("LSF_BIN_PATH"))==NULL){
-  binpath="/usr/local/lsf/bin/";
- }
- if((confpath=getenv("LSF_CONF_PATH"))==NULL){
-  confpath="/etc";
+ ParseCmdLine(largc, largv, &szPort, &szBinPath, &szConfPath);
+  
+ if((largc > 1) && (szPort!=NULL)){
+  port = strtol(szPort, &endptr, 0);
+  if ( *endptr ) {
+    printf("BLParserLSF: Invalid port supplied.\n");
+    exit(EXIT_FAILURE);
+  }
+ }else{
+  port=DEFAULT_PORT;
  }
 
+ if(szBinPath!=NULL){
+  binpath=szBinPath;
+ }else if((ebinpath=getenv("LSF_BIN_PATH"))!=NULL){
+  binpath=ebinpath;
+ }
+ 
+ if(szConfPath!=NULL){
+  confpath=szConfPath;
+ }else if((econfpath=getenv("LSF_CONF_PATH"))!=NULL){
+  confpath=econfpath;
+ } 
+ 
  sprintf(conffile,"%s/lsf.conf",confpath);
  
  if((fp=fopen(conffile, "r")) != 0){
@@ -722,7 +751,9 @@ return logpath;
 char *GetLogList(char *logdate){
  
  char datefile[STR_CHARS];
+ char lastfile[STR_CHARS];
  char touch_out[STR_CHARS];
+ char lastlog_out[STR_CHARS];
  char rm_out[STR_CHARS];
  char logs[MAX_CHARS]="\0";
  char *slogs;
@@ -731,8 +762,11 @@ char *GetLogList(char *logdate){
  char command_string[MAX_CHARS]="\0";
  int n=0;
  FILE *mktemp_output;
+ FILE *mklast_output;
  FILE *touch_output;
+ FILE *lastlog_output;
  FILE *find_output;
+ FILE *findlast_output;
  FILE *rm_output;
  FILE *ls_output;
  int len;
@@ -752,6 +786,16 @@ char *GetLogList(char *logdate){
  }
  pclose(mktemp_output);
  
+ sprintf(command_string,"mktemp -q /tmp/blahlast_XXXXXX");
+ mklast_output = popen(command_string,"r");
+ if (mklast_output != NULL){
+  len = fread(lastfile, sizeof(char), sizeof(lastfile) - 1 , mklast_output);
+  if (len>0){
+   lastfile[len-1]='\000';
+  }
+ }
+ pclose(mklast_output);
+ 
  sprintf(command_string,"touch -t %s %s",logdate,datefile);
  touch_output = popen(command_string,"r");
  if (touch_output != NULL){
@@ -762,8 +806,20 @@ char *GetLogList(char *logdate){
  }
  pclose(touch_output);
  
- if(LastLog!=NULL){
-  sprintf(command_string,"find %s/%s.[0-9]* -type f -newer %s ! -newer %s -printf \"%%p \"", ldir, lsbevents, datefile, LastLog);
+  if(strcmp(LastLogDate,"\0")!=0){
+/* This is done to create a file with the lastlog exact date */
+
+  sprintf(command_string,"touch -d \"%s\" %s",LastLogDate,lastfile);
+  lastlog_output = popen(command_string,"r");
+  if (lastlog_output != NULL){
+   len = fread(lastlog_out, sizeof(char), sizeof(lastlog_out) - 1 , lastlog_output);
+   if (len>0){
+    lastlog_out[len-1]='\000';
+   }
+  }
+  pclose(lastlog_output);
+ 
+  sprintf(command_string,"find %s/%s.[0-9]* -type f -newer %s ! -newer %s -printf \"%%p \"", ldir, lsbevents, datefile, lastfile);
  } else{
   sprintf(command_string,"find %s/%s.[0-9]* -type f -newer %s -printf \"%%p \"", ldir, lsbevents, datefile);
  }
@@ -777,7 +833,7 @@ char *GetLogList(char *logdate){
  }
  pclose(find_output);
   
- sprintf(command_string,"rm %s", datefile);
+ sprintf(command_string,"rm -f %s %s", datefile, lastfile);
  rm_output = popen(command_string,"r");
  if (rm_output != NULL){
   len = fread(rm_out, sizeof(char), sizeof(rm_out) - 1 , rm_output);
@@ -811,6 +867,17 @@ char *GetLogList(char *logdate){
     last_tag=n; 
    }
    
+/* This is done to get date from lastlog file */
+   sprintf(command_string,"find %s -printf \"%%c \"",LastLog);
+   findlast_output = popen(command_string,"r");
+   if (findlast_output != NULL){
+    len = fread(LastLogDate, sizeof(char), sizeof(LastLogDate) - 1 , findlast_output);
+    if (len>0){
+     LastLogDate[len-1]='\000';
+    }
+   }
+   pclose(findlast_output);
+
    strcat(slogs,t_logs);
    strcat(slogs," ");
 
@@ -866,6 +933,56 @@ int strtoken(const char *s, char delim, char **token)
     token[i] = NULL;
     free(tmp);
     return i;
+}
+
+char *epoch2str(char *epoch){
+  
+ char *dateout;
+ size_t max=100;
+
+ struct tm *tm;
+ tm=malloc(max);
+
+ strptime(epoch,"%s",tm);
+ 
+ dateout=malloc(max);
+ 
+ strftime(dateout,max,"%d-%m-%y %T",tm);
+ free(tm);
+ 
+ return dateout;
+ 
+}
+
+int ParseCmdLine(int argc, char *argv[], char **szPort, char **szBinPath, char **szConfPath) {
+    
+    int n = 1;
+
+    if(argc==2){
+     *szPort= argv[n];
+     return 0;
+    }
+
+    while ( n < argc ) {
+        if ( !strncmp(argv[n], "-p", 2) || !strncmp(argv[n], "-P", 2) ) {
+            *szPort= argv[++n];
+        }
+        else if ( !strncmp(argv[n], "-b", 2) || !strncmp(argv[n], "-B", 2) ) {
+            *szBinPath = argv[++n];
+        }
+        else if ( !strncmp(argv[n], "-c", 2) || !strncmp(argv[n], "-C", 2) ) {
+            *szConfPath = argv[++n];
+        }
+        else if ( !strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2) ) {
+            printf("Usage:\n\n");
+            printf("BLParserLSF [-p] <remote_port [%d]> -b <LSF_binpath [%s]> -c <LSF_confpath [%s]>\n\n",DEFAULT_PORT, binpath, confpath);
+	    
+            exit(EXIT_SUCCESS);
+        }
+        ++n;
+    }
+    
+    return 0;
 }
 
 /* the reset is error processing stuff */

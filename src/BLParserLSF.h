@@ -16,8 +16,8 @@
 #include <fcntl.h>
 #include <assert.h>
 
-#define LISTENQ            (1024)
-#define ECHO_PORT          (2002)
+#define LISTENQ            1024
+#define DEFAULT_PORT       33333 
 #define MAX_LINES          100000
 #define MAX_CHARS          100000
 #define STR_CHARS          3000
@@ -49,18 +49,23 @@ char *chopfmt(char *fmt);
 void syserror(char *fmt, ...);
 void sysfatal(char *fmt, ...);
 void *LookupAndSend (int m_sock); 
-char *GetLogDir();
+char *GetLogDir(int largc, char *largv[]);
 char *GetLogList(char *logdate);
 int GetEventsInOldLogs(char *logdate);
 int strtoken(const char *s, char delim, char **token);
 int InfoAdd(int id, char *value, const char * flag);
 char *InfoGet(int id, const char * flag);
+int ParseCmdLine(int argc, char *argv[], char **szPort, char **szBinPath, char **szConfPath);
+char *epoch2str(char *epoch);
 
 /* Variables initialization */
 
 char *j2js[HASHSIZE];
 char *j2wn[HASHSIZE];
 char *j2ec[HASHSIZE];
+char *j2st[HASHSIZE];
+char *j2rt[HASHSIZE];
+char *j2ct[HASHSIZE];
 
 char *bjl[HASHSIZE];
 
@@ -72,10 +77,15 @@ int rcounter=0;
 pthread_mutex_t read_mutex  = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t write_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+int port;
+char *confpath="/etc";
+char *binpath="/usr/local/lsf/bin";
+
 char *lsbevents="lsb.events";
 char *ldir;
 
 char *LastLog=NULL;
+char LastLogDate[STR_CHARS]="\0";
 
 char *blank=" ";
 
