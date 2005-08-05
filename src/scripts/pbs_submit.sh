@@ -312,34 +312,51 @@ datenow=`date +%Y%m%d`
 jobID=`${binpath}qsub $curdir/$tmp_file` # actual submission
 retcode=$?
 
-# Sleep for a while to allow job enter the queue
-sleep 2
-
 # Don't trust qsub retcode, it could have crashed
 # between submission and id output, and we would
 # loose track of the job
 
 # Search for the job in the logfile using job name
 
-cliretcode=0
-if [ "x$BLParser" == "xyes" ] ; then
-    jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $BLPserver -p $BLPport`
-    cliretcode=$? 
-    logfile=$datenow
-fi
+# Sleep for a while to allow job enter the queue
+sleep 5
 
-if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
+
 # find the correct logfile (it must have been modified
 # *more* recently than the wrapper script)
-    logfile=`find $logpath -type f -newer $curdir/$tmp_file -exec grep -l "job name = $tmp_file" {} \;`
-    if [ -z "$logfile" ]; then
-        echo "Error: job not found in logs" >&2
-        echo Error # for the sake of waiting fgets in blahpd
-        rm $curdir/$tmp_file
-        exit 1
-    fi
-    jobID_log=`grep "job name = $tmp_file" $logfile | awk -F";" '{ print $5 }'`
-fi
+
+logfile=""
+jobID_log=""
+log_check_retry_count=0
+
+while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
+
+ cliretcode=0
+ if [ "x$BLParser" == "xyes" ] ; then
+     jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $BLPserver -p $BLPport`
+     cliretcode=$?
+     if [ "x$jobID_log" != "x" ] ; then
+        logfile=$datenow
+     fi
+ fi
+
+ if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
+
+     logfile=`find $logpath -type f -newer $curdir/$tmp_file -exec grep -l "job name = $tmp_file" {} \;`
+
+     jobID_log=`grep "job name = $tmp_file" $logfile | awk -F";" '{ print $5 }'`
+
+ fi
+
+ if (( log_check_retry_count++ >= 12 )); then
+     ${binpath}qdel $jobID
+     echo "Error: job not found in logs" >&2
+     echo Error # for the sake of waiting fgets in blahpd
+     rm $curdir/$tmp_file
+     exit 1
+ fi
+
+done
 
 if [ "$jobID_log" != "$jobID" ]; then
     # echo "WARNING: JobID in log file is different from the one returned by qsub!" >&2
@@ -347,6 +364,7 @@ if [ "$jobID_log" != "$jobID" ]; then
     # echo "I'll be using the one in the log ($jobID_log)..." >&2
     jobID=$jobID_log
 fi
+
 
 # Compose the blahp jobID ("pbs/" + logfile + pbs jobid)
 echo "pbs/`basename $logfile`/$jobID"

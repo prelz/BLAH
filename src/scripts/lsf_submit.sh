@@ -298,41 +298,45 @@ retcode=$?
 
 # Search for the job in the logfile using job name
 
-cliretcode=0
-if [ "x$BLParser" == "xyes" ] ; then
-    jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $BLPserver -p $BLPport`
-    cliretcode=$?
-fi
-
-if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
+# Sleep for a while to allow job enter the queue
+sleep 5
 
 # find the correct logfile (it must have been modified
 # *more* recently than the wrapper script)
 
- logfile=""
- log_check_retry_count=0
+logfile=""
+jobID_log=""
+log_check_retry_count=0
 
- while [ "x$logfile" == "x" ]; do
+while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
 
-# Sleep for a while to allow job enter the queue
-    sleep 5
-    logfile=`find $logpath/$logfilename* -type f -newer $curdir/$tmp_file -exec grep -lP "\"JOB_NEW\" \"[0-9\.]+\" [0-9]+ $jobID " {} \;`
+ cliretcode=0
+ if [ "x$BLParser" == "xyes" ] ; then
+     jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $BLPserver -p $BLPport`
+     cliretcode=$?
+ fi
 
-    if (( log_check_retry_count++ >= 12 )); then
-        ${binpath}bkill $jobID
-        echo "Error: job not found in logs" >&2
-        echo Error # for the sake of waiting fgets in blahpd
-        exit 1
-    fi
- done
+ if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
 
-    jobID_log=`grep \"JOB_NEW\" $logfile | awk -F" " '{ print $4" " $42 }' | grep $tmp_file|awk -F" " '{ print $1 }'`
-fi
+   logfile=`find $logpath/$logfilename* -type f -newer $curdir/$tmp_file -exec grep -lP "\"JOB_NEW\" \"[0-9\.]+\" [0-9]+ $jobID " {} \;`
+
+   jobID_log=`grep \"JOB_NEW\" $logfile | awk -F" " '{ print $4" " $42 }' | grep $tmp_file|awk -F" " '{ print $1 }'`
+ fi
+
+ if (( log_check_retry_count++ >= 12 )); then
+     ${binpath}bkill $jobID
+     echo "Error: job not found in logs" >&2
+     echo Error # for the sake of waiting fgets in blahpd
+     rm $curdir/$tmp_file
+     exit 1
+ fi
+
+done
 
 if [ "$jobID_log" != "$jobID" ]; then
-    echo "WARNING: JobID in log file is different from the one returned by bsub!" >&2
-    echo "($jobID_log != $jobID)" >&2
-    echo "I'll be using the one in the log ($jobID_log)..." >&2
+#    echo "WARNING: JobID in log file is different from the one returned by bsub!" >&2
+#    echo "($jobID_log != $jobID)" >&2
+#    echo "I'll be using the one in the log ($jobID_log)..." >&2
     jobID=$jobID_log
 fi
 
