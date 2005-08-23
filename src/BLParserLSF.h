@@ -77,7 +77,11 @@ int rcounter=0;
 pthread_mutex_t read_mutex  = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t write_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+char *progname="BLParserLSF";
+
 int port;
+
+/* confpath and binpath default */
 char *confpath="/etc";
 char *binpath="/usr/local/lsf/bin";
 

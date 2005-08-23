@@ -2,9 +2,8 @@
 
 int main(int argc, char *argv[]) {
 
-    short int port;                  /*  port number               */
-    struct    sockaddr_in servaddr;  /*  socket address structure  */
-    char      *endptr;                /*  for strtol()              */
+    struct    sockaddr_in servaddr;
+    char      *endptr;
     int       i;
     int       set = 1;
     int       status;
@@ -15,41 +14,42 @@ int main(int argc, char *argv[]) {
     time_t now;
     struct tm *tptr;
     char cnow[30];
+   
+    char *szPort;
+    char *szSpoolDir;
+    
+    char *espooldir;
 
     pthread_t ReadThd[NUMTHRDS];
     pthread_t UpdateThd;
 
     argv0 = argv[0];
 
-    /*  Get port number from the command line, and
-        set to default port if no arguments were supplied  */
-
-    if ( argc == 2 ) {
-	port = strtol(argv[1], &endptr, 0);
-	if ( *endptr ) {
-	    fprintf(stderr, "BLParserPBS: Invalid port number.\n");
-	    exit(EXIT_FAILURE);
-	}
+    ParseCmdLine(argc, argv, &szPort, &szSpoolDir);
+        
+    if((argc > 1) && (szPort!=NULL)){
+     port = strtol(szPort, &endptr, 0);
+     if ( *endptr || port < 1 || port > 65535) {
+       fprintf(stderr,"%s: Invalid port supplied.\n",progname);
+       exit(EXIT_FAILURE);
+     }
+    }else{
+     port=DEFAULT_PORT;
     }
-    else if ( argc < 2 ) {
-	port = ECHO_PORT;
-    }
-    else {
-	fprintf(stderr, "BLParserPBS: Invalid arguments.\n");
-	exit(EXIT_FAILURE);
-    }
-    
+        
     /* Get log dir name */
-  
   
     if((ldir=malloc(STR_CHARS)) == 0){
      sysfatal("can't malloc line: %r");
     }
     
-    if((spooldir=getenv("PBS_SPOOL_DIR"))==NULL){
-     spooldir="/usr/spool/PBS/";
+    
+    if(szSpoolDir!=NULL){
+     spooldir=szSpoolDir;
+    }else if((espooldir=getenv("PBS_SPOOL_DIR"))!=NULL){
+     spooldir=espooldir;
     }
-
+        
     strcat(ldir,spooldir);
     strcat(ldir,"/server_logs");
     
@@ -68,12 +68,12 @@ int main(int argc, char *argv[]) {
     /*  Create the listening socket  */
 
     if ( (list_s = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
-	fprintf(stderr, "BLParserPBS: Error creating listening socket.\n");
+	fprintf(stderr, "%s: Error creating listening socket.\n",progname);
 	exit(EXIT_FAILURE);
     }
 
     if(setsockopt(list_s, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0) {
-        fprintf(stderr,"BLParserPBS: setsockopt() failed\n");
+        fprintf(stderr,"%s: setsockopt() failed\n",progname);
     }
 
     /*  Set all bytes in socket address structure to
@@ -89,12 +89,12 @@ int main(int argc, char *argv[]) {
 	listening socket, and call listen()  */
 
     if ( bind(list_s, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0 ) {
-	fprintf(stderr, "BLParserPBS: Error calling bind()\n");
+	fprintf(stderr, "%s: Error calling bind()\n",progname);
 	exit(EXIT_FAILURE);
     }
     
     if ( listen(list_s, LISTENQ) < 0 ) {
-    	fprintf(stderr, "BLParserPBS: Error calling listen()\n");
+    	fprintf(stderr, "%s: Error calling listen()\n",progname);
     	exit(EXIT_FAILURE);
     }
 	
@@ -579,7 +579,7 @@ void *LookupAndSend(int m_sock){
 	/*  Wait for a connection, then accept() it  */
 	
 	if ( (conn_s = accept(m_sock, NULL, NULL) ) < 0 ) {
-	    fprintf(stderr, "BLParserPBS: Error calling accept()\n");
+	    fprintf(stderr, "%s: Error calling accept()\n",progname);
 	    exit(EXIT_FAILURE);
 	}
 
@@ -715,7 +715,7 @@ close:
 	/*  Close the connected socket  */
 
 	if ( close(conn_s) < 0 ) {
-	    fprintf(stderr, "BLParserPBS: Error calling close()\n");
+	    fprintf(stderr, "%s: Error calling close()\n",progname);
 	    exit(EXIT_FAILURE);
 	}
 	
@@ -892,6 +892,34 @@ int strtoken(const char *s, char delim, char **token)
     token[i] = NULL;
     free(tmp);
     return i;
+}
+
+int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir) {
+    
+    int n = 1;
+     
+    if(argc==2 && !(!strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2))){
+     *szPort= argv[n];
+     return 0;
+    }
+
+    while ( n < argc ) {
+        if ( !strncmp(argv[n], "-p", 2) || !strncmp(argv[n], "-P", 2) ) {
+            *szPort= argv[++n];
+        }
+        else if ( !strncmp(argv[n], "-s", 2) || !strncmp(argv[n], "-S", 2) ) {
+            *szSpoolDir = argv[++n];
+        }
+        else if ( !strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2) ) {
+            printf("Usage:\n");
+            printf("%s [-p] <remote_port [%d]> -s <PBS_spooldir [%s]>\n",progname, DEFAULT_PORT, spooldir);
+	    
+            exit(EXIT_SUCCESS);
+        }
+        ++n;
+    }
+    
+    return 0;
 }
 
 /* the reset is error processing stuff */

@@ -19,9 +19,6 @@ int main(int argc, char *argv[]) {
 
     ldir=GetLogDir(argc,argv);
     
-    /* For local tests */
-   //ldir="/home/mezzadri/src/logserver/final/logs";
-    
     strcat(eventsfile,ldir);
     strcat(eventsfile,"/");
     strcat(eventsfile,lsbevents);
@@ -33,12 +30,12 @@ int main(int argc, char *argv[]) {
     /*  Create the listening socket  */
 
     if ( (list_s = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
-	fprintf(stderr, "BLParserLSF: Error creating listening socket.\n");
+	fprintf(stderr, "%s: Error creating listening socket.\n",progname);
 	exit(EXIT_FAILURE);
     }
 
     if(setsockopt(list_s, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0) {
-        fprintf(stderr,"BLParserLSF: setsockopt() failed\n");
+        fprintf(stderr,"%s: setsockopt() failed\n",progname);
     }
 
     /*  Set all bytes in socket address structure to
@@ -53,12 +50,12 @@ int main(int argc, char *argv[]) {
 	listening socket, and call listen()  */
 
     if ( bind(list_s, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0 ) {
-	fprintf(stderr, "BLParserLSF: Error calling bind()\n");
+	fprintf(stderr, "%s: Error calling bind()\n",progname);
 	exit(EXIT_FAILURE);
     }
     
     if ( listen(list_s, LISTENQ) < 0 ) {
-    	fprintf(stderr, "BLParserLSF: Error calling listen()\n");
+    	fprintf(stderr, "%s: Error calling listen()\n",progname);
     	exit(EXIT_FAILURE);
     }
    
@@ -475,7 +472,7 @@ void *LookupAndSend(int m_sock){
 	/*  Wait for a connection, then accept() it  */
 	
 	if ( (conn_s = accept(m_sock, NULL, NULL) ) < 0 ) {
-	    fprintf(stderr, "BLParserLSF: Error calling accept()\n");
+	    fprintf(stderr, "%s: Error calling accept()\n",progname);
 	    exit(EXIT_FAILURE);
 	}
 
@@ -627,7 +624,7 @@ close:
 	/*  Close the connected socket  */
 
 	if ( close(conn_s) < 0 ) {
-	    fprintf(stderr, "BLParserLSF: Error calling close()\n");
+	    fprintf(stderr, "%s: Error calling close()\n",progname);
 	    exit(EXIT_FAILURE);
 	}
 	
@@ -682,8 +679,8 @@ char *GetLogDir(int largc, char *largv[]){
   
  if((largc > 1) && (szPort!=NULL)){
   port = strtol(szPort, &endptr, 0);
-  if ( *endptr ) {
-    printf("BLParserLSF: Invalid port supplied.\n");
+  if ( *endptr || port < 1 || port > 65535) {
+    fprintf(stderr,"%s: Invalid port supplied.\n",progname);
     exit(EXIT_FAILURE);
   }
  }else{
@@ -958,7 +955,7 @@ int ParseCmdLine(int argc, char *argv[], char **szPort, char **szBinPath, char *
     
     int n = 1;
 
-    if(argc==2){
+    if(argc==2 && !(!strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2))){
      *szPort= argv[n];
      return 0;
     }
@@ -974,8 +971,8 @@ int ParseCmdLine(int argc, char *argv[], char **szPort, char **szBinPath, char *
             *szConfPath = argv[++n];
         }
         else if ( !strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2) ) {
-            printf("Usage:\n\n");
-            printf("BLParserLSF [-p] <remote_port [%d]> -b <LSF_binpath [%s]> -c <LSF_confpath [%s]>\n\n",DEFAULT_PORT, binpath, confpath);
+            printf("Usage:\n");
+            printf("%s [-p] <remote_port [%d]> -b <LSF_binpath [%s]> -c <LSF_confpath [%s]>\n",progname, DEFAULT_PORT, binpath, confpath);
 	    
             exit(EXIT_SUCCESS);
         }

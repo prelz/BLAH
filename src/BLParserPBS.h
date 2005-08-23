@@ -16,8 +16,8 @@
 #include <fcntl.h>
 #include <assert.h>
 
-#define LISTENQ            (1024)
-#define ECHO_PORT          (2002)
+#define LISTENQ            1024
+#define DEFAULT_PORT       33332
 #define MAX_LINES          100000
 #define MAX_CHARS          100000
 #define STR_CHARS          3000
@@ -55,6 +55,7 @@ int GetEventsInOldLogs(char *logdate);
 int strtoken(const char *s, char delim, char **token);
 int InfoAdd(int id, char *value, const char * flag);
 char *InfoGet(int id, const char * flag);
+int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir); 
 
 /* Variables initialization */
 
@@ -71,8 +72,14 @@ int rcounter=0;
 pthread_mutex_t read_mutex  = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t write_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+char *progname="BLParserPBS";
+
 char *ldir;
-char *spooldir;
+
+int port;
+
+/* spooldir default */
+char *spooldir="/usr/spool/PBS";
 
 char *LastLog=NULL;
 
