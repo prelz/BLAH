@@ -355,6 +355,8 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
      rm $curdir/$tmp_file
      exit 1
  fi
+ 
+ sleep 2
 
 done
 

@@ -331,6 +331,8 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
      exit 1
  fi
 
+ sleep 2 
+
 done
 
 if [ "$jobID_log" != "$jobID" ]; then
