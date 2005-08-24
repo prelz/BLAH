@@ -22,7 +22,7 @@
 #define MAX_CHARS          100000
 #define STR_CHARS          3000
 #define NUM_CHARS          300
-#define HASHSIZE           500000 
+#define HASHSIZE           50000000
 #define NUMTHRDS           20
 #define NLINES             2000  /* lines for tail */
 #define ERRMAX             80

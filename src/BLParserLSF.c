@@ -816,9 +816,9 @@ char *GetLogList(char *logdate){
   }
   pclose(lastlog_output);
  
-  sprintf(command_string,"find %s/%s.[0-9]* -type f -newer %s ! -newer %s -printf \"%%p \"", ldir, lsbevents, datefile, lastfile);
+  sprintf(command_string,"find %s/%s.[0-9]* -type f -newer %s ! -newer %s -printf \"%%p \" 2>/dev/null", ldir, lsbevents, datefile, lastfile);
  } else{
-  sprintf(command_string,"find %s/%s.[0-9]* -type f -newer %s -printf \"%%p \"", ldir, lsbevents, datefile);
+  sprintf(command_string,"find %s/%s.[0-9]* -type f -newer %s -printf \"%%p \" 2>/dev/null", ldir, lsbevents, datefile);
  }
  
  find_output = popen(command_string,"r");
@@ -865,7 +865,7 @@ char *GetLogList(char *logdate){
    }
    
 /* This is done to get date from lastlog file */
-   sprintf(command_string,"find %s -printf \"%%c \"",LastLog);
+   sprintf(command_string,"find %s -printf \"%%c \" 2>/dev/null",LastLog);
    findlast_output = popen(command_string,"r");
    if (findlast_output != NULL){
     len = fread(LastLogDate, sizeof(char), sizeof(LastLogDate) - 1 , findlast_output);

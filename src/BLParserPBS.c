@@ -787,9 +787,9 @@ char *GetLogList(char *logdate){
  pclose(touch_output);
  
  if(LastLog!=NULL){
-  sprintf(command_string,"find %s/* -type f -newer %s ! -newer %s -printf \"%%p \"", ldir, datefile, LastLog);
+  sprintf(command_string,"find %s/* -type f -newer %s ! -newer %s -printf \"%%p \" 2>/dev/null", ldir, datefile, LastLog);
  } else{
-  sprintf(command_string,"find %s/* -type f -newer %s -printf \"%%p \"", ldir, datefile);
+  sprintf(command_string,"find %s/* -type f -newer %s -printf \"%%p \" 2>/dev/null", ldir, datefile);
  }
  
  find_output = popen(command_string,"r");
