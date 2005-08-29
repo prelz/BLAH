@@ -69,12 +69,6 @@ pars=$*
 requested=`echo $pars | sed -e 's/^.*\///'`
 datenow=`echo $pars | sed 's/\/.*//'`
 
-datefile=`mktemp -q blahjob_XXXXXX`
-if [ $? -ne 0 ]; then
-   echo 'Error creating temporary file'
-   exit 1
-fi
-
 proxy_dir=~/.blah_jobproxy_dir
 
 cliretcode=0
@@ -86,6 +80,13 @@ if [ "x$BLParser" == "xyes" ] ; then
 fi
 
 if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
+
+datefile=`mktemp -q blahjob_XXXXXX`
+
+if [ $? -ne 0 ]; then
+   echo 'Error creating temporary file'
+   exit 1
+fi
 
 usingBLP="no"
 confpath=${LSF_CONF_PATH:-/etc}
