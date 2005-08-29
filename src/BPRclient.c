@@ -88,15 +88,16 @@ main(int argc, char **argv)
 	servAddr.sin_family = resolved_client->h_addrtype;
 	memcpy((char *) &servAddr.sin_addr.s_addr, resolved_client->h_addr_list[0], resolved_client->h_length);
   
-	if ((fd_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-	{
-		fprintf(stderr, "Cannot create socket: %s\n", strerror(errno));
-		exit(1);
-	}
-
 	/* Search for the job on the worker node */
 	for (server_port = PORT_RANGE_FROM; server_port <= PORT_RANGE_TO; server_port++)
 	{
+		/* Create the socket everytime (cannot be reused once closed) */
+		if ((fd_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+		{
+			fprintf(stderr, "Cannot create socket: %s\n", strerror(errno));
+			exit(1);
+		}
+
 		/* Bind any port number */
 		localAddr.sin_family = AF_INET;
 		localAddr.sin_addr.s_addr = htonl(INADDR_ANY);
