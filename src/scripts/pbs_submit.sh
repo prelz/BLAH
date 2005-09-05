@@ -309,8 +309,10 @@ if [ $? -ne 0 ]; then
 fi
 
 datenow=`date +%Y%m%d`
-jobID=`${binpath}qsub $curdir/$tmp_file` # actual submission
+jobIDtmp=`${binpath}qsub $curdir/$tmp_file` # actual submission
 retcode=$?
+
+jobID=`echo $jobIDtmp|awk -F"." '{ print $1 }'`
 
 # Don't trust qsub retcode, it could have crashed
 # between submission and id output, and we would
@@ -344,7 +346,7 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
 
      logfile=`find $logpath -type f -newer $curdir/$tmp_file -exec grep -l "job name = $tmp_file" {} \;`
 
-     jobID_log=`grep "job name = $tmp_file" $logfile | awk -F";" '{ print $5 }'`
+     jobID_log=`grep "job name = $tmp_file" $logfile | awk -F";" '{ print $5 }'| awk -F"." '{ print $1 }'`
 
  fi
 
@@ -360,10 +362,12 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
 
 done
 
-if [ "$jobID_log" != "$jobID" ]; then
-    # echo "WARNING: JobID in log file is different from the one returned by qsub!" >&2
-    # echo "($jobID_log != $jobID)" >&2
-    # echo "I'll be using the one in the log ($jobID_log)..." >&2
+jobID_check=`echo $jobID_log|egrep -e "^[0-9]+$"`
+
+if [ "$jobID_log" != "$jobID"  -a "x$jobID_log" != "x" -a "x$jobID_check" != "x" ]; then
+    echo "WARNING: JobID in log file is different from the one returned by qsub!" >&2
+    echo "($jobID_log != $jobID)" >&2
+    echo "I'll be using the one in the log ($jobID_log)..." >&2
     jobID=$jobID_log
 fi
 
