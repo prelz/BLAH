@@ -24,6 +24,7 @@
 #include <string.h>
 #include <errno.h>
 #include <netdb.h>
+#include <unistd.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/select.h>
@@ -50,12 +51,21 @@ main(int argc, char *argv[])
     int retcod, status;
     int exit_program = 0;
     pid_t pid;
+#ifdef MTRACE_ON
+    char mtrace_log[2048]; /* FIXME */
+#endif
    
     /* 
     openlog("blahpd", LOG_PID, LOG_DAEMON);
     syslog(LOG_DAEMON | LOG_INFO, "Starting blah server (%s)", RCSID_VERSION);
     */
-    
+
+#ifdef MTRACE_ON
+    sprintf(mtrace_log, "mtrace_%d.log", getpid());  /* FIXME */
+    setenv("MALLOC_TRACE", mtrace_log, 1);           /* FIXME */
+    mtrace();                                        /* FIXME */
+#endif
+
     serveConnection(0, "(stdin)");
 
     exit(0);

@@ -221,6 +221,8 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 		shutdown(cli_socket, SHUT_RDWR);
 		close(cli_socket);
 	}
+	free(blah_script_location);
+	free(blah_version);
 	exit(exitcode);
 }
 
@@ -510,8 +512,8 @@ cmd_status_job(void *args)
 		else
 		{
 			enqueue_result("Missing result line due to memory error");
-			free(esc_errstr);
 		}
+		free(esc_errstr);
 	}
 	else
 		enqueue_result("Missing result line due to memory error");
@@ -688,7 +690,7 @@ get_command(int s)
 	static char *queue_end;
 	char *message = NULL;
 	int allocated_size = 0;
-	char buffer[256];
+	char buffer[2047];
 	int read_chars = 0; 
 	int recv_chars, i;
 	int done = FALSE;
