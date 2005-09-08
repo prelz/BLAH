@@ -459,7 +459,7 @@ void *LookupAndSend(int m_sock){
     char      *out_buf;
     char      *logdate;
     char      *jobid;
-    char      h_jobid[20];
+    char      h_jobid[NUM_CHARS];
     char      t_wnode[STR_CHARS];
     char      *pr_removal="Not";
     int       i;
