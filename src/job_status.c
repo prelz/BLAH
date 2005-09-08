@@ -46,29 +46,35 @@ get_status(const char *jobDesc, classad_context *cad, char *error_str, int get_w
 		strncpy(error_str, "Malformed jobId", ERROR_MAX_LEN);
                 return(255);
         }
-        server_lrms = strdup(jobDesc);
+
+        if((server_lrms = strdup(jobDesc)) == NULL)
+	{
+                fprintf(stderr, "Out of memory\n");
+                exit(MALLOC_ERROR);
+        }
+
         server_lrms[3] = '\0';
         jobId = server_lrms + 4;
 
         command = make_message("%s/%s_status.sh %s %s", blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobId);
-	if (command == NULL)
-	{
-		fprintf(stderr, "Malloc error in get_status\n");
-		strncpy(error_str, "Out of memory", ERROR_MAX_LEN);
-		return(MALLOC_ERROR);
-	};
-	/* fprintf(stderr, "DEBUG: status cmd = %s\n", command); */
 
+	/* fprintf(stderr, "DEBUG: status cmd = %s\n", command); */
 	if ((cmd_out=mtsafe_popen(command, "r")) == NULL)
 	{
 		fprintf(stderr, "Unable to execute '%s': ", command);
 		perror("");
 		strncpy(error_str, "Unable to open pipe for status command", ERROR_MAX_LEN);
+		free(server_lrms);
 		return(255);
 	}
 
-	cad_str = malloc(1);
-	cad_str[0] = '\000';
+	if((cad_str = malloc(1)) == NULL)
+	{
+		fprintf(stderr, "Out of memory\n");
+		exit(MALLOC_ERROR);
+	}
+	cad_str[0] = '\0';
+
 	while (fgets(buffer, sizeof(buffer), cmd_out))
 	{
 		/* This line is for backward compatibility */
@@ -93,9 +99,12 @@ get_status(const char *jobDesc, classad_context *cad, char *error_str, int get_w
 			strncpy(error_str, "Error parsing classad", ERROR_MAX_LEN);
                         free(cad_str);
                         free(command);
+			free(server_lrms);
 			return(255);
 		}
 	}
+
+	free(server_lrms);
 	free(cad_str);
 	free(command);
 
