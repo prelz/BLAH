@@ -336,6 +336,10 @@ int InfoAdd(int id, char *value, const char * flag){
  if((strcmp(flag,"JOBID")==0) && j2js[id] == NULL){
  
   j2js[id] = strdup("1");
+  j2ec[id] = strdup("\0");
+  j2st[id] = strdup("\0");
+  j2rt[id] = strdup("\0");
+  j2ct[id] = strdup("\0");
   
  } else if(strcmp(flag,"JOBSTATUS")==0){
  
@@ -344,6 +348,18 @@ int InfoAdd(int id, char *value, const char * flag){
  } else if(strcmp(flag,"EXITCODE")==0){
 
   j2ec[id] = strdup(value);
+ 
+ } else if(strcmp(flag,"STARTTIME")==0){
+
+  j2st[id] = strdup(value);
+ 
+ } else if(strcmp(flag,"RUNNINGTIME")==0){
+
+  j2rt[id] = strdup(value);
+ 
+ } else if(strcmp(flag,"COMPLTIME")==0){
+
+  j2ct[id] = strdup(value);
  
  } else {
  
@@ -382,6 +398,9 @@ int AddToStruct(char *line){
  char *	tjobid=NULL;
  char *	jobid=NULL;
 
+ char *	tj_time=NULL;
+ char *	j_time=NULL;
+
  char *	tex_status=NULL;
  char *	ex_status=NULL;
 
@@ -397,7 +416,10 @@ int AddToStruct(char *line){
  s_tok=strtok(line,";");
 
  while(s_tok!=NULL){
-  if(n==4){
+  if(n==0){
+   tj_time=strdup(s_tok);
+   j_time=convdate(tj_time);
+  }else if(n==4){
    tjobid=strdup(s_tok);
   }else if(n==5){
    rex=strdup(s_tok);
@@ -489,6 +511,7 @@ int AddToStruct(char *line){
  if((is_queued==1) && (has_blah) && (j2js[id]==NULL)){
 
   InfoAdd(id,jobid,"JOBID");
+  InfoAdd(id,j_time,"STARTTIME");
  
   h_blahjob=hash(j_blahjob);
   bjl[h_blahjob]=strdup(jobid);
@@ -498,6 +521,7 @@ int AddToStruct(char *line){
   if(rex && strstr(rex,rex_running)!=NULL){
 
    InfoAdd(id,"2","JOBSTATUS");
+   InfoAdd(id,j_time,"RUNNINGTIME");
    
   } else if(strstr(rex,rex_deleted)!=NULL){
   
@@ -507,6 +531,7 @@ int AddToStruct(char *line){
   
    InfoAdd(id,"4","JOBSTATUS");
    InfoAdd(id,ex_status,"EXITCODE");
+   InfoAdd(id,j_time,"COMPLTIME");
 
   } else if(rex && strstr(rex,rex_hold)!=NULL){
   
@@ -567,7 +592,7 @@ void *LookupAndSend(int m_sock){
     char      *out_buf;
     char      *logdate;
     char      *jobid;
-    char      h_jobid[20];
+    char      h_jobid[NUM_CHARS];
     char      *pr_removal="Not";
     int       i;
     int       id;
@@ -658,9 +683,11 @@ all the jobid in the output classad */
             pr_removal="Not";
            }
            if(strcmp(j2js[id],"4")==0){
-            sprintf(out_buf,"[BatchJobId=\"%s\"; JobStatus=%s; ExitCode=%s;/%s\n",jobid, j2js[id], j2ec[id], pr_removal);
+            sprintf(out_buf,"[BatchJobId=\"%s\"; JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\"; ExitCode=%s;/%s\n",jobid, j2js[id], j2st[id], j2rt[id], j2ct[id], j2ec[id], pr_removal);
+           }else if(strcmp(j2rt[id],"\0")!=0){
+            sprintf(out_buf,"[BatchJobId=\"%s\"; JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";/%s\n",jobid, j2js[id], j2st[id], j2rt[id], pr_removal);
            }else{
-            sprintf(out_buf,"[BatchJobId=\"%s\"; JobStatus=%s;/%s\n",jobid, j2js[id], pr_removal);
+            sprintf(out_buf,"[BatchJobId=\"%s\"; JobStatus=%s; LRMSSubmissionTime=\"%s\";/%s\n",jobid, j2js[id], j2st[id], pr_removal);
            }
 	   
 	  } else {
@@ -679,9 +706,11 @@ all the jobid in the output classad */
              pr_removal="Not";
             }
             if(strcmp(j2js[id],"4")==0){
-             sprintf(out_buf,"[BatchJobId=\"%s\"; JobStatus=%s; ExitCode=%s;/%s\n",jobid, j2js[id], j2ec[id], pr_removal);
+             sprintf(out_buf,"[BatchJobId=\"%s\"; JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\"; ExitCode=%s;/%s\n",jobid, j2js[id], j2st[id], j2rt[id], j2ct[id], j2ec[id], pr_removal);
+            }else if(strcmp(j2rt[id],"\0")!=0){
+             sprintf(out_buf,"[BatchJobId=\"%s\"; JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";/%s\n",jobid, j2js[id], j2st[id], j2rt[id], pr_removal);
             }else{
-             sprintf(out_buf,"[BatchJobId=\"%s\"; JobStatus=%s;/%s\n",jobid, j2js[id], pr_removal);
+             sprintf(out_buf,"[BatchJobId=\"%s\"; JobStatus=%s; LRMSSubmissionTime=\"%s\";/%s\n",jobid, j2js[id], j2st[id], pr_removal);
             }
 	    
 	   } else {
@@ -892,6 +921,25 @@ int strtoken(const char *s, char delim, char **token)
     token[i] = NULL;
     free(tmp);
     return i;
+}
+
+char *convdate(char *date){
+  
+ char *dateout;
+ size_t max=100;
+
+ struct tm *tm;
+ tm=malloc(max);
+
+ strptime(date,"%m/%d/%Y %T",tm);
+ 
+ dateout=malloc(max);
+ 
+ strftime(dateout,max,"%d-%m-%y %T",tm);
+ free(tm);
+ 
+ return dateout;
+ 
 }
 
 int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir) {

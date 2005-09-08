@@ -56,11 +56,15 @@ int strtoken(const char *s, char delim, char **token);
 int InfoAdd(int id, char *value, const char * flag);
 char *InfoGet(int id, const char * flag);
 int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir); 
+char *convdate(char *date);
 
 /* Variables initialization */
 
 char *j2js[HASHSIZE];
 char *j2ec[HASHSIZE];
+char *j2st[HASHSIZE];
+char *j2rt[HASHSIZE];
+char *j2ct[HASHSIZE];
 
 char *bjl[HASHSIZE];
 
