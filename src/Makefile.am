@@ -2,11 +2,11 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.6 2005/05/05 09:17:20 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.7 2005/09/08 17:19:11 drebatto Exp $ 
 #
 # File:           Makefile.am
 #
-# Author(s):      Francesco Prelz ($Author: mezzadri $)
+# Author(s):      Francesco Prelz ($Author: drebatto $)
 #        e-mail: "Francesco.Prelz@mi.infn.it"
 #
 # Revision history:
@@ -20,7 +20,7 @@ SUBDIRS = scripts
 
 bin_PROGRAMS = blahpd blahpd_daemon BPRclient BPRserver BLClient BLParserLSF BLParserPBS
 
-common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_c_helper.C
+common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_c_helper.C mtsafe_popen.c
 
 blahpd_SOURCES = main.c $(common_sources)
 
@@ -52,7 +52,7 @@ BLParserPBS_SOURCES = BLParserPBS.c
 
 BLParserPBS_LDADD =
 
-noinst_HEADERS = blahpd.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h
+noinst_HEADERS = blahpd.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h mtsafe_popen.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h
 
 #bin_SCRIPTS = pbs_cancel.sh pbs_status.sh pbs_submit.sh lsf_cancel.sh lsf_status.sh lsf_submit.sh
 
