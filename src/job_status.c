@@ -26,6 +26,7 @@
 
 #include "classad_c_helper.h"
 #include "blahpd.h"
+#include "mtsafe_popen.h"
 
 extern char *blah_script_location;
 
@@ -47,7 +48,7 @@ get_status(const char *jobDesc, classad_context *cad, char *error_str, int get_w
         }
         server_lrms = strdup(jobDesc);
         server_lrms[3] = '\0';
-        jobId = jobDesc + 4;
+        jobId = server_lrms + 4;
 
         command = make_message("%s/%s_status.sh %s %s", blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobId);
 	if (command == NULL)
@@ -58,7 +59,7 @@ get_status(const char *jobDesc, classad_context *cad, char *error_str, int get_w
 	};
 	/* fprintf(stderr, "DEBUG: status cmd = %s\n", command); */
 
-	if ((cmd_out=popen(command, "r")) == NULL)
+	if ((cmd_out=mtsafe_popen(command, "r")) == NULL)
 	{
 		fprintf(stderr, "Unable to execute '%s': ", command);
 		perror("");
@@ -77,7 +78,7 @@ get_status(const char *jobDesc, classad_context *cad, char *error_str, int get_w
 		strcat(cad_str, buffer);
 	}
 
-	retcode = pclose(cmd_out);
+	retcode = mtsafe_pclose(cmd_out);
 	if (retcode)
 	{
 		*cad = NULL;

@@ -49,6 +49,7 @@
 #include "commands.h"
 #include "job_status.h"
 #include "resbuffer.h"
+#include "mtsafe_popen.h"
 
 #define COMMAND_PREFIX "-c"
 #define PERSISTENT_BUFFER BUFFER_DONT_SAVE
@@ -306,7 +307,7 @@ cmd_results(void *args)
 }
 
 /* Threaded commands
- * must free argv before return
+ * N.B.: functions must free argv before return
  * */
 
 void *
@@ -317,54 +318,48 @@ cmd_submit_job(void *args)
 	int retcod;
 	char *command;
 	char jobId[JOBID_MAX_LEN];
-	char resultLine[RESLN_MAX_LEN];
+	char *resultLine;
 	char **argv = (char **)args;
 	char **arg_ptr;
 	classad_context cad;
 	char *reqId = argv[1];
 	char *jobDescr = argv[2];
 	char *server_lrms = NULL;
-	int r;
 	int result;
+	char error_message[1024];
+	char *error_string;
 
 	cad = classad_parse(jobDescr);
 	if (cad == NULL)
 	{
 		/* PUSH A FAILURE */
-		snprintf(resultLine, RESLN_MAX_LEN, "%s 1 Error\\ parsing\\ classad N/A", reqId);
-		enqueue_result(resultLine);
-		if (server_lrms) free (server_lrms);
-		return;
+		resultLine = make_message("%s 1 Error\\ parsing\\ classad N/A", reqId);
+		goto cleanup_argv;
 	}
 
 	/* Get the lrms type from classad attribute "gridtype" */
-	if ((result = classad_get_dstring_attribute(cad, "gridtype", &server_lrms)) != C_CLASSAD_NO_ERROR)
+	result = classad_get_dstring_attribute(cad, "gridtype", &server_lrms);
+	if (result != C_CLASSAD_NO_ERROR)
 	{
 		/* PUSH A FAILURE */
-		snprintf(resultLine, RESLN_MAX_LEN, "%s 1 Missing\\ gridtype\\ in\\ submission\\ classAd N/A", reqId);
-		enqueue_result(resultLine);
-		if (server_lrms) free (server_lrms);
-		return;
+		resultLine = make_message("%s 1 Missing\\ gridtype\\ in\\ submission\\ classAd N/A", reqId);
+		goto cleanup_cad;
 	}
 
 	command = make_message("%s/%s_submit.sh", blah_script_location, server_lrms);
 	if (command == NULL)
 	{
 		/* PUSH A FAILURE */
-		snprintf(resultLine, RESLN_MAX_LEN, "%s 1 Out\\ of\\ Memory N/A", reqId);
-		enqueue_result(resultLine);
-		if (server_lrms) free (server_lrms);
-		return;
+		resultLine = make_message("%s 1 Out\\ of\\ Memory N/A", reqId);
+		goto cleanup_lrms;
 	}
 
 	/* Cmd attribute is mandatory: stop on any error */
 	if (set_cmd_string_option(&command, cad, "Cmd", COMMAND_PREFIX, NO_QUOTE) != C_CLASSAD_NO_ERROR)
 	{
 		/* PUSH A FAILURE */
-		snprintf(resultLine, RESLN_MAX_LEN, "%s 7 Cannot\\ parse\\ Cmd\\ attribute\\ in\\ classad N/A", reqId);
-		enqueue_result(resultLine);
-		if (server_lrms) free (server_lrms);
-		return;
+		resultLine = make_message("%s 7 Cannot\\ parse\\ Cmd\\ attribute\\ in\\ classad N/A", reqId);
+		goto cleanup_command;
 	}
 	
 	/* All other attributes are optional: fail only on memory error 
@@ -381,41 +376,51 @@ cmd_submit_job(void *args)
 	    (set_cmd_string_option(&command, cad, "Args",       "--", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY))
 	{
 		/* PUSH A FAILURE */
-		sprintf(resultLine, "%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
-		enqueue_result(resultLine);
-		if (server_lrms) free (server_lrms);
-		return;
+		resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
+		goto cleanup_command;
 	}
 
+	/* Execute the submission command */
 	/* fprintf(stderr, "DEBUG: submission cmd = '%s'\n", command); */
-	if((cmd_out = popen(command, "r")) == NULL)
+	if((cmd_out = mtsafe_popen(command, "r")) == NULL)
 	{
 		/* PUSH A FAILURE */
-		sprintf(resultLine, "%s 3 Unable\\ to\\ open\\ pipe\\ for\\ submit N/A", reqId);
-		enqueue_result(resultLine);
-		if (server_lrms) free (server_lrms);
-		return;
+		/* errno is not set if popen fails because of low memory */
+		if (retcod = errno)
+			strerror_r(errno, error_message, sizeof(error_message));
+		else
+			strncpy(error_message, "Cannot open pipe for the command: out of memory", sizeof(error_message));
+
+		error_string = escape_spaces(error_message);
+		resultLine = make_message("%s %d %s", reqId, retcod, error_string);
+		free(error_string);
+		goto cleanup_command;
 	}
 	fgets(jobId, sizeof(jobId), cmd_out);
 	if (jobId[strlen(jobId) - 1] == '\n') jobId[strlen(jobId) - 1] = '\000';
-	retcod = pclose(cmd_out);
+	retcod = mtsafe_pclose(cmd_out);
 	if (retcod != 0)
 	{
 		/* PUSH A FAILURE */
-		sprintf(resultLine, "%s 2 Submit\\ command\\ exit\\ with\\ retcode\\ %d N/A", reqId, retcod);
-		enqueue_result(resultLine);
-		if (server_lrms) free (server_lrms);
-		return;
+		resultLine = make_message("%s 2 Submit\\ command\\ exit\\ with\\ retcode\\ %d N/A", reqId, WEXITSTATUS(retcod));
+		goto cleanup_command;
 	}
-	/* PUSH A SUCCESS */
-	sprintf(resultLine, "%s 0 No\\ error %s", reqId, jobId);
-	enqueue_result(resultLine);
 
-	/* Free up all arguments */
-	classad_free(cad);
+	/* PUSH A SUCCESS */
+	resultLine = make_message("%s 0 No\\ error %s", reqId, jobId);
+
+	/* Free up all arguments and exit (exit point in case of error is the label
+           pointing to last successfully allocated variable) */
+cleanup_command:
 	free(command);
+cleanup_lrms:
+	free(server_lrms);
+cleanup_cad:
+	classad_free(cad);
+cleanup_argv:
 	free_args(argv);
-	if (server_lrms) free (server_lrms);
+	enqueue_result(resultLine);
+	free(resultLine);
 
 	return;
 }
@@ -424,50 +429,88 @@ void *
 cmd_cancel_job(void* args)
 {
 	int retcod;
+	FILE *dummy;
 	char *command;
 	char *resultLine = NULL;
 	char **argv = (char **)args;
 	char **arg_ptr;
 	char *server_lrms;
 	char *reqId = argv[1];
-	char *jobDescr = argv[2];
+	char *jobId;
+	char error_message[1024];
+	char *error_string;
 
-	if (strlen(jobDescr) < 4)
+	/* The job Id needs at least 4 chars for the "<lrms>/" prefix */
+	if (strlen(argv[2]) < 4)
 	{
 		/* PUSH A FAILURE */
-		if (resultLine = make_message("%s 1 Malformed\\ jobId %s", reqId, jobDescr))
-		{
-			enqueue_result(resultLine);
-			free(resultLine);
-		}
-		return;
+		if ((resultLine = make_message("%s 2 Malformed\\ jobId %s", reqId, jobId)) == NULL)
+		goto cleanup_argv;
 	}
-	server_lrms = strdup(jobDescr);
-	server_lrms[3] = '\0';
-	jobDescr += 4;
 
-	command = make_message("%s/%s_cancel.sh %s", blah_script_location, server_lrms, jobDescr);
+	/* Split <lrms> and actual job Id */
+	if((server_lrms = strdup(argv[2])) == NULL)
+	{
+		/* PUSH A FAILURE */
+		if ((resultLine = make_message("%s 1 Cannot\\ allocate\\ memory\\ for\\ the\\ lrms\\ string", reqId)) == NULL)
+		{
+			fprintf(stderr, "Out of memory\n");
+			exit(MALLOC_ERROR);
+		}
+		goto cleanup_argv;
+	}
+	server_lrms[3] = '\0';
+	jobId = server_lrms + 4;
+
+	/* Prepare the cancellation command */
+	command = make_message("%s/%s_cancel.sh %s", blah_script_location, server_lrms, jobId);
 	if (command == NULL)
 	{
 		/* PUSH A FAILURE */
-		if (resultLine = make_message("%s 1 Out\\ of\\ Memory", reqId))
+		if ((resultLine = make_message("%s 1 Cannot\\ allocate\\ memory\\ for\\ the\\ command\\ string", reqId)) == NULL)
 		{	
-			enqueue_result(resultLine);
-			free(resultLine);
+			fprintf(stderr, "Out of memory\n");
+			exit(MALLOC_ERROR);
 		}
-		free (server_lrms);
-		return;
+		goto cleanup_lrms;
 	}
 
+	/* Execute the command */
 	/* fprintf(stderr, "DEBUG: executing %s\n", command); */
-	retcod = system(command);
-	if (resultLine = make_message("%s %d %s", reqId, retcod, retcod ? "Error" : "No\\ error")) {
-		enqueue_result(resultLine);
-		free (resultLine);
+	if((dummy = mtsafe_popen(command, "r")) == NULL)
+	{
+		/* PUSH A FAILURE */
+		/* errno is not set if popen fails because of low memory */
+		if (retcod = errno)
+			strerror_r(errno, error_message, sizeof(error_message));
+		else
+			strncpy(error_message, "Cannot open pipe for the command: out of memory", sizeof(error_message));
+
+		error_string = escape_spaces(error_message);
+		if ((resultLine = make_message("%s %d %s", reqId, retcod, error_string)) == NULL)
+		{	
+			fprintf(stderr, "Out of memory\n");
+			exit(MALLOC_ERROR);
+		}
+		goto cleanup_command;
+	}	
+	retcod = mtsafe_pclose(dummy);
+	if ((resultLine = make_message("%s %d %s", reqId, retcod, retcod ? "Error" : "No\\ error")) == NULL) 
+	{
+			fprintf(stderr, "Out of memory\n");
+			exit(MALLOC_ERROR);
 	}
+
+	/* Free up all arguments and exit (exit point in case of error is the label
+           pointing to last successfully allocated variable) */
+cleanup_command:
 	free(command);
+cleanup_lrms:
+	free(server_lrms);
+cleanup_argv:
 	free_args(argv);
-	free (server_lrms);
+	enqueue_result(resultLine);
+	free (resultLine);
 
 	return;
 }
@@ -488,39 +531,28 @@ cmd_status_job(void *args)
 	int jobStatus, retcode;
 
 	retcode = get_status(jobDescr, &status_ad, errstr, 0);
-	if (esc_errstr = escape_spaces(errstr))
+	esc_errstr = escape_spaces(errstr);
+	if (!retcode)
 	{
-		if (!retcode)
-		{
-			classad_get_int_attribute(status_ad, "JobStatus", &jobStatus);
-			str_cad = classad_unparse(status_ad);
-			esc_str_cad = escape_spaces(str_cad);
-			resultLine = make_message("%s %d %s %d %s", reqId, retcode, esc_errstr, jobStatus, esc_str_cad);
-			free(str_cad);
-			free(esc_str_cad);
-		}
-		else
-		{
-			resultLine = make_message("%s %d %s 0 N/A", reqId, retcode, esc_errstr);
-		}
-
-		if (resultLine)
-		{
-			enqueue_result(resultLine);
-			free(resultLine);
-		}
-		else
-		{
-			enqueue_result("Missing result line due to memory error");
-		}
-		free(esc_errstr);
+		classad_get_int_attribute(status_ad, "JobStatus", &jobStatus);
+		str_cad = classad_unparse(status_ad);
+		esc_str_cad = escape_spaces(str_cad);
+		resultLine = make_message("%s %d %s %d %s", reqId, retcode, esc_errstr, jobStatus, esc_str_cad);
+		classad_free(status_ad);
+		free(str_cad);
+		free(esc_str_cad);
 	}
 	else
-		enqueue_result("Missing result line due to memory error");
+	{
+		resultLine = make_message("%s %d %s 0 N/A", reqId, retcode, esc_errstr);
+	}
+
 	
 	/* Free up all arguments */
-	classad_free(status_ad);
+	enqueue_result(resultLine);
+	free(resultLine);
 	free_args(argv);
+	free(esc_errstr);
 	
 	return;
 }
@@ -939,16 +971,20 @@ set_cmd_list_option(char **command, classad_context cad, const char *attribute, 
 char *
 make_message(const char *fmt, ...)
 {
-	int n;
+	int string_length;
 	char *result = NULL;
 	va_list ap;
 
 	va_start(ap, fmt);
-	n = vsnprintf(NULL, 0, fmt, ap) + 1;
+	string_length = vsnprintf(NULL, 0, fmt, ap) + 1;
 
-	result = (char *) malloc (n);
-	if (result)
-		vsnprintf(result, n, fmt, ap);
+	if ((result = (char *) malloc (string_length)) == NULL)
+	{
+		fprintf(stderr, "Out of memory\n");
+		exit(MALLOC_ERROR);
+	}
+
+	vsnprintf(result, string_length, fmt, ap);
 	va_end(ap);
 
 	return(result);

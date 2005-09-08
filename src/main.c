@@ -30,7 +30,6 @@
 #include <sys/select.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-/* #include <syslog.h> */
 #include <mcheck.h>
 
 #include "blahpd.h"
@@ -52,18 +51,13 @@ main(int argc, char *argv[])
     int exit_program = 0;
     pid_t pid;
 #ifdef MTRACE_ON
-    char mtrace_log[2048]; /* FIXME */
+    char mtrace_log[2048];
 #endif
    
-    /* 
-    openlog("blahpd", LOG_PID, LOG_DAEMON);
-    syslog(LOG_DAEMON | LOG_INFO, "Starting blah server (%s)", RCSID_VERSION);
-    */
-
 #ifdef MTRACE_ON
-    sprintf(mtrace_log, "mtrace_%d.log", getpid());  /* FIXME */
-    setenv("MALLOC_TRACE", mtrace_log, 1);           /* FIXME */
-    mtrace();                                        /* FIXME */
+    sprintf(mtrace_log, "mtrace_%d.log", getpid());
+    setenv("MALLOC_TRACE", mtrace_log, 1);
+    mtrace();
 #endif
 
     serveConnection(0, "(stdin)");
