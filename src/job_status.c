@@ -104,6 +104,7 @@ get_status(const char *jobDesc, classad_context *cad, char *error_str, int get_w
 		}
 	}
 
+	strncpy(error_str, "No Error", ERROR_MAX_LEN);
 	free(server_lrms);
 	free(cad_str);
 	free(command);
