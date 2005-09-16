@@ -794,7 +794,7 @@ char *GetLogList(char *logdate){
  }
  pclose(mklast_output);
  
- sprintf(command_string,"touch -t %s %s",logdate,datefile);
+ sprintf(command_string,"touch -t %s %s 2>/dev/null",logdate,datefile);
  touch_output = popen(command_string,"r");
  if (touch_output != NULL){
   len = fread(touch_out, sizeof(char), sizeof(touch_out) - 1 , touch_output);
@@ -807,7 +807,7 @@ char *GetLogList(char *logdate){
   if(strcmp(LastLogDate,"\0")!=0){
 /* This is done to create a file with the lastlog exact date */
 
-  sprintf(command_string,"touch -d \"%s\" %s",LastLogDate,lastfile);
+  sprintf(command_string,"touch -d \"%s\" %s 2>/dev/null",LastLogDate,lastfile);
   lastlog_output = popen(command_string,"r");
   if (lastlog_output != NULL){
    len = fread(lastlog_out, sizeof(char), sizeof(lastlog_out) - 1 , lastlog_output);

@@ -801,9 +801,9 @@ char *GetLogList(char *logdate){
 /* We deal with both date format (20050513 and 200505130000.00) even if it is not needed */
 
  if(strlen(logdate) > 9){
-  sprintf(command_string,"touch -t %s %s",logdate,datefile);
+  sprintf(command_string,"touch -t %s %s 2>/dev/null",logdate,datefile);
  } else {
-  sprintf(command_string,"touch -d %s %s",logdate,datefile);
+  sprintf(command_string,"touch -d %s %s 2>/dev/null",logdate,datefile);
  }
 
  touch_output = popen(command_string,"r");
