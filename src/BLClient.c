@@ -19,8 +19,6 @@
 int ParseCmdLine(int argc, char *argv[], char **szAddress, char **szPort);
 
 
-/*  main()  */
-
 int main(int argc, char *argv[]) {
 
     int       conn_s;                /*  connection socket         */
@@ -70,7 +68,7 @@ int main(int argc, char *argv[]) {
     }
 
     
-    /*  connect() to the remote echo server  */
+    /*  connect() to the remote server  */
 
     if ( connect(conn_s, (struct sockaddr *) &servaddr, sizeof(servaddr) ) < 0 ) {
 	printf("BLClient: Error calling connect()\n");
@@ -78,19 +76,14 @@ int main(int argc, char *argv[]) {
     }
 
 
-    /*  Get string to echo from user  */
-
-    /*printf("Enter the string to echo: ");*/
     fgets(buffer, MAX_LINE, stdin);
     
 
-    /*  Send string to echo server, and retrieve response  */
+    /*  Send string to the server, and retrieve response  */
 
     Writeline(conn_s, buffer, strlen(buffer));
     Readline(conn_s, buffer, MAX_LINE-1);
 
-
-    /*  Output echoed string  */
 
     printf("%s", buffer);
 
