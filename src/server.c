@@ -53,7 +53,9 @@
 
 #define COMMAND_PREFIX "-c"
 #define PERSISTENT_BUFFER BUFFER_DONT_SAVE
-
+#define JOBID_PREFIX "BLAHP_JOBID_PREFIX"
+#define JOBID_PREFIX_LEN 18
+ 
 t_resline *first_job = NULL;
 t_resline *last_job = NULL;
 int num_jobs = 0;
@@ -328,7 +330,8 @@ cmd_submit_job(void *args)
 	int result;
 	char error_message[ERROR_MAX_LEN];
 	char *error_string;
-
+	int res = 1;
+	char* resfg = NULL;
 	cad = classad_parse(jobDescr);
 	if (cad == NULL)
 	{
@@ -396,18 +399,27 @@ cmd_submit_job(void *args)
 		free(error_string);
 		goto cleanup_command;
 	}
-	fgets(jobId, sizeof(jobId), cmd_out);
-	if (jobId[strlen(jobId) - 1] == '\n') jobId[strlen(jobId) - 1] = '\000';
-	retcod = mtsafe_pclose(cmd_out);
-	if (retcod != 0)
+	
+	while(1)
 	{
-		/* PUSH A FAILURE */
-		resultLine = make_message("%s 2 Submit\\ command\\ exit\\ with\\ retcode\\ %d N/A", reqId, WEXITSTATUS(retcod));
-		goto cleanup_command;
+	 	resfg = fgets(jobId, sizeof(jobId), cmd_out);
+		if (resfg == NULL) break;
+		res = strncmp(jobId,JOBID_PREFIX,JOBID_PREFIX_LEN);
+		if (res == 0) break;
 	}
 
+	retcod = mtsafe_pclose(cmd_out);
+	if ((retcod != 0)||(res != 0))
+	{
+		/* PUSH A FAILURE */
+		resultLine = make_message("%s 2 Submit\\ command\\ didn't\\ return\\ jobId\\ (exit code = %d) N/A", reqId, WEXITSTATUS(retcod));
+		goto cleanup_command;
+	}
+	
+	if (jobId[strlen(jobId) - 1] == '\n') jobId[strlen(jobId) - 1] = '\000';
+ 	
 	/* PUSH A SUCCESS */
-	resultLine = make_message("%s 0 No\\ error %s", reqId, jobId);
+	resultLine = make_message("%s 0 No\\ error %s", reqId, jobId + JOBID_PREFIX_LEN);
 
 	/* Free up all arguments and exit (exit point in case of error is the label
            pointing to last successfully allocated variable) */

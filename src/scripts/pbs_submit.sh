@@ -373,7 +373,7 @@ fi
 
 
 # Compose the blahp jobID ("pbs/" + logfile + pbs jobid)
-echo "pbs/`basename $logfile`/$jobID"
+echo "BLAHP_JOBID_PREFIXpbs/`basename $logfile`/$jobID"
 
 # Clean temporary files
 cd $curdir

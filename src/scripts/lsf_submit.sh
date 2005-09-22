@@ -345,7 +345,8 @@ if [ "$jobID_log" != "$jobID" -a "x$jobID_log" != "x" -a "x$jobID_check" != "x" 
 fi
 
 # Compose the blahp jobID (date + lsf jobid)
-echo "lsf/${datenow}/$jobID"
+echo ""
+echo "BLAHP_JOBID_PREFIXlsf/${datenow}/$jobID"
 
 # Clean temporary files
 cd $curdir
