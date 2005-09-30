@@ -25,7 +25,7 @@ int main(int argc, char *argv[]) {
     
     /* Get all events from lsb.events */
     
-     GetAllEvents(eventsfile);
+    /* GetAllEvents(eventsfile);      */
 
     /*  Create the listening socket  */
 
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
 	listening socket, and call listen()  */
 
     if ( bind(list_s, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0 ) {
-	fprintf(stderr, "%s: Error calling bind()\n",progname);
+	fprintf(stderr, "%s: Error calling bind() in main\n",progname);
 	exit(EXIT_FAILURE);
     }
     
@@ -111,13 +111,13 @@ ssize_t Writeline(int sockd, const void *vptr, size_t n) {
     ssize_t     nwritten;
     const char *buffer;
     
-
     buffer = vptr;
     nleft  = n;
 
      while ( nleft > 0 ) {
+
  	if ( (nwritten = write(sockd, (char *)vptr, nleft)) <= 0 ) {
-	    if ( errno == EINTR ) {
+            if ( errno == EINTR ) {
 		nwritten = 0;
 	    }else{
 		return -1;
@@ -156,7 +156,7 @@ void *mytail (void *infile){
 	}
     }
  
-   follow((char *)infile, lines, nlines);
+    follow((char *)infile, lines, nlines);
    
     for(i=0; i < nlines; i++){
      free(lines[i]);
@@ -286,15 +286,15 @@ int InfoAdd(int id, char *value, const char * flag){
  } else {
  
  /* release write lock */
-    wlock=0;
-    
+   wlock=0;
+
    return -1;
  
  }
    /* release write lock */
-    wlock=0;
-    
-   return 0;
+  wlock=0;
+
+  return 0;
 }
 
 int AddToStruct(char *line){
@@ -381,13 +381,13 @@ int AddToStruct(char *line){
      
   } else if(rex && strcmp(rex,rex_status)==0){
   
-   if(j_status && strstr(j_status,"192")!=NULL){
+   if(j_status && strcmp(j_status,"192")==0){
 
     InfoAdd(id,"4","JOBSTATUS");
     InfoAdd(id,"0","EXITCODE");
     InfoAdd(id,j_time,"COMPLTIME");
 
-   }  else if(j_status && strstr(j_status,"32")!=NULL){
+   }  else if(j_status && strcmp(j_status,"32")==0){
 
     if(strcmp(j2js[id],"3")!=0){
      InfoAdd(id,"4","JOBSTATUS");
@@ -395,11 +395,11 @@ int AddToStruct(char *line){
      InfoAdd(id,j_time,"COMPLTIME");
     }
 
-   } else if((j_status && strstr(j_status,"16")!=NULL) || (j_status && strstr(j_status,"8")!=NULL)){
+   } else if((j_status && strcmp(j_status,"16")==0) || (j_status && strcmp(j_status,"8")==0) || (j_status && strcmp(j_status,"2")==0)){
 
     InfoAdd(id,"5","JOBSTATUS");
 
-   } else if(j_status && strstr(j_status,"4")!=NULL){
+   } else if((j_status && strcmp(j_status,"4")==0) || (j_status && strcmp(j_status,"1")==0)){
 
     InfoAdd(id,"2","JOBSTATUS");
 

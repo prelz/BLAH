@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
     
     /* Get all events from last log */
     
-     GetAllEvents(eventsfile);
+    /* GetAllEvents(eventsfile);    */
 
     /*  Create the listening socket  */
 
