@@ -399,10 +399,14 @@ int AddToStruct(char *line){
 
     InfoAdd(id,"5","JOBSTATUS");
 
-   } else if((j_status && strcmp(j_status,"4")==0) || (j_status && strcmp(j_status,"1")==0)){
+   } else if(j_status && strcmp(j_status,"4")==0){
 
     InfoAdd(id,"2","JOBSTATUS");
 
+   } else if(j_status && strcmp(j_status,"1")==0){
+ 
+    InfoAdd(id,"1","JOBSTATUS");
+   
    }
   } /* closes if-else if on rex_ */
  } /* closes if-else if on jobid lookup */
