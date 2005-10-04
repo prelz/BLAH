@@ -53,8 +53,10 @@
 
 #define COMMAND_PREFIX "-c"
 #define PERSISTENT_BUFFER BUFFER_DONT_SAVE
-#define JOBID_PREFIX "BLAHP_JOBID_PREFIX"
-#define JOBID_PREFIX_LEN 18
+#define JOBID_PREFIX            "BLAHP_JOBID_PREFIX"
+#define JOBID_PREFIX_LEN        18
+#define HOLD_JOB                1
+#define RESUME_JOB              0
  
 t_resline *first_job = NULL;
 t_resline *last_job = NULL;
@@ -79,11 +81,20 @@ const char *opt_format[4] = {
 	" %s %d"                /* INT_NOQUOTE */
 };
 
+char* statusstring[]={
+ "IDLE",
+ "RUNNING",
+ "REMOVED",
+ "IDLE",
+ "HELD",
+};
+
 /* Function prototypes */
 char *get_command(int client_socket);
 char *escape_spaces(const char *str);
 int set_cmd_list_option(char **command, classad_context cad, const char *attribute, const char *option);
 int set_cmd_string_option(char **command, classad_context cad, const char *attribute, const char *option, const int quote_style);
+int limit_proxy(char* proxyname);
 
 /* Global variables */
 static int server_socket;
@@ -110,8 +121,6 @@ free_args(char **arg_array)
 		free(arg_array);
 	}
 }	
-
-
 /* Main server function 
  * */
 int
@@ -127,7 +136,7 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	int i, argc;
 	char **argv;
 	command_t *command;
-
+	
 	init_resbuffer();
 	if (cli_socket == 0) server_socket = 1;
 	else                 server_socket = cli_socket;
@@ -224,8 +233,10 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 		shutdown(cli_socket, SHUT_RDWR);
 		close(cli_socket);
 	}
+
 	free(blah_script_location);
 	free(blah_version);
+
 	exit(exitcode);
 }
 
@@ -287,22 +298,29 @@ cmd_results(void *args)
 {
 	char *result;
 	char *res_lines;
+	char *tmp_realloc;
 
 	if (result = (char *) malloc (13)) /* hope 10 digits suffice*/
 	{
-		sprintf(result, "%d", num_results());
+		snprintf(result, 10, "%d", num_results());
 		if(num_results())
 		{
 			strcat(result, "\r\n");
 			res_lines = get_lines(BUFFER_FLUSH);
-			result = (char *)realloc(result, strlen(result) + strlen(res_lines) + 2); /* CHECK THIS */
+			if ((tmp_realloc = (char *)realloc(result, strlen(result) + strlen(res_lines) + 2)) == NULL)
+			{
+				free(result);
+				free(res_lines);
+				return(NULL);
+			}
+			result = tmp_realloc;
 			strcat(result, res_lines);
 			free(res_lines);
 		}
+
+		/* From now on, send 'R' when a new resline is enqueued */
+		async_notice = async_mode;
 	}
-	
-	/* From now send 'R' when a new resline is enqueued */
-	async_notice = async_mode;
 	
 	/* If malloc has failed, return NULL to notify error */
 	return(result);
@@ -332,6 +350,8 @@ cmd_submit_job(void *args)
 	char *error_string;
 	int res = 1;
 	char* resfg = NULL;
+	char *proxyname   = NULL;
+
 	cad = classad_parse(jobDescr);
 	if (cad == NULL)
 	{
@@ -339,6 +359,13 @@ cmd_submit_job(void *args)
 		resultLine = make_message("%s 1 Error\\ parsing\\ classad N/A", reqId);
 		goto cleanup_argv;
 	}
+
+        /* Get the proxy name from classad attribute "x509userproxy" */
+        if ((result = classad_get_dstring_attribute(cad, "x509userproxy", &proxyname)) == C_CLASSAD_NO_ERROR)
+        { 
+	       limit_proxy(proxyname);
+               free(proxyname);
+        }
 
 	/* Get the lrms type from classad attribute "gridtype" */
 	result = classad_get_dstring_attribute(cad, "gridtype", &server_lrms);
@@ -577,115 +604,299 @@ cmd_renew_proxy(void *args)
 	char error_message[ERROR_MAX_LEN];
 	char *error_string;
 
+        /* proxy must be limited */
+        limit_proxy(proxyFileName);
 	retcod = get_status(jobDescr, &status_ad, errstr, 1);
-	esc_errstr = escape_spaces(errstr);
-
-	if (!retcod)
+	if (esc_errstr = escape_spaces(errstr))
 	{
-		classad_get_int_attribute(status_ad, "JobStatus", &jobStatus);
-		jobDescr = strrchr(jobDescr, '/') + 1;
-		switch(jobStatus)
+		if (!retcod)
 		{
-		case 1: /* job queued */
-			/* copy the proxy locally */
-			proxy_link = make_message("%s/.blah_jobproxy_dir/%s.proxy", getenv("HOME"), jobDescr);
-			if ((result = readlink(proxy_link, old_proxy, sizeof(old_proxy) - 1)) == -1)
+			classad_get_int_attribute(status_ad, "JobStatus", &jobStatus);
+			jobDescr = strrchr(jobDescr, '/') + 1;
+			switch(jobStatus)
 			{
-				esc_strerr = escape_spaces(strerror(errno));
-				resultLine = make_message("%s 1 Error\\ locating\\ original\\ proxy: %s", reqId, esc_strerr);
-				free(esc_strerr);
-			}
-			else
-			{
-				old_proxy[result] = '\0'; /* readlink doesn't append the NULL char */
-				if (strcmp(proxyFileName, old_proxy) != 0) /* If Condor didn't change the old proxy file already */
-				{
-					if (rename(proxyFileName, old_proxy) == 0) /* FIXME with a safe portable rotation */
-					{
-						resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
-					}
-					else
+				case 1: /* job queued */
+					/* copy the proxy locally */
+					proxy_link = make_message("%s/.blah_jobproxy_dir/%s.proxy", getenv("HOME"), jobDescr);
+					if ((result = readlink(proxy_link, old_proxy, sizeof(old_proxy) - 1)) == -1)
 					{
 						esc_strerr = escape_spaces(strerror(errno));
-						resultLine = make_message("%s 1 Error\\ rotating\\ proxy: %s", reqId, esc_strerr);
+						resultLine = make_message("%s 1 Error\\ locating\\ original\\ proxy: %s", reqId, esc_strerr);
 						free(esc_strerr);
 					}
-				}
-				else
-				{
-					resultLine = make_message("%s 0 Proxy\\ renewed\\ (in\\ place\\ -\\ job\\ pending)", reqId);
-				}
-			}
-			free (proxy_link);
-			break;
-		case 2: /* job running */
-			/* send the proxy to remote host */
-			if ((result = classad_get_dstring_attribute(status_ad, "WorkerNode", &workernode)) == C_CLASSAD_NO_ERROR)
-			{
-				command = make_message("export LD_LIBRARY_PATH=%s/lib; %s/BPRclient %s %s %s",
+					else
+					{
+						old_proxy[result] = '\0'; /* readlink doesn't append the NULL char */
+						if (strcmp(proxyFileName, old_proxy) != 0) /* If Condor didn't change the old proxy file already */
+						{
+							if (rename(proxyFileName, old_proxy) == 0) /* FIXME with a safe portable rotation */
+							{
+								resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
+							}
+							else
+							{
+								esc_strerr = escape_spaces(strerror(errno));
+								resultLine = make_message("%s 1 Error\\ rotating\\ proxy: %s", reqId, esc_strerr);
+								free(esc_strerr);
+							}
+						}
+						else
+						{
+							resultLine = make_message("%s 0 Proxy\\ renewed\\ (in\\ place\\ -\\ job\\ pending)", reqId);
+						}
+					}
+					free (proxy_link);
+					break;
+				case 2: /* job running */
+					/* send the proxy to remote host */
+					if ((result = classad_get_dstring_attribute(status_ad, "WorkerNode", &workernode)) == C_CLASSAD_NO_ERROR)
+					{
+						command = make_message("export LD_LIBRARY_PATH=%s/lib; %s/BPRclient %s %s %s",
 				                        getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus",
 				                        blah_script_location, proxyFileName, jobDescr, workernode);
-				free(workernode);
+						free(workernode);
 
-				/* Execute the command */
-				/* fprintf(stderr, "DEBUG: executing %s\n", command); */
-				if((dummy = mtsafe_popen(command, "r")) == NULL)
-				{
-					/* PUSH A FAILURE */
-					/* errno is not set if popen fails because of low memory */
-					if (retcod = errno)
-						strerror_r(errno, error_message, sizeof(error_message));
+						/* Execute the command */
+						/* fprintf(stderr, "DEBUG: executing %s\n", command); */
+						if((dummy = mtsafe_popen(command, "r")) == NULL)
+						{
+							/* PUSH A FAILURE */
+							/* errno is not set if popen fails because of low memory */
+							if (retcod = errno)
+								strerror_r(errno, error_message, sizeof(error_message));
+							else
+								strncpy(error_message, "Cannot open pipe for the command: out of memory", sizeof(error_message));
+
+							error_string = escape_spaces(error_message);
+							resultLine = make_message("%s %d %s", reqId, retcod, error_string);
+							free(error_string);
+						}	
+						else
+						{
+							retcod = mtsafe_pclose(dummy);
+							resultLine = make_message("%s %d %s", reqId, retcod, retcod ? "Error" : "No\\ error");
+						}
+						free(command);
+					}
 					else
-						strncpy(error_message, "Cannot open pipe for the command: out of memory", sizeof(error_message));
-
-					error_string = escape_spaces(error_message);
-					resultLine = make_message("%s %d %s", reqId, retcod, error_string);
-					free(error_string);
-				}	
-				else
-				{
-					retcod = mtsafe_pclose(dummy);
-					resultLine = make_message("%s %d %s", reqId, retcod, retcod ? "Error" : "No\\ error");
-				}
-				free(command);
+					{
+						resultLine = make_message("%s 1 Cannot\\ retrieve\\ executing\\ host", reqId);
+					}
+				break;
+				case 3: /* job deleted */
+					/* no need to refresh the proxy */
+					resultLine = make_message("%s 0 No\\ proxy\\ to\\ renew\\ -\\ Job\\ was\\ deleted", reqId);
+				break;
+				case 4: /* job completed */
+					/* no need to refresh the proxy */
+					resultLine = make_message("%s 0 No\\ proxy\\ to\\ renew\\ -\\ Job\\ completed", reqId);
+				break;
+				case 5: /* job hold */
+					/* FIXME not yet supported */
+					resultLine = make_message("%s 0 No\\ support\\ for\\ renewing\\ held\\ jobs\\ yet", reqId);
+				break;
+				default:
+					resultLine = make_message("%s 1 Wrong\\ state\\ (%d)", reqId, jobStatus);
 			}
-			else
-			{
-				resultLine = make_message("%s 1 Cannot\\ retrieve\\ executing\\ host", reqId);
-			}
-			break;
-		case 3: /* job deleted */
-			/* no need to refresh the proxy */
-			resultLine = make_message("%s 0 No\\ proxy\\ to\\ renew\\ -\\ Job\\ was\\ deleted", reqId);
-			break;
-		case 4: /* job completed */
-			/* no need to refresh the proxy */
-			resultLine = make_message("%s 0 No\\ proxy\\ to\\ renew\\ -\\ Job\\ completed", reqId);
-			break;
-		case 5: /* job hold */
-			/* FIXME not yet supported */
-			resultLine = make_message("%s 0 No\\ support\\ for\\ renewing\\ held\\ jobs\\ yet", reqId);
-			break;
-		default:
-			resultLine = make_message("%s 1 Wrong\\ state\\ (%d)", reqId, jobStatus);
 		}
-		classad_free(status_ad);
+		else
+		{
+			resultLine = make_message("%s %d %s", reqId, retcod, esc_errstr);
+		}
+		if (resultLine)
+		{
+			enqueue_result(resultLine);
+			free(resultLine);
+		}
+		else
+		{
+			enqueue_result("Missing result line due to memory error");
+			free(esc_errstr);
+		}
 	}
 	else
-	{
-		resultLine = make_message("%s %d %s", reqId, retcod, esc_errstr);
-	}
-
+		enqueue_result("Missing result line due to memory error");
 	
 	/* Free up all arguments */
-	free(esc_errstr);
+	classad_free(status_ad);
 	free_args(argv);
-	enqueue_result(resultLine);
-	free(resultLine);
 	
 	return;
 }
 
+void 
+hold_res_exec(void* args, char* action,int status )
+{
+	int retcod;
+	FILE *dummy;
+	char *command;
+	char *resultLine = NULL;
+	char **argv = (char **)args;
+	char **arg_ptr;
+	char *server_lrms;
+	char *reqId = argv[1];
+	char *jobId;
+	char error_message[1024];
+	char *error_string;
+	
+	/* The job Id needs at least 4 chars for the "<lrms>/" prefix */
+	if (strlen(argv[2]) < 4)
+	{
+		/* PUSH A FAILURE */
+		resultLine = make_message("%s 2 Malformed\\ jobId %s", reqId, jobId);
+		goto cleanup_argv;
+	}
+
+	/* Split <lrms> and actual job Id */
+	if((server_lrms = strdup(argv[2])) == NULL)
+	{
+		/* PUSH A FAILURE */
+		resultLine = make_message("%s 1 Cannot\\ allocate\\ memory\\ for\\ the\\ lrms\\ string", reqId);
+		goto cleanup_argv;
+	}
+	server_lrms[3] = '\0';
+	jobId = server_lrms + 4;
+	/* Prepare the cancellation command */
+	command = make_message("%s/%s_%s.sh %s %d", blah_script_location, server_lrms, action, jobId, status);
+	if (command == NULL)
+	{
+		/* PUSH A FAILURE */
+		resultLine = make_message("%s 1 Cannot\\ allocate\\ memory\\ for\\ the\\ command\\ string", reqId);
+		goto cleanup_lrms;
+	}
+
+	/* Execute the command */
+	/* fprintf(stderr, "DEBUG: executing %s\n", command); */
+	if((dummy = mtsafe_popen(command, "r")) == NULL)
+	{
+		/* PUSH A FAILURE */
+		/* errno is not set if popen fails because of low memory */
+		if (retcod = errno)
+			strerror_r(errno, error_message, sizeof(error_message));
+		else
+			strncpy(error_message, "Cannot open pipe for the command: out of memory", sizeof(error_message));
+
+		error_string = escape_spaces(error_message);
+		resultLine = make_message("%s %d %s", reqId, retcod, error_string);
+		free(error_string);
+		goto cleanup_command;
+	}
+	retcod = mtsafe_pclose(dummy);
+	if(retcod)
+	{	
+		resultLine = make_message("%s %d Job\\ %s:\\ %s \\ not\\ supported\\ by\\ %s", reqId, retcod, statusstring[status - 1] ,action ,server_lrms );
+	}else
+	resultLine = make_message("%s %d No\\ error", reqId, retcod);
+	/* Free up all arguments and exit (exit point in case of error is the label
+           pointing to last successfully allocated variable) */
+cleanup_command:
+	free(command);
+cleanup_lrms:
+	free(server_lrms);
+cleanup_argv:
+	free_args(argv);
+	enqueue_result(resultLine);
+	free (resultLine);
+
+	return;
+}
+
+void
+hold_resume(void* args, int action )
+{
+        classad_context status_ad;
+        char **argv = (char **)args;
+        char errstr[ERROR_MAX_LEN];
+        char *resultLine = NULL;
+        int jobStatus, retcode;
+        char *reqId = argv[1];
+        char *jobDescr = argv[2];
+
+        /* job status check */
+        retcode = get_status(jobDescr, &status_ad, errstr, 0);
+	if (!retcode)
+        {
+             classad_get_int_attribute(status_ad, "JobStatus", &jobStatus);
+             switch(jobStatus)
+                {
+                        case 1:/* IDLE */ 
+				if(action == HOLD_JOB)
+				{
+					hold_res_exec(args,"hold",1);
+				}
+				else
+				if (resultLine = make_message("%s 1 Job\\ Idle\\ jobId %s", reqId, jobDescr))
+                                {
+                                        enqueue_result(resultLine);
+                                        free(resultLine);
+					free_args(argv);
+                                }
+
+                        break;
+                        case 2:/* RUNNING */ 
+                                if(action == HOLD_JOB)
+				{
+					hold_res_exec(args,"hold",2);
+				}else
+				if (resultLine = make_message("%s 1 \\ Job\\ Running\\ jobId %s", reqId, jobDescr))
+                                {
+                                        enqueue_result(resultLine);
+                                        free(resultLine);
+					free_args(argv);
+                                }
+                        break;
+
+                        case 3:/* REMOVED */ 
+                                if (resultLine = make_message("%s 1 Job\\ Removed\\ jobId %s", reqId, jobDescr)) {
+
+                                        enqueue_result(resultLine);
+                                        free(resultLine);
+					free_args(argv);
+                                }
+                        break;
+                        case 4:/* COMPLETED */
+                        	if (resultLine = make_message("%s 1 Job\\ Completed\\ jobId %s", reqId, jobDescr))
+                        	{
+                                	enqueue_result(resultLine);
+                                	free(resultLine);
+					free_args(argv);
+                        	}
+                        break;
+
+                        case 5:/* HELD */
+                        if(action == RESUME_JOB)
+                                	hold_res_exec(args,"resume",5);
+			else
+			if (resultLine = make_message("%s 0 Job\\ Held\\ jobId %s", reqId, jobDescr))
+                        {
+                                enqueue_result(resultLine);
+                                free(resultLine);
+				free_args(argv);
+                        }
+                        break;
+                }
+        }else
+	{
+                resultLine = make_message("%s %d %s", reqId, retcode, errstr);
+		enqueue_result(resultLine);
+                free(resultLine);
+	}
+        return;
+}
+
+void *
+cmd_hold_job(void* args)
+{
+	hold_resume(args,HOLD_JOB);
+	return;
+}
+
+void *
+cmd_resume_job(void* args)
+{
+        hold_resume(args,RESUME_JOB);
+        return;
+}
 
 /* Utility functions
  * */
@@ -718,6 +929,7 @@ get_command(int s)
 	static char *next_cmd;
 	static char *queue_end;
 	char *message = NULL;
+	char *tmp_realloc;
 	int allocated_size = 0;
 	char buffer[2047];
 	int read_chars = 0; 
@@ -735,16 +947,19 @@ get_command(int s)
 				if ((read_chars + recv_chars) > allocated_size)
 				{
 					allocated_size += sizeof(buffer) + 1;
-					message = (char *) realloc (message, allocated_size);
-					if (message == NULL)
+					tmp_realloc = (char *) realloc (message, allocated_size);
+					if (tmp_realloc == NULL)
 					{
 						allocated_size = 0;
 						perror("Error allocating buffer for incoming message");
 						close(s);
+						if (message) free(message);
 						exit(MALLOC_ERROR);
 					}
+					else
+						message = tmp_realloc;
 				}
-				memcpy(&message[read_chars],buffer,recv_chars);
+				memcpy(&message[read_chars], buffer, recv_chars);
 				read_chars += recv_chars;
 				message[read_chars] = '\000';
 			} else {
@@ -948,7 +1163,7 @@ set_cmd_list_option(char **command, classad_context cad, const char *attribute, 
 				}					
 			}
 		}
-		else
+		else /* strdup failed */
 			result = C_CLASSAD_OUT_OF_MEMORY;
 
 		classad_free_string_list(list_cont);
@@ -968,22 +1183,45 @@ set_cmd_list_option(char **command, classad_context cad, const char *attribute, 
 char *
 make_message(const char *fmt, ...)
 {
-	int string_length;
+	int n;
 	char *result = NULL;
 	va_list ap;
 
 	va_start(ap, fmt);
-	string_length = vsnprintf(NULL, 0, fmt, ap) + 1;
+	n = vsnprintf(NULL, 0, fmt, ap) + 1;
 
-	if ((result = (char *) malloc (string_length)) == NULL)
-	{
-		fprintf(stderr, "Out of memory\n");
-		exit(MALLOC_ERROR);
-	}
-
-	vsnprintf(result, string_length, fmt, ap);
+	result = (char *) malloc (n);
+	if (result)
+		vsnprintf(result, n, fmt, ap);
 	va_end(ap);
 
 	return(result);
+}
+
+int
+limit_proxy(char* proxyname)
+{
+	char *limcommand;
+	char *tmpfilename;
+	int res;
+	char* globuslocation;
+	globuslocation = (getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus");
+	tmpfilename = make_message("%s.lmt", proxyname);
+	limcommand  = make_message("%s/bin/grid-proxy-init -limited -cert %s -key %s -out %s > /dev/null 2>&1",globuslocation, proxyname, proxyname, tmpfilename);
+	res = system(limcommand);
+	free(limcommand);
+	/* If exitcode != 0 there may be a problem due to a warning by grid-proxy-init but */
+	/* the call may have been successful. We just check the temporary proxy  */
+	if (res)
+	{
+		limcommand = make_message("%s/bin/grid-proxy-info -f %s > /dev/null 2>&1", globuslocation, tmpfilename);
+		res = system(limcommand);
+		free(limcommand);
+		/* If res is not null, we really got an error */
+		if (res) return res;
+	}
+	if (!res) rename(tmpfilename, proxyname);
+	free(tmpfilename);
+	return res;
 }
 

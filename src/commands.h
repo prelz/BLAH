@@ -19,6 +19,8 @@ void *cmd_commands(void *args);
 void *cmd_async_on(void *args);
 void *cmd_async_off(void *args);
 void *cmd_results(void *args);
+void *cmd_hold_job(void *args);
+void *cmd_resume_job(void *args);
 
 /* Function prototypes
  * */
