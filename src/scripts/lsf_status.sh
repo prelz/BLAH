@@ -127,12 +127,13 @@ result=`awk -v jobId=$requested -v proxyDir=$proxy_dir '
 BEGIN {
 	rex_queued   = "\"JOB_NEW\" \"[0-9\.]+\" [0-9]+ " jobId
 	rex_running  = "\"JOB_START\" \"[0-9\.]+\" [0-9]+ " jobId
-	rex_deleted  = "\"JOB_SIGNAL\" \"[0-9\.]+\" [0-9]+ " jobId "[0-9]+ [0-9]+ \"KILL\""
+	rex_deleted  = "\"JOB_SIGNAL\" \"[0-9\.]+\" [0-9]+ " jobId " [0-9]+ [0-9]+ \"KILL\""
 	rex_done     = "\"JOB_STATUS\" \"[0-9\.]+\" [0-9]+ " jobId " 192 "
 	rex_finished = "\"JOB_STATUS\" \"[0-9\.]+\" [0-9]+ " jobId " 32 "
-	rex_hold     = "\"JOB_STATUS\" \"[0-9\.]+\" [0-9]+ " jobId " 16 "
-	rex_resume   = "\"JOB_STATUS\" \"[0-9\.]+\" [0-9]+ " jobId " 4 "
-        
+	rex_phold    = "\"JOB_STATUS\" \"[0-9\.]+\" [0-9]+ " jobId " 2 "
+        rex_shold    = "\"JOB_STATUS\" \"[0-9\.]+\" [0-9]+ " jobId " 8 "
+ 	rex_uhold    = "\"JOB_STATUS\" \"[0-9\.]+\" [0-9]+ " jobId " 16 "
+ 	rex_pend     = "\"JOB_STATUS\" \"[0-9\.]+\" [0-9]+ " jobId " 1 "
 	jobstatus = 0
 	
 	print "["
@@ -140,6 +141,10 @@ BEGIN {
 }
 
 $0 ~ rex_queued {
+	jobstatus = 1
+}
+
+$0 ~ rex_pend {
 	jobstatus = 1
 }
 
@@ -165,12 +170,16 @@ $0 ~ rex_finished {
 	exit
 }
 
-$0 ~ rex_hold {
+$0 ~ rex_uhold {
 	jobstatus = 5
 }
 
-$0 ~ rex_resume {
-	jobstatus = 2
+$0 ~ rex_phold {
+	jobstatus = 5
+}
+
+$0 ~ rex_shold {
+	jobstatus = 5
 }
 
 END {
