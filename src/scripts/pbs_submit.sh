@@ -52,7 +52,7 @@ else
     spoolpath=/usr/spool/PBS/
 fi
 
-usage_string="Usage: $0 -c <command> [-i <stdin>] [-o <stdout>] [-e <stderr>] [-v <environment>] [-s <yes | no>] [-- command_arguments]"
+usage_string="Usage: $0 -c <command> [-i <stdin>] [-o <stdout>] [-e <stderr>] [-x <x509userproxy>] [-v <environment>] [-s <yes | no>] [-- command_arguments]"
 
 
 logpath=${spoolpath}server_logs
@@ -103,6 +103,7 @@ do
     r) proxyrenew="yes" ;;
     p) prnpoll="$OPTARG" ;;
     l) prnlifetime="$OPTARG" ;;
+    x) proxy_string="$OPTARG" ;;
     -) break ;;
     ?) echo $usage_string
        exit 1 ;;
@@ -157,7 +158,6 @@ if [ "x$proxyrenew" == "xyes" ] ; then
 fi
 
 # Setup proxy transfer
-proxy_string=`echo ';'$envir | sed --quiet -e 's/.*;[^X]*X509_USER_PROXY[^=]*\= *\([^\; ]*\).*/\1/p'`
 need_to_reset_proxy=no
 proxy_remote_file=
 if [ "x$stgproxy" == "xyes" ] ; then

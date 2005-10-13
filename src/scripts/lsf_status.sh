@@ -166,7 +166,7 @@ $0 ~ rex_done {
 
 $0 ~ rex_finished {
 	jobstatus = 4
-	exitcode = $(NF-1)
+	exitcode = $(NF-2)
 	exit
 }
 

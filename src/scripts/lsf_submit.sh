@@ -41,7 +41,7 @@ if  [ -f ~/.login ]; then
  . ~/.login
 fi
 
-usage_string="Usage: $0 -c <command> [-i <stdin>] [-o <stdout>] [-e <stderr>] [-v <environment>] [-- command_arguments]"
+usage_string="Usage: $0 -c <command> [-i <stdin>] [-o <stdout>] [-e <stderr>] [-x <x509userproxy>] [-v <environment>] [-- command_arguments]"
 
 if [ ! -z "$LSF_BIN_PATH" ]; then
     binpath=${LSF_BIN_PATH}/
@@ -107,7 +107,7 @@ do
     r) proxyrenew="yes" ;;
     p) prnpoll="$OPTARG" ;;
     l) prnlifetime="$OPTARG" ;;
-
+    x) proxy_string="$OPTARG" ;;
     -) break ;;
     ?) echo $usage_string
        exit 1 ;;
@@ -198,7 +198,6 @@ fi
 [ -z "$mpinodes" ]       || echo "#BSUB -n $mpinodes" >> $tmp_file
 
 # Setup proxy transfer
-proxy_string=`echo ';'$envir | sed --quiet -e 's/.*;[^X]*X509_USER_PROXY[^=]*\= *\([^\; ]*\).*/\1/p'`
 if [ "x$stgproxy" == "xyes" ] ; then
     proxy_local_file=${workdir}"/"`basename "$proxy_string"`
     [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] || proxy_local_file=$proxy_string
