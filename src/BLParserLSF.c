@@ -312,6 +312,7 @@ int AddToStruct(char *line){
  char *	j_time=NULL;
  char *	j_status=NULL;
  char *	ex_status=NULL;
+ char *	failex_status=NULL;
  char *	sig_status=NULL;
  char *	j_blahjob=NULL;
  char *	wnode=NULL;
@@ -339,6 +340,8 @@ int AddToStruct(char *line){
    wnode=strdup(s_tok);
   }else if(n==10){
    ex_status=strdup(s_tok);
+  }else if(n==29){
+   failex_status=strdup(s_tok);
   }else if(n==41){
    j_blahjob=strdup(s_tok);
   }
@@ -391,7 +394,7 @@ int AddToStruct(char *line){
 
     if(strcmp(j2js[id],"3")!=0){
      InfoAdd(id,"4","JOBSTATUS");
-     InfoAdd(id,ex_status,"EXITCODE");
+     InfoAdd(id,failex_status,"EXITCODE");
      InfoAdd(id,j_time,"COMPLTIME");
     }
 
@@ -417,6 +420,7 @@ int AddToStruct(char *line){
    free(sig_status);
    free(wnode);
    free(ex_status);
+   free(failex_status);
    free(j_blahjob);
 
  return 0;
