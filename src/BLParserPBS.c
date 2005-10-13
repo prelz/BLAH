@@ -533,10 +533,22 @@ int AddToStruct(char *line){
    InfoAdd(id,ex_status,"EXITCODE");
    InfoAdd(id,j_time,"COMPLTIME");
 
-  } else if(rex && strstr(rex,rex_hold)!=NULL){
-  
-   InfoAdd(id,"5","JOBSTATUS");
-
+  } else if(rex && ((strstr(rex,rex_uhold)!=NULL) || (strstr(rex,rex_ohold)!=NULL) || (strstr(rex,rex_ohold)!=NULL))){
+   
+   if(strcmp(j2js[id],"1")==0){
+    InfoAdd(id,"5/1","JOBSTATUS");
+   }else if(strcmp(j2js[id],"2")==0){
+    InfoAdd(id,"5/2","JOBSTATUS");
+   }
+   
+  } else if(rex && ((strstr(rex,rex_uresume)!=NULL) || (strstr(rex,rex_oresume)!=NULL) || (strstr(rex,rex_oresume)!=NULL))){
+   
+   if(strcmp(j2js[id],"5/1")==0){
+    InfoAdd(id,"1","JOBSTATUS");
+   }else if(strcmp(j2js[id],"5/2")==0){
+    InfoAdd(id,"2","JOBSTATUS");
+   }
+   
   } /* closes if-else if on rex_ */
  } /* closes if-else if on jobid lookup */
  
@@ -593,6 +605,7 @@ void *LookupAndSend(int m_sock){
     char      *logdate;
     char      *jobid;
     char      h_jobid[NUM_CHARS];
+    char      jstat[NUM_CHARS];
     char      *pr_removal="Not";
     int       i;
     int       id;
@@ -682,12 +695,18 @@ all the jobid in the output classad */
            } else {
             pr_removal="Not";
            }
+           if((strcmp(j2js[id],"5/1")==0) || (strcmp(j2js[id],"5/2")==0)){
+            sprintf(jstat,"JobStatus=5");
+	   }else{
+            sprintf(jstat,"JobStatus=%s",j2js[id]);
+	   }
+	   
            if(strcmp(j2js[id],"4")==0){
-            sprintf(out_buf,"[BatchJobId=\"%s\"; JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\"; ExitCode=%s;/%s\n",jobid, j2js[id], j2st[id], j2rt[id], j2ct[id], j2ec[id], pr_removal);
+            sprintf(out_buf,"[BatchJobId=\"%s\"; %s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\"; ExitCode=%s;/%s\n",jobid, jstat, j2st[id], j2rt[id], j2ct[id], j2ec[id], pr_removal);
            }else if(strcmp(j2rt[id],"\0")!=0){
-            sprintf(out_buf,"[BatchJobId=\"%s\"; JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";/%s\n",jobid, j2js[id], j2st[id], j2rt[id], pr_removal);
+            sprintf(out_buf,"[BatchJobId=\"%s\"; %s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";/%s\n",jobid, jstat, j2st[id], j2rt[id], pr_removal);
            }else{
-            sprintf(out_buf,"[BatchJobId=\"%s\"; JobStatus=%s; LRMSSubmissionTime=\"%s\";/%s\n",jobid, j2js[id], j2st[id], pr_removal);
+            sprintf(out_buf,"[BatchJobId=\"%s\"; %s; LRMSSubmissionTime=\"%s\";/%s\n",jobid, jstat, j2st[id], pr_removal);
            }
 	   
 	  } else {
@@ -706,11 +725,11 @@ all the jobid in the output classad */
              pr_removal="Not";
             }
             if(strcmp(j2js[id],"4")==0){
-             sprintf(out_buf,"[BatchJobId=\"%s\"; JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\"; ExitCode=%s;/%s\n",jobid, j2js[id], j2st[id], j2rt[id], j2ct[id], j2ec[id], pr_removal);
+             sprintf(out_buf,"[BatchJobId=\"%s\"; %s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\"; ExitCode=%s;/%s\n",jobid, jstat, j2st[id], j2rt[id], j2ct[id], j2ec[id], pr_removal);
             }else if(strcmp(j2rt[id],"\0")!=0){
-             sprintf(out_buf,"[BatchJobId=\"%s\"; JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";/%s\n",jobid, j2js[id], j2st[id], j2rt[id], pr_removal);
+             sprintf(out_buf,"[BatchJobId=\"%s\"; %s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";/%s\n",jobid, jstat, j2st[id], j2rt[id], pr_removal);
             }else{
-             sprintf(out_buf,"[BatchJobId=\"%s\"; JobStatus=%s; LRMSSubmissionTime=\"%s\";/%s\n",jobid, j2js[id], j2st[id], pr_removal);
+             sprintf(out_buf,"[BatchJobId=\"%s\"; %s; LRMSSubmissionTime=\"%s\";/%s\n",jobid, jstat, j2st[id], pr_removal);
             }
 	    
 	   } else {
