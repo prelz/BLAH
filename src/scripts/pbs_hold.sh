@@ -10,10 +10,19 @@ if  [ -f ~/.login ]; then
 fi
 
 requested=`echo $1 | sed 's/^.*\///'`
-
-#currently only holding idle jobs is supported
-if [ "$2" ==  "1" ]; then
-	${PBS_BIN_PATH:-/usr/bin}/qhold $requested >/dev/null 2>&1
+requestedshort=`expr match "$requested" '\([0-9]*\)'`
+result=`${PBS_BIN_PATH:-/usr/bin}/qstat | awk -v jobid="$requestedshort" '
+$0 ~ jobid {
+	print $5
+}
+'`
+#currently only holding idle or waiting jobs is supported
+if [ "$2" ==  "1" ] ; then
+	${PBS_BIN_PATH:-/usr/bin}/qhold $requested
 else
-	exit 1
+	if [ "$result" == "W" ] ; then
+		${PBS_BIN_PATH:-/usr/bin}/qhold $requested
+	else
+		exit 1
+	fi
 fi
