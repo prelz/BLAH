@@ -351,7 +351,8 @@ cmd_submit_job(void *args)
 	int res = 1;
 	char* resfg = NULL;
 	char *proxyname   = NULL;
-
+        char *proxynameNew   = NULL;
+	char *cmdstr = NULL;
 	cad = classad_parse(jobDescr);
 	if (cad == NULL)
 	{
@@ -360,11 +361,16 @@ cmd_submit_job(void *args)
 		goto cleanup_argv;
 	}
 
-        /* Get the proxy name from classad attribute "x509userproxy" */
-        if ((result = classad_get_dstring_attribute(cad, "x509userproxy", &proxyname)) == C_CLASSAD_NO_ERROR)
+        /* Get the proxy name from classad attribute "X509UserProxy" */
+        if ((result = classad_get_dstring_attribute(cad, "x509UserProxy", &proxyname)) == C_CLASSAD_NO_ERROR)
         { 
-	       limit_proxy(proxyname);
+	       proxynameNew=make_message("%s.lmt",proxyname);
+	       cmdstr=make_message("cp %s %s",proxyname, proxynameNew);
+	       system(cmdstr);	       
+               limit_proxy(proxynameNew);
                free(proxyname);
+	       free(proxynameNew);
+	       free(cmdstr);
         }
 
 	/* Get the lrms type from classad attribute "gridtype" */
@@ -403,7 +409,8 @@ cmd_submit_job(void *args)
 	    (set_cmd_string_option(&command, cad, "Queue",      "-q", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_int_option   (&command, cad, "NodeNumber", "-n", INT_NOQUOTE)   == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_bool_option  (&command, cad, "StageCmd",   "-s", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
-	    (set_cmd_string_option(&command, cad, "Args",       "--", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY))
+            (set_cmd_bool_option  (&command, cad, "X509UserProxy" "-x", NO_QUOTE)    == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_string_option(&command, cad, "Args",      	"--", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY))
 	{
 		/* PUSH A FAILURE */
 		resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
@@ -603,9 +610,9 @@ cmd_renew_proxy(void *args)
 	FILE *dummy;
 	char error_message[ERROR_MAX_LEN];
 	char *error_string;
+	char *proxyFileNameNew;
+	char *cmdstr;
 
-        /* proxy must be limited */
-        limit_proxy(proxyFileName);
 	retcod = get_status(jobDescr, &status_ad, errstr, 1);
 	if (esc_errstr = escape_spaces(errstr))
 	{
@@ -631,6 +638,13 @@ cmd_renew_proxy(void *args)
 						{
 							if (rename(proxyFileName, old_proxy) == 0) /* FIXME with a safe portable rotation */
 							{
+								/* proxy must be copied and limited */
+        							proxyFileNameNew = make_message("%s.lmt",proxyFileName);
+        							cmdstr = make_message("cp %s %s",proxyFileName, proxyFileNameNew);
+								system(cmdstr);	       
+        							limit_proxy(proxyFileNameNew);
+								free(proxyFileNameNew);
+								free(cmdstr);						
 								resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
 							}
 							else
@@ -651,11 +665,17 @@ cmd_renew_proxy(void *args)
 					/* send the proxy to remote host */
 					if ((result = classad_get_dstring_attribute(status_ad, "WorkerNode", &workernode)) == C_CLASSAD_NO_ERROR)
 					{
+						/* proxy must be limited */
+        					proxyFileNameNew = make_message("%s.lmt",proxyFileName);
+        					cmdstr = make_message("cp %s %s",proxyFileName, proxyFileNameNew);
+						system(cmdstr);	       
+        					limit_proxy(proxyFileNameNew);
+						free(cmdstr);
 						command = make_message("export LD_LIBRARY_PATH=%s/lib; %s/BPRclient %s %s %s",
 				                        getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus",
-				                        blah_script_location, proxyFileName, jobDescr, workernode);
+				                        blah_script_location, proxyFileNameNew, jobDescr, workernode);
 						free(workernode);
-
+						free(proxyFileNameNew);
 						/* Execute the command */
 						/* fprintf(stderr, "DEBUG: executing %s\n", command); */
 						if((dummy = mtsafe_popen(command, "r")) == NULL)
@@ -720,7 +740,8 @@ cmd_renew_proxy(void *args)
 	/* Free up all arguments */
 	classad_free(status_ad);
 	free_args(argv);
-	
+	free(proxyFileNameNew);
+	free(cmdstr);
 	return;
 }
 
