@@ -91,7 +91,7 @@ BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 # Parse parameters
 ###############################################################
 
-while getopts "i:o:e:c:s:v:dw:q:n:rp:l:" arg 
+while getopts "i:o:e:c:s:v:dw:q:n:rp:l:x:" arg 
 do
     case "$arg" in
     i) stdin="$OPTARG" ;;

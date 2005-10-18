@@ -98,85 +98,54 @@ logs="$logpath/$logfile `find $logpath -type f -newer $logpath/$logfile`"
 
 result=`awk -v jobId="$requested" -v wn="$workernode" -v proxyDir="$proxy_dir" '
 BEGIN {
-        rex_queued   = jobId ";Job Queued "
-        rex_running  = jobId ";Job Run "
-        rex_deleted  = jobId ";Job deleted "
-        rex_finished = jobId ";Exit_status="
-        rex_uhold    = jobId ";Holds u set"
-        rex_ohold    = jobId ";Holds o set"
-        rex_shold    = jobId ";Holds s set"
-        rex_uresume  = jobId ";Holds u released"
-        rex_oresume  = jobId ";Holds o released"
-        rex_sresume  = jobId ";Holds s released"
+	rex_queued   = jobId ";Job Queued "
+	rex_running  = jobId ";Job Run "
+	rex_deleted  = jobId ";Job deleted "
+	rex_finished = jobId ";Exit_status="
+	rex_hold     = jobId ";Holds "
 
-        print "["
-        print "BatchjobId = \"" jobId "\";"
+	print "["
+	print "BatchjobId = \"" jobId "\";"
 }
 
 $0 ~ rex_queued {
-        jobstatus = 1
-        realjobstatus = 1
+	jobstatus = 1
 }
 
 $0 ~ rex_running {
-        jobstatus = 2
-        realjobstatus = 2
+	jobstatus = 2
 }
 
 $0 ~ rex_deleted {
-        jobstatus = 3
-        realjobstatus = 3
-        exit
+	jobstatus = 3
+	exit
 }
 
 $0 ~ rex_finished {
-        jobstatus = 4
-        realjobstatus = 4
-        s = substr($0, index($0, "Exit_status="))
-        s = substr(s, 1, index(s, " ")-1)
-        exitcode = substr(s, index(s, "=")+1)
-        exit
+	jobstatus = 4
+	s = substr($0, index($0, "Exit_status="))
+	s = substr(s, 1, index(s, " ")-1)
+	exitcode = substr(s, index(s, "=")+1)
+	exit
 }
 
-$0 ~ rex_uhold {
-        jobstatus = 5
+$0 ~ rex_hold {
+	jobstatus = 5
 }
-
-$0 ~ rex_ohold {
-        jobstatus = 5
-}
-
-$0 ~ rex_shold {
-        jobstatus = 5
-}
-
-$0 ~ rex_uresume {
-        jobstatus = 6
-}
-
-$0 ~ rex_oresume {
-        jobstatus = 6
-}
-
-$0 ~ rex_sresume {
-        jobstatus = 6
-}
-
 
 END {
-        if (jobstatus == 6) { jobstatus = realjobstatus}
-        if (jobstatus == 0) { exit 1 }
-        print "JobStatus = " jobstatus ";"
-        if (jobstatus == 2) {
-                print "WorkerNode = \"" wn "\";"
-        }
-        if (jobstatus == 4) {
-                print "ExitCode = " exitcode ";"
-        }
-        print "]"
-        if (jobstatus == 3 || jobstatus == 4) {
-                system("rm " proxyDir "/" jobId ".proxy 2>/dev/null")
-        }
+	if (jobstatus == 0) { exit 1 }
+	print "JobStatus = " jobstatus ";"
+	if (jobstatus == 2) {
+		print "WorkerNode = \"" wn "\";"
+	}
+	if (jobstatus == 4) {
+		print "ExitCode = " exitcode ";"
+	}
+	print "]"
+	if (jobstatus == 3 || jobstatus == 4) {
+		system("rm " proxyDir "/" jobId ".proxy 2>/dev/null")
+	}
 }
 ' $logs`
 
