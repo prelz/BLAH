@@ -72,6 +72,8 @@ fi
 
 proxy_dir=~/.blah_jobproxy_dir
 
+workdir=$PWD
+
 #default values for polling interval and min proxy lifetime
 prnpoll=30
 prnlifetime=0
@@ -185,11 +187,13 @@ if [ ! -z "$stdin" ] ; then
     fi
 fi
 if [ ! -z "$stdout" ] ; then
+    if [ "${stdout:0:1}" != "/" ] ; then stdout=${workdir}/${stdout} ; fi
     arguments="$arguments >`basename $stdout`"
     if [ ! -z $blahpd_outputsandbox ]; then blahpd_outputsandbox="${blahpd_outputsandbox},"; fi
     blahpd_outputsandbox="${blahpd_outputsandbox}`basename $stdout`@`hostname -f`:$stdout"
 fi
 if [ ! -z "$stderr" ] ; then
+    if [ "${stderr:0:1}" != "/" ] ; then stderr=${workdir}/${stderr} ; fi
     if [ "$stderr" == "$stdout" ]; then
         arguments="$arguments 2>&1"
     else
