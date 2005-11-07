@@ -34,10 +34,13 @@ else
 	binpath=/usr/local/lsf/bin/
 fi
 
-usage_string="Usage: $0 [-w]"
+usage_string="Usage: $0 [-w] [-n]"
 
 #get worker node info (dummy for LSF)
 getwn=""
+
+#get creamport
+getcreamport=""
 
 #set to yes if BLParser is present in the installation 
 BLParser=""
@@ -50,10 +53,11 @@ BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 # Parse parameters
 ###############################################################
 
-while getopts "w" arg 
+while getopts "wn" arg 
 do
     case "$arg" in
     w) getwn="yes" ;;
+    n) getcreamport="yes" ;;
 
     -) break ;;
     ?) echo $usage_string
@@ -64,6 +68,18 @@ done
 shift `expr $OPTIND - 1`
 
 ###################################################################
+#get creamport and exit
+
+if [ "x$getcreamport" == "xyes" ] ; then
+ result=`echo "CREAMPORT/"|./BLClient -a $BLPserver -p $BLPport`
+ reqretcode=$?
+ if [ "$reqretcode" == "1" ] ; then
+  exit 1
+ fi
+ retcode=0
+ echo $BLPserver:$result
+ exit $retcode
+fi
 
 pars=$*
 requested=`echo $pars | sed -e 's/^.*\///'`
@@ -166,7 +182,7 @@ $0 ~ rex_done {
 
 $0 ~ rex_finished {
 	jobstatus = 4
-	exitcode = $(NF-1)
+	exitcode = $(NF-2)
 	exit
 }
 

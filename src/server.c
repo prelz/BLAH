@@ -409,7 +409,8 @@ cmd_submit_job(void *args)
 	    (set_cmd_string_option(&command, cad, "Queue",      "-q", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_int_option   (&command, cad, "NodeNumber", "-n", INT_NOQUOTE)   == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_bool_option  (&command, cad, "StageCmd",   "-s", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
-            (set_cmd_bool_option  (&command, cad, "X509UserProxy" "-x", NO_QUOTE)    == C_CLASSAD_OUT_OF_MEMORY) ||
+            (set_cmd_string_option(&command, cad, "X509UserProxy", "-x", NO_QUOTE)    == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_string_option(&command, cad, "ClientJobId","-j", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "Args",      	"--", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY))
 	{
 		/* PUSH A FAILURE */

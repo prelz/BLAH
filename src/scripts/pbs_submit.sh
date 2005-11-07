@@ -89,7 +89,7 @@ BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 # Parse parameters
 ###############################################################
 original_args=$@
-while getopts "i:o:e:c:s:v:dw:q:n:rp:l:x:" arg 
+while getopts "i:o:e:c:s:v:dw:q:n:rp:l:x:j:" arg 
 do
     case "$arg" in
     i) stdin="$OPTARG" ;;
@@ -106,6 +106,7 @@ do
     p) prnpoll="$OPTARG" ;;
     l) prnlifetime="$OPTARG" ;;
     x) proxy_string="$OPTARG" ;;
+    j) creamjobid="$OPTARG" ;;
     -) break ;;
     ?) echo $usage_string
        exit 1 ;;
@@ -129,9 +130,13 @@ arguments=$*
 # Get a suitable name for temp file
 if [ "x$debug" != "xyes" ]
 then
-    tmp_file=`mktemp -q blahjob_XXXXXX`
-    if [ $? -ne 0 ]; then
-        echo Error
+    if [ ! -z "$creamjobid"  ] ; then
+                tmp_file=cream_${creamjobid}
+        else
+                tmp_file=`mktemp -q blahjob_XXXXXX`
+        fi
+        if [ $? -ne 0 ]; then
+                echo Error
         exit 1
     fi
 else
