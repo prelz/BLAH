@@ -920,6 +920,42 @@ cmd_resume_job(void* args)
         return;
 }
 
+void *
+cmd_get_hostport(void *args)
+{
+        char **argv = (char **)args;
+        char *reqId = argv[1];
+        char *server_lrms= argv[2];
+        FILE *cmd_out;
+        char *command;
+        char *resultLine;
+        char hostport[1024];
+        int  retcode;
+	
+        command = make_message("%s/%s_status.sh -n", blah_script_location, server_lrms);
+        if ((cmd_out=mtsafe_popen(command, "r")) == NULL)
+        {
+                resultLine = make_message("%s 1 Unable to execute %s", reqId,  command );
+                enqueue_result(resultLine);
+                free(server_lrms);
+                free(command);
+                free_args(argv);
+                return;
+        }
+        fgets(hostport, sizeof(hostport), cmd_out);
+	if (hostport[strlen(hostport) - 1] == '\n') hostport[strlen(hostport) - 1] = '\0';
+        retcode = mtsafe_pclose(cmd_out);
+        if((!retcode)&&(strlen(hostport) != 0)) 
+		resultLine = make_message("%s %d %s", reqId, retcode, hostport);
+        else
+		resultLine = make_message("%s %d %s", reqId, retcode, "Error reading host:port");		
+	enqueue_result(resultLine);
+        free(command);
+        free_args(argv);
+       
+        return ;
+}
+
 /* Utility functions
  * */
 

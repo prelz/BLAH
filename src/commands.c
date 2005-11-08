@@ -27,11 +27,12 @@
 /* Initialise commands array (strict alphabetical order)
  * handler functions prototypes are in commands.h
  * */    
-#define COMMANDS_NUM 12
+#define COMMANDS_NUM 13
 command_t commands_array[COMMANDS_NUM] = {
 	/* cmd string, # of pars, threaded, handler */
 	{ "ASYNC_MODE_OFF",               0, 0, cmd_async_off },
 	{ "ASYNC_MODE_ON",                0, 0, cmd_async_on },
+        { "BLAH_GET_HOSTPORT",            2, 1, cmd_get_hostport },
 	{ "BLAH_JOB_CANCEL",              2, 1, cmd_cancel_job },
 	{ "BLAH_JOB_HOLD",                2, 1, cmd_hold_job },
 	{ "BLAH_JOB_REFRESH_PROXY",       3, 1, cmd_renew_proxy },

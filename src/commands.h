@@ -21,6 +21,7 @@ void *cmd_async_off(void *args);
 void *cmd_results(void *args);
 void *cmd_hold_job(void *args);
 void *cmd_resume_job(void *args);
+void *cmd_get_hostport(void *args);
 
 /* Function prototypes
  * */
