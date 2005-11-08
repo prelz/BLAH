@@ -71,7 +71,7 @@ shift `expr $OPTIND - 1`
 #get creamport and exit
 
 if [ "x$getcreamport" == "xyes" ] ; then
- result=`echo "CREAMPORT/"|./BLClient -a $BLPserver -p $BLPport`
+ result=`echo "CREAMPORT/"|$BLClient -a $BLPserver -p $BLPport`
  reqretcode=$?
  if [ "$reqretcode" == "1" ] ; then
   exit 1
