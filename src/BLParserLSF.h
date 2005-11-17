@@ -33,7 +33,6 @@
 #define WRETRIES           10
 #define PURGE_INTERVAL     10
 #define PURGE_RETRY        5
-#define NUL                '\0'
 
 
 /*  Function declarations  */

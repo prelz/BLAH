@@ -1498,8 +1498,8 @@ int ParseCmdLine(int argc, char *argv[], char **szPort, char **szBinPath,
         }
         else if ( !strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2) ) {
             printf("Usage:\n");
-            printf("%s [-p] [<remote_port [%d]>] [-b <LSF_binpath [%s]>] [-c <LSF_confpath [%s]]> [-m  <CreamPort>]\n",progname, DEFAULT_PORT, binpath, confpath);
-	    
+            printf("%s [-p] [<remote_port [%d]>] [-b <LSF_binpath [%s]>] [-c <LSF_confpath [%s]]> [-m  <CreamPort>] [-d]\n",progname, DEFAULT_PORT, binpath, confpath);
+            printf("Use -d to enable debugging.\n");	    
             exit(EXIT_SUCCESS);
         }
         ++n;
@@ -1530,7 +1530,7 @@ chopfmt(char *fmt)
     static char errstr[ERRMAX];
     char *p;
 
-    errstr[0] = NUL;
+    errstr[0] = '\0';
     if((p=strstr(fmt, "%r")) != 0)
         fmt = strncat(errstr, fmt, p-fmt);
     return fmt;
