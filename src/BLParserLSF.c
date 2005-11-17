@@ -1345,9 +1345,6 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
 			
     free(buffer);
     free(outreason);
-    for(i=0;i<10;i++){
-     free(clientjobid[i]);
-    }
     
     return 0;
     
