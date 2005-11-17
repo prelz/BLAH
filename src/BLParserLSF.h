@@ -27,13 +27,13 @@
 #define HASHSIZE           5000000
 #define NUMTHRDS           20
 #define CRMTHRDS           8 
-#define NLINES             2000  /* lines for tail */
+#define NLINES             100  /* lines for tail */
 #define ERRMAX             80
+#define TBUFSIZE           400 
 #define WRETRIES           10
 #define PURGE_INTERVAL     10
 #define PURGE_RETRY        5
 #define NUL                '\0'
-#define DEBUG              0
 
 
 /*  Function declarations  */
@@ -45,8 +45,8 @@ int AddToStruct(char *o_buffer, int flag);
 char *GetAllEvents(char *file);
 void *InfoDel ();
 void *mytail (void *infile);    
-void follow(char *infile, char *lines[], int n);
-long tail(FILE *fp, char *lines[], int n);
+void follow(char *infile, char *line);
+long tail(FILE *fp, char *line);
 void eprint(int err, char *fmt, va_list args);
 char *chopfmt(char *fmt);
 void syserror(char *fmt, ...);
@@ -84,7 +84,8 @@ char *ntf[HASHSIZE];
 char *argv0;
 
 char *blahjob_string="blahjob_";
-char *cream_string="blahjob_";
+char *cream_string="cream_";
+//char *cream_string="blahjob_";
 
 int wlock=0;
 int cwlock=0;
@@ -100,6 +101,8 @@ char *progname="BLParserLSF";
 int port;
 int creamport;
 int usecream=0;
+
+int debug=0;
 
 struct sockaddr_in cservaddr;
 
@@ -121,6 +124,7 @@ char *binpath="/usr/local/lsf/bin";
 
 char *lsbevents="lsb.events";
 char *ldir;
+char *eventsfile;
 
 char *LastLog=NULL;
 char LastLogDate[STR_CHARS]="\0";
