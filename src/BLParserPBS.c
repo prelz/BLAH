@@ -1442,7 +1442,7 @@ int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir, char 
         else if ( !strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2) ) {
             printf("Usage:\n");
             printf("%s [-p] <remote_port [%d]> -s <PBS_spooldir [%s]>\n",progname, DEFAULT_PORT, spooldir);
-	    
+	    printf("Use -d to enable debugging.\n");
             exit(EXIT_SUCCESS);
         }
         ++n;
