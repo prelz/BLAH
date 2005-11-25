@@ -1465,7 +1465,11 @@ int ParseCmdLine(int argc, char *argv[], char **szPort, char **szBinPath,
     
     int n = 1;
 
-    if(argc==2 && !(!strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2))){
+    if(argc==2 && (!strncmp(argv[n], "-d", 2) || !strncmp(argv[n], "-D", 2))){
+      debug=1;
+      *szPort=NULL;
+      return 0;
+    }else if(argc==2 && !(!strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2))){
      *szPort= argv[n];
      return 0;
     }
