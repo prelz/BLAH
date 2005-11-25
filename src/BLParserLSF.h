@@ -84,7 +84,6 @@ char *argv0;
 
 char *blahjob_string="blahjob_";
 char *cream_string="cream_";
-//char *cream_string="blahjob_";
 
 int wlock=0;
 int cwlock=0;

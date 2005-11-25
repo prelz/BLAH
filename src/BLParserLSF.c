@@ -12,7 +12,7 @@ int main(int argc, char *argv[]) {
 
     pthread_t ReadThd[NUMTHRDS];
     pthread_t UpdateThd;
-//    pthread_t CreamThd[CRMTHRDS];
+    /* pthread_t CreamThd[CRMTHRDS]; */
     pthread_t CreamThd;
 
     argv0 = argv[0];
@@ -112,9 +112,11 @@ int main(int argc, char *argv[]) {
     }
     
     if(usecream>0){
-//     for(i=0;i<CRMTHRDS;i++){
-//      pthread_create(&CreamThd[i], NULL, CreamConnection, (void *)list_c);
-//     }
+/*
+     for(i=0;i<CRMTHRDS;i++){
+      pthread_create(&CreamThd[i], NULL, CreamConnection, (void *)list_c);
+     }
+*/
      pthread_create(&CreamThd, NULL, CreamConnection, (void *)list_c);
     }
     
@@ -166,9 +168,6 @@ ssize_t Writeline(int sockd, const void *vptr, size_t n) {
     ssize_t     nwritten;
     const char *buffer;
 
-    struct sockaddr *addr;
-    socklen_t *length_ptr;
-    
     buffer = vptr;
     nleft  = n;
 
@@ -335,10 +334,8 @@ int AddToStruct(char *line, int flag){
  /*if flag ==0 AddToStruct is called within GetOldLogs 
    if flag ==1 AddToStruct is called elsewhere*/
 
- int n=0;
  int has_blah=0;
  unsigned h_blahjob;
- char *s_tok;
  char *	rex;
  
  int id;
@@ -606,7 +603,7 @@ void *LookupAndSend(int m_sock){
 	 fprintf(stderr, "Received:%s",buffer);
 	}
 	
-	//printf("thread/0x%08lx\n",pthread_self());
+	/* printf("thread/0x%08lx\n",pthread_self()); */
 	
 	if((strlen(buffer)==0) || (strcmp(buffer,"\n")==0) || (strstr(buffer,"/")==0) || (strcmp(buffer,"/")==0)){
          
@@ -641,7 +638,7 @@ void *LookupAndSend(int m_sock){
          if((jobid=malloc(STR_CHARS)) == 0){
           sysfatal("can't malloc buffer in LookupAndSend: %r");
          }
-         jobid[0]='\0';
+         jobid=strdup("\0");
         }
 
         for(ii=0;ii<maxtok;ii++){
@@ -950,10 +947,8 @@ char *GetLogList(char *logdate){
  char rm_out[STR_CHARS];
  char logs[MAX_CHARS]="\0";
  char *slogs;
- char *t_logs;
  char tlogs[MAX_CHARS];
  char command_string[MAX_CHARS]="\0";
- int n=0;
  FILE *mktemp_output;
  FILE *mklast_output;
  FILE *touch_output;
@@ -1098,7 +1093,6 @@ void CreamConnection(int c_sock){
 
     char      *buffer;
     int       retcod;
-    fd_set    readfs;
     
     struct   pollfd fds[2];   /*      poll file descp. struct	       */
     struct   pollfd *pfds;    /*      pointer to fds		       */
@@ -1173,7 +1167,7 @@ int NotifyFromDate(char *in_buf){
     char **tbuf;
     char *cp;
 
-//    printf("thread/0x%08lx\n",pthread_self());
+    /* printf("thread/0x%08lx\n",pthread_self()); */
 
     if((out_buf=malloc(STR_CHARS)) == 0){
      sysfatal("can't malloc out_buf: %r");
