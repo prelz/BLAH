@@ -15,6 +15,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <sys/select.h>
+#include <sys/poll.h>
 
 #define LISTENQ            1024
 #define DEFAULT_PORT       33332
@@ -24,13 +26,12 @@
 #define NUM_CHARS          300
 #define HASHSIZE           5000000
 #define NUMTHRDS           20
-#define NLINES             2000  /* lines for tail */
+#define NLINES             100  /* lines for tail */
 #define ERRMAX             80
+#define TBUFSIZE           400 
 #define WRETRIES           10
 #define PURGE_INTERVAL     10
 #define PURGE_RETRY        5
-#define NUL                '\0'
-#define DEBUG              0
 
 
 /*  Function declarations  */
@@ -38,12 +39,12 @@
 ssize_t Readline(int fd, void *vptr, size_t maxlen);
 ssize_t Writeline(int fc, const void *vptr, size_t maxlen);
 unsigned hash(char *s);
-int AddToStruct(char *o_buffer);
+int AddToStruct(char *o_buffer, int flag);
 char *GetAllEvents(char *file);
 void *InfoDel ();
 void *mytail (void *infile);    
-void follow(char *infile, char *lines[], int n);
-long tail(FILE *fp, char *lines[], int n);
+void follow(char *infile, char *line);
+long tail(FILE *fp, char *line);
 void eprint(int err, char *fmt, va_list args);
 char *chopfmt(char *fmt);
 void syserror(char *fmt, ...);
@@ -55,8 +56,13 @@ int GetEventsInOldLogs(char *logdate);
 int strtoken(const char *s, char delim, char **token);
 int InfoAdd(int id, char *value, const char * flag);
 char *InfoGet(int id, const char * flag);
-int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir); 
+int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir, char **szCreamPort); 
 char *convdate(char *date);
+int str2epoch(char *str, char *f);
+char *iepoch2str(int epoch);
+void CreamConnection(int c_sock);
+int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason, char *timestamp, int flag);
+int NotifyFromDate(char *in_buf);
 
 /* Variables initialization */
 
@@ -67,13 +73,22 @@ char *j2rt[HASHSIZE];
 char *j2ct[HASHSIZE];
 
 char *bjl[HASHSIZE];
+char *j2bl[HASHSIZE];
+
+int   nti[HASHSIZE];
+char *ntf[HASHSIZE];
 
 char *argv0;
 
-int wlock=0;
-int rcounter=0;
+char *blahjob_string="blahjob_";
+char *cream_string="cream_";
 
-pthread_mutex_t read_mutex  = PTHREAD_MUTEX_INITIALIZER;
+int wlock=0;
+int cwlock=0;
+int rcounter=0;
+int jcount=0;
+
+pthread_mutex_t cr_write_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t write_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 char *progname="BLParserPBS";
@@ -81,11 +96,30 @@ char *progname="BLParserPBS";
 char *ldir;
 
 int port;
+int creamport;
+int usecream=0;
+
+int debug=0;
+
+struct sockaddr_in cservaddr;
+
+int  list_c;
+int  conn_c=-1;
+int  c_sock;
+char *szCreamPort;
+
+/* 
+to know if cream is connected:
+0 - not connected
+1 - connected
+*/
+int creamisconn=0;
 
 /* spooldir default */
 char *spooldir="/usr/spool/PBS";
 
 char *LastLog=NULL;
+char LastLogDate[STR_CHARS]="\0";
 
 char *blank=" ";
 
@@ -93,7 +127,7 @@ char * rex_queued    = "Job Queued ";
 char * rex_running   = "Job Run ";
 char * rex_deleted   = "Job deleted ";
 char * rex_finished  = "Exit_status=";
-char * rex_hold     = "Holds";
+char * rex_hold      = "Holds";
 char * rex_uhold     = "Holds u set";
 char * rex_ohold     = "Holds o set";
 char * rex_shold     = "Holds s set";

@@ -8,6 +8,8 @@ int main(int argc, char *argv[]) {
     int       set = 1;
     int       status;
     int       list_s;
+    int       list_c;
+    char     *Cendptr;
     
     char      eventsfile[MAX_CHARS]="\0";
     
@@ -22,11 +24,16 @@ int main(int argc, char *argv[]) {
 
     pthread_t ReadThd[NUMTHRDS];
     pthread_t UpdateThd;
+    pthread_t CreamThd;
 
     argv0 = argv[0];
 
-    ParseCmdLine(argc, argv, &szPort, &szSpoolDir);
+    /*Ignore sigpipe*/
+    
+    signal(SIGPIPE, SIG_IGN);             
         
+    ParseCmdLine(argc, argv, &szPort, &szSpoolDir, &szCreamPort);
+    
     if((argc > 1) && (szPort!=NULL)){
      port = strtol(szPort, &endptr, 0);
      if ( *endptr || port < 1 || port > 65535) {
@@ -61,10 +68,6 @@ int main(int argc, char *argv[]) {
     strcat(eventsfile,"/");
     strcat(eventsfile,cnow);
     
-    /* Get all events from last log */
-    
-    /* GetAllEvents(eventsfile);    */
-
     /*  Create the listening socket  */
 
     if ( (list_s = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
@@ -97,12 +100,60 @@ int main(int argc, char *argv[]) {
     	fprintf(stderr, "%s: Error calling listen()\n",progname);
     	exit(EXIT_FAILURE);
     }
-	
+    
+/* create listening socket for Cream */
+    if(usecream>0){
+      creamport = strtol(szCreamPort, &Cendptr, 0);
+      
+      if ( *Cendptr ) {
+     	 fprintf(stderr, "%s: Invalid port supplied for Cream\n",progname);
+     	 return -1;
+      }
+
+      if ( (list_c = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
+   	  fprintf(stderr, "%s: Error creating listening socket.\n",progname);
+   	  exit(EXIT_FAILURE);
+      }
+
+      if(setsockopt(list_c, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0) {
+     	  fprintf(stderr,"%s: setsockopt() failed\n",progname);
+      }
+
+      /*  Set all bytes in socket address structure to
+     	  zero, and fill in the relevant data members	*/
+
+      memset(&cservaddr, 0, sizeof(cservaddr));
+      cservaddr.sin_family	= AF_INET;
+      cservaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+      cservaddr.sin_port	= htons(creamport);
+
+      /*  Bind our socket addresss to the 
+   	  listening socket, and call listen()  */
+
+      if ( bind(list_c, (struct sockaddr *) &cservaddr, sizeof(cservaddr)) < 0 ) {
+   	  fprintf(stderr, "%s: Error calling bind() in main\n",progname);
+   	  exit(EXIT_FAILURE);
+      }
+      
+      if ( listen(list_c, LISTENQ) < 0 ) {
+     	  fprintf(stderr, "%s: Error calling listen()\n",progname);
+     	  exit(EXIT_FAILURE);
+      }
+    }
    
     for(i=0;i<NUMTHRDS;i++){
      pthread_create(&ReadThd[i], NULL, LookupAndSend, (void *)list_s);
     }
 
+    if(usecream>0){
+/*
+     for(i=0;i<CRMTHRDS;i++){
+      pthread_create(&CreamThd[i], NULL, CreamConnection, (void *)list_c);
+     }
+*/
+     pthread_create(&CreamThd, NULL, CreamConnection, (void *)list_c);
+    }
+    
     pthread_create(&UpdateThd, NULL, mytail, (void *)eventsfile);
     pthread_join(UpdateThd, (void **)&status);
     
@@ -183,32 +234,18 @@ unsigned hash(char *s){
 
 void *mytail (void *infile){    
         
-    char **lines;
-    int i, nlines = NLINES;
+    char *linebuffer;
     
-    nlines++;
-    if((lines=malloc(nlines * sizeof *lines)) == 0){
-        sysfatal("can't malloc lines: %r");
+    if((linebuffer=malloc(STR_CHARS)) == 0){
+     sysfatal("can't malloc linebuffer: %r");
     }
-    for(i=0; i < nlines; i++){
-        if((lines[i]=malloc(MAX_CHARS)) == 0){
-            sysfatal("can't malloc lines[%d]: %r", i);
-	}
-    }
- 
-   follow((char *)infile, lines, nlines);
+    
+    follow((char *)infile, linebuffer);
    
-    for(i=0; i < nlines; i++){
-     free(lines[i]);
-    }
-    free(lines);
-
    return 0;
 }
 
-void
-follow(char *infile, char *lines[], int n)
-{
+void follow(char *infile, char *line){
     FILE *fp;
     long off = 0;
     long old_off = 0;
@@ -236,7 +273,7 @@ follow(char *infile, char *lines[], int n)
         timeptr=localtime(&lnow);
         strftime(tnow,sizeof(tnow),"%Y%m%d",timeptr);
 
-        evfile[0]=NUL;
+        evfile[0]='\0';
         strcat(evfile,tdir);
         strcat(evfile,"/");
         strcat(evfile,tnow);
@@ -280,44 +317,21 @@ follow(char *infile, char *lines[], int n)
           sysfatal("couldn't seek: %r");
          }
         
-        off = tail(fp, lines, n);
+        off = tail(fp, line);
 	fclose(fp);
 	sleep(1);
     }        
 }
 
-long
-tail(FILE *fp, char *lines[], int n)
-{
-    int i, j;
+long tail(FILE *fp, char *line){
     long off=0;
 
-    for(i=0; i < n; i++){
-        *lines[i] = NUL;
-    }
-    i=0;
-
-    while(fgets(lines[i], MAX_CHARS, fp)){
-      if((strstr(lines[i],rex_queued)!=NULL) || (strstr(lines[i],rex_running)!=NULL) || (strstr(lines[i],rex_deleted)!=NULL) || (strstr(lines[i],rex_finished)!=NULL) || (strstr(lines[i],rex_hold)!=NULL)){
-        if(++i == n){
-            i = 0;
-	}
-      }else{
-       *lines[i] = NUL;
+    while(fgets(line, STR_CHARS, fp)){
+      if((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_deleted)!=NULL) || (strstr(line,rex_finished)!=NULL) || (strstr(line,rex_hold)!=NULL)){
+       AddToStruct(line,1);
       }
     }
 
-    j = i;
-    i = (i+1 == n ? 0 : i+1);
-    while(i != j){
-     if(*lines[i] != NUL){
-       AddToStruct(lines[i]);
-     }
-
-     if(++i == n){
-     	i = 0;
-     }
-    }
     if((off=ftell(fp)) < 0){
         sysfatal("couldn't get file location: %r");
     }
@@ -331,15 +345,25 @@ int InfoAdd(int id, char *value, const char * flag){
   return -1;
  }
   
+ if(debug){
+  fprintf(stderr, "Adding: ID:%d Type:%s Value:%s\n",id,flag,value);
+ } 
  /* set write lock */
-  wlock=1;
+ pthread_mutex_lock( &write_mutex );
+   wlock=1;
+  
  if((strcmp(flag,"JOBID")==0) && j2js[id] == NULL){
  
   j2js[id] = strdup("1");
+  j2bl[id] = strdup("\0");
   j2ec[id] = strdup("\0");
   j2st[id] = strdup("\0");
   j2rt[id] = strdup("\0");
   j2ct[id] = strdup("\0");
+  
+ } else if(strcmp(flag,"BLAHPNAME")==0){
+ 
+  j2bl[id] = strdup(value);
   
  } else if(strcmp(flag,"JOBSTATUS")==0){
  
@@ -364,32 +388,29 @@ int InfoAdd(int id, char *value, const char * flag){
  } else {
  
  /* release write lock */
+    pthread_mutex_unlock( &write_mutex );
     wlock=0;
     
    return -1;
  
  }
    /* release write lock */
+    pthread_mutex_unlock( &write_mutex );
     wlock=0;
     
    return 0;
 }
 
-int AddToStruct(char *line){
+int AddToStruct(char *line, int flag){
 
- int n=0;
  int has_blah=0;
  unsigned h_blahjob;
  
- char *s_tok;
- char *j_tok;
- char *r_tok;
- char *b_tok;
- char *bb_tok;
- char *t_tok;
-
  char *	trex;
  char *	rex;
+
+ int  maxtok,ii; 
+ char **tbuf;
  
  int id;
  int is_queued=0;
@@ -407,41 +428,51 @@ int AddToStruct(char *line){
  char *tb_job=NULL;
  char *j_blahjob=NULL;
  
- char *blahjob_string="blahjob_";
-
- if(strstr(line,blahjob_string)!=NULL){
+ if((strstr(line,blahjob_string)!=NULL) || (strstr(line,cream_string)!=NULL)){
   has_blah=1;
  }
  
- s_tok=strtok(line,";");
-
- while(s_tok!=NULL){
-  if(n==0){
-   tj_time=strdup(s_tok);
-   j_time=convdate(tj_time);
-  }else if(n==4){
-   tjobid=strdup(s_tok);
-  }else if(n==5){
-   rex=strdup(s_tok);
-   trex=strdup(rex);
-  }
-  s_tok=strtok(NULL,";");
-  n++;
+ if((tbuf=malloc(TBUFSIZE * sizeof *tbuf)) == 0){
+     sysfatal("can't malloc tbuf: %r");
  }
+
+ maxtok=strtoken(line,';',tbuf);
+ 
+ 
+ if(maxtok>0){
+  tj_time=strdup(tbuf[0]);
+  j_time=convdate(tj_time);
+ }
+ if(maxtok>4){
+  tjobid=strdup(tbuf[4]);
+ }
+ if(maxtok>5){
+  rex=strdup(tbuf[5]);
+  trex=strdup(rex);
+ }
+
+ for(ii=0;ii<maxtok;ii++){
+  free(tbuf[ii]);
+ }
+ free(tbuf);
 
 /* get jobid */ 
  if(tjobid){
- 
-  n=0;
-  j_tok=strtok(tjobid,".");
-   while(j_tok!=NULL){
-    if(n==0){
-     jobid=strdup(j_tok);
-     break;
-    }
-    j_tok=strtok(NULL,".");
-    n++;
+
+  if((tbuf=malloc(TBUFSIZE * sizeof *tbuf)) == 0){
+     sysfatal("can't malloc tbuf: %r");
   }
+  
+  maxtok=strtoken(tjobid,'.',tbuf);
+ 
+  if(maxtok>0){
+   jobid=strdup(tbuf[0]);
+  }
+
+  for(ii=0;ii<maxtok;ii++){
+   free(tbuf[ii]);
+  }
+  free(tbuf);
  
   id=atoi(jobid);
 
@@ -450,54 +481,68 @@ int AddToStruct(char *line){
 /* get j_blahjob */
  if(rex && (strstr(rex,rex_queued)!=NULL)){
   is_queued=1; 
-  n=0;
-  b_tok=strtok(trex,",");
-   while(b_tok!=NULL){
-    if(n==2){
-     tb_job=strdup(b_tok);
-     break;
-    }
-    b_tok=strtok(NULL,",");
-    n++;
+
+  if((tbuf=malloc(TBUFSIZE * sizeof *tbuf)) == 0){
+     sysfatal("can't malloc tbuf: %r");
+  }
+  maxtok=strtoken(trex,',',tbuf);
+  
+  if(maxtok>2){
+   tb_job=strdup(tbuf[2]);
   }
   
-  n=0;
-  bb_tok=strtok(tb_job,"=");
-   while(bb_tok!=NULL){
-    if(n==1){
-     j_blahjob=strdup(bb_tok);
-     break;
-    }
-    bb_tok=strtok(NULL,"=");
-    n++;
+  for(ii=0;ii<maxtok;ii++){
+   free(tbuf[ii]);
   }
- 
+  free(tbuf);
+
+  if((tbuf=malloc(TBUFSIZE * sizeof *tbuf)) == 0){
+     sysfatal("can't malloc tbuf: %r");
+  }
+  maxtok=strtoken(tb_job,'=',tbuf);
+  
+  if(maxtok>1){
+   j_blahjob=strdup(tbuf[1]);
+  }
+  
+  for(ii=0;ii<maxtok;ii++){
+   free(tbuf[ii]);
+  }
+  free(tbuf);
+   
  } /* close rex_queued if */
 
 /* get ex_status */
  if(rex && (strstr(rex,rex_finished)!=NULL)){
   is_finished=1;
-  n=0;
-  r_tok=strtok(trex,blank);
-   while(r_tok!=NULL){
-    if(n==0){
-     tex_status=strdup(r_tok);
-     break;
-    }
-    r_tok=strtok(NULL,blank);
-    n++;
+  
+  if((tbuf=malloc(TBUFSIZE * sizeof *tbuf)) == 0){
+     sysfatal("can't malloc tbuf: %r");
   }
- 
-  n=0;
-  t_tok=strtok(tex_status,"=");
-  while(t_tok!=NULL){
-    if(n==1){
-     ex_status=strdup(t_tok);
-     break;
-    }
-    t_tok=strtok(NULL,"=");
-    n++;
+  maxtok=strtoken(trex,' ',tbuf);
+  
+  if(maxtok>0){
+   tex_status=strdup(tbuf[0]);
   }
+  
+  for(ii=0;ii<maxtok;ii++){
+   free(tbuf[ii]);
+  }
+  free(tbuf);
+  
+  if((tbuf=malloc(TBUFSIZE * sizeof *tbuf)) == 0){
+     sysfatal("can't malloc tbuf: %r");
+  }
+  maxtok=strtoken(tex_status,'=',tbuf);
+  
+  if(maxtok>1){
+   ex_status=strdup(tbuf[1]);
+  }
+  
+  for(ii=0;ii<maxtok;ii++){
+   free(tbuf[ii]);
+  }
+  free(tbuf);
   
  } /* close rex_finished if */
  
@@ -512,9 +557,14 @@ int AddToStruct(char *line){
 
   InfoAdd(id,jobid,"JOBID");
   InfoAdd(id,j_time,"STARTTIME");
- 
+  InfoAdd(id,j_blahjob,"BLAHPNAME");
+
   h_blahjob=hash(j_blahjob);
   bjl[h_blahjob]=strdup(jobid);
+  
+  if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
+   NotifyCream(id, "1", j2bl[id], "NA", "NA", j2st[id], flag);
+  }
   
  } else if(j2js[id]!=NULL){
  
@@ -523,15 +573,27 @@ int AddToStruct(char *line){
    InfoAdd(id,"2","JOBSTATUS");
    InfoAdd(id,j_time,"RUNNINGTIME");
    
+   if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
+    NotifyCream(id, "2", j2bl[id], "NA", "NA", j2rt[id], flag);
+   }
+   
   } else if(strstr(rex,rex_deleted)!=NULL){
   
    InfoAdd(id,"3","JOBSTATUS");
 
+   if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
+    NotifyCream(id, "3", j2bl[id], "NA", "NA", j_time, flag);
+   }
+    
   } else if(is_finished==1){
   
    InfoAdd(id,"4","JOBSTATUS");
    InfoAdd(id,ex_status,"EXITCODE");
    InfoAdd(id,j_time,"COMPLTIME");
+
+   if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
+    NotifyCream(id, "4", j2bl[id], "NA", "NA", j2ct[id], flag);
+   }
 
   } else if(rex && ((strstr(rex,rex_uhold)!=NULL) || (strstr(rex,rex_ohold)!=NULL) || (strstr(rex,rex_ohold)!=NULL))){
    
@@ -541,12 +603,22 @@ int AddToStruct(char *line){
     InfoAdd(id,"5/2","JOBSTATUS");
    }
    
+   if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
+    NotifyCream(id, "5", j2bl[id], "NA", "NA", j_time, flag);
+   }
+   
   } else if(rex && ((strstr(rex,rex_uresume)!=NULL) || (strstr(rex,rex_oresume)!=NULL) || (strstr(rex,rex_oresume)!=NULL))){
    
    if(strcmp(j2js[id],"5/1")==0){
     InfoAdd(id,"1","JOBSTATUS");
+   if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
+    NotifyCream(id, "1", j2bl[id], "NA", "NA", j_time, flag);
+   }
    }else if(strcmp(j2js[id],"5/2")==0){
     InfoAdd(id,"2","JOBSTATUS");
+   if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
+    NotifyCream(id, "2", j2bl[id], "NA", "NA", j_time, flag);
+   }
    }
    
   } /* closes if-else if on rex_ */
@@ -581,7 +653,7 @@ char *GetAllEvents(char *file){
   if((fp=fopen(opfile[i], "r")) != 0){
    while(fgets(line, MAX_LINES, fp)){
     if((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_deleted)!=NULL) || (strstr(line,rex_finished)!=NULL) || (strstr(line,rex_hold)!=NULL)){
-     AddToStruct(line);
+     AddToStruct(line,0);
     }
    }
   } else {
@@ -604,12 +676,14 @@ void *LookupAndSend(int m_sock){
     char      *out_buf;
     char      *logdate;
     char      *jobid;
-    char      h_jobid[NUM_CHARS];
+    char      *h_jobid;
     char      jstat[NUM_CHARS];
     char      *pr_removal="Not";
-    int       i;
+    int       i,maxtok,ii;
     int       id;
     int       conn_s;
+    char      **tbuf;
+    char      *cp;
     
     while ( 1 ) {
 
@@ -624,12 +698,20 @@ void *LookupAndSend(int m_sock){
 	if((buffer=malloc(STR_CHARS)) == 0){
 	  sysfatal("can't malloc buffer in LookupAndSend: %r");
 	}
-       buffer[0]='\0';
+        buffer[0]='\0';
 
+	if((h_jobid=malloc(NUM_CHARS)) == 0){
+	  sysfatal("can't malloc h_jobid in LookupAndSend: %r");
+	}
+        h_jobid[0]='\0';
+	
         /* read line from socket */
 	Readline(conn_s, buffer, STR_CHARS-1);
+	if(debug){
+	 fprintf(stderr, "Received:%s",buffer);
+	}
 	
-	//printf("thread/0x%08lx\n",pthread_self());
+	/* printf("thread/0x%08lx\n",pthread_self()); */
 	
 	if((strlen(buffer)==0) || (strcmp(buffer,"\n")==0) || (strstr(buffer,"/")==0)){
          if((out_buf=malloc(STR_CHARS)) == 0){
@@ -638,10 +720,58 @@ void *LookupAndSend(int m_sock){
      	 sprintf(out_buf,"Wrong string format/Not\n");
 	 goto close;
 	}
-        logdate=strtok(buffer,"/");
-        jobid=strtok(NULL,"/");
-        strtok(jobid,"\n");
     
+        if ((cp = strrchr (buffer, '\n')) != NULL){
+         *cp = '\0';
+        }
+
+        if((tbuf=malloc(10 * sizeof *tbuf)) == 0){
+          sysfatal("can't malloc tbuf: %r");
+        }
+	
+        maxtok=strtoken(buffer,'/',tbuf);
+        if(tbuf[0]){
+         logdate=strdup(tbuf[0]);
+        }else{
+         if((logdate=malloc(STR_CHARS)) == 0){
+          sysfatal("can't malloc buffer in LookupAndSend: %r");
+         }
+         logdate[0]='\0';
+        }
+        if(tbuf[1]){
+         jobid=strdup(tbuf[1]);
+        }else{
+         if((jobid=malloc(STR_CHARS)) == 0){
+          sysfatal("can't malloc buffer in LookupAndSend: %r");
+         }
+         jobid=strdup("\0");
+        }
+
+        for(ii=0;ii<maxtok;ii++){
+         free(tbuf[ii]);
+        }
+        free(tbuf);
+	
+	if((strlen(logdate)==0) || (strcmp(logdate,"\n")==0) || ((strcmp(logdate,"CREAMPORT")!=0) && ((strlen(jobid)==0) || (strcmp(jobid,"\n")==0)))){
+         if((out_buf=malloc(STR_CHARS)) == 0){
+          sysfatal("can't malloc out_buf in LookupAndSend: %r");
+         }
+         sprintf(out_buf,"\n");
+
+         goto close;
+
+        }
+	
+/* get port where the parser is waiting for a connection from cream and send it to cream */
+       
+	if(strcmp(logdate,"CREAMPORT")==0){
+         if((out_buf=malloc(STR_CHARS)) == 0){
+          sysfatal("can't malloc out_buf in LookupAndSend: %r");
+         }
+	 sprintf(out_buf,"%d\n",creamport);
+	 goto close;
+	}
+	
 /* now jobid has also the machine part after the numeric part
 but atoi does the same if the machine part is there or not and we need 
 all the jobid in the output classad */
@@ -651,7 +781,7 @@ all the jobid in the output classad */
 	if(strcmp(logdate,"BLAHJOB")==0){
          for(i=0;i<WRETRIES;i++){
 	  if(wlock==0){
-	   *h_jobid=NUL;
+	   *h_jobid='\0';
 	   strcat(h_jobid," ");
 	   strcat(h_jobid,jobid);
 	   if(bjl[hash(h_jobid)]==NULL){
@@ -756,9 +886,15 @@ all the jobid in the output classad */
 	}
 close:	
  	Writeline(conn_s, out_buf, strlen(out_buf));
-	
+	if(debug){
+	 fprintf(stderr, "Sent:%s",out_buf);
+	}
+
 	free(out_buf);
 	free(buffer);
+        free(logdate);
+        free(jobid);
+        free(h_jobid);
 	
 	/*  Close the connected socket  */
 
@@ -791,10 +927,8 @@ char *GetLogList(char *logdate){
  char rm_out[STR_CHARS];
  char logs[MAX_CHARS]="\0";
  char *slogs;
- char *t_logs;
  char tlogs[MAX_CHARS];
  char command_string[MAX_CHARS]="\0";
- int n=0;
  FILE *mktemp_output;
  FILE *touch_output;
  FILE *find_output;
@@ -802,6 +936,9 @@ char *GetLogList(char *logdate){
  FILE *ls_output;
  int len;
  int last_tag;
+ int maxtok;
+ int i=0;
+ char **oplogs;
 
  if((slogs=malloc(MAX_CHARS)) == 0){
   sysfatal("can't malloc slogs: %r");
@@ -875,21 +1012,20 @@ char *GetLogList(char *logdate){
   pclose(ls_output);
  
   slogs[0]='\0';
-  t_logs=strtok(tlogs,"\n");
-  while(t_logs!=NULL){
-   if(n==0){
-    LastLog=strdup(t_logs);
-    last_tag=n;
-   }else if(n==1){
-    last_tag=n; 
-   }
-   
-   strcat(slogs,t_logs);
-   strcat(slogs," ");
-
-   t_logs=strtok(NULL,"\n");
-   n++;
+  
+  if((oplogs=malloc(10*STR_CHARS * sizeof *oplogs)) == 0){
+     sysfatal("can't malloc oplogs: %r");
   }
+  
+  maxtok = strtoken(tlogs, '\n', oplogs);
+  last_tag=maxtok;
+  
+  for(i=0; i<maxtok; i++){ 
+   strcat(slogs,oplogs[i]);
+   strcat(slogs," ");
+   free(oplogs[i]);
+  }
+  free(oplogs);
 
 /* last_tag is used to see if there is only one log file and to avoid to rescan it*/
 
@@ -905,6 +1041,264 @@ char *GetLogList(char *logdate){
   
  }
 }
+
+void CreamConnection(int c_sock){ 
+
+    char      *buffer;
+    int       retcod;
+    
+    struct   pollfd fds[2];   /*      poll file descp. struct	       */
+    struct   pollfd *pfds;    /*      pointer to fds		       */
+    int      nfds = 1;
+    int      timeout= 5;
+    
+    fds[0].fd = c_sock;
+    fds[0].events = 0;
+    fds[0].events = ( POLLIN | POLLOUT | POLLPRI | POLLERR | POLLHUP | POLLNVAL ) ;
+    pfds = fds;
+
+   if((buffer=malloc(STR_CHARS)) == 0){
+    sysfatal("can't malloc buffer in CreamConnection: %r");
+   }
+
+   while ( 1 ) {
+	  
+    retcod = poll(pfds, nfds, timeout); 
+        
+    if(retcod <0){
+     fprintf(stderr, "%s: Poll error for Cream\n",progname);
+     close(conn_c);
+     exit(EXIT_FAILURE);
+    }
+    
+    if ( retcod > 0 ){
+         if ( ( fds[0].revents & ( POLLERR | POLLNVAL | POLLHUP) )){
+           switch (fds[0].revents){
+           case POLLNVAL:
+		   fprintf(stderr, "%s: poll() file descriptor error for Cream\n",progname);
+        	   break;
+           case POLLHUP:
+		   fprintf(stderr, "%s: Connection closed for Cream\n",progname);
+        	   break;
+           case POLLERR:
+		   fprintf(stderr, "%s: poll() POLLERR for Cream\n",progname);
+        	   break;
+           }
+        } else {
+            
+	  if ( (conn_c = accept(c_sock, NULL, NULL) ) < 0 ) {
+	   fprintf(stderr, "%s: Error calling accept()\n",progname);
+	   exit(EXIT_FAILURE);
+          }
+	    
+     	  buffer[0]='\0';
+     	  Readline(conn_c, buffer, STR_CHARS-1);
+	  if(debug){
+	   fprintf(stderr, "Received for Cream:%s",buffer);
+	  }
+	  if(buffer && (strstr(buffer,"STARTNOTIFY")!=NULL)){
+	   NotifyFromDate(buffer);
+	  }
+	
+	} 
+     }       
+   }       
+    
+}
+
+int NotifyFromDate(char *in_buf){
+
+    char * out_buf;
+    int    ii;
+    char *notstr;
+    char *notdate;
+    char *lnotdate;
+    int   notepoch;
+    int   logepoch;
+
+    int  maxtok,j; 
+    char **tbuf;
+    char *cp;
+
+    /* printf("thread/0x%08lx\n",pthread_self()); */
+
+    if((out_buf=malloc(STR_CHARS)) == 0){
+     sysfatal("can't malloc out_buf: %r");
+    }
+    
+    if((tbuf=malloc(10 * sizeof *tbuf)) == 0){
+      sysfatal("can't malloc tbuf: %r");
+    }
+       
+    maxtok=strtoken(in_buf,'/',tbuf);
+    
+    if(tbuf[0]){
+     notstr=strdup(tbuf[0]);
+    }
+    if(tbuf[1]){
+     notdate=strdup(tbuf[1]);
+     if ((cp = strrchr (notdate, '\n')) != NULL){
+      *cp = '\0';
+     }
+    }
+    
+    for(j=0;j<maxtok;j++){
+     free(tbuf[j]);
+    }
+    free(tbuf);
+            
+    if(notstr && strcmp(notstr,"STARTNOTIFY")==0){
+    
+      creamisconn=1;
+      
+      notepoch=str2epoch(notdate,"S");
+      
+      if(strcmp(LastLogDate,"\0")==0){
+       logepoch=nti[0];
+      }else{
+       logepoch=str2epoch(LastLogDate,"L");
+      }
+      
+      if(notepoch<=logepoch){
+       lnotdate=iepoch2str(notepoch);
+       GetEventsInOldLogs(lnotdate);
+      }
+      
+      printf("jcount %d\n",jcount);
+      for(ii=0;ii<jcount;ii++){
+       printf("notepoch %d nti[ii] %d\n",notepoch,nti[ii]);
+       if(notepoch<=nti[ii]){
+        sprintf(out_buf,"NTFDATE/%s",ntf[ii]);  
+        Writeline(conn_c, out_buf, strlen(out_buf));
+	if(debug){
+	 fprintf(stderr, "Sent for Cream_nftdate:%s",out_buf);
+	}
+       }
+      }
+      Writeline(conn_c, "NTFDATE/END\n", strlen("NTFDATE/END\n"));
+      
+      free(out_buf);
+      free(notstr);
+      free(notdate);
+      
+      return 0;    
+    }
+    
+    free(out_buf);
+    free(notstr);
+    free(notdate);
+    	    
+    return -1;
+}
+
+int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason, char *timestamp, int flag){
+
+ /*if flag ==0 AddToStruct is called within GetOldLogs 
+   if flag ==1 AddToStruct is called elsewhere*/
+   
+    char     *buffer;
+    char     *outreason;
+    char     sjobid[STR_CHARS];
+  
+    int      retcod;
+        
+    struct   pollfd fds[2];   /*      poll file descp. struct	       */
+    struct   pollfd *pfds;    /*      pointer to fds		       */
+    int      nfds = 1;
+    int      timeout= 1;
+    
+    char    **clientjobid;
+    int      maxtok,i;
+    
+    fds[0].fd = conn_c;
+    fds[0].events = 0;
+    fds[0].events = ( POLLIN | POLLOUT | POLLPRI | POLLERR | POLLHUP | POLLNVAL ) ;
+    pfds = fds;
+    
+    sprintf(sjobid, "%d",jobid);
+    
+    if((buffer=malloc(STR_CHARS)) == 0){
+     sysfatal("can't malloc buffer: %r");
+    }
+    if((outreason=malloc(STR_CHARS)) == 0){
+     sysfatal("can't malloc outreason: %r");
+    }
+    if((clientjobid=malloc(10 * sizeof *clientjobid)) == 0){
+       sysfatal("can't malloc clientjobid %r");
+    }
+    
+    buffer[0]='\0';
+    outreason[0]='\0';
+
+    if(strcmp(reason,"NA")!=0){
+      sprintf(outreason," Reason=\"lsf_reason=%s\";" ,reason);
+    }
+    
+    maxtok = strtoken(blahjobid, '_', clientjobid);    
+    
+    if(strcmp(wn,"NA")!=0){
+      sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobId=%s; ClientJobId=\"%s; WorkerNode=%s;%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], wn, outreason, timestamp);
+    }else{
+      sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobId=%s; ClientJobId=\"%s;%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], outreason, timestamp);
+    }
+    
+    for(i=0;i<maxtok;i++){
+     free(clientjobid[i]);
+    }
+    free(clientjobid);
+
+    /* set lock for cream cache */
+    pthread_mutex_lock( &cr_write_mutex );
+    
+    nti[jcount]=str2epoch(timestamp,"S");
+    ntf[jcount++]=strdup(buffer);
+    
+    /* unset lock for cream cache */
+    pthread_mutex_unlock( &cr_write_mutex );
+    
+    if((creamisconn==0) || (flag==0)){
+     free(buffer);
+     free(outreason);
+     return -1;
+    }
+    
+    
+    retcod = poll(pfds, nfds, timeout); 
+        
+    if(retcod <0){
+     fprintf(stderr, "%s: Poll error for Cream\n",progname);
+     close(conn_c);
+     exit(EXIT_FAILURE);
+    }
+    
+    if ( retcod > 0 ){
+        if ( ( fds[0].revents & ( POLLERR | POLLNVAL | POLLHUP) )){
+           switch (fds[0].revents){
+           case POLLNVAL:
+		   fprintf(stderr, "%s: poll() file descriptor error for Cream\n",progname);
+        	   break;
+           case POLLHUP:
+		   fprintf(stderr, "%s: Connection closed for Cream\n",progname);
+        	   break;
+           case POLLERR:
+		   fprintf(stderr, "%s: poll() POLLERR for Cream\n",progname);
+        	   break;
+           }
+        } else {
+	  Writeline(conn_c, buffer, strlen(buffer));
+	  if(debug){
+	   fprintf(stderr, "Sent for Cream:%s",buffer);
+	  }
+	} 
+     }       
+			
+    free(buffer);
+    free(outreason);
+    
+    return 0;
+    
+}
+
 
 int strtoken(const char *s, char delim, char **token)
 {
@@ -923,7 +1317,9 @@ int strtoken(const char *s, char delim, char **token)
             assert(token[i]);
             strcpy(token[i], ptr);
             ptr = dptr + 1;
-            i++;
+	    if (strlen(token[i]) != 0){
+             i++;
+	    }
         } else {
             if(strlen(ptr)) {
                 token[i] = (char *) malloc(1 + strlen(ptr));
@@ -948,20 +1344,79 @@ char *convdate(char *date){
  size_t max=100;
 
  struct tm *tm;
- tm=malloc(max);
+ if((tm=malloc(max)) == 0){
+  sysfatal("can't malloc tm in epoch2str: %r");
+ }
 
  strptime(date,"%m/%d/%Y %T",tm);
  
  dateout=malloc(max);
  
- strftime(dateout,max,"%d-%m-%y %T",tm);
+ strftime(dateout,max,"%Y-%m-%d %T",tm);
  free(tm);
  
  return dateout;
  
 }
 
-int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir) {
+char *iepoch2str(int epoch){
+  
+ char *dateout;
+ char *lepoch;
+ size_t max=100;
+
+ struct tm *tm;
+ if((tm=malloc(max)) == 0){
+  sysfatal("can't malloc tm in iepoch2str: %r");
+ }
+ if((lepoch=malloc(STR_CHARS)) == 0){
+  sysfatal("can't malloc lepoch in iepoch2str: %r");
+ }
+ 
+ sprintf(lepoch,"%d",epoch);
+ 
+ strptime(lepoch,"%s",tm);
+ 
+ dateout=malloc(max);
+ 
+ strftime(dateout,max,"%Y%m%d%H%M.%S",tm);
+ free(tm);
+ free(lepoch);
+ 
+ return dateout;
+ 
+}
+
+int str2epoch(char *str, char * f){
+  
+ char *dateout;
+ int idate;
+ size_t max=100;
+
+ struct tm *tm;
+ if((tm=malloc(max)) == 0){
+  sysfatal("can't malloc tm in str2epoch: %r");
+ }
+ if(strcmp(f,"S")==0){
+  strptime(str,"%Y-%m-%d %T",tm);
+ }else if(strcmp(f,"L")==0){
+  strptime(str,"%a %b %d %T %Y",tm);
+ }
+ 
+ dateout=malloc(max);
+ 
+ strftime(dateout,max,"%s",tm);
+ 
+ free(tm);
+ 
+ idate=atoi(dateout);
+ free(dateout);
+ 
+ return idate;
+ 
+}
+
+int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir, char **szCreamPort) {
     
     int n = 1;
      
@@ -976,6 +1431,13 @@ int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir) {
         }
         else if ( !strncmp(argv[n], "-s", 2) || !strncmp(argv[n], "-S", 2) ) {
             *szSpoolDir = argv[++n];
+        }
+        else if ( !strncmp(argv[n], "-m", 2) || !strncmp(argv[n], "-M", 2) ) {
+            *szCreamPort = argv[++n];
+	    usecream++;
+        }
+        else if ( !strncmp(argv[n], "-d", 2) || !strncmp(argv[n], "-D", 2) ) {
+	    debug=1;
         }
         else if ( !strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2) ) {
             printf("Usage:\n");
@@ -1011,7 +1473,7 @@ chopfmt(char *fmt)
     static char errstr[ERRMAX];
     char *p;
 
-    errstr[0] = NUL;
+    errstr[0] = '\0';
     if((p=strstr(fmt, "%r")) != 0)
         fmt = strncat(errstr, fmt, p-fmt);
     return fmt;
