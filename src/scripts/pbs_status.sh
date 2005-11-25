@@ -47,6 +47,9 @@ logpath=${spoolpath}server_logs
 #get worker node info
 getwn=""
 
+#get creamport
+getcreamport=""
+
 #set to yes if BLParser is present in the installation
 BLParser=""
 
@@ -58,10 +61,11 @@ BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 # Parse parameters
 ###############################################################
 
-while getopts "w" arg 
+while getopts "wn" arg 
 do
     case "$arg" in
     w) getwn="yes" ;;
+    n) getcreamport="yes" ;;
 
     -) break ;;
     ?) echo $usage_string
@@ -72,6 +76,18 @@ done
 shift `expr $OPTIND - 1`
 
 ###################################################################
+#get creamport and exit
+
+if [ "x$getcreamport" == "xyes" ] ; then
+ result=`echo "CREAMPORT/"|$BLClient -a $BLPserver -p $BLPport`
+ reqretcode=$?
+ if [ "$reqretcode" == "1" ] ; then
+  exit 1
+ fi
+ retcode=0
+ echo $BLPserver:$result
+ exit $retcode
+fi
 
 pars=$*
 requested=`echo $pars | sed -e 's/^.*\///'`
