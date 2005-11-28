@@ -25,6 +25,7 @@
 #define JOBID_MAX_LEN	256
 #define ERROR_MAX_LEN	256
 #define RESLN_MAX_LEN	2048
+#define MAX_JOB_NUMBER  10
 
 /* Job states
  * */

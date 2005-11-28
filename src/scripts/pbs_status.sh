@@ -47,9 +47,6 @@ logpath=${spoolpath}server_logs
 #get worker node info
 getwn=""
 
-#get creamport
-getcreamport=""
-
 #set to yes if BLParser is present in the installation
 BLParser=""
 
@@ -61,11 +58,10 @@ BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 # Parse parameters
 ###############################################################
 
-while getopts "wn" arg 
+while getopts "w" arg 
 do
     case "$arg" in
     w) getwn="yes" ;;
-    n) getcreamport="yes" ;;
 
     -) break ;;
     ?) echo $usage_string
@@ -76,43 +72,32 @@ done
 shift `expr $OPTIND - 1`
 
 ###################################################################
-#get creamport and exit
-
-if [ "x$getcreamport" == "xyes" ] ; then
- result=`echo "CREAMPORT/"|$BLClient -a $BLPserver -p $BLPport`
- reqretcode=$?
- if [ "$reqretcode" == "1" ] ; then
-  exit 1
- fi
- retcode=0
- echo $BLPserver:$result
- exit $retcode
-fi
 
 pars=$*
-requested=`echo $pars | sed -e 's/^.*\///'`
+#test per vedere se si possono leggere piu'jobids
+for  reqfull in $pars ; do
+        requested=`echo $reqfull | sed -e 's/^.*\///'`
+	if [ "x$getwn" == "xyes" ] ; then
+		 workernode=`${pbsbinpath}/qstat -f $requested 2> /dev/null | grep exec_host| sed "s/exec_host = //" | awk -F"/" '{ print $1 }'`
+	fi
 
-if [ "x$getwn" == "xyes" ] ; then
- workernode=`${pbsbinpath}/qstat -f $requested 2> /dev/null | grep exec_host| sed "s/exec_host = //" | awk -F"/" '{ print $1 }'`
-fi
+	proxy_dir=~/.blah_jobproxy_dir
 
-proxy_dir=~/.blah_jobproxy_dir
+	cliretcode=0
+	if [ "x$BLParser" == "xyes" ] ; then
 
-cliretcode=0
-if [ "x$BLParser" == "xyes" ] ; then
+    	usingBLP="yes"
+    	result=`echo $pars| $BLClient -a $BLPserver -p $BLPport`
+    	cliretcode=$?
 
-    usingBLP="yes"
-    result=`echo $pars| $BLClient -a $BLPserver -p $BLPport`
-    cliretcode=$?
+	fi
+	if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
 
-fi
-if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
+		usingBLP="no"
+		logfile=`echo $pars | sed 's/\/.*//'`
+		logs="$logpath/$logfile `find $logpath -type f -newer $logpath/$logfile`"
 
-usingBLP="no"
-logfile=`echo $pars | sed 's/\/.*//'`
-logs="$logpath/$logfile `find $logpath -type f -newer $logpath/$logfile`"
-
-result=`awk -v jobId="$requested" -v wn="$workernode" -v proxyDir="$proxy_dir" '
+		result=`awk -v jobId="$requested" -v wn="$workernode" -v proxyDir="$proxy_dir" '
 BEGIN {
 	rex_queued   = jobId ";Job Queued "
 	rex_running  = jobId ";Job Run "
@@ -165,28 +150,31 @@ END {
 }
 ' $logs`
 
-  if [ "$?" == "0" ] ; then
-	echo $result
-	retcode=0
-  else
-	echo "ERROR: Job not found"
-	retcode=1
-  fi
+  		if [ "$?" == "0" ] ; then
+			echo "0"$result
+			retcode=0
+  		else
+			echo "1ERROR: Job not found"
+			retcode=1
+  		fi
   
-  exit $retcode
+  	#exit $retcode
 
-fi #close if on BLParser
+	fi #close if on BLParser
+	if [ "x$usingBLP" == "xyes" ] ; then
 
-if [ "x$usingBLP" == "xyes" ] ; then
+    		pr_removal=`echo $result | sed -e 's/^.*\///'`
+    		result=`echo $result | sed 's/\/.*//'`
 
-    pr_removal=`echo $result | sed -e 's/^.*\///'`
-    result=`echo $result | sed 's/\/.*//'`
+    		if [ "x$pr_removal" == "xYes" ] ; then
+        		rm ${proxy_dir}/${requested}.proxy 2>/dev/null
 
-    if [ "x$pr_removal" == "xYes" ] ; then
-        rm ${proxy_dir}/${requested}.proxy 2>/dev/null
+    		fi
+        	echo $result "Workernode=\"$workernode\";]"
+        	#exit $retcode
 
-    fi
-        echo $result "Workernode=\"$workernode\";]"
-        exit $retcode
+	fi
 
-fi
+done 
+
+exit $retcode

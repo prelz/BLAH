@@ -30,25 +30,28 @@
 
 extern char *blah_script_location;
 
-int
-get_status(const char *jobDesc, classad_context *cad, char *error_str, int get_workernode)
+int get_status(const char *jobDesc, classad_context *cad, char error_str[][ERROR_MAX_LEN], int get_workernode, int *job_nr)
 {
-	FILE *cmd_out;
-	char buffer[1024];
-	char *command;
-	char *cad_str = NULL;
-	int retcode = 0;
-	char *server_lrms;
-	char *jobId;
+        FILE *cmd_out;
+        char buffer[1024];
+        char *command;
+        char **cad_str;
+        int  retcode = 0;
+        char *server_lrms;
+        char *jobId;
+        int   i, lc;
+        char *tmpstr = NULL;
+        classad_context tmpcad;
+        char **tmperrstr = NULL;
 
-        if (strlen(jobDesc) < 4)
+	if (strlen(jobDesc) < 4)
         {
-		strncpy(error_str, "Malformed jobId", ERROR_MAX_LEN);
-                return(255);
+		strcpy(*error_str,"Malformed jobId");
+		return(255);
         }
 
         if((server_lrms = strdup(jobDesc)) == NULL)
-	{
+        {
                 fprintf(stderr, "Out of memory\n");
                 exit(MALLOC_ERROR);
         }
@@ -58,56 +61,58 @@ get_status(const char *jobDesc, classad_context *cad, char *error_str, int get_w
 
         command = make_message("%s/%s_status.sh %s %s", blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobId);
 
-	/* fprintf(stderr, "DEBUG: status cmd = %s\n", command); */
-	if ((cmd_out=mtsafe_popen(command, "r")) == NULL)
-	{
-		fprintf(stderr, "Unable to execute '%s': ", command);
-		perror("");
-		strncpy(error_str, "Unable to open pipe for status command", ERROR_MAX_LEN);
+        if ((cmd_out=mtsafe_popen(command, "r")) == NULL)
+        {
+                fprintf(stderr, "Unable to execute '%s': ", command);
+                perror("");
+		strcpy(*error_str,"Unable to open pipe for status command");
 		free(server_lrms);
-		return(255);
-	}
-
-	if((cad_str = malloc(1)) == NULL)
-	{
-		fprintf(stderr, "Out of memory\n");
-		exit(MALLOC_ERROR);
-	}
-	cad_str[0] = '\0';
-
-	while (fgets(buffer, sizeof(buffer), cmd_out))
-	{
-		/* This line is for backward compatibility */
-		if (strcmp(buffer, "*** END ***\n") == 0) break;
-		if (buffer[strlen(buffer) - 1] == '\n') buffer[strlen(buffer) - 1] = ' ';
-		cad_str = (char *) realloc (cad_str, strlen(cad_str) + strlen(buffer) + 1);
-		strcat(cad_str, buffer);
-	}
-
-	retcode = mtsafe_pclose(cmd_out);
-	if (retcode)
-	{
-		*cad = NULL;
-		strncpy(error_str, cad_str, ERROR_MAX_LEN);
-	}
-	else
-	{
-		/* fprintf(stderr, "DEBUG: classad = %s\n", cad_str); */
-		*cad = classad_parse(cad_str);
-		if (*cad == NULL)
-		{
-			strncpy(error_str, "Error parsing classad", ERROR_MAX_LEN);
-                        free(cad_str);
-                        free(command);
-			free(server_lrms);
-			return(255);
-		}
-	}
-
-	strncpy(error_str, "No Error", ERROR_MAX_LEN);
-	free(server_lrms);
-	free(cad_str);
+                return(255);
+        }
 	free(command);
+	free(server_lrms);
+	command = server_lrms = NULL;
+        lc = 0;
+        while (fgets(buffer, sizeof(buffer), cmd_out))
+        {
+                if (buffer[strlen(buffer) - 1] == '\n') buffer[strlen(buffer) - 1] = ' ';
+                tmpstr = (char*)malloc(strlen(buffer));
+                strncpy(tmpstr,buffer + 1, strlen(buffer) -1);
+                cad_str = realloc((void*)(cad_str),(++lc)*sizeof(char*));
+                //retcode  from scripts != 0
+		if(buffer[0] != '1')
+		{
+			cad_str[lc - 1] = (void*)malloc(strlen(buffer) -1);
+			strncpy(cad_str[lc - 1],tmpstr,strlen(buffer) -1);
+		}else
+			cad_str[lc - 1] = NULL;
 
-	return WEXITSTATUS(retcode);
+        }
+	if(tmpstr) free(tmpstr);
+        retcode = mtsafe_pclose(cmd_out);
+	
+	for(i = 0; i < lc; i++)
+        {
+			if (cad_str[i] == NULL)
+                        {
+				//Error parsing classad or job not found
+				cad[i]  = NULL; 
+				strcpy((error_str[i]),"Error parsing classad or job not found");	
+			}else
+                        {
+				tmpcad = classad_parse(cad_str[i]);                       
+				if (tmpcad == NULL)
+                                {
+					strcpy((error_str[i]),"Error allocating memory");
+					return(1);
+                                }
+                        	cad[i] = tmpcad;
+				strcpy(error_str[i],"No Error");
+			}
+          }
+	
+	*job_nr  = lc;
+        //return WEXITSTATUS(retcode);
+	return 0;
 }
+

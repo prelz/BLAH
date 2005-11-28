@@ -586,56 +586,72 @@ cleanup_argv:
 	return;
 }
 
-void *
+void*
 cmd_status_job(void *args)
 {
-	classad_context status_ad;
-	char *str_cad;
-	char *esc_str_cad;
-	char *resultLine;
-	char **argv = (char **)args;
-	char **arg_ptr;
-	char errstr[ERROR_MAX_LEN];
-	char *esc_errstr;
-	char *reqId = argv[1];
-	char *jobDescr = argv[2];
-	int jobStatus, retcode;
+        classad_context status_ad[MAX_JOB_NUMBER];
+        char *str_cad;
+        char *esc_str_cad;
+        char *resultLine;
+        char **argv = (char **)args;
+        char **arg_ptr;
+        char errstr[MAX_JOB_NUMBER][ERROR_MAX_LEN];
+        char *esc_errstr;
+        char *reqId = argv[1];
+        char *jobDescr = argv[2];
+        int jobStatus, retcode;
+        int i, job_number;
 
-	retcode = get_status(jobDescr, &status_ad, errstr, 0);
-	esc_errstr = escape_spaces(errstr);
-	if (!retcode)
-	{
-		classad_get_int_attribute(status_ad, "JobStatus", &jobStatus);
-		str_cad = classad_unparse(status_ad);
-		esc_str_cad = escape_spaces(str_cad);
-		resultLine = make_message("%s %d %s %d %s", reqId, retcode, esc_errstr, jobStatus, esc_str_cad);
-		classad_free(status_ad);
-		free(str_cad);
-		free(esc_str_cad);
-	}
-	else
-	{
-		resultLine = make_message("%s %d %s 0 N/A", reqId, retcode, esc_errstr);
-	}
-
-	
-	/* Free up all arguments */
-	enqueue_result(resultLine);
-	free(resultLine);
-	free_args(argv);
-	free(esc_errstr);
-	
-	return;
+        retcode = get_status(jobDescr, status_ad, errstr[0], 0, &job_number);
+        if (!retcode)
+        {
+                for(i = 0;i < job_number; i++)
+                {
+                        esc_errstr = escape_spaces(errstr[i]);
+                        if(status_ad[i] != NULL )
+                        {
+                                        classad_get_int_attribute(status_ad[i], "JobStatus", &jobStatus);
+                                        str_cad = classad_unparse(status_ad[i]);
+                                        esc_str_cad = escape_spaces(str_cad);
+                                        if(job_number > 1)
+                                                resultLine = make_message("%s.%d %d  %d %s", reqId, i,retcode, jobStatus, esc_str_cad);
+                                        else
+                                                resultLine = make_message("%s %d  %d %s", reqId, retcode, jobStatus, esc_str_cad);
+                                        classad_free(status_ad[i]);
+                                        free(str_cad);
+                                        free(esc_str_cad);
+                        }else
+                        {
+                                        if(job_number > 1)
+                                                resultLine = make_message("%s.%d 1 %s", reqId, i, esc_errstr);
+                                        else
+                                                resultLine = make_message("%s 1 %s" ,reqId, esc_errstr);
+                        }
+                        free(esc_errstr);
+                        enqueue_result(resultLine);
+                        free(resultLine);
+                }
+        }
+        else
+        {
+                resultLine = make_message("%s %d %s N/A", reqId, retcode, errstr[i]);
+                enqueue_result(resultLine);
+                free(resultLine);
+        }
+        /* Free up all arguments */
+        free_args(argv);
+        return;
 }
+
 
 void *
 cmd_renew_proxy(void *args)
 {
-	classad_context status_ad;
+	classad_context status_ad[MAX_JOB_NUMBER];
 	char *resultLine;
 	char **argv = (char **)args;
 	char **arg_ptr;
-	char errstr[ERROR_MAX_LEN];
+	char errstr[MAX_JOB_NUMBER][ERROR_MAX_LEN];
 	char *esc_errstr;
 	char *reqId = argv[1];
 	char *jobDescr = argv[2];
@@ -652,13 +668,14 @@ cmd_renew_proxy(void *args)
 	char *error_string;
 	char *proxyFileNameNew;
 	char *cmdstr;
+	int  job_number;
 
-	retcod = get_status(jobDescr, &status_ad, errstr, 1);
+	retcod = get_status(jobDescr, status_ad, errstr, 1, &job_number);
 	if (esc_errstr = escape_spaces(errstr))
 	{
 		if (!retcod)
 		{
-			classad_get_int_attribute(status_ad, "JobStatus", &jobStatus);
+			classad_get_int_attribute(status_ad[0], "JobStatus", &jobStatus);
 			jobDescr = strrchr(jobDescr, '/') + 1;
 			switch(jobStatus)
 			{
@@ -729,7 +746,6 @@ cmd_renew_proxy(void *args)
 
 							error_string = escape_spaces(error_message);
 							resultLine = make_message("%s %d %s", reqId, retcod, error_string);
-							free(error_string);
 						}	
 						else
 						{
@@ -865,19 +881,20 @@ cleanup_argv:
 void
 hold_resume(void* args, int action )
 {
-        classad_context status_ad;
+	classad_context status_ad[MAX_JOB_NUMBER];
         char **argv = (char **)args;
-        char errstr[ERROR_MAX_LEN];
-        char *resultLine = NULL;
+       	char errstr[MAX_JOB_NUMBER][ERROR_MAX_LEN];
+	char *resultLine = NULL;
         int jobStatus, retcode;
         char *reqId = argv[1];
         char *jobDescr = argv[2];
+	int job_number;
 
         /* job status check */
-        retcode = get_status(jobDescr, &status_ad, errstr, 0);
+        retcode = get_status(jobDescr, status_ad, errstr, 0, &job_number);
 	if (!retcode)
         {
-             classad_get_int_attribute(status_ad, "JobStatus", &jobStatus);
+             classad_get_int_attribute(status_ad[0], "JobStatus", &jobStatus);
              switch(jobStatus)
                 {
                         case 1:/* IDLE */ 
