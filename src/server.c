@@ -57,7 +57,9 @@
 #define JOBID_PREFIX_LEN        18
 #define HOLD_JOB                1
 #define RESUME_JOB              0
- 
+#define MAX_LRMS_NUMBER 	10
+#define MAX_LRMS_NAME_SIZE	4
+  
 t_resline *first_job = NULL;
 t_resline *last_job = NULL;
 int num_jobs = 0;
@@ -105,7 +107,8 @@ static pthread_mutex_t send_lock  = PTHREAD_MUTEX_INITIALIZER;
 /* char *server_lrms; */
 char *blah_script_location;
 char *blah_version;
-
+char lrmslist[MAX_LRMS_NUMBER][MAX_LRMS_NAME_SIZE];
+int  lrms_counter = 0;
 
 /* Free all tokens of a command
  * */
@@ -136,7 +139,12 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	int i, argc;
 	char **argv;
 	command_t *command;
-	
+	FILE *conffile = NULL;
+	char *conffilestr = NULL;
+	char buffer[128];
+	int lrms_reading = 0;
+        int env_reading = 0;
+
 	init_resbuffer();
 	if (cli_socket == 0) server_socket = 1;
 	else                 server_socket = cli_socket;
@@ -152,7 +160,38 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 		server_lrms = DEFAULT_LRMS;
 	} */
 	blah_version = make_message(RCSID_VERSION, VERSION, "poly");
+	
+	conffilestr = make_message("%s/etc/blah.config",result);
+	if((conffile = fopen(conffilestr,"r")) != NULL)
+	{
+		while(fgets(buffer, 128, conffile))
+		{
+			if (!strncmp (buffer,"[lrms]", strlen("[lrms]")))
+			{
+				lrms_reading = 1;
+				memset(buffer,0,128);
+			}else
+                        if (!strncmp (buffer,"[env]", strlen("[env]")))
+			{
+                                lrms_reading = 0;
+				env_reading = 1;
+                                memset(buffer,0,128);
+                        }			
+			else//currently only lrms are read
+			{
+				if((lrms_reading)&&(lrms_counter <10))
+				{
+					strncpy(lrmslist[lrms_counter],buffer,3);
+					lrms_counter++;
+					memset(buffer,0,128);				
+				}
+			}
+		}
 
+		fclose(conffile);
+		free(conffilestr);
+	}
+	
 	write(server_socket, blah_version, strlen(blah_version));
 	write(server_socket, "\r\n", 2);
 	while(!exit_program)
@@ -925,34 +964,41 @@ cmd_get_hostport(void *args)
 {
         char **argv = (char **)args;
         char *reqId = argv[1];
-        char *server_lrms= argv[2];
+        //char *server_lrms= argv[2];
         FILE *cmd_out;
         char *command;
         char *resultLine;
         char hostport[1024];
         int  retcode;
-	
-        command = make_message("%s/%s_status.sh -n", blah_script_location, server_lrms);
-        if ((cmd_out=mtsafe_popen(command, "r")) == NULL)
-        {
-                resultLine = make_message("%s 1 Unable to execute %s", reqId,  command );
-                enqueue_result(resultLine);
-                free(server_lrms);
-                free(command);
-                free_args(argv);
-                return;
+	int i;
+
+	if(lrms_counter)
+	{
+		for(i =0;i < lrms_counter;i++)
+		{        
+			//command = make_message("%s/%s_status.sh -n", blah_script_location, server_lrms);
+        		command = make_message("%s/%s_status.sh -n", blah_script_location, lrmslist[i]);
+			if ((cmd_out=mtsafe_popen(command, "r")) == NULL)
+        		{
+                		resultLine = make_message("%s 1 Unable to execute %s", reqId,  command );
+                		enqueue_result(resultLine);
+                		//free(server_lrms);
+                		free(command);
+                		free_args(argv);
+                		return;
+        		}
+        		fgets(hostport, sizeof(hostport), cmd_out);
+			if (hostport[strlen(hostport) - 1] == '\n') hostport[strlen(hostport) - 1] = '\0';
+        		retcode = mtsafe_pclose(cmd_out);
+        		if((!retcode)&&(strlen(hostport) != 0)) 
+				resultLine = make_message("%s %d %s/%s", reqId, retcode, lrmslist[i], hostport);
+        		else
+				resultLine = make_message("%s %d %s/%s", reqId, retcode, lrmslist[i], "Error reading host:port");		
+			enqueue_result(resultLine);
+        		free(command);
+		}
         }
-        fgets(hostport, sizeof(hostport), cmd_out);
-	if (hostport[strlen(hostport) - 1] == '\n') hostport[strlen(hostport) - 1] = '\0';
-        retcode = mtsafe_pclose(cmd_out);
-        if((!retcode)&&(strlen(hostport) != 0)) 
-		resultLine = make_message("%s %d %s", reqId, retcode, hostport);
-        else
-		resultLine = make_message("%s %d %s", reqId, retcode, "Error reading host:port");		
-	enqueue_result(resultLine);
-        free(command);
-        free_args(argv);
-       
+	free_args(argv);
         return ;
 }
 
