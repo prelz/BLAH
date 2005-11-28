@@ -103,6 +103,13 @@ int ParseCmdLine(int argc, char *argv[], char **szAddress, char **szPort) {
 
     int n = 1;
 
+    if(argc == 1){
+     printf("Usage:\n");
+     printf("BLClient -a (remote IP) -p (remote port)\n");
+     exit(EXIT_SUCCESS);
+    }
+
+
     while ( n < argc ) {
 	if ( !strncmp(argv[n], "-a", 2) || !strncmp(argv[n], "-A", 2) ) {
 	    *szAddress = argv[++n];
@@ -111,8 +118,8 @@ int ParseCmdLine(int argc, char *argv[], char **szAddress, char **szPort) {
 	    *szPort = argv[++n];
 	}
 	else if ( !strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2) ) {
-	    printf("Usage:\n\n");
-	    printf("BLClient -a (remote IP) -p (remote port)\n\n");
+	    printf("Usage:\n");
+	    printf("BLClient -a (remote IP) -p (remote port)\n");
 	    exit(EXIT_SUCCESS);
 	}
 	++n;
