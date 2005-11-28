@@ -12,11 +12,14 @@
 #       Council for the Central Laboratory of the Research Councils (CCLRC), United Kingdom
 #
 #       Authors: Francesco Prelz <francesco.prelz@mi.infn.it>
-#       Version info: $Id: configure.ac,v 1.25 2005/10/05 10:11:36 pandreet Exp $
+#       Version info: $Id: configure.ac,v 1.26 2005/11/28 10:05:25 mezzadri Exp $
 #       Release: $Name:  $
 #
 #       Revision history:
 #       $Log: configure.ac,v $
+#       Revision 1.26  2005/11/28 10:05:25  mezzadri
+#       added config file for blah
+#
 #       Revision 1.25  2005/10/05 10:11:36  pandreet
 #       Increased version number
 #
@@ -131,6 +134,7 @@ AC_DEFINE(BLAHPD_BINDIR,"@bindir@")
 # Configuration items
 AC_PREFIX_DEFAULT([/opt/glite])
 AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([config/Makefile])
 AC_CONFIG_FILES([src/Makefile])
 AC_CONFIG_FILES([src/scripts/Makefile])
 
