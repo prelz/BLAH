@@ -15,7 +15,6 @@ int main(int argc, char *argv[]) {
     
     time_t now;
     struct tm *tptr;
-    char cnow[30];
    
     char *szPort;
     char *szSpoolDir;
@@ -426,6 +425,7 @@ int AddToStruct(char *line, int flag){
  char *	ex_status=NULL;
 
  char *tb_job=NULL;
+ char *tj_blahjob=NULL;
  char *j_blahjob=NULL;
  
  if((strstr(line,blahjob_string)!=NULL) || (strstr(line,cream_string)!=NULL)){
@@ -502,13 +502,31 @@ int AddToStruct(char *line, int flag){
   maxtok=strtoken(tb_job,'=',tbuf);
   
   if(maxtok>1){
-   j_blahjob=strdup(tbuf[1]);
+   tj_blahjob=strdup(tbuf[1]);
   }
   
   for(ii=0;ii<maxtok;ii++){
    free(tbuf[ii]);
   }
   free(tbuf);
+
+  if((tbuf=malloc(TBUFSIZE * sizeof *tbuf)) == 0){
+     sysfatal("can't malloc tbuf: %r");
+  }
+  maxtok=strtoken(tj_blahjob,' ',tbuf);
+
+  if(maxtok>0){
+   j_blahjob=strdup(tbuf[0]);
+  }else{
+   j_blahjob=strdup(tj_blahjob);
+  }
+
+  for(ii=0;ii<maxtok;ii++){
+   free(tbuf[ii]);
+  }
+  free(tbuf);
+
+
    
  } /* close rex_queued if */
 
@@ -592,7 +610,7 @@ int AddToStruct(char *line, int flag){
    InfoAdd(id,j_time,"COMPLTIME");
 
    if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
-    NotifyCream(id, "4", j2bl[id], "NA", "NA", j2ct[id], flag);
+    NotifyCream(id, "4", j2bl[id], "NA", ex_status, j2ct[id], flag);
    }
 
   } else if(rex && ((strstr(rex,rex_uhold)!=NULL) || (strstr(rex,rex_ohold)!=NULL) || (strstr(rex,rex_ohold)!=NULL))){
@@ -630,6 +648,7 @@ int AddToStruct(char *line, int flag){
    free(tex_status);
    free(ex_status);
    free(tb_job);
+   free(tj_blahjob);
    free(j_blahjob);
 
  return 0;
@@ -1020,7 +1039,11 @@ char *GetLogList(char *logdate){
   maxtok = strtoken(tlogs, '\n', oplogs);
   last_tag=maxtok;
   
-  for(i=0; i<maxtok; i++){ 
+  for(i=0; i<maxtok; i++){
+   if(i==0){
+    LastLog=strdup(oplogs[i]);
+    LastLogDate=strdup(oplogs[i]);
+   }
    strcat(slogs,oplogs[i]);
    strcat(slogs," ");
    free(oplogs[i]);
@@ -1111,6 +1134,7 @@ int NotifyFromDate(char *in_buf){
     char * out_buf;
     int    ii;
     char *notstr;
+    char *notstrshort;
     char *notdate;
     char *lnotdate;
     int   notepoch;
@@ -1152,21 +1176,23 @@ int NotifyFromDate(char *in_buf){
       creamisconn=1;
       
       notepoch=str2epoch(notdate,"S");
+      notstrshort=iepoch2str(notepoch,"S");      
       
-      if(strcmp(LastLogDate,"\0")==0){
-       logepoch=nti[0];
+      if(!LastLogDate){
+       if(nti[0]==0){
+        logepoch=str2epoch(cnow,"D");
+       }else{
+        logepoch=nti[0];
+       }
       }else{
-       logepoch=str2epoch(LastLogDate,"L");
+       logepoch=str2epoch(LastLogDate,"D");
       }
       
       if(notepoch<=logepoch){
-       lnotdate=iepoch2str(notepoch);
-       GetEventsInOldLogs(lnotdate);
+       GetEventsInOldLogs(notstrshort);
       }
       
-      printf("jcount %d\n",jcount);
       for(ii=0;ii<jcount;ii++){
-       printf("notepoch %d nti[ii] %d\n",notepoch,nti[ii]);
        if(notepoch<=nti[ii]){
         sprintf(out_buf,"NTFDATE/%s",ntf[ii]);  
         Writeline(conn_c, out_buf, strlen(out_buf));
@@ -1231,15 +1257,15 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
     outreason[0]='\0';
 
     if(strcmp(reason,"NA")!=0){
-      sprintf(outreason," Reason=\"lsf_reason=%s\";" ,reason);
+      sprintf(outreason," Reason=\"pbs_reason=%s\";" ,reason);
     }
     
     maxtok = strtoken(blahjobid, '_', clientjobid);    
     
     if(strcmp(wn,"NA")!=0){
-      sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobId=%s; ClientJobId=\"%s; WorkerNode=%s;%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], wn, outreason, timestamp);
+      sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobId=\"%s\"; ClientJobId=\"%s\"; WorkerNode=%s;%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], wn, outreason, timestamp);
     }else{
-      sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobId=%s; ClientJobId=\"%s;%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], outreason, timestamp);
+      sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobId=\"%s\"; ClientJobId=\"%s\";%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], outreason, timestamp);
     }
     
     for(i=0;i<maxtok;i++){
@@ -1299,7 +1325,6 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
     
 }
 
-
 int strtoken(const char *s, char delim, char **token)
 {
     char *tmp;
@@ -1345,7 +1370,7 @@ char *convdate(char *date){
 
  struct tm *tm;
  if((tm=malloc(max)) == 0){
-  sysfatal("can't malloc tm in epoch2str: %r");
+  sysfatal("can't malloc tm in convdate: %r");
  }
 
  strptime(date,"%m/%d/%Y %T",tm);
@@ -1359,7 +1384,7 @@ char *convdate(char *date){
  
 }
 
-char *iepoch2str(int epoch){
+char *iepoch2str(int epoch, char * f){
   
  char *dateout;
  char *lepoch;
@@ -1379,7 +1404,11 @@ char *iepoch2str(int epoch){
  
  dateout=malloc(max);
  
- strftime(dateout,max,"%Y%m%d%H%M.%S",tm);
+ if(strcmp(f,"S")==0){
+  strftime(dateout,max,"%Y%m%d",tm);
+ }else if(strcmp(f,"L")==0){
+  strftime(dateout,max,"%Y%m%d%H%M.%S",tm);
+ }
  free(tm);
  free(lepoch);
  
@@ -1401,6 +1430,8 @@ int str2epoch(char *str, char * f){
   strptime(str,"%Y-%m-%d %T",tm);
  }else if(strcmp(f,"L")==0){
   strptime(str,"%a %b %d %T %Y",tm);
+ }else if(strcmp(f,"D")==0){
+  strptime(str,"%Y%m%d",tm);
  }
  
  dateout=malloc(max);

@@ -59,10 +59,11 @@ char *InfoGet(int id, const char * flag);
 int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir, char **szCreamPort); 
 char *convdate(char *date);
 int str2epoch(char *str, char *f);
-char *iepoch2str(int epoch);
+char *iepoch2str(int epoch, char *f);
 void CreamConnection(int c_sock);
 int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason, char *timestamp, int flag);
 int NotifyFromDate(char *in_buf);
+void strip_char(char *s, char c);
 
 /* Variables initialization */
 
@@ -119,7 +120,8 @@ int creamisconn=0;
 char *spooldir="/usr/spool/PBS";
 
 char *LastLog=NULL;
-char LastLogDate[STR_CHARS]="\0";
+char *LastLogDate=NULL;
+char cnow[30];
 
 char *blank=" ";
 
