@@ -1007,9 +1007,9 @@ cmd_get_hostport(void *args)
 			if (hostport[strlen(hostport) - 1] == '\n') hostport[strlen(hostport) - 1] = '\0';
         		retcode = mtsafe_pclose(cmd_out);
         		if((!retcode)&&(strlen(hostport) != 0)) 
-        			resultLine = make_message("%s%s/%s;", resultLine,lrmslist[i], hostport);			
+        			resultLine = make_message("%s%s/%s\ ", resultLine,lrmslist[i], hostport);			
 			else
-				resultLine = make_message("%s%s/%s;", resultLine, lrmslist[i], "Error\\ reading\\ host:port");		
+				resultLine = make_message("%s%s/%s\ ", resultLine, lrmslist[i], "Error\\ reading\\ host:port");		
         		free(command);
 		}
 		enqueue_result(resultLine);
