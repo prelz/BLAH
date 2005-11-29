@@ -602,7 +602,7 @@ cmd_status_job(void *args)
         int jobStatus, retcode;
         int i, job_number;
 
-        retcode = get_status(jobDescr, status_ad, errstr[0], 0, &job_number);
+        retcode = get_status(jobDescr, status_ad, errstr, 0, &job_number);
         if (!retcode)
         {
                 for(i = 0;i < job_number; i++)
@@ -671,7 +671,7 @@ cmd_renew_proxy(void *args)
 	int  job_number;
 
 	retcod = get_status(jobDescr, status_ad, errstr, 1, &job_number);
-	if (esc_errstr = escape_spaces(errstr))
+	if (esc_errstr = escape_spaces(errstr[0]))
 	{
 		if (!retcod)
 		{
@@ -981,40 +981,41 @@ cmd_get_hostport(void *args)
 {
         char **argv = (char **)args;
         char *reqId = argv[1];
-        //char *server_lrms= argv[2];
         FILE *cmd_out;
         char *command;
         char *resultLine;
         char hostport[1024];
         int  retcode;
 	int i;
-
+	
 	if(lrms_counter)
 	{
+		resultLine = make_message("%s 0 ", reqId);
 		for(i =0;i < lrms_counter;i++)
 		{        
 			//command = make_message("%s/%s_status.sh -n", blah_script_location, server_lrms);
         		command = make_message("%s/%s_status.sh -n", blah_script_location, lrmslist[i]);
 			if ((cmd_out=mtsafe_popen(command, "r")) == NULL)
         		{
-                		resultLine = make_message("%s 1 Unable to execute %s", reqId,  command );
+                		resultLine = make_message("%s 1 Unable\\ to\\ execute\\ %s", reqId,  command );
                 		enqueue_result(resultLine);
-                		//free(server_lrms);
                 		free(command);
                 		free_args(argv);
                 		return;
         		}
-        		fgets(hostport, sizeof(hostport), cmd_out);
+			fgets(hostport, sizeof(hostport), cmd_out);
 			if (hostport[strlen(hostport) - 1] == '\n') hostport[strlen(hostport) - 1] = '\0';
         		retcode = mtsafe_pclose(cmd_out);
         		if((!retcode)&&(strlen(hostport) != 0)) 
-				resultLine = make_message("%s %d %s/%s", reqId, retcode, lrmslist[i], hostport);
-        		else
-				resultLine = make_message("%s %d %s/%s", reqId, retcode, lrmslist[i], "Error reading host:port");		
-			enqueue_result(resultLine);
+        			resultLine = make_message("%s%s/%s;", resultLine,lrmslist[i], hostport);			
+			else
+				resultLine = make_message("%s%s/%s;", resultLine, lrmslist[i], "Error\\ reading\\ host:port");		
         		free(command);
 		}
+		enqueue_result(resultLine);
+		free(resultLine);
         }
+
 	free_args(argv);
         return ;
 }
