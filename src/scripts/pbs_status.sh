@@ -52,7 +52,7 @@ getcreamport=""
 
 #set to yes if BLParser is present in the installation
 BLParser=""
-
+usedBLParser="no"
 BLPserver="127.0.0.1"
 BLPport=33332
 BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
@@ -90,30 +90,41 @@ if [ "x$getcreamport" == "xyes" ] ; then
 fi
 
 pars=$*
+proxy_dir=~/.blah_jobproxy_dir
 
 for  reqfull in $pars ; do
-        requested=`echo $reqfull | sed -e 's/^.*\///'`
+	requested=""
+	#header elimination
+	requested=${reqfull:4}
+	reqjob=`echo $requested | sed -e 's/^.*\///'`
+	logfile=`echo $requested | sed 's/\/.*//'`
 	if [ "x$getwn" == "xyes" ] ; then
-		 workernode=`${pbsbinpath}/qstat -f $requested 2> /dev/null | grep exec_host| sed "s/exec_host = //" | awk -F"/" '{ print $1 }'`
+		workernode=`${pbsbinpath}/qstat -f $reqjob 2> /dev/null | grep exec_host| sed "s/exec_host = //" | awk -F"/" '{ print $1 }'`
 	fi
-
-	proxy_dir=~/.blah_jobproxy_dir
 
 	cliretcode=0
+	retcode=0
+	logs=""
+	result=""
+	logfile=`echo $requested | sed 's/\/.*//'`
 	if [ "x$BLParser" == "xyes" ] ; then
-
-    	usingBLP="yes"
-    	result=`echo $pars| $BLClient -a $BLPserver -p $BLPport`
-    	cliretcode=$?
-
+    		usedBLParser="yes"
+		result=`echo $requested | $BLClient -a $BLPserver -p $BLPport`
+		cliretcode=$?
+		reslen=${#result}
+		reslen=$(($reslen - 3))
+		response=${result:reslen}
+		if [ "$response" == "Not" -o "$cliretcode" != "0" ] ; then
+			cliretcode=1
+		else 
+			cliretcode=0
+		fi
 	fi
 	if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
-
-		usingBLP="no"
-		logfile=`echo $pars | sed 's/\/.*//'`
+		result=""
+		usedBLParser="no"
 		logs="$logpath/$logfile `find $logpath -type f -newer $logpath/$logfile`"
-
-		result=`awk -v jobId="$requested" -v wn="$workernode" -v proxyDir="$proxy_dir" '
+		result=`awk -v jobId="$reqjob" -v wn="$workernode" -v proxyDir="$proxy_dir" '
 BEGIN {
 	rex_queued   = jobId ";Job Queued "
 	rex_running  = jobId ";Job Run "
@@ -173,24 +184,15 @@ END {
 			echo "1ERROR: Job not found"
 			retcode=1
   		fi
-  
-  	#exit $retcode
-
 	fi #close if on BLParser
-	if [ "x$usingBLP" == "xyes" ] ; then
-
-    		pr_removal=`echo $result | sed -e 's/^.*\///'`
+	if [ "x$usedBLParser" == "xyes" ] ; then
+		pr_removal=`echo $result | sed -e 's/^.*\///'`
     		result=`echo $result | sed 's/\/.*//'`
-
-    		if [ "x$pr_removal" == "xYes" ] ; then
+		echo "0"$result "Workernode=\"$workernode\";]"
+		if [ "x$pr_removal" == "xYes" ] ; then
         		rm ${proxy_dir}/${requested}.proxy 2>/dev/null
-
     		fi
-        	echo $result "Workernode=\"$workernode\";]"
-        	#exit $retcode
-
+		usedBLParser="no"	
 	fi
-
 done 
-
-exit $retcode
+exit 0

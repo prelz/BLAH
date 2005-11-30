@@ -57,10 +57,10 @@ int get_status(const char *jobDesc, classad_context *cad, char error_str[][ERROR
         }
 
         server_lrms[3] = '\0';
-        jobId = server_lrms + 4;
+        //jobId = server_lrms + 4;
 
-        command = make_message("%s/%s_status.sh %s %s", blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobId);
-
+        //command = make_message("%s/%s_status.sh %s %s", blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobId);
+	command = make_message("%s/%s_status.sh %s %s", blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobDesc);
         if ((cmd_out=mtsafe_popen(command, "r")) == NULL)
         {
                 fprintf(stderr, "Unable to execute '%s': ", command);
@@ -86,7 +86,7 @@ int get_status(const char *jobDesc, classad_context *cad, char error_str[][ERROR
 			strncpy(cad_str[lc - 1],tmpstr,strlen(buffer) -1);
 		}else
 			cad_str[lc - 1] = NULL;
-
+		memset(buffer,0,strlen(buffer));
         }
 	if(tmpstr) free(tmpstr);
         retcode = mtsafe_pclose(cmd_out);
