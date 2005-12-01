@@ -340,6 +340,9 @@ long tail(FILE *fp, char *line){
 
 int InfoAdd(int id, char *value, const char * flag){
 
+ char *	jobid=NULL;
+ unsigned h_blahjob;
+ 
  if((id <= 0) || (id >= HASHSIZE)){
   return -1;
  }
@@ -362,7 +365,15 @@ int InfoAdd(int id, char *value, const char * flag){
   
  } else if(strcmp(flag,"BLAHPNAME")==0){
  
+  if((jobid=malloc(STR_CHARS)) == 0){
+     sysfatal("can't malloc jobid: %r");
+  }
   j2bl[id] = strdup(value);
+  
+  h_blahjob=hash(value);
+  sprintf(jobid,"%d",id);
+  bjl[h_blahjob]=strdup(jobid);
+  free(jobid);
   
  } else if(strcmp(flag,"JOBSTATUS")==0){
  
@@ -577,9 +588,6 @@ int AddToStruct(char *line, int flag){
   InfoAdd(id,j_time,"STARTTIME");
   InfoAdd(id,j_blahjob,"BLAHPNAME");
 
-  h_blahjob=hash(j_blahjob);
-  bjl[h_blahjob]=strdup(jobid);
-  
   if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
    NotifyCream(id, "1", j2bl[id], "NA", "NA", j2st[id], flag);
   }
@@ -695,7 +703,6 @@ void *LookupAndSend(int m_sock){
     char      *out_buf;
     char      *logdate;
     char      *jobid;
-    char      *h_jobid;
     char      jstat[NUM_CHARS];
     char      *pr_removal="Not";
     int       i,maxtok,ii;
@@ -718,11 +725,6 @@ void *LookupAndSend(int m_sock){
 	  sysfatal("can't malloc buffer in LookupAndSend: %r");
 	}
         buffer[0]='\0';
-
-	if((h_jobid=malloc(NUM_CHARS)) == 0){
-	  sysfatal("can't malloc h_jobid in LookupAndSend: %r");
-	}
-        h_jobid[0]='\0';
 	
         /* read line from socket */
 	Readline(conn_s, buffer, STR_CHARS-1);
@@ -800,17 +802,14 @@ all the jobid in the output classad */
 	if(strcmp(logdate,"BLAHJOB")==0){
          for(i=0;i<WRETRIES;i++){
 	  if(wlock==0){
-	   *h_jobid='\0';
-	   strcat(h_jobid," ");
-	   strcat(h_jobid,jobid);
-	   if(bjl[hash(h_jobid)]==NULL){
+	   if(bjl[hash(jobid)]==NULL){
 	    sleep(1);
 	    continue;
 	   }
            if((out_buf=malloc(STR_CHARS)) == 0){
             sysfatal("can't malloc out_buf in LookupAndSend: %r");
            }
-     	   sprintf(out_buf,"%s\n",bjl[hash(h_jobid)]);
+     	   sprintf(out_buf,"%s\n",bjl[hash(jobid)]);
 	   goto close;
 	  }else{
 	   sleep(1);
@@ -820,7 +819,7 @@ all the jobid in the output classad */
           if((out_buf=malloc(STR_CHARS)) == 0){
            sysfatal("can't malloc out_buf in LookupAndSend: %r");
           }
-	  sprintf(out_buf,"Blahjob id %s not found\n",h_jobid);
+	  sprintf(out_buf,"Blahjob id %s not found\n",jobid);
 	  goto close;
 	 }
 	}
@@ -913,7 +912,6 @@ close:
 	free(buffer);
         free(logdate);
         free(jobid);
-        free(h_jobid);
 	
 	/*  Close the connected socket  */
 
