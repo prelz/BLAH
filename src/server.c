@@ -401,6 +401,24 @@ cmd_submit_job(void *args)
 		goto cleanup_argv;
 	}
 
+
+	/* Get the lrms type from classad attribute "gridtype" */
+	result = classad_get_dstring_attribute(cad, "gridtype", &server_lrms);
+	if (result != C_CLASSAD_NO_ERROR)
+	{
+		/* PUSH A FAILURE */
+		resultLine = make_message("%s 1 Missing\\ gridtype\\ in\\ submission\\ classAd N/A", reqId);
+		goto cleanup_cad;
+	}
+
+	command = make_message("%s/%s_submit.sh", blah_script_location, server_lrms);
+	if (command == NULL)
+	{
+		/* PUSH A FAILURE */
+		resultLine = make_message("%s 1 Out\\ of\\ Memory N/A", reqId);
+		goto cleanup_lrms;
+	}
+
         /* Get the proxy name from classad attribute "X509UserProxy" */
         if ((result = classad_get_dstring_attribute(cad, "x509UserProxy", &proxyname)) == C_CLASSAD_NO_ERROR)
         { 
@@ -423,23 +441,6 @@ cmd_submit_job(void *args)
                free(command);
                command = command_ext;
                free(proxynameNew);
-	}
-
-	/* Get the lrms type from classad attribute "gridtype" */
-	result = classad_get_dstring_attribute(cad, "gridtype", &server_lrms);
-	if (result != C_CLASSAD_NO_ERROR)
-	{
-		/* PUSH A FAILURE */
-		resultLine = make_message("%s 1 Missing\\ gridtype\\ in\\ submission\\ classAd N/A", reqId);
-		goto cleanup_cad;
-	}
-
-	command = make_message("%s/%s_submit.sh", blah_script_location, server_lrms);
-	if (command == NULL)
-	{
-		/* PUSH A FAILURE */
-		resultLine = make_message("%s 1 Out\\ of\\ Memory N/A", reqId);
-		goto cleanup_lrms;
 	}
 
 	/* Cmd attribute is mandatory: stop on any error */
