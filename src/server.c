@@ -392,6 +392,7 @@ cmd_submit_job(void *args)
 	char *proxyname   = NULL;
         char *proxynameNew   = NULL;
 	char *cmdstr = NULL;
+	char *command_ext = NULL;
 	cad = classad_parse(jobDescr);
 	if (cad == NULL)
 	{
@@ -403,14 +404,26 @@ cmd_submit_job(void *args)
         /* Get the proxy name from classad attribute "X509UserProxy" */
         if ((result = classad_get_dstring_attribute(cad, "x509UserProxy", &proxyname)) == C_CLASSAD_NO_ERROR)
         { 
-	       proxynameNew=make_message("%s.lmt",proxyname);
-	       cmdstr=make_message("cp %s %s",proxyname, proxynameNew);
-	       system(cmdstr);	       
+               proxynameNew=make_message("%s.lmt",proxyname);
+               cmdstr=make_message("cp %s %s",proxyname, proxynameNew);
+               system(cmdstr);
                limit_proxy(proxynameNew);
+               command_ext = make_message("%s -x %s", command, proxynameNew);
                free(proxyname);
-	       free(proxynameNew);
-	       free(cmdstr);
-        }
+               free(cmdstr);
+               if (command_ext == NULL)
+               {
+                       /* PUSH A FAILURE */
+                       resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
+                       free(proxynameNew);
+                       goto cleanup_command;
+               }
+
+               /* Swap new command in */
+               free(command);
+               command = command_ext;
+               free(proxynameNew);
+	}
 
 	/* Get the lrms type from classad attribute "gridtype" */
 	result = classad_get_dstring_attribute(cad, "gridtype", &server_lrms);

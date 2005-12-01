@@ -234,7 +234,7 @@ if [ "x$envir" != "x" ]
 then
     echo "" >> $tmp_file
     echo "# Setting the environment:" >> $tmp_file
-    echo "`echo ';'$envir | sed -e 's/;\([^=]*\)=\([^;]*\)/;export \1=\"\2\"/g' | awk 'BEGIN { RS = ";" } ; { print $0 }'`" >> $tmp_file
+    echo "`echo ';'$envir | sed -e 's/;[^=]*;/;/g' -e 's/;[^=]*$//g' | sed -e 's/;\([^=]*\)=\([^;]*\)/;export \1=\"\2\"/g' | awk 'BEGIN { RS = ";" } ; { print $0 }'`" >> $tmp_file
 fi
 #'#
 

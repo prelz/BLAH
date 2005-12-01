@@ -217,7 +217,7 @@ fi
 if [ "x$envir" != "x" ] ; then
     echo "" >> $tmp_file
     echo "# Setting the environment:" >> $tmp_file
-    echo "export `echo ';'$envir | sed -e 's/;\([^=]*\)=\([^;]*\)/ \1=\"\2\"/g'`" >> $tmp_file
+    echo "export `echo ';'$envir |sed -e 's/;[^=]*;/;/g' -e 's/;[^=]*$//g' | sed -e 's/;\([^=]*\)=\([^;]*\)/ \1=\"\2\"/g'`" >> $tmp_file
 #'#
 fi
 
