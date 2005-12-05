@@ -35,12 +35,11 @@ int get_status(const char *jobDesc, classad_context *cad, char error_str[][ERROR
         FILE *cmd_out;
         char buffer[1024];
         char *command;
-        char **cad_str;
+        char cad_str[100][1024];
         int  retcode = 0;
         char *server_lrms;
         char *jobId;
         int   i, lc;
-        char *tmpstr = NULL;
         classad_context tmpcad;
         char **tmperrstr = NULL;
 
@@ -57,9 +56,7 @@ int get_status(const char *jobDesc, classad_context *cad, char error_str[][ERROR
         }
 
         server_lrms[3] = '\0';
-        //jobId = server_lrms + 4;
 
-        //command = make_message("%s/%s_status.sh %s %s", blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobId);
 	command = make_message("%s/%s_status.sh %s %s", blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobDesc);
         if ((cmd_out=mtsafe_popen(command, "r")) == NULL)
         {
@@ -76,24 +73,20 @@ int get_status(const char *jobDesc, classad_context *cad, char error_str[][ERROR
         while (fgets(buffer, sizeof(buffer), cmd_out))
         {
                 if (buffer[strlen(buffer) - 1] == '\n') buffer[strlen(buffer) - 1] = ' ';
-                tmpstr = (char*)malloc(strlen(buffer));
-                strncpy(tmpstr,buffer + 1, strlen(buffer) -1);
-                cad_str = realloc((void*)(cad_str),(++lc)*sizeof(char*));
                 //retcode  from scripts != 0
+		lc++;
 		if(buffer[0] != '1')
 		{
-			cad_str[lc - 1] = (void*)malloc(strlen(buffer) -1);
-			strncpy(cad_str[lc - 1],tmpstr,strlen(buffer) -1);
+			strncpy(cad_str[lc - 1],buffer + 1,strlen(buffer) - 1);
 		}else
-			cad_str[lc - 1] = NULL;
+			cad_str[lc - 1][0] = '\0';
 		memset(buffer,0,strlen(buffer));
         }
-	if(tmpstr) free(tmpstr);
         retcode = mtsafe_pclose(cmd_out);
 	
 	for(i = 0; i < lc; i++)
         {
-			if (cad_str[i] == NULL)
+			if (cad_str[i][0] == '\0')
                         {
 				//Error parsing classad or job not found
 				cad[i]  = NULL; 

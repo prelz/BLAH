@@ -43,8 +43,8 @@ getwn=""
 getcreamport=""
 
 #set to yes if BLParser is present in the installation 
-BLParser=""
-
+BLParser="yes"
+usedBLParser="no"
 BLPserver="127.0.0.1"
 BLPport=33333
 BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
@@ -81,49 +81,56 @@ if [ "x$getcreamport" == "xyes" ] ; then
  exit $retcode
 fi
 
-pars=$*
-requested=`echo $pars | sed -e 's/^.*\///'`
-datenow=`echo $pars | sed 's/\/.*//'`
-
 proxy_dir=~/.blah_jobproxy_dir
+pars=$*
 
-cliretcode=0
-if [ "x$BLParser" == "xyes" ] ; then
+for  reqfull in $pars ; do
+	reqfull=${reqfull:4}	
+	requested=`echo $reqfull | sed -e 's/^.*\///'`
+	datenow=`echo $reqfull | sed 's/\/.*//'`
+		
+	result=""
+	cliretcode=0
+	if [ "x$BLParser" == "xyes" ] ; then
     
-    usingBLP="yes"
-    result=`echo $pars| $BLClient -a $BLPserver -p $BLPport`
-    cliretcode=$?
-fi
+		usedBLParser="yes"
+		result=`echo $reqfull| $BLClient -a $BLPserver -p $BLPport`
+    		cliretcode=$?
+                reslen=${#result}
+                reslen=$(($reslen - 3))
+                response=${result:reslen}
+                if [ "$response" == "Not" -o "$cliretcode" != "0" ] ; then
+                        cliretcode=1
+                else
+                        cliretcode=0
+                fi
+	fi
 
-if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
+	if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
+		result=""
+		usedBLParser="no"
+		datefile=`mktemp -q blahjob_XXXXXX`
 
-datefile=`mktemp -q blahjob_XXXXXX`
+		if [ $? -ne 0 ]; then
+   			echo 'Error creating temporary file'
+   			datefile=""
+			echo "1ERROR: Job not found"
+			break
+		fi
 
-if [ $? -ne 0 ]; then
-   echo 'Error creating temporary file'
-   exit 1
-fi
-
-usingBLP="no"
-confpath=${LSF_CONF_PATH:-/etc}
-conffile=$confpath/lsf.conf
-
-lsf_base_path=`cat $conffile|grep LSB_SHAREDIR| awk -F"=" '{ print $2 }'`
-
-lsf_clustername=`${binpath}lsid | grep 'My cluster name is'|awk -F" " '{ print $5 }'`
-logpath=$lsf_base_path/$lsf_clustername/logdir
-
-logeventfile=lsb.events
-
-touch -t $datenow $datefile
-ulogs=`find $logpath -name $logeventfile.[0-9]* -maxdepth 1 -type f -newer $datefile -print 2>/dev/null`
-rm $datefile
-
-for i in `echo $ulogs | sed "s|${logpath}/${logeventfile}\.||g" | sort -nr`; do
- logs="$logs$logpath/$logeventfile.$i "
-done
-
-logs="$logs$logpath/$logeventfile"
+		confpath=${LSF_CONF_PATH:-/etc}
+		conffile=$confpath/lsf.conf
+		lsf_base_path=`cat $conffile|grep LSB_SHAREDIR| awk -F"=" '{ print $2 }'`
+		lsf_clustername=`${binpath}lsid | grep 'My cluster name is'|awk -F" " '{ print $5 }'`
+		logpath=$lsf_base_path/$lsf_clustername/logdir
+		logeventfile=lsb.events
+		touch -t $datenow $datefile
+		ulogs=`find $logpath -name $logeventfile.[0-9]* -maxdepth 1 -type f -newer $datefile -print 2>/dev/null`
+		rm $datefile
+		for i in `echo $ulogs | sed "s|${logpath}/${logeventfile}\.||g" | sort -nr`; do
+ 			logs="$logs$logpath/$logeventfile.$i "
+		done
+		logs="$logs$logpath/$logeventfile"
 
 #/* job states */
 #define JOB_STAT_NULL         0x00
@@ -211,38 +218,25 @@ END {
 }
 ' $logs`
 
+   		if [ "$?" == "0" ] ; then
+        		echo "0"$result
+   		else
+        		echo "1ERROR: Job not found"
+   		fi
+	fi #close if on BLParser
 
-   if [ "$?" == "0" ] ; then
-        echo $result
-        retcode=0
-   else
-        echo "ERROR: Job not found"
-        retcode=1
-   fi
-  
-   exit $retcode
+	if [ "x$usedBLParser" == "xyes" ] ; then
 
-fi #close if on BLParser
-
-if [ "x$usingBLP" == "xyes" ] ; then
-
-    pr_removal=`echo $result | sed -e 's/^.*\///'`
-    result=`echo $result | sed 's/\/.*//'`
-
-    if [ "x$pr_removal" == "xYes" ] ; then
-        rm ${proxy_dir}/${requested}.proxy 2>/dev/null
-
-    fi
-
-        echo $result
-        exit $retcode
-
-fi
-
-
-
-
-
-
-
+    		pr_removal=`echo $result | sed -e 's/^.*\///'`
+    		echo $result
+		result=`echo $result | sed 's/\/.*//'`
+    		echo "0"$result
+		if [ "x$pr_removal" == "xYes" ] ; then
+        		rm ${proxy_dir}/${requested}.proxy 2>/dev/null
+    		fi
+		usedBLParser="no"	
+	fi
+	logs=""
+done
+exit 0
 
