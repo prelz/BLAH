@@ -142,8 +142,7 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	FILE *conffile = NULL;
 	char *conffilestr = NULL;
 	char buffer[128];
-	int lrms_reading = 0;
-        int env_reading = 0;
+	int bc=0;
 
 	init_resbuffer();
 	if (cli_socket == 0) server_socket = 1;
@@ -166,28 +165,22 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	{
 		while(fgets(buffer, 128, conffile))
 		{
-			if (!strncmp (buffer,"[lrms]", strlen("[lrms]")))
+			if (!strncmp (buffer,"supported_lrms=", strlen("supported_lrms=")))
 			{
-				lrms_reading = 1;
-				memset(buffer,0,128);
-			}else
-                        if (!strncmp (buffer,"[env]", strlen("[env]")))
-			{
-                                lrms_reading = 0;
-				env_reading = 1;
-                                memset(buffer,0,128);
-                        }			
-			else//currently only lrms are read
-			{
-				if((lrms_reading)&&(lrms_counter <10))
-				{
-					strncpy(lrmslist[lrms_counter],buffer,3);
-					lrms_counter++;
-					memset(buffer,0,128);				
-				}
+				bc+=strlen("supported_lrms=");
+                                while(strlen(&buffer[bc]) > 0)
+                                {
+                                        strncpy(lrmslist[lrms_counter],&buffer[bc],3);
+                                        lrms_counter++;
+					if(strlen(&buffer[bc]) > 3) bc+=4;
+					else 
+					   break;
+                                }
 			}
+			bc=0;
+			memset(buffer,0,128);
 		}
-
+		
 		fclose(conffile);
 		free(conffilestr);
 	}
