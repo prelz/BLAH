@@ -1,13 +1,7 @@
 #!/bin/bash
 
-# Initialize env
-if  [ -f ~/.bashrc ]; then
- . ~/.bashrc
-fi
-
-if  [ -f ~/.login ]; then
- . ~/.login
-fi
+blahconffile="${GLITE_LOCATION:-/opt/glite}/etc/blah.config"
+binpath=`grep lsf_binpath $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
 
 requested=`echo $1 | sed 's/^.*\///'`
-${LSF_BIN_PATH:-/usr/local/lsf/bin}/bresume $requested >/dev/null 2>&1
+${binpath}/bresume $requested >/dev/null 2>&1

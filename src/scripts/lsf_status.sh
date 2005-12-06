@@ -20,19 +20,12 @@
 #  See http://grid.infn.it/grid/license.html for license details.
 #
 
-if  [ -f ~/.bashrc ]; then
-	. ~/.bashrc
-fi
-
-if  [ -f ~/.login ]; then
-	. ~/.login
-fi
-
-if [ ! -z "$LSF_BIN_PATH" ]; then
-	binpath=${LSF_BIN_PATH}/
-else
-	binpath=/usr/local/lsf/bin/
-fi
+blahconffile="${GLITE_LOCATION:-/opt/glite}/etc/blah.config"
+binpath=`grep lsf_binpath $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`/
+fallback=`grep lsf_fallback $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
+BLParser=`grep lsf_BLParser $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
+BLPserver=`grep lsf_BLPserver $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
+BLPport=`grep lsf_BLPport $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
 
 usage_string="Usage: $0 [-w] [-n]"
 
@@ -42,11 +35,8 @@ getwn=""
 #get creamport
 getcreamport=""
 
-#set to yes if BLParser is present in the installation 
-BLParser="yes"
 usedBLParser="no"
-BLPserver="127.0.0.1"
-BLPport=33333
+
 BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 
 ###############################################################
@@ -105,6 +95,11 @@ for  reqfull in $pars ; do
                         cliretcode=0
                 fi
 	fi
+	
+        if [ "$cliretcode" == "1" -a "x$fallback" == "xno" ] ; then
+         echo "1ERROR: not able to talk with logparser on ${BLPserver}:${BLPport}"
+         exit 0
+        fi
 
 	if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
 		result=""

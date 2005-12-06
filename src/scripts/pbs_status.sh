@@ -20,25 +20,13 @@
 #  See http://grid.infn.it/grid/license.html for license details.
 #
 
-if  [ -f ~/.bashrc ]; then
- . ~/.bashrc
-fi
-
-if  [ -f ~/.login ]; then
- . ~/.login
-fi
-
-if [ ! -z "$PBS_SPOOL_DIR" ]; then
-    spoolpath=${PBS_SPOOL_DIR}/
-else
-    spoolpath=/usr/spool/PBS/
-fi
-
-if [ ! -z "$PBS_BIN_PATH" ]; then
-    pbsbinpath=${PBS_BIN_PATH}/
-else
-    pbsbinpath=/usr/pbs/bin/
-fi
+blahconffile="${GLITE_LOCATION:-/opt/glite}/etc/blah.config"
+pbsbinpath=`grep pbs_binpath $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`/
+spoolpath=`grep pbs_spoolpath $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`/
+fallback=`grep pbs_fallback $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
+BLParser=`grep pbs_BLParser $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
+BLPserver=`grep pbs_BLPserver $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
+BLPport=`grep pbs_BLPport $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
 
 usage_string="Usage: $0 [-w]"
 
@@ -50,11 +38,8 @@ getwn=""
 #get creamport
 getcreamport=""
 
-#set to yes if BLParser is present in the installation
-BLParser=""
 usedBLParser="no"
-BLPserver="127.0.0.1"
-BLPport=33332
+
 BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 
 ###############################################################
@@ -119,6 +104,10 @@ for  reqfull in $pars ; do
 		else 
 			cliretcode=0
 		fi
+	fi
+	if [ "$cliretcode" == "1" -a "x$fallback" == "xno" ] ; then
+	 echo "1ERROR: not able to talk with logparser on ${BLPserver}:${BLPport}"
+	 exit 0
 	fi
 	if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
 		result=""

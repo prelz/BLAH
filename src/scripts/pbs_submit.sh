@@ -31,29 +31,15 @@
 #
 #
 
-# Initialize env
-if  [ -f ~/.bashrc ]; then
- . ~/.bashrc
-fi
-
-if  [ -f ~/.login ]; then
- . ~/.login
-fi
-
-if [ ! -z "$PBS_BIN_PATH" ]; then
-    binpath=${PBS_BIN_PATH}/
-else
-    binpath=/usr/pbs/bin/
-fi
-
-if [ ! -z "$PBS_SPOOL_DIR" ]; then
-    spoolpath=${PBS_SPOOL_DIR}/
-else
-    spoolpath=/usr/spool/PBS/
-fi
+blahconffile="${GLITE_LOCATION:-/opt/glite}/etc/blah.config"
+binpath=`grep pbs_binpath $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`/
+spoolpath=`grep pbs_spoolpath $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`/
+fallback=`grep pbs_fallback $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
+BLParser=`grep pbs_BLParser $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
+BLPserver=`grep pbs_BLPserver $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
+BLPport=`grep pbs_BLPport $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
 
 usage_string="Usage: $0 -c <command> [-i <stdin>] [-o <stdout>] [-e <stderr>] [-x <x509userproxy>] [-v <environment>] [-s <yes | no>] [-- command_arguments]"
-
 
 logpath=${spoolpath}server_logs
 
@@ -78,11 +64,6 @@ workdir=$PWD
 prnpoll=30
 prnlifetime=0
 
-#set to yes if BLParser is present in the installation
-BLParser=""
-
-BLPserver="127.0.0.1"
-BLPport=33332
 BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 
 ###############################################################
@@ -349,6 +330,14 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
      if [ "x$jobID_log" != "x" ] ; then
         logfile=$datenow
      fi
+ fi
+ 
+ if [ "$cliretcode" == "1" -a "x$fallback" == "xno" ] ; then
+  ${binpath}qdel $jobID
+  echo "Error: not able to talk with logparser on ${BLPserver}:${BLPport}" >&2
+  echo Error # for the sake of waiting fgets in blahpd
+  rm $curdir/$tmp_file
+  exit 1
  fi
 
  if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then

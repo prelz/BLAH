@@ -32,24 +32,15 @@
 #  See http://grid.infn.it/grid/license.html for license details.
 #
 #
-# Initialize env
-if  [ -f ~/.bashrc ]; then
- . ~/.bashrc
-fi
 
-if  [ -f ~/.login ]; then
- . ~/.login
-fi
+blahconffile="${GLITE_LOCATION:-/opt/glite}/etc/blah.config"
+binpath=`grep lsf_binpath $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`/
+confpath=`grep lsf_confpath $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`/
+fallback=`grep lsf_fallback $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
+BLParser=`grep lsf_BLParser $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
+BLPserver=`grep lsf_BLPserver $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
+BLPport=`grep lsf_BLPport $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
 
-usage_string="Usage: $0 -c <command> [-i <stdin>] [-o <stdout>] [-e <stderr>] [-x <x509userproxy>] [-v <environment>] [-- command_arguments]"
-
-if [ ! -z "$LSF_BIN_PATH" ]; then
-    binpath=${LSF_BIN_PATH}/
-else
-    binpath=/usr/local/lsf/bin/
-fi
-
-confpath=${LSF_CONF_PATH:-/etc}
 conffile=$confpath/lsf.conf
 
 lsf_base_path=`cat $conffile|grep LSB_SHAREDIR| awk -F"=" '{ print $2 }'`
@@ -80,11 +71,6 @@ fi
 prnpoll=30
 prnlifetime=0
 
-#set to yes if BLParser is present in the installation 
-BLParser=""
-
-BLPserver="127.0.0.1"
-BLPport=33333
 BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 
 ###############################################################
@@ -319,6 +305,14 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
      jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $BLPserver -p $BLPport`
      cliretcode=$?
  fi
+ 
+ if [ "$cliretcode" == "1" -a "x$fallback" == "xno" ] ; then
+   ${binpath}bkill $jobID
+   echo "Error: not able to talk with logparser on ${BLPserver}:${BLPport}" >&2
+   echo Error # for the sake of waiting fgets in blahpd
+   rm $curdir/$tmp_file
+   exit 1
+ fi
 
  if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
 
@@ -326,7 +320,7 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
 
    jobID_log=`grep \"JOB_NEW\" $logfile | awk -F" " '{ print $4" " $42 }' | grep $tmp_file|awk -F" " '{ print $1 }'`
  fi
-
+ 
  if (( log_check_retry_count++ >= 12 )); then
      ${binpath}bkill $jobID
      echo "Error: job not found in logs" >&2

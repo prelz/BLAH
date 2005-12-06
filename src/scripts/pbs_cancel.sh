@@ -1,19 +1,7 @@
 #!/bin/bash
 
-# Initialize env
-if  [ -f ~/.bashrc ]; then
- . ~/.bashrc
-fi
-
-if  [ -f ~/.login ]; then
- . ~/.login
-fi
-
-if [ ! -z "$PBS_BIN_PATH" ]; then
-    binpath=${PBS_BIN_PATH}/
-else
-    binpath=/usr/pbs/bin/
-fi
+blahconffile="${GLITE_LOCATION:-/opt/glite}/etc/blah.config"
+binpath=`grep pbs_binpath $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
 
 requested=`echo $1 | sed 's/^.*\///'`
-${binpath}qdel $requested >/dev/null 2>&1
+${binpath}/qdel $requested >/dev/null 2>&1
