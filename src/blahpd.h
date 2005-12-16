@@ -10,7 +10,7 @@
 #define FLUSHED_BUFFER		"/tmp/blahp_result_buffer.flushed"
 
 #define DEFAULT_GLITE_LOCATION	"/opt/glite"
-#define DEFAULT_GLEXEC_LOCATION "/opt/glite/sbin"
+#define DEFAULT_GLEXEC_COMMAND "/opt/glite/sbin/glexec"
 #define BINDIR_LOCATION		"%s/bin"
 
 /* Change this in order to select the default batch system

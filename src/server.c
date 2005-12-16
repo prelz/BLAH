@@ -163,9 +163,9 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 		server_lrms = DEFAULT_LRMS;
 	} */
 	blah_version = make_message(RCSID_VERSION, VERSION, "poly");
-        if ((gloc= getenv("GLEXEC_LOCATION")) == NULL)
+        if ((gloc=getenv("GLEXEC_COMMAND")) == NULL)
         {
-        	gloc = DEFAULT_GLEXEC_LOCATION;
+        	gloc = DEFAULT_GLEXEC_COMMAND;
         }
 	conffilestr = make_message("%s/etc/blah.config",result);
 	if((conffile = fopen(conffilestr,"r")) != NULL)
@@ -519,7 +519,7 @@ cmd_submit_job(void *args)
                        resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
                        goto cleanup_command;
                 }
-		command = make_message("%s/glexec %s/%s_submit.sh -x %s", gloc, blah_script_location, server_lrms, proxyname);
+		command = make_message("%s %s/%s_submit.sh -x %s", gloc, blah_script_location, server_lrms, proxyname);
 	}else
 		command = make_message("%s/%s_submit.sh", blah_script_location, server_lrms);
 
@@ -677,7 +677,7 @@ cmd_cancel_job(void* args)
 	/* Prepare the cancellation command */
 	if(glexec_mode )
 	{
-        	command = make_message("%s/glexec %s/%s_cancel.sh %s", gloc, blah_script_location, server_lrms, jobId);
+        	command = make_message("%s %s/%s_cancel.sh %s", gloc, blah_script_location, server_lrms, jobId);
 	}else
 	{
 		command = make_message("%s/%s_cancel.sh %s", blah_script_location, server_lrms, jobId);
@@ -984,7 +984,7 @@ hold_res_exec(void* args, char* action,int status )
 
         if(glexec_mode )
         {
-        	command = make_message("%s/glexec %s/%s_%s.sh %s %d", gloc, blah_script_location, server_lrms, action, jobId, status);
+        	command = make_message("%s %s/%s_%s.sh %s %d", gloc, blah_script_location, server_lrms, action, jobId, status);
 	}else
         {
 		command = make_message("%s/%s_%s.sh %s %d", blah_script_location, server_lrms, action, jobId, status);
