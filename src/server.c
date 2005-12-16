@@ -43,6 +43,7 @@
 #include <sys/wait.h>
 #include <pthread.h>
 #include <stdarg.h>
+#include <sys/stat.h>
 
 #include "blahpd.h"
 #include "classad_c_helper.h"
@@ -59,6 +60,7 @@
 #define RESUME_JOB              0
 #define MAX_LRMS_NUMBER 	10
 #define MAX_LRMS_NAME_SIZE	4
+#define MAX_CERT_SIZE		100000
   
 t_resline *first_job = NULL;
 t_resline *last_job = NULL;
@@ -109,7 +111,9 @@ char *blah_script_location;
 char *blah_version;
 char lrmslist[MAX_LRMS_NUMBER][MAX_LRMS_NAME_SIZE];
 int  lrms_counter = 0;
-
+int  glexec_mode = 0;
+char *bssp = NULL;
+char *gloc = NULL;
 /* Free all tokens of a command
  * */
 void
@@ -159,7 +163,10 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 		server_lrms = DEFAULT_LRMS;
 	} */
 	blah_version = make_message(RCSID_VERSION, VERSION, "poly");
-	
+        if ((gloc= getenv("GLEXEC_LOCATION")) == NULL)
+        {
+        	gloc = DEFAULT_GLEXEC_LOCATION;
+        }
 	conffilestr = make_message("%s/etc/blah.config",result);
 	if((conffile = fopen(conffilestr,"r")) != NULL)
 	{
@@ -358,6 +365,92 @@ cmd_results(void *args)
 	return(result);
 }
 
+void *
+cmd_set_glexec_dn(void *args)
+{
+
+        char *result  = NULL;
+        struct stat buf;
+        char **argv = (char **)args;
+	char *proxt4= argv[1];
+        char *ssl_client_cert = argv[2];
+	FILE *dummy;
+        char certbuffer[MAX_CERT_SIZE];
+	int res = 0;
+	char *cmdstr = NULL;
+	char *proxynameNew = NULL;
+	
+	if((!stat(proxt4, &buf))&&(!stat(ssl_client_cert, &buf)))
+        {
+                res = setenv("GLEXEC_MODE","lcmaps_get_account",1);
+                if (res)
+                {
+                        result=strdup("Unable\\ to\\ set\\ GLEXEC\\ MODE");
+                        return(result);
+                }
+		res = setenv("BLAHP_SAVE_SOURCE_PROXY",proxt4,1);
+                if (res)
+                {
+			result=strdup("Unable\\ to\\ set\\ GLEXEC\\ MODE");
+                        return(result);
+                }
+		dummy = fopen(ssl_client_cert, "r");
+		if (dummy == NULL)
+		{ 
+			unsetenv("BLAHP_SAVE_SOURCE_PROXY");
+			result=strdup("Unable\\ to\\ read\\ SSL\\ CLIENT\\ CERT");
+			return(result);
+		}
+
+		/* reads from cert file and stores in certbuffer */
+		fread(certbuffer, MAX_CERT_SIZE, 1, dummy);
+		fclose(dummy);
+		if(strlen(certbuffer) > 0)
+		{
+			/* save blah_save_source_proxy */
+			bssp = strdup(proxt4);			
+			res = setenv("SSL_CLIENT_CERT",certbuffer,1);
+			/* proxt4 must be limited for subsequent submission */		
+               		proxynameNew=make_message("%s.lmt",proxt4);
+               		cmdstr=make_message("cp %s %s",proxt4, proxynameNew);
+               		system(cmdstr);
+               		limit_proxy(proxynameNew);
+               		bssp = strdup(proxynameNew);
+			free(cmdstr);
+			free(proxynameNew);
+		}
+		else
+                {
+                        result=strdup("Unable\\ to\\ read\\ SSL\\ CLIENT\\ CERT");
+                	glexec_mode = 0;                        
+			return(result);
+                }
+		glexec_mode = 1;
+                result = strdup("Glexec\\ mode\\ on");
+	}else
+                result = strdup("Proxy\\ file\\ not\\ found");
+
+	return(result);
+}
+
+void *
+cmd_unset_glexec_dn(void *args)
+{
+        char *result;
+
+        unsetenv("GLEXEC_MODE");
+        unsetenv("BLAHP_SAVE_SOURCE_PROXY");
+        unsetenv("SSL_CLIENT_CERT");
+	glexec_mode = 0;
+        if(bssp!=NULL)
+	{
+		free(bssp);
+		bssp = NULL;
+	}
+	result=make_message("Glexec\\ mode\\ off");
+        return (result);
+}
+
 /* Threaded commands
  * N.B.: functions must free argv before return
  * */
@@ -404,7 +497,23 @@ cmd_submit_job(void *args)
 		goto cleanup_cad;
 	}
 
-	command = make_message("%s/%s_submit.sh", blah_script_location, server_lrms);
+	if(glexec_mode)
+	{
+		setenv("GLEXEC_SOURCE_PROXY",bssp,1);
+		result = classad_get_dstring_attribute(cad, "x509UserProxy", &proxyname);
+                if (result == C_CLASSAD_NO_ERROR)
+		{
+			setenv("GLEXEC_TARGET_PROXY",proxyname,1);
+		}else{
+                       /* PUSH A FAILURE */
+                       resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
+                       goto cleanup_command;
+                }
+		command = make_message("%s/glexec %s/%s_submit.sh -x %s", gloc, blah_script_location, server_lrms, proxyname);
+	}else
+		command = make_message("%s/%s_submit.sh", blah_script_location, server_lrms);
+
+
 	if (command == NULL)
 	{
 		/* PUSH A FAILURE */
@@ -413,13 +522,14 @@ cmd_submit_job(void *args)
 	}
 
         /* Get the proxy name from classad attribute "X509UserProxy" */
-        if ((result = classad_get_dstring_attribute(cad, "x509UserProxy", &proxyname)) == C_CLASSAD_NO_ERROR)
+        if (((result = classad_get_dstring_attribute(cad, "x509UserProxy", &proxyname)) == C_CLASSAD_NO_ERROR)
+	   &&(!glexec_mode ))
         { 
                proxynameNew=make_message("%s.lmt",proxyname);
                cmdstr=make_message("cp %s %s",proxyname, proxynameNew);
                system(cmdstr);
                limit_proxy(proxynameNew);
-               command_ext = make_message("%s -x %s", command, proxynameNew);
+	       command_ext = make_message("%s -x %s", command, proxynameNew);
                free(proxyname);
                free(cmdstr);
                if (command_ext == NULL)
@@ -513,7 +623,11 @@ cleanup_argv:
 	free_args(argv);
 	enqueue_result(resultLine);
 	free(resultLine);
-
+	if(glexec_mode)
+	{
+		unsetenv("GLEXEC_SOURCE_PROXY");
+        	unsetenv("GLEXEC_TARGET_PROXY");
+	}
 	return;
 }
 
@@ -551,7 +665,13 @@ cmd_cancel_job(void* args)
 	jobId = server_lrms + 4;
 
 	/* Prepare the cancellation command */
-	command = make_message("%s/%s_cancel.sh %s", blah_script_location, server_lrms, jobId);
+	if(glexec_mode )
+	{
+        	command = make_message("%s/glexec %s/%s_cancel.sh %s", gloc, blah_script_location, server_lrms, jobId);
+	}else
+	{
+		command = make_message("%s/%s_cancel.sh %s", blah_script_location, server_lrms, jobId);
+	}
 	if (command == NULL)
 	{
 		/* PUSH A FAILURE */
@@ -677,10 +797,9 @@ cmd_renew_proxy(void *args)
 	int  job_number;
 
 	retcod = get_status(jobDescr, status_ad, errstr, 1, &job_number);
-	if (esc_errstr = escape_spaces(errstr[0]))
+	if (!strcmp(errstr[0],"No Error"))
 	{
-		if (!retcod)
-		{
+			esc_errstr = escape_spaces(errstr[0]);
 			classad_get_int_attribute(status_ad[0], "JobStatus", &jobStatus);
 			jobDescr = strrchr(jobDescr, '/') + 1;
 			switch(jobStatus)
@@ -726,7 +845,7 @@ cmd_renew_proxy(void *args)
 					break;
 				case 2: /* job running */
 					/* send the proxy to remote host */
-					if ((result = classad_get_dstring_attribute(status_ad, "WorkerNode", &workernode)) == C_CLASSAD_NO_ERROR)
+					if (((result = classad_get_dstring_attribute(status_ad[0], "WorkerNode", &workernode)) == C_CLASSAD_NO_ERROR)&&(strcmp(workernode,"")))
 					{
 						/* proxy must be limited */
         					proxyFileNameNew = make_message("%s.lmt",proxyFileName);
@@ -738,7 +857,9 @@ cmd_renew_proxy(void *args)
 				                        getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus",
 				                        blah_script_location, proxyFileNameNew, jobDescr, workernode);
 						free(workernode);
+						workernode=NULL;
 						free(proxyFileNameNew);
+						proxyFileNameNew = NULL;
 						/* Execute the command */
 						/* fprintf(stderr, "DEBUG: executing %s\n", command); */
 						if((dummy = mtsafe_popen(command, "r")) == NULL)
@@ -759,8 +880,8 @@ cmd_renew_proxy(void *args)
 							resultLine = make_message("%s %d %s", reqId, retcod, retcod ? "Error" : "No\\ error");
 						}
 						free(command);
-					}
-					else
+						command = NULL;
+					}else
 					{
 						resultLine = make_message("%s 1 Cannot\\ retrieve\\ executing\\ host", reqId);
 					}
@@ -780,10 +901,10 @@ cmd_renew_proxy(void *args)
 				default:
 					resultLine = make_message("%s 1 Wrong\\ state\\ (%d)", reqId, jobStatus);
 			}
-		}
-		else
+		}else
 		{
-			resultLine = make_message("%s %d %s", reqId, retcod, esc_errstr);
+			//resultLine = make_message("%s %d %s", reqId, retcod, esc_errstr);
+			resultLine = make_message("%s %d %s", reqId, 1, escape_spaces(errstr[0]));
 		}
 		if (resultLine)
 		{
@@ -795,15 +916,12 @@ cmd_renew_proxy(void *args)
 			enqueue_result("Missing result line due to memory error");
 			free(esc_errstr);
 		}
-	}
-	else
-		enqueue_result("Missing result line due to memory error");
 	
 	/* Free up all arguments */
-	classad_free(status_ad);
+	classad_free(status_ad[0]);
 	free_args(argv);
-	free(proxyFileNameNew);
-	free(cmdstr);
+	if(proxyFileNameNew) free(proxyFileNameNew);
+	if(cmdstr) free(cmdstr);
 	return;
 }
 
@@ -839,8 +957,15 @@ hold_res_exec(void* args, char* action,int status )
 	}
 	server_lrms[3] = '\0';
 	jobId = server_lrms + 4;
-	/* Prepare the cancellation command */
-	command = make_message("%s/%s_%s.sh %s %d", blah_script_location, server_lrms, action, jobId, status);
+
+        if(glexec_mode )
+        {
+        	command = make_message("%s/glexec %s/%s_%s.sh %s %d", gloc, blah_script_location, server_lrms, action, jobId, status);
+	}else
+        {
+		command = make_message("%s/%s_%s.sh %s %d", blah_script_location, server_lrms, action, jobId, status);
+	}
+	
 	if (command == NULL)
 	{
 		/* PUSH A FAILURE */

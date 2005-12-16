@@ -22,6 +22,9 @@ void *cmd_results(void *args);
 void *cmd_hold_job(void *args);
 void *cmd_resume_job(void *args);
 void *cmd_get_hostport(void *args);
+void *cmd_set_glexec_dn(void *args);
+void *cmd_unset_glexec_dn(void *args);
+
 
 /* Function prototypes
  * */

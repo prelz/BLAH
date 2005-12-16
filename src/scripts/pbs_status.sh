@@ -96,10 +96,8 @@ for  reqfull in $pars ; do
     		usedBLParser="yes"
 		result=`echo $requested | $BLClient -a $BLPserver -p $BLPport`
 		cliretcode=$?
-		reslen=${#result}
-		reslen=$(($reslen - 3))
-		response=${result:reslen}
-		if [ "$response" == "Not" -o "$cliretcode" != "0" ] ; then
+		response=${result:0:1}
+		if [ "$response" != "[" -o "$cliretcode" != "0" ] ; then
 			cliretcode=1
 		else 
 			cliretcode=0
