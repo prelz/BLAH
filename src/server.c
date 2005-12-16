@@ -413,8 +413,18 @@ cmd_set_glexec_dn(void *args)
 			/* proxt4 must be limited for subsequent submission */		
                		proxynameNew=make_message("%s.lmt",proxt4);
                		cmdstr=make_message("cp %s %s",proxt4, proxynameNew);
-               		system(cmdstr);
-               		limit_proxy(proxynameNew);
+               		result=system(cmdstr);
+                        if(result)
+                        {
+                        	result = make_message("Error\\ reading\\ proxy\\ %s", proxt4);
+                        	free(proxynameNew);
+                        	free(cmdstr);
+                        	unsetenv("SSL_CLIENT_CERT");
+				return(result);
+                        }               		
+
+
+			limit_proxy(proxynameNew);
                		bssp = strdup(proxynameNew);
 			free(cmdstr);
 			free(proxynameNew);
@@ -823,8 +833,15 @@ cmd_renew_proxy(void *args)
 								/* proxy must be copied and limited */
         							proxyFileNameNew = make_message("%s.lmt",proxyFileName);
         							cmdstr = make_message("cp %s %s",proxyFileName, proxyFileNameNew);
-								system(cmdstr);	       
-        							limit_proxy(proxyFileNameNew);
+								result = system(cmdstr);	       
+        							if(result)
+								{
+                                                                	resultLine = make_message("%s 1 Error\\ reading\\ proxy\\ %s", reqId, proxyFileName);
+									free(proxyFileNameNew);
+                                                                	free(cmdstr);
+									break;
+								}
+								limit_proxy(proxyFileNameNew);
 								free(proxyFileNameNew);
 								free(cmdstr);						
 								resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
@@ -850,7 +867,14 @@ cmd_renew_proxy(void *args)
 						/* proxy must be limited */
         					proxyFileNameNew = make_message("%s.lmt",proxyFileName);
         					cmdstr = make_message("cp %s %s",proxyFileName, proxyFileNameNew);
-						system(cmdstr);	       
+						result=system(cmdstr);	       
+                                                if(result)
+                                                {
+                                                	resultLine = make_message("%s 1 Error\\ reading\\ proxy\\ %s", reqId, proxyFileName);
+                                                	free(proxyFileNameNew);
+                                                	free(cmdstr);
+                                                	break;
+                                                }
         					limit_proxy(proxyFileNameNew);
 						free(cmdstr);
 						command = make_message("export LD_LIBRARY_PATH=%s/lib; %s/BPRclient %s %s %s",
