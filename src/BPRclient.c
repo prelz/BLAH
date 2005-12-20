@@ -123,7 +123,7 @@ main(int argc, char **argv)
 		if (strcmp(buffer, jobId) != 0)
 		{
 			close(fd_socket);
-			fprintf(stderr, "Wrong job on port %d: expected %s, received %s\n", jobId, server_port, buffer);
+			fprintf(stderr, "Wrong job on port %d: expected %s, received %s\n", server_port, jobId , buffer);
 			continue;
 		}
 		else
