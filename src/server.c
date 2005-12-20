@@ -517,8 +517,12 @@ cmd_submit_job(void *args)
 		}else{
                        /* PUSH A FAILURE */
                        resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
-                       goto cleanup_command;
-                }
+                       free(server_lrms);
+                       unsetenv("GLEXEC_SOURCE_PROXY");
+                       unsetenv("GLEXEC_TARGET_PROXY");
+                       enqueue_result(resultLine);
+                       return;        
+	}
 		command = make_message("%s %s/%s_submit.sh -x %s", gloc, blah_script_location, server_lrms, proxyname);
 	}else
 		command = make_message("%s/%s_submit.sh", blah_script_location, server_lrms);
@@ -803,10 +807,14 @@ cmd_renew_proxy(void *args)
 	char error_message[ERROR_MAX_LEN];
 	char *error_string;
 	char *proxyFileNameNew;
-	char *cmdstr;
 	int  job_number;
 
 	retcod = get_status(jobDescr, status_ad, errstr, 1, &job_number);
+	if(!glexec_mode)
+	{
+		proxyFileNameNew = make_message("%s.lmt",proxyFileName);
+	}else
+		proxyFileNameNew = strdup(proxyFileName);
 	if (!strcmp(errstr[0],"No Error"))
 	{
 			esc_errstr = escape_spaces(errstr[0]);
@@ -826,32 +834,27 @@ cmd_renew_proxy(void *args)
 					else
 					{
 						old_proxy[result] = '\0'; /* readlink doesn't append the NULL char */
-						if (strcmp(proxyFileName, old_proxy) != 0) /* If Condor didn't change the old proxy file already */
+						if (strcmp(proxyFileNameNew, old_proxy) != 0) /* If Condor didn't change the old proxy file already */
 						{
-							if (rename(proxyFileName, old_proxy) == 0) /* FIXME with a safe portable rotation */
-							{
-								/* proxy must be copied and limited */
-        							proxyFileNameNew = make_message("%s.lmt",proxyFileName);
-        							cmdstr = make_message("cp %s %s",proxyFileName, proxyFileNameNew);
-								result = system(cmdstr);	       
-        							if(result)
+							
+                                                        if(!glexec_mode)
+                                                        {
+								//if (rename(proxyFileName, old_proxy) == 0) /* FIXME with a safe portable rotation */
+								/* proxy must be copied and (if we are not in glexec_mode) limited */
+        							command = make_message("cp -f %s %s &>2 /dev/null",proxyFileName, old_proxy);
+								if((dummy = mtsafe_popen(command, "r")) == NULL)
 								{
                                                                 	resultLine = make_message("%s 1 Error\\ reading\\ proxy\\ %s", reqId, proxyFileName);
 									free(proxyFileNameNew);
-                                                                	free(cmdstr);
+                                                                	free(command);
+									command=NULL;
 									break;
-								}
+								}	
 								limit_proxy(proxyFileNameNew);
-								free(proxyFileNameNew);
-								free(cmdstr);						
-								resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
 							}
-							else
-							{
-								esc_strerr = escape_spaces(strerror(errno));
-								resultLine = make_message("%s 1 Error\\ rotating\\ proxy: %s", reqId, esc_strerr);
-								free(esc_strerr);
-							}
+							free(proxyFileNameNew);proxyFileNameNew=NULL;
+							if(command) free(command);
+							resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
 						}
 						else
 						{
@@ -864,26 +867,30 @@ cmd_renew_proxy(void *args)
 					/* send the proxy to remote host */
 					if (((result = classad_get_dstring_attribute(status_ad[0], "WorkerNode", &workernode)) == C_CLASSAD_NO_ERROR)&&(strcmp(workernode,"")))
 					{
-						/* proxy must be limited */
-        					proxyFileNameNew = make_message("%s.lmt",proxyFileName);
-        					cmdstr = make_message("cp %s %s",proxyFileName, proxyFileNameNew);
-						result=system(cmdstr);	       
-                                                if(result)
+						
+                                                if(!glexec_mode)
                                                 {
-                                                	resultLine = make_message("%s 1 Error\\ reading\\ proxy\\ %s", reqId, proxyFileName);
-                                                	free(proxyFileNameNew);
-                                                	free(cmdstr);
-                                                	break;
-                                                }
-        					limit_proxy(proxyFileNameNew);
-						free(cmdstr);
-						command = make_message("export LD_LIBRARY_PATH=%s/lib; %s/BPRclient %s %s %s",
+							/* proxy must be limited */
+        						command = make_message("cp %s %s &>2 /dev/null",proxyFileName, proxyFileNameNew);
+							if((dummy = mtsafe_popen(command, "r")) == NULL)
+                                                	{
+                                                		resultLine = make_message("%s 1 Error\\ reading\\ proxy\\ %s", reqId, proxyFileName);
+                                                		free(proxyFileNameNew);
+                                                		free(command);
+								command=NULL;
+                                                		break;
+                                                	}else
+                                                        mtsafe_pclose(dummy);
+							limit_proxy(proxyFileNameNew);
+						}
+						
+						if(command) { free(command); command=NULL;}
+						command = make_message("export LD_LIBRARY_PATH=%s/lib; %s/BPRclient %s %s %s &>2 /dev/null",
 				                        getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus",
 				                        blah_script_location, proxyFileNameNew, jobDescr, workernode);
 						free(workernode);
 						workernode=NULL;
-						free(proxyFileNameNew);
-						proxyFileNameNew = NULL;
+						free(proxyFileNameNew);proxyFileNameNew=NULL;
 						/* Execute the command */
 						/* fprintf(stderr, "DEBUG: executing %s\n", command); */
 						if((dummy = mtsafe_popen(command, "r")) == NULL)
@@ -903,8 +910,7 @@ cmd_renew_proxy(void *args)
 							retcod = mtsafe_pclose(dummy);
 							resultLine = make_message("%s %d %s", reqId, retcod, retcod ? "Error" : "No\\ error");
 						}
-						free(command);
-						command = NULL;
+						if(command) { free(command); command=NULL;}
 					}else
 					{
 						resultLine = make_message("%s 1 Cannot\\ retrieve\\ executing\\ host", reqId);
@@ -945,7 +951,7 @@ cmd_renew_proxy(void *args)
 	classad_free(status_ad[0]);
 	free_args(argv);
 	if(proxyFileNameNew) free(proxyFileNameNew);
-	if(cmdstr) free(cmdstr);
+	if(command) free(command);
 	return;
 }
 

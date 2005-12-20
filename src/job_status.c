@@ -29,6 +29,8 @@
 #include "mtsafe_popen.h"
 
 extern char *blah_script_location;
+extern int  glexec_mode;
+extern char *gloc;
 
 int get_status(const char *jobDesc, classad_context *cad, char error_str[][ERROR_MAX_LEN], int get_workernode, int *job_nr)
 {
@@ -56,9 +58,12 @@ int get_status(const char *jobDesc, classad_context *cad, char error_str[][ERROR
         }
 
         server_lrms[3] = '\0';
-
-	command = make_message("%s/%s_status.sh %s %s", blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobDesc);
-        if ((cmd_out=mtsafe_popen(command, "r")) == NULL)
+	if(!glexec_mode)
+	{
+		command = make_message("%s/%s_status.sh %s %s", blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobDesc);
+        }else
+		command = make_message("%s %s/%s_status.sh %s %s", gloc, blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobDesc);
+	if ((cmd_out=mtsafe_popen(command, "r")) == NULL)
         {
                 fprintf(stderr, "Unable to execute '%s': ", command);
                 perror("");
