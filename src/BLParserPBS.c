@@ -33,6 +33,10 @@ int main(int argc, char *argv[]) {
         
     ParseCmdLine(argc, argv, &szPort, &szSpoolDir, &szCreamPort);
     
+    if(dmn){    
+     daemonize();
+    }
+    
     if((argc > 1) && (szPort!=NULL)){
      port = strtol(szPort, &endptr, 0);
      if ( *endptr || port < 1 || port > 65535) {
@@ -1445,38 +1449,86 @@ int str2epoch(char *str, char * f){
  
 }
 
+void daemonize(){
+
+    int pid;
+    
+    pid = fork();
+    if (pid < 0)
+    {
+        fprintf(stderr,"%s: Cannot fork.\n",progname);
+        exit(EXIT_FAILURE);
+    }
+    else if (pid >0)
+    {
+        exit(EXIT_SUCCESS);
+    }
+    
+    setsid();
+    
+    pid = fork();
+    if (pid < 0)
+    {
+        fprintf(stderr,"%s: Cannot fork.\n",progname);
+        exit(EXIT_FAILURE);
+    }
+    else if (pid >0)
+    {
+        exit(EXIT_SUCCESS);
+    }
+    chdir("/");
+    umask(0);
+
+}
+
+void print_usage(){
+
+ fprintf(stderr,"Usage:\n");
+ fprintf(stderr,"%s [-p] [<remote_port [%d]>] [-s <PBS_spooldir [%s]>] [-m  <CreamPort>] [-d] [-D]\n",progname, DEFAULT_PORT, spooldir);
+ fprintf(stderr,"Use -d to enable debugging.\n");
+ fprintf(stderr,"Use -D to run as daemon.\n");
+ exit(EXIT_SUCCESS);
+ 
+}
+
 int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir, char **szCreamPort) {
     
     int n = 1;
      
-    if(argc==2 && (!strncmp(argv[n], "-d", 2) || !strncmp(argv[n], "-D", 2))){
-      debug=1;
-      *szPort=NULL;
-      return 0;
-    }else if(argc==2 && !(!strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2))){
-     *szPort= argv[n];
-     return 0;
+    if(argc==2){
+       if(!strncmp(argv[n], "-d", 2)){
+          debug=1;
+          *szPort=NULL;
+          return 0;
+       }else if(!strncmp(argv[n], "-D", 2)){
+          dmn=1;
+          *szPort=NULL;
+          return 0;
+       }else if(!strncmp(argv[n], "-h", 2)){
+          print_usage();
+       }else{
+          *szPort= argv[n];
+          return 0;
+       }
     }
 
     while ( n < argc ) {
-        if ( !strncmp(argv[n], "-p", 2) || !strncmp(argv[n], "-P", 2) ) {
+        if ( !strncmp(argv[n], "-p", 2) ) {
             *szPort= argv[++n];
-        }
-        else if ( !strncmp(argv[n], "-s", 2) || !strncmp(argv[n], "-S", 2) ) {
+        }else if ( !strncmp(argv[n], "-s", 2) ) {
             *szSpoolDir = argv[++n];
-        }
-        else if ( !strncmp(argv[n], "-m", 2) || !strncmp(argv[n], "-M", 2) ) {
+        }else if ( !strncmp(argv[n], "-m", 2) ) {
             *szCreamPort = argv[++n];
 	    usecream++;
-        }
-        else if ( !strncmp(argv[n], "-d", 2) || !strncmp(argv[n], "-D", 2) ) {
+        }else if ( !strncmp(argv[n], "-d", 2) ) {
 	    debug=1;
-        }
-        else if ( !strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2) ) {
-            printf("Usage:\n");
-            printf("%s [-p] <remote_port [%d]> -s <PBS_spooldir [%s]>\n",progname, DEFAULT_PORT, spooldir);
-	    printf("Use -d to enable debugging.\n");
-            exit(EXIT_SUCCESS);
+        }else if ( !strncmp(argv[n], "-D", 2) ) {
+	    dmn=1;
+        }else if ( !strncmp(argv[n], "-h", 2) ) {
+            print_usage(); 
+	}else {
+	    fprintf(stderr,"Wrong argument.\n");
+            print_usage(); 
         }
         ++n;
     }

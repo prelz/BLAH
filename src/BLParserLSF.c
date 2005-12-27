@@ -25,6 +25,10 @@ int main(int argc, char *argv[]) {
 
     ldir=GetLogDir(argc,argv);
     
+    if(dmn){    
+     daemonize();
+    }
+    
     if((eventsfile=malloc(STR_CHARS)) == 0){
      sysfatal("can't malloc eventsfile: %r");
     }
@@ -1460,42 +1464,86 @@ int str2epoch(char *str, char * f){
  
 }
 
+void daemonize(){
+
+    int pid;
+    
+    pid = fork();
+    if (pid < 0)
+    {
+        fprintf(stderr,"%s: Cannot fork.\n",progname);
+        exit(EXIT_FAILURE);
+    }
+    else if (pid >0)
+    {
+        exit(EXIT_SUCCESS);
+    }
+    
+    setsid();
+    
+    pid = fork();
+    if (pid < 0)
+    {
+        fprintf(stderr,"%s: Cannot fork.\n",progname);
+        exit(EXIT_FAILURE);
+    }
+    else if (pid >0)
+    {
+        exit(EXIT_SUCCESS);
+    }
+    chdir("/");
+    umask(0);
+
+}
+
+void print_usage(){
+
+ fprintf(stderr,"Usage:\n");
+ fprintf(stderr,"%s [-p] [<remote_port [%d]>] [-b <LSF_binpath [%s]>] [-c <LSF_confpath [%s]>] [-m  <CreamPort>] [-d]\n",progname, DEFAULT_PORT, binpath, confpath);
+ fprintf(stderr,"Use -d to enable debugging.\n");
+ fprintf(stderr,"Use -D to run as daemon.\n");
+ exit(EXIT_SUCCESS);
+ 
+}
+
 int ParseCmdLine(int argc, char *argv[], char **szPort, char **szBinPath, 
                  char **szConfPath, char **szCreamPort) {
     
     int n = 1;
 
-    if(argc==2 && (!strncmp(argv[n], "-d", 2) || !strncmp(argv[n], "-D", 2))){
-      debug=1;
-      *szPort=NULL;
-      return 0;
-    }else if(argc==2 && !(!strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2))){
-     *szPort= argv[n];
-     return 0;
+    if(argc==2){
+       if(!strncmp(argv[n], "-d", 2)){
+          debug=1;
+          *szPort=NULL;
+          return 0;
+       }else if(!strncmp(argv[n], "-D", 2)){
+          dmn=1;
+          *szPort=NULL;
+          return 0;
+       }else if(!strncmp(argv[n], "-h", 2)){
+          print_usage();
+       }else{
+          *szPort= argv[n];
+          return 0;
+       }
     }
 
     while ( n < argc ) {
-        if ( !strncmp(argv[n], "-p", 2) || !strncmp(argv[n], "-P", 2) ) {
+        if ( !strncmp(argv[n], "-p", 2) ) {
             *szPort= argv[++n];
-        }
-        else if ( !strncmp(argv[n], "-b", 2) || !strncmp(argv[n], "-B", 2) ) {
+        }else if ( !strncmp(argv[n], "-b", 2) ) {
             *szBinPath = argv[++n];
-        }
-        else if ( !strncmp(argv[n], "-c", 2) || !strncmp(argv[n], "-C", 2) ) {
+        }else if ( !strncmp(argv[n], "-c", 2) ) {
             *szConfPath = argv[++n];
-        }
-        else if ( !strncmp(argv[n], "-m", 2) || !strncmp(argv[n], "-M", 2) ) {
+        }else if ( !strncmp(argv[n], "-m", 2) ) {
             *szCreamPort = argv[++n];
 	    usecream++;
-        }
-        else if ( !strncmp(argv[n], "-d", 2) || !strncmp(argv[n], "-D", 2) ) {
+        }else if ( !strncmp(argv[n], "-d", 2) ) {
 	    debug=1;
-        }
-        else if ( !strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2) ) {
-            printf("Usage:\n");
-            printf("%s [-p] [<remote_port [%d]>] [-b <LSF_binpath [%s]>] [-c <LSF_confpath [%s]]> [-m  <CreamPort>] [-d]\n",progname, DEFAULT_PORT, binpath, confpath);
-            printf("Use -d to enable debugging.\n");	    
-            exit(EXIT_SUCCESS);
+        }else if ( !strncmp(argv[n], "-D", 2) ) {
+	    dmn=1;
+        }else if ( !strncmp(argv[n], "-h", 2) ) {
+            print_usage();
         }
         ++n;
     }

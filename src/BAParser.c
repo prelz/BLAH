@@ -20,6 +20,10 @@ int main(int argc, char *argv[]) {
     signal(SIGPIPE, SIG_IGN);
     
     ParseCmdLine(argc, argv, &szPort, &szSpoolDir);
+
+    if(dmn){
+     daemonize();
+    }
     
     if((argc > 1) && (szPort!=NULL)){
      port = strtol(szPort, &endptr, 0);
@@ -519,6 +523,47 @@ char *verify_dn(gss_ctx_id_t context_handle)
         return src_name_str;
 }
 
+void daemonize(){
+
+    int pid;
+
+    pid = fork();
+    if (pid < 0)
+    {
+        fprintf(stderr,"%s: Cannot fork.\n",progname);
+        exit(EXIT_FAILURE);
+    }
+    else if (pid >0)
+    {
+        exit(EXIT_SUCCESS);
+    }
+
+    setsid();
+
+    pid = fork();
+    if (pid < 0)
+    {
+        fprintf(stderr,"%s: Cannot fork.\n",progname);
+        exit(EXIT_FAILURE);
+    }
+    else if (pid >0)
+    {
+        exit(EXIT_SUCCESS);
+    }
+    chdir("/");
+    umask(0);
+
+}
+
+void print_usage(){
+
+   fprintf(stderr,"Usage:\n");
+   fprintf(stderr,"%s [-p] <remote_port [%d]> -s <DGAS_spooldir [%s]>\n",progname, DEFAULT_PORT, spooldir);
+   fprintf(stderr,"Use -d to enable debugging.\n");        
+   exit(EXIT_SUCCESS);
+
+}
+
 int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir) {
     
     int n = 1;
@@ -534,20 +579,20 @@ int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir) {
     
 
     while ( n < argc ) {
-        if ( !strncmp(argv[n], "-p", 2) || !strncmp(argv[n], "-P", 2) ) {
+        if ( !strncmp(argv[n], "-p", 2) ) {
             *szPort= argv[++n];
         }
-        else if ( !strncmp(argv[n], "-s", 2) || !strncmp(argv[n], "-S", 2) ) {
+        else if ( !strncmp(argv[n], "-s", 2) ) {
             *szSpoolDir = argv[++n];
         }
-        else if ( !strncmp(argv[n], "-d", 2) || !strncmp(argv[n], "-D", 2) ) {
+        else if ( !strncmp(argv[n], "-d", 2) ) {
 	    debug=1;
         }
-        else if ( !strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2) ) {
-            printf("Usage:\n");
-            printf("%s [-p] <remote_port [%d]> -s <DGAS_spooldir [%s]>\n",progname, DEFAULT_PORT, spooldir);
-            printf("Use -D to enable debugging.\n");	    
-            exit(EXIT_SUCCESS);
+        else if ( !strncmp(argv[n], "-D", 2) ) {
+	    dmn=1;
+        }
+        else if ( !strncmp(argv[n], "-h", 2) ) {
+            print_usage();
         }
         ++n;
     }

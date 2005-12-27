@@ -64,6 +64,8 @@ int str2epoch(char *str, char *f);
 void CreamConnection(int c_sock);
 int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason, char *timestamp, int flag);
 int NotifyFromDate(char *in_buf);
+void print_usage();
+void daemonize();
 
 /* Variables initialization */
 
@@ -101,6 +103,7 @@ int creamport;
 int usecream=0;
 
 int debug=0;
+int dmn=0;
 
 struct sockaddr_in cservaddr;
 

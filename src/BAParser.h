@@ -48,10 +48,13 @@ int WriteDN(char *jobid,char *lrms);
 int ReadDN(char *jobid,char *lrms);
 char *verify_dn(gss_ctx_id_t context_handle);
 int strtoken(const char *s, char delim, char **token);
+void print_usage();
+void daemonize();
 
 char *argv0;
 int port;
 int debug=0;
+int dmn=0;
 static char *progname = "BAParser";
 
 char *spooldir = "/opt/glite/var/dgasURBox";

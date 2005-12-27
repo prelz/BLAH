@@ -64,6 +64,8 @@ void CreamConnection(int c_sock);
 int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason, char *timestamp, int flag);
 int NotifyFromDate(char *in_buf);
 void strip_char(char *s, char c);
+void daemonize();
+void print_usage();
 
 /* Variables initialization */
 
@@ -101,6 +103,7 @@ int creamport;
 int usecream=0;
 
 int debug=0;
+int dmn=0;
 
 struct sockaddr_in cservaddr;
 
