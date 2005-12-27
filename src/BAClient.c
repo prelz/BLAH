@@ -28,6 +28,7 @@ char     *progname = "BAClient";
 /*  Function declarations  */
 
 int ParseCmdLine(int argc, char *argv[], char **szAddress, char **szPort);
+void print_usage();
 
 
 int main(int argc, char *argv[]) {
@@ -134,28 +135,32 @@ int main(int argc, char *argv[]) {
     return EXIT_SUCCESS;
 }
 
+void print_usage(){
+
+     fprintf(stderr,"Usage:\n");
+     fprintf(stderr,"%s -a (remote IP) -p (remote port)\n",progname);
+     exit(EXIT_SUCCESS);
+
+}
+
 
 int ParseCmdLine(int argc, char *argv[], char **szAddress, char **szPort) {
 
     int n = 1;
     
     if(argc == 1){
-     printf("Usage:\n");
-     printf("%s -a (remote IP) -p (remote port)\n",progname);
-     exit(EXIT_SUCCESS);
+       print_usage();
     }
 
     while ( n < argc ) {
-	if ( !strncmp(argv[n], "-a", 2) || !strncmp(argv[n], "-A", 2) ) {
+	if ( !strncmp(argv[n], "-a", 2) ) {
 	    *szAddress = argv[++n];
 	}
-	else if ( !strncmp(argv[n], "-p", 2) || !strncmp(argv[n], "-P", 2) ) {
+	else if ( !strncmp(argv[n], "-p", 2) ) {
 	    *szPort = argv[++n];
 	}
-	else if ( !strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2) ) {
-	    printf("Usage:\n");
-	    printf("%s -a (remote IP) -p (remote port)\n",progname);
-	    exit(EXIT_SUCCESS);
+	else if ( !strncmp(argv[n], "-h", 2) ) {
+            print_usage();
 	}
 	++n;
     }
