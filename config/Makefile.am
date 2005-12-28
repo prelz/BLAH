@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.1 2005/11/28 10:04:48 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.2 2005/12/28 10:30:33 mezzadri Exp $ 
 #
 # File:           Makefile.am
 #
@@ -20,7 +20,13 @@ wletcwm_DATA = blah.config
 install-data-hook:
 	/bin/cp $(DESTDIR)$(sysconfdir)/blah.config $(DESTDIR)$(sysconfdir)/blah.config.template
 
-EXTRA_DIST = blah.config
+EXTRA_DIST = blah.config \
+             glite-ce-blparserpbs \
+             glite-ce-blparserlsf \
+             glite-ce-baparser
+
+bldir = $(sysconfdir)/init.d
+bl_SCRIPTS = glite-ce-blparserpbs glite-ce-blparserlsf glite-ce-baparser
 
 CLEANFILES =
 
