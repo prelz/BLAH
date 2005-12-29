@@ -955,173 +955,212 @@ cmd_renew_proxy(void *args)
 	return;
 }
 
-void 
-hold_res_exec(void* args, char* action,int status )
+void
+hold_res_exec(char* jobdescr, char* reqId,char* action,int status )
 {
-	int retcod;
-	FILE *dummy;
-	char *command;
-	char *resultLine = NULL;
-	char **argv = (char **)args;
-	char **arg_ptr;
-	char *server_lrms;
-	char *reqId = argv[1];
-	char *jobId;
-	char error_message[1024];
-	char *error_string;
-	
-	/* The job Id needs at least 4 chars for the "<lrms>/" prefix */
-	if (strlen(argv[2]) < 4)
-	{
-		/* PUSH A FAILURE */
-		resultLine = make_message("%s 2 Malformed\\ jobId %s", reqId, jobId);
-		goto cleanup_argv;
-	}
+        int retcod;
+        FILE *dummy;
+        char *command;
+        char *resultLine = NULL;
+        char *server_lrms;
+        char *jobId;
+        char error_message[1024];
+        char *error_string;
 
-	/* Split <lrms> and actual job Id */
-	if((server_lrms = strdup(argv[2])) == NULL)
-	{
-		/* PUSH A FAILURE */
-		resultLine = make_message("%s 1 Cannot\\ allocate\\ memory\\ for\\ the\\ lrms\\ string", reqId);
-		goto cleanup_argv;
-	}
-	server_lrms[3] = '\0';
-	jobId = server_lrms + 4;
+        /* The job Id needs at least 4 chars for the "<lrms>/" prefix */
+        if (strlen(jobdescr) < 4)
+        {
+                /* PUSH A FAILURE */
+                resultLine = make_message("%s 2 Malformed\\ jobId %s", reqId, jobId);
+                goto cleanup_argv;
+        }
+
+        /* Split <lrms> and actual job Id */
+        if((server_lrms = strdup(jobdescr)) == NULL)
+        {
+                /* PUSH A FAILURE */
+                resultLine = make_message("%s 1 Cannot\\ allocate\\ memory\\ for\\ the\\ lrms\\ string", reqId);
+                goto cleanup_argv;
+        }
+        server_lrms[3] = '\0';
+        jobId = server_lrms + 4;
 
         if(glexec_mode )
         {
-        	command = make_message("%s %s/%s_%s.sh %s %d", gloc, blah_script_location, server_lrms, action, jobId, status);
-	}else
+                if(!strcmp(action,"hold"))
+                {
+                        command = make_message("%s %s/%s_%s.sh %s %d", gloc, blah_script_location, server_lrms, action, jobId, status);
+                }else
+                {
+                        command = make_message("%s %s/%s_%s.sh %s", gloc, blah_script_location, server_lrms, action, jobId);
+                }
+        }else
         {
-		command = make_message("%s/%s_%s.sh %s %d", blah_script_location, server_lrms, action, jobId, status);
-	}
-	
-	if (command == NULL)
-	{
-		/* PUSH A FAILURE */
-		resultLine = make_message("%s 1 Cannot\\ allocate\\ memory\\ for\\ the\\ command\\ string", reqId);
-		goto cleanup_lrms;
-	}
+                if(!strcmp(action,"hold"))
+                {
+                        command = make_message("%s/%s_%s.sh %s %d", blah_script_location, server_lrms, action, jobId, status);
+                }else
+                {
+                        command = make_message("%s/%s_%s.sh %s", blah_script_location, server_lrms, action, jobId);
+                }
+        }
 
-	/* Execute the command */
-	/* fprintf(stderr, "DEBUG: executing %s\n", command); */
-	if((dummy = mtsafe_popen(command, "r")) == NULL)
-	{
-		/* PUSH A FAILURE */
-		/* errno is not set if popen fails because of low memory */
-		if (retcod = errno)
-			strerror_r(errno, error_message, sizeof(error_message));
-		else
-			strncpy(error_message, "Cannot open pipe for the command: out of memory", sizeof(error_message));
+        if (command == NULL)
+        {
+                /* PUSH A FAILURE */
+                resultLine = make_message("%s 1 Cannot\\ allocate\\ memory\\ for\\ the\\ command\\ string", reqId);
+                goto cleanup_lrms;
+        }
 
-		error_string = escape_spaces(error_message);
-		resultLine = make_message("%s %d %s", reqId, retcod, error_string);
-		free(error_string);
-		goto cleanup_command;
-	}
-	retcod = mtsafe_pclose(dummy);
-	if(retcod)
-	{	
-		resultLine = make_message("%s %d Job\\ %s:\\ %s \\ not\\ supported\\ by\\ %s", reqId, retcod, statusstring[status - 1] ,action ,server_lrms );
-	}else
-	resultLine = make_message("%s %d No\\ error", reqId, retcod);
-	/* Free up all arguments and exit (exit point in case of error is the label
+        /* Execute the command */
+        /* fprintf(stderr, "DEBUG: executing %s\n", command); */
+        if((dummy = mtsafe_popen(command, "r")) == NULL)
+        {
+                /* PUSH A FAILURE */
+                /* errno is not set if popen fails because of low memory */
+                if (retcod = errno)
+                        strerror_r(errno, error_message, sizeof(error_message));
+                else
+                        strncpy(error_message, "Cannot open pipe for the command: out of memory", sizeof(error_message));
+
+                error_string = escape_spaces(error_message);
+                resultLine = make_message("%s %d %s", reqId, retcod, error_string);
+                free(error_string);
+                goto cleanup_command;
+        }
+        retcod = mtsafe_pclose(dummy);
+        if(retcod)
+        {
+                resultLine = make_message("%s %d Job\\ %s:\\ %s\\ not\\ supported\\ by\\ %s", reqId, retcod, statusstring[status - 1] ,action ,server_lrms );
+        }else
+        resultLine = make_message("%s %d No\\ error", reqId, retcod);
+        /* Free up all arguments and exit (exit point in case of error is the label
            pointing to last successfully allocated variable) */
 cleanup_command:
-	free(command);
+        free(command);
 cleanup_lrms:
-	free(server_lrms);
+        free(server_lrms);
 cleanup_argv:
-	free_args(argv);
-	enqueue_result(resultLine);
-	free (resultLine);
+        enqueue_result(resultLine);
+        free (resultLine);
 
-	return;
+        return;
 }
 
 void
 hold_resume(void* args, int action )
 {
-	classad_context status_ad[MAX_JOB_NUMBER];
+        classad_context status_ad[MAX_JOB_NUMBER];
         char **argv = (char **)args;
-       	char errstr[MAX_JOB_NUMBER][ERROR_MAX_LEN];
-	char *resultLine = NULL;
+        char errstr[MAX_JOB_NUMBER][ERROR_MAX_LEN];
+        char *resultLine = NULL;
         int jobStatus, retcode;
-        char *reqId = argv[1];
-        char *jobDescr = argv[2];
-	int job_number;
+        char *reqId = NULL;
+        char jobdescr[MAX_JOB_NUMBER][JOBID_MAX_LEN];
+        int i,job_number;
+        char *dummyargv = strdup(argv[2]);
+        char *tmpjobdescr=NULL;
 
         /* job status check */
-        retcode = get_status(jobDescr, status_ad, errstr, 0, &job_number);
-	if (!retcode)
+        retcode = get_status(dummyargv, status_ad, errstr, 0, &job_number);
+        /* if multiple jobs are present their id must be extracted from argv[2] */
+        i=0;
+        tmpjobdescr = strtok(dummyargv," ");
+        memcpy(jobdescr[0],tmpjobdescr,strlen(tmpjobdescr));
+        if(job_number>1)
         {
-             classad_get_int_attribute(status_ad[0], "JobStatus", &jobStatus);
-             switch(jobStatus)
+                for (i =1; i < job_number;i++)
                 {
-                        case 1:/* IDLE */ 
-				if(action == HOLD_JOB)
-				{
-					hold_res_exec(args,"hold",1);
-				}
-				else
-				if (resultLine = make_message("%s 1 Job\\ Idle\\ jobId %s", reqId, jobDescr))
+                        tmpjobdescr= strtok(NULL," ");
+                        memcpy(jobdescr[i],tmpjobdescr,strlen(tmpjobdescr));
+                }
+        }
+
+        if (!retcode)
+        {
+                for (i=0;i<job_number;i++)
+                {
+                        if(job_number>1)
+                        {
+                                reqId= make_message("%s.%d",argv[1],i);
+                        }else
+				reqId= strdup(argv[1]);
+                        if(classad_get_int_attribute(status_ad[i], "JobStatus", &jobStatus)==C_CLASSAD_NO_ERROR)
+                        {
+                                switch(jobStatus)
                                 {
-                                        enqueue_result(resultLine);
-                                        free(resultLine);
-					free_args(argv);
+                                        case 1:/* IDLE */
+                                                if(action == HOLD_JOB)
+                                                {
+                                                        hold_res_exec(jobdescr[i],reqId,"hold",1);
+                                                }
+                                                else
+                                                if (resultLine = make_message("%s 1 Job\\ Idle\\ jobId %s", reqId,jobdescr[i]))
+                                                {
+                                                        enqueue_result(resultLine);
+                                                        free(resultLine);
+                                                }
+                                        break;
+                                        case 2:/* RUNNING */
+                                                if(action == HOLD_JOB)
+                                                {
+                                                        hold_res_exec(jobdescr[i],reqId,"hold",2);
+                                                }else
+                                                if (resultLine = make_message("%s 1 \\ Job\\ Running\\ jobId %s", reqId, jobdescr[i]))
+                                                {
+                                                        enqueue_result(resultLine);
+                                                        free(resultLine);
+                                                }
+                                        break;
+                                        case 3:/* REMOVED */
+                                                if (resultLine = make_message("%s 1 Job\\ Removed\\ jobId %s", reqId, jobdescr[i]))
+                                                {
+                                                        enqueue_result(resultLine);
+                                                        free(resultLine);
+                                                }
+                                        break;
+                                        case 4:/* COMPLETED */
+                                                if (resultLine = make_message("%s 1 Job\\ Completed\\ jobId %s", reqId, jobdescr[i]))
+                                                {
+                                                        enqueue_result(resultLine);
+                                                        free(resultLine);
+                                                }
+                                        break;
+                                        case 5:/* HELD */
+                                                if(action == RESUME_JOB)
+                                                        hold_res_exec(jobdescr[i],reqId,"resume",5);
+                                                else
+                                                if (resultLine = make_message("%s 0 Job\\ Held\\ jobId %s", reqId, jobdescr[i]))
+                                                {
+                                                        enqueue_result(resultLine);
+                                                        free(resultLine);
+                                                }
+                                        break;
                                 }
-
-                        break;
-                        case 2:/* RUNNING */ 
-                                if(action == HOLD_JOB)
-				{
-					hold_res_exec(args,"hold",2);
-				}else
-				if (resultLine = make_message("%s 1 \\ Job\\ Running\\ jobId %s", reqId, jobDescr))
-                                {
-                                        enqueue_result(resultLine);
-                                        free(resultLine);
-					free_args(argv);
-                                }
-                        break;
-
-                        case 3:/* REMOVED */ 
-                                if (resultLine = make_message("%s 1 Job\\ Removed\\ jobId %s", reqId, jobDescr)) {
-
-                                        enqueue_result(resultLine);
-                                        free(resultLine);
-					free_args(argv);
-                                }
-                        break;
-                        case 4:/* COMPLETED */
-                        	if (resultLine = make_message("%s 1 Job\\ Completed\\ jobId %s", reqId, jobDescr))
-                        	{
-                                	enqueue_result(resultLine);
-                                	free(resultLine);
-					free_args(argv);
-                        	}
-                        break;
-
-                        case 5:/* HELD */
-                        if(action == RESUME_JOB)
-                                	hold_res_exec(args,"resume",5);
-			else
-			if (resultLine = make_message("%s 0 Job\\ Held\\ jobId %s", reqId, jobDescr))
+                        }else
+                        if (resultLine = make_message("%s 1 %s", reqId, errstr[i]))
                         {
                                 enqueue_result(resultLine);
                                 free(resultLine);
-				free_args(argv);
                         }
-                        break;
+			if(reqId) {free(reqId);reqId=NULL;}
                 }
         }else
-	{
-                resultLine = make_message("%s %d %s", reqId, retcode, errstr);
-		enqueue_result(resultLine);
+        {
+                resultLine = make_message("%s %d %s", reqId, retcode, errstr[0]);
+                enqueue_result(resultLine);
                 free(resultLine);
-	}
+        }
+        if (dummyargv) free(dummyargv);
+        if (reqId) free(reqId);
         return;
 }
+
+
+
+
+
+
 
 void *
 cmd_hold_job(void* args)
