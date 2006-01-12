@@ -24,9 +24,9 @@
 #define MAX_CHARS          100000
 #define STR_CHARS          3000
 #define NUM_CHARS          300
-#define HASHSIZE           5000000
-#define NUMTHRDS           20
-#define NLINES             100  /* lines for tail */
+#define HASHSIZE           1000000
+#define RDXHASHSIZE        100000
+#define NUMTHRDS           5
 #define ERRMAX             80
 #define TBUFSIZE           400 
 #define WRETRIES           10
@@ -78,8 +78,8 @@ char *j2ct[HASHSIZE];
 char *bjl[HASHSIZE];
 char *j2bl[HASHSIZE];
 
-int   nti[HASHSIZE];
-char *ntf[HASHSIZE];
+int   nti[RDXHASHSIZE];
+char *ntf[RDXHASHSIZE];
 
 char *argv0;
 
