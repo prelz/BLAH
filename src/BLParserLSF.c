@@ -893,6 +893,7 @@ char *GetLogDir(int largc, char *largv[]){
   printf("Cannot open %s file\n",conffile);
   exit(-1);
  }
+ fclose(fp);
 
  maxtok=strtoken(line,'=',tbuf);
  if(tbuf[1]){
@@ -1027,7 +1028,6 @@ char *GetLogList(char *logdate){
  }
  pclose(find_output);
  
-  
  sprintf(command_string,"rm -f %s %s", datefile, lastfile);
  rm_output = popen(command_string,"r");
  if (rm_output != NULL){
@@ -1043,6 +1043,7 @@ char *GetLogList(char *logdate){
  if((logs == NULL) || (strlen(logs) < 2)){
   return NULL;
  }
+ 
  sprintf(command_string,"ls -tr %s", logs);
  ls_output = popen(command_string,"r");
  if (ls_output != NULL){
@@ -1052,6 +1053,7 @@ char *GetLogList(char *logdate){
   }
   pclose(ls_output);
   
+ 
   slogs[0]='\0';
 
   if((oplogs=malloc(10*STR_CHARS * sizeof *oplogs)) == 0){
@@ -1080,8 +1082,7 @@ char *GetLogList(char *logdate){
   
 /* last_tag is used to see if there is only one log file and to avoid to rescan it*/
 
-
-  if(maxtok==1){
+  if(maxtok==0){
    return NULL;
   }
   return slogs;
@@ -1493,6 +1494,10 @@ void daemonize(){
     }
     chdir("/");
     umask(0);
+    
+  freopen ("/dev/null", "r", stdin);  
+  freopen ("/dev/null", "w", stdout);
+  freopen ("/dev/null", "w", stderr); 
 
 }
 

@@ -160,7 +160,7 @@ int main(int argc, char *argv[]) {
     pthread_create(&UpdateThd, NULL, mytail, (void *)eventsfile);
     pthread_join(UpdateThd, (void **)&status);
     
-   pthread_exit(NULL);
+    pthread_exit(NULL);
  
 }
 
@@ -283,11 +283,10 @@ void follow(char *infile, char *line){
 
         if(strcmp(evfile,infile) != 0){
 
-         infile = strdup(evfile);
          off = 0;
 
          while(1){
-          if((fp=fopen((char *)infile, "r")) != 0){
+          if((fp=fopen((char *)evfile, "r")) != 0){
            break;
           }
           sleep (1);
@@ -689,7 +688,7 @@ char *GetAllEvents(char *file){
    }
   } else {
    printf("Cannot open %s file\n",opfile[i]);
-   exit(-1);
+   exit(EXIT_FAILURE);
   }
   fclose(fp);
   free(line);
@@ -1068,6 +1067,7 @@ char *GetLogList(char *logdate){
   
  } else {
  
+  pclose(ls_output);
   return NULL;
   
  }
@@ -1484,6 +1484,10 @@ void daemonize(){
     }
     chdir("/");
     umask(0);
+
+    freopen ("/dev/null", "r", stdin);
+    freopen ("/dev/null", "w", stdout);
+    freopen ("/dev/null", "w", stderr);
 
 }
 
