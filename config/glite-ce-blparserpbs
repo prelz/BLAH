@@ -6,24 +6,57 @@
 GLITE_LOCATION=${GLITE_LOCATION:-/opt/glite}
 GLITE_LOCATION_VAR=${GLITE_LOCATION_VAR:-${GLITE_LOCATION}/var}
 
-[ -f /etc/glite.conf ] && . /etc/glite.conf
+[ -f $GLITE_LOCATION/etc/blparser.conf ] && . $GLITE_LOCATION/etc/blparser.conf
 
-[ -f $HOME/.glite.conf ] && . $HOME/.glite.conf
-
-[ -n "$GLITE_CE_BLPARSERPBS_PIDFILE" ] && pidfile=$GLITE_CE_BLPARSERPBS_PIDFILE ||
-	pidfile=$GLITE_LOCATION_VAR/glite-blparserpbs.pid
+pidfile=$GLITE_LOCATION_VAR/glite-blparserpbs.pid
 
 GLITE_CE_BLPARSERPBS=${GLITE_LOCATION}/bin/BLParserPBS
-GLITE_CE_BLPARSERPBS_FLAG="-D"
 
 start()
 {
-	$GLITE_CE_BLPARSERPBS $GLITE_CE_BLPARSERPBS_FLAG
-        [ "$?" -eq 0 ] && success $"startup" || failure $" startup" 
+        [ -n "$GLITE_CE_BLPARSERPBS_DAEMON" ] && GLITE_CE_BLPARSERPBS_CMDLINE=`echo $GLITE_CE_BLPARSERPBS_CMDLINE -D`
+        [ -n "$GLITE_CE_BLPARSERPBS_DEBUG" ]  && GLITE_CE_BLPARSERPBS_CMDLINE=`echo $GLITE_CE_BLPARSERPBS_CMDLINE -d`
+        [ -n "$GLITE_CE_BLPARSERPBS_SPOOLDIR" ]  && GLITE_CE_BLPARSERPBS_CMDLINE=`echo $GLITE_CE_BLPARSERPBS_CMDLINE -s $GLITE_CE_BLPARSERPBS_SPOOLDIR
+	`
+        if [ -n "$GLITE_CE_BLPARSERPBS_NUM" ]; then
+	
+	      for ((i=1;i<=$GLITE_CE_BLPARSERPBS_NUM;i++)); do
+	      
+	           GLITE_CE_BLPARSERPBS_CMDIN=$GLITE_CE_BLPARSERPBS_CMDLINE
+	      
+                   portval=`echo GLITE_CE_BLPARSERPBS_PORT${i}`;
+                   eval portnum=\$$portval
+                   creamportval=`echo GLITE_CE_BLPARSERPBS_CREAMPORT${i}`;
+                   eval creamportnum=\$$creamportval
+		   
+	           [ -n "$portnum" ] && GLITE_CE_BLPARSERPBS_CMDIN=`echo $GLITE_CE_BLPARSERPBS_CMDIN -p $portnum`
+	           [ -n "$creamportnum" ] && GLITE_CE_BLPARSERPBS_CMDIN=`echo $GLITE_CE_BLPARSERPBS_CMDIN -m $creamportnum`
+                   
+		   $GLITE_CE_BLPARSERPBS $GLITE_CE_BLPARSERPBS_CMDIN
+	           
+		   [ "$?" -eq 0 ] && success $"startup" || failure $" startup" 
         
-	echo
+	           echo
 
-	echo `pidofproc ${GLITE_CE_BLPARSERPBS}` > $pidfile 
+	        
+	      done
+	      
+	      echo `pidofproc ${GLITE_CE_BLPARSERPBS}` > $pidfile 
+	
+	else
+              
+              [ -n "$GLITE_CE_BLPARSERPBS_PORT" ]  && GLITE_CE_BLPARSERPBS_CMDLINE=`echo $GLITE_CE_BLPARSERPBS_CMDLINE -p $GLITE_CE_BLPARSERPBS_PORT`
+              [ -n "$GLITE_CE_BLPARSERLSF_CREAMPORT" ]  && GLITE_CE_BLPARSERLSF_CMDLINE=`echo $GLITE_CE_BLPARSERLSF_CMDLINE -m $GLITE_CE_BLPARSERLSF_CREAMPORT`
+	      
+	      $GLITE_CE_BLPARSERPBS $GLITE_CE_BLPARSERPBS_CMDLINE
+	      
+	      [ "$?" -eq 0 ] && success $"startup" || failure $" startup" 
+        
+	      echo
+
+	      echo `pidofproc ${GLITE_CE_BLPARSERPBS}` > $pidfile 
+   
+        fi
 }
 
 stop()
