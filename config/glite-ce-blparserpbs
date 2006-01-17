@@ -14,49 +14,34 @@ GLITE_CE_BLPARSERPBS=${GLITE_LOCATION}/bin/BLParserPBS
 
 start()
 {
-        [ -n "$GLITE_CE_BLPARSERPBS_DAEMON" ] && GLITE_CE_BLPARSERPBS_CMDLINE=`echo $GLITE_CE_BLPARSERPBS_CMDLINE -D`
-        [ -n "$GLITE_CE_BLPARSERPBS_DEBUG" ]  && GLITE_CE_BLPARSERPBS_CMDLINE=`echo $GLITE_CE_BLPARSERPBS_CMDLINE -d`
-        [ -n "$GLITE_CE_BLPARSERPBS_SPOOLDIR" ]  && GLITE_CE_BLPARSERPBS_CMDLINE=`echo $GLITE_CE_BLPARSERPBS_CMDLINE -s $GLITE_CE_BLPARSERPBS_SPOOLDIR
-	`
-        if [ -n "$GLITE_CE_BLPARSERPBS_NUM" ]; then
-	
-	      for ((i=1;i<=$GLITE_CE_BLPARSERPBS_NUM;i++)); do
-	      
-	           GLITE_CE_BLPARSERPBS_CMDIN=$GLITE_CE_BLPARSERPBS_CMDLINE
-	      
-                   portval=`echo GLITE_CE_BLPARSERPBS_PORT${i}`;
-                   eval portnum=\$$portval
-                   creamportval=`echo GLITE_CE_BLPARSERPBS_CREAMPORT${i}`;
-                   eval creamportnum=\$$creamportval
-		   
-	           [ -n "$portnum" ] && GLITE_CE_BLPARSERPBS_CMDIN=`echo $GLITE_CE_BLPARSERPBS_CMDIN -p $portnum`
-	           [ -n "$creamportnum" ] && GLITE_CE_BLPARSERPBS_CMDIN=`echo $GLITE_CE_BLPARSERPBS_CMDIN -m $creamportnum`
-                   
-		   $GLITE_CE_BLPARSERPBS $GLITE_CE_BLPARSERPBS_CMDIN
-	           
-		   [ "$?" -eq 0 ] && success $"startup" || failure $" startup" 
-        
-	           echo
+	[ -n "$GLITE_CE_BLPARSERPBS_DAEMON" ] && GLITE_CE_BLPARSERPBS_CMDLINE=`echo $GLITE_CE_BLPARSERPBS_CMDLINE -D`
+	[ -n "$GLITE_CE_BLPARSERPBS_DEBUG" ]  && GLITE_CE_BLPARSERPBS_CMDLINE=`echo $GLITE_CE_BLPARSERPBS_CMDLINE -d`
+	[ -n "$GLITE_CE_BLPARSERPBS_SPOOLDIR" ]  && GLITE_CE_BLPARSERPBS_CMDLINE=`echo $GLITE_CE_BLPARSERPBS_CMDLINE -s $GLITE_CE_BLPARSERPBS_SPOOLDIR`
 
-	        
-	      done
-	      
-	      echo `pidofproc ${GLITE_CE_BLPARSERPBS}` > $pidfile 
-	
-	else
-              
-              [ -n "$GLITE_CE_BLPARSERPBS_PORT" ]  && GLITE_CE_BLPARSERPBS_CMDLINE=`echo $GLITE_CE_BLPARSERPBS_CMDLINE -p $GLITE_CE_BLPARSERPBS_PORT`
-              [ -n "$GLITE_CE_BLPARSERLSF_CREAMPORT" ]  && GLITE_CE_BLPARSERLSF_CMDLINE=`echo $GLITE_CE_BLPARSERLSF_CMDLINE -m $GLITE_CE_BLPARSERLSF_CREAMPORT`
-	      
-	      $GLITE_CE_BLPARSERPBS $GLITE_CE_BLPARSERPBS_CMDLINE
-	      
-	      [ "$?" -eq 0 ] && success $"startup" || failure $" startup" 
-        
-	      echo
+        [ ! -n "$GLITE_CE_BLPARSERPBS_NUM" ] && GLITE_CE_BLPARSERPBS_NUM=1
 
-	      echo `pidofproc ${GLITE_CE_BLPARSERPBS}` > $pidfile 
-   
-        fi
+        i=1
+	while (( i <= $GLITE_CE_BLPARSERPBS_NUM ));do
+	
+             portval=`echo GLITE_CE_BLPARSERPBS_PORT${i}`
+             eval portnum=\$$portval
+             creamportval=`echo GLITE_CE_BLPARSERPBS_CREAMPORT${i}`
+             eval creamportnum=\$$creamportval
+	     
+	     [ -n "$portnum" ] && GLITE_CE_BLPARSERPBS_CMDLINE=`echo $GLITE_CE_BLPARSERPBS_CMDLINE -p $portnum`
+	     [ -n "$creamportnum" ] && GLITE_CE_BLPARSERPBS_CMDLINE=`echo $GLITE_CE_BLPARSERPBS_CMDLINE -m $creamportnum`
+             
+	     $GLITE_CE_BLPARSERPBS $GLITE_CE_BLPARSERPBS_CMDLINE
+	     
+	     [ "$?" -eq 0 ] && success $"startup" || failure $" startup" 
+        
+	     echo
+	     i=$i+1
+	     
+        done
+	
+	echo `pidofproc ${GLITE_CE_BLPARSERPBS}` > $pidfile 
+	
 }
 
 stop()
