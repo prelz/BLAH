@@ -1504,7 +1504,7 @@ void daemonize(){
 void print_usage(){
 
  fprintf(stderr,"Usage:\n");
- fprintf(stderr,"%s [-p] [<remote_port [%d]>] [-b <LSF_binpath [%s]>] [-c <LSF_confpath [%s]>] [-m  <CreamPort>] [-d]\n",progname, DEFAULT_PORT, binpath, confpath);
+ fprintf(stderr,"%s [-p] [<remote_port [%d]>] [-b <LSF_binpath [%s]>] [-c <LSF_confpath [%s]>] [-m  <CreamPort>] [-d] [-D]\n",progname, DEFAULT_PORT, binpath, confpath);
  fprintf(stderr,"Use -d to enable debugging.\n");
  fprintf(stderr,"Use -D to run as daemon.\n");
  exit(EXIT_SUCCESS);
