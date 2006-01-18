@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.3 2006/01/17 09:11:35 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.4 2006/01/18 11:26:38 mezzadri Exp $ 
 #
 # File:           Makefile.am
 #
@@ -15,7 +15,7 @@
 #
 
 wletcwmdir = $(sysconfdir)
-wletcwm_DATA = blah.config blparser.conf
+wletcwm_DATA = blah.config blparser.conf baparser.conf
 
 install-data-hook:
 	/bin/cp $(DESTDIR)$(sysconfdir)/blah.config $(DESTDIR)$(sysconfdir)/blah.config.template

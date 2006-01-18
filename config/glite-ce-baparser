@@ -6,18 +6,19 @@
 GLITE_LOCATION=${GLITE_LOCATION:-/opt/glite}
 GLITE_LOCATION_VAR=${GLITE_LOCATION_VAR:-${GLITE_LOCATION}/var}
 
-[ -f /etc/glite.conf ] && . /etc/glite.conf
+[ -f $GLITE_LOCATION/etc/baparser.conf ] && . $GLITE_LOCATION/etc/baparser.conf
 
-[ -f $HOME/.glite.conf ] && . $HOME/.glite.conf
-
-[ -n "$GLITE_CE_BAPARSER_PIDFILE" ] && pidfile=$GLITE_CE_BAPARSER_PIDFILE ||
-	pidfile=$GLITE_LOCATION_VAR/glite-baparser.pid
+pidfile=$GLITE_LOCATION_VAR/glite-baparser.pid
 
 GLITE_CE_BAPARSER=${GLITE_LOCATION}/bin/BAParser
-GLITE_CE_BAPARSER_FLAG="-D"
 
 start()
 {
+	[ -n "$GLITE_CE_BAPARSER_DAEMON" ] && GLITE_CE_BAPARSER_CMDLINE=`echo $GLITE_CE_BAPARSER_CMDLINE -D`
+	[ -n "$GLITE_CE_BAPARSER_DEBUG" ]  && GLITE_CE_BAPARSER_CMDLINE=`echo $GLITE_CE_BAPARSER_CMDLINE -d`
+	[ -n "$GLITE_CE_BAPARSER_DGASSPOOLDIR" ]  && GLITE_CE_BAPARSER_CMDLINE=`echo $GLITE_CE_BAPARSER_CMDLINE -s $GLITE_CE_BAPARSER_DGASSPOOLDIR`
+	[ -n "$GLITE_CE_BAPARSER_PORT" ]  && GLITE_CE_BAPARSER_CMDLINE=`echo $GLITE_CE_BAPARSER_CMDLINE -p $GLITE_CE_BAPARSER_PORT`
+	
 	$GLITE_CE_BAPARSER $GLITE_CE_BAPARSER_FLAG
         [ "$?" -eq 0 ] && success $"startup" || failure $" startup" 
         
