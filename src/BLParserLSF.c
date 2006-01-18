@@ -29,6 +29,12 @@ int main(int argc, char *argv[]) {
      daemonize();
     }
     
+    if(debug){
+     if((debuglogfile = fopen(debuglogname, "a+"))==0){
+      debuglogfile =  fopen("/dev/null", "a+");
+     }
+    }
+    
     if((eventsfile=malloc(STR_CHARS)) == 0){
      sysfatal("can't malloc eventsfile: %r");
     }
@@ -272,7 +278,8 @@ int InfoAdd(int id, char *value, const char * flag){
  }
   
  if(debug){
-  fprintf(stderr, "Adding: ID:%d Type:%s Value:%s\n",id,flag,value);
+  fprintf(debuglogfile, "Adding: ID:%d Type:%s Value:%s\n",id,flag,value);
+  fflush(debuglogfile);
  } 
  /* set write lock */
  pthread_mutex_lock( &write_mutex );
@@ -604,7 +611,8 @@ void *LookupAndSend(int m_sock){
         /* read line from socket */
 	Readline(conn_s, buffer, STR_CHARS-1);	
 	if(debug){
-	 fprintf(stderr, "Received:%s",buffer);
+	 fprintf(debuglogfile, "Received:%s",buffer);
+         fflush(debuglogfile);
 	}
 	
 	/* printf("thread/0x%08lx\n",pthread_self()); */
@@ -787,7 +795,8 @@ void *LookupAndSend(int m_sock){
 close:	
  	Writeline(conn_s, out_buf, strlen(out_buf));
 	if(debug){
-	 fprintf(stderr, "Sent:%s",out_buf);
+	 fprintf(debuglogfile, "Sent:%s",out_buf);
+         fflush(debuglogfile);
 	}
 	
 	free(out_buf);
@@ -834,6 +843,7 @@ char *GetLogDir(int largc, char *largv[]){
  char *szPort;
  char *szBinPath;
  char *szConfPath;
+ char *szDebugLogName;
  
  char *ebinpath;
  char *econfpath;
@@ -857,7 +867,7 @@ char *GetLogDir(int largc, char *largv[]){
      sysfatal("can't malloc tbuf: %r");
  }
 	
- ParseCmdLine(largc, largv, &szPort, &szBinPath, &szConfPath, &szCreamPort);
+ ParseCmdLine(largc, largv, &szPort, &szBinPath, &szConfPath, &szCreamPort, &szDebugLogName);
   
  if((largc > 1) && (szPort!=NULL)){
   port = strtol(szPort, &endptr, 0);
@@ -868,7 +878,11 @@ char *GetLogDir(int largc, char *largv[]){
  }else{
   port=DEFAULT_PORT;
  }
-
+ 
+ if(szDebugLogName!=NULL){
+  debuglogname=szDebugLogName;
+ }
+ 
  if(szBinPath!=NULL){
   binpath=szBinPath;
  }else if((ebinpath=getenv("LSF_BIN_PATH"))!=NULL){
@@ -1146,7 +1160,8 @@ void CreamConnection(int c_sock){
      	  buffer[0]='\0';
      	  Readline(conn_c, buffer, STR_CHARS-1);
 	  if(debug){
-	   fprintf(stderr, "Received for Cream:%s",buffer);
+	   fprintf(debuglogfile, "Received for Cream:%s",buffer);
+           fflush(debuglogfile);
 	  }
 	  if(buffer && (strstr(buffer,"STARTNOTIFY")!=NULL)){
 	   NotifyFromDate(buffer);
@@ -1221,7 +1236,8 @@ int NotifyFromDate(char *in_buf){
         sprintf(out_buf,"NTFDATE/%s",ntf[ii]);  
         Writeline(conn_c, out_buf, strlen(out_buf));
 	if(debug){
-	 fprintf(stderr, "Sent for Cream_nftdate:%s",out_buf);
+	 fprintf(debuglogfile, "Sent for Cream_nftdate:%s",out_buf);
+         fflush(debuglogfile);
 	}
        }
       }
@@ -1337,7 +1353,8 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
         } else {
 	  Writeline(conn_c, buffer, strlen(buffer));
 	  if(debug){
-	   fprintf(stderr, "Sent for Cream:%s",buffer);
+	   fprintf(debuglogfile, "Sent for Cream:%s",buffer);
+           fflush(debuglogfile);
 	  }
 	} 
      }       
@@ -1504,15 +1521,16 @@ void daemonize(){
 void print_usage(){
 
  fprintf(stderr,"Usage:\n");
- fprintf(stderr,"%s [-p] [<remote_port [%d]>] [-b <LSF_binpath [%s]>] [-c <LSF_confpath [%s]>] [-m  <CreamPort>] [-d] [-D]\n",progname, DEFAULT_PORT, binpath, confpath);
+ fprintf(stderr,"%s [-p] [<remote_port [%d]>] [-b <LSF_binpath [%s]>] [-c <LSF_confpath [%s]>] [-m  <CreamPort>] [-d] [-l <DebugLogFile> [%s]] [-D]\n",progname, DEFAULT_PORT, binpath, confpath, debuglogname);
  fprintf(stderr,"Use -d to enable debugging.\n");
+ fprintf(stderr,"-l works only with -d (a logfile can be specified only if debugging is active)\n");
  fprintf(stderr,"Use -D to run as daemon.\n");
  exit(EXIT_SUCCESS);
  
 }
 
 int ParseCmdLine(int argc, char *argv[], char **szPort, char **szBinPath, 
-                 char **szConfPath, char **szCreamPort) {
+                 char **szConfPath, char **szCreamPort, char **szDebugLogName) {
     
     int n = 1;
 
@@ -1543,6 +1561,8 @@ int ParseCmdLine(int argc, char *argv[], char **szPort, char **szBinPath,
         }else if ( !strncmp(argv[n], "-m", 2) ) {
             *szCreamPort = argv[++n];
 	    usecream++;
+        }else if ( !strncmp(argv[n], "-l", 2) ) {
+            *szDebugLogName = argv[++n];
         }else if ( !strncmp(argv[n], "-d", 2) ) {
 	    debug=1;
         }else if ( !strncmp(argv[n], "-D", 2) ) {

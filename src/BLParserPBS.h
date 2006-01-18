@@ -56,7 +56,7 @@ int GetEventsInOldLogs(char *logdate);
 int strtoken(const char *s, char delim, char **token);
 int InfoAdd(int id, char *value, const char * flag);
 char *InfoGet(int id, const char * flag);
-int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir, char **szCreamPort); 
+int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir, char **szCreamPort, char **szDebugLogName); 
 char *convdate(char *date);
 int str2epoch(char *str, char *f);
 char *iepoch2str(int epoch, char *f);
@@ -104,6 +104,9 @@ int usecream=0;
 
 int debug=0;
 int dmn=0;
+
+FILE *debuglogfile;
+char *debuglogname="/opt/glite/var/log/BLParserPBS.log";;
 
 struct sockaddr_in cservaddr;
 

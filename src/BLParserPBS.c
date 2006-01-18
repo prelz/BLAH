@@ -18,6 +18,7 @@ int main(int argc, char *argv[]) {
    
     char *szPort;
     char *szSpoolDir;
+    char *szDebugLogName;
     
     char *espooldir;
 
@@ -31,12 +32,12 @@ int main(int argc, char *argv[]) {
     
     signal(SIGPIPE, SIG_IGN);             
         
-    ParseCmdLine(argc, argv, &szPort, &szSpoolDir, &szCreamPort);
+    ParseCmdLine(argc, argv, &szPort, &szSpoolDir, &szCreamPort, &szDebugLogName);
     
     if(dmn){    
      daemonize();
     }
-    
+
     if((argc > 1) && (szPort!=NULL)){
      port = strtol(szPort, &endptr, 0);
      if ( *endptr || port < 1 || port > 65535) {
@@ -53,6 +54,14 @@ int main(int argc, char *argv[]) {
      sysfatal("can't malloc line: %r");
     }
     
+    if(szDebugLogName!=NULL){
+     debuglogname=szDebugLogName;
+    }
+    if(debug){
+     if((debuglogfile = fopen(debuglogname, "a+"))==0){
+      debuglogfile =  fopen("/dev/null", "a+");
+     }
+    }
     
     if(szSpoolDir!=NULL){
      spooldir=szSpoolDir;
@@ -351,7 +360,8 @@ int InfoAdd(int id, char *value, const char * flag){
  }
   
  if(debug){
-  fprintf(stderr, "Adding: ID:%d Type:%s Value:%s\n",id,flag,value);
+  fprintf(debuglogfile, "Adding: ID:%d Type:%s Value:%s\n",id,flag,value);
+  fflush(debuglogfile);
  } 
  /* set write lock */
  pthread_mutex_lock( &write_mutex );
@@ -732,7 +742,8 @@ void *LookupAndSend(int m_sock){
         /* read line from socket */
 	Readline(conn_s, buffer, STR_CHARS-1);
 	if(debug){
-	 fprintf(stderr, "Received:%s",buffer);
+	 fprintf(debuglogfile, "Received:%s",buffer);
+         fflush(debuglogfile);
 	}
 	
 	/* printf("thread/0x%08lx\n",pthread_self()); */
@@ -914,7 +925,8 @@ all the jobid in the output classad */
 close:	
  	Writeline(conn_s, out_buf, strlen(out_buf));
 	if(debug){
-	 fprintf(stderr, "Sent:%s",out_buf);
+	 fprintf(debuglogfile, "Sent:%s",out_buf);
+         fflush(debuglogfile);
 	}
 
 	free(out_buf);
@@ -1125,7 +1137,8 @@ void CreamConnection(int c_sock){
      	  buffer[0]='\0';
      	  Readline(conn_c, buffer, STR_CHARS-1);
 	  if(debug){
-	   fprintf(stderr, "Received for Cream:%s",buffer);
+	   fprintf(debuglogfile, "Received for Cream:%s",buffer);
+           fflush(debuglogfile);
 	  }
 	  if(buffer && (strstr(buffer,"STARTNOTIFY")!=NULL)){
 	   NotifyFromDate(buffer);
@@ -1205,7 +1218,8 @@ int NotifyFromDate(char *in_buf){
         sprintf(out_buf,"NTFDATE/%s",ntf[ii]);  
         Writeline(conn_c, out_buf, strlen(out_buf));
 	if(debug){
-	 fprintf(stderr, "Sent for Cream_nftdate:%s",out_buf);
+	 fprintf(debuglogfile, "Sent for Cream_nftdate:%s",out_buf);
+         fflush(debuglogfile);
 	}
        }
       }
@@ -1321,7 +1335,8 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
         } else {
 	  Writeline(conn_c, buffer, strlen(buffer));
 	  if(debug){
-	   fprintf(stderr, "Sent for Cream:%s",buffer);
+	   fprintf(debuglogfile, "Sent for Cream:%s",buffer);
+           fflush(debuglogfile);
 	  }
 	} 
      }       
@@ -1494,14 +1509,15 @@ void daemonize(){
 void print_usage(){
 
  fprintf(stderr,"Usage:\n");
- fprintf(stderr,"%s [-p] [<remote_port [%d]>] [-s <PBS_spooldir [%s]>] [-m  <CreamPort>] [-d] [-D]\n",progname, DEFAULT_PORT, spooldir);
+ fprintf(stderr,"%s [-p] [<remote_port [%d]>] [-s <PBS_spooldir [%s]>] [-m  <CreamPort>] [-d] [-l <DebugLogFile> [%s]] [-D]\n",progname, DEFAULT_PORT, spooldir, debuglogname);
  fprintf(stderr,"Use -d to enable debugging.\n");
+ fprintf(stderr,"-l works only with -d (a logfile can be specified only if debugging is active)\n");
  fprintf(stderr,"Use -D to run as daemon.\n");
  exit(EXIT_SUCCESS);
  
 }
 
-int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir, char **szCreamPort) {
+int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir, char **szCreamPort, char **szDebugLogName) {
     
     int n = 1;
      
@@ -1530,6 +1546,8 @@ int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir, char 
         }else if ( !strncmp(argv[n], "-m", 2) ) {
             *szCreamPort = argv[++n];
 	    usecream++;
+        }else if ( !strncmp(argv[n], "-l", 2) ) {
+            *szDebugLogName = argv[++n];
         }else if ( !strncmp(argv[n], "-d", 2) ) {
 	    debug=1;
         }else if ( !strncmp(argv[n], "-D", 2) ) {
