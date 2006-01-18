@@ -558,8 +558,9 @@ void daemonize(){
 void print_usage(){
 
    fprintf(stderr,"Usage:\n");
-   fprintf(stderr,"%s [-p] <remote_port [%d]> -s <DGAS_spooldir [%s]>\n",progname, DEFAULT_PORT, spooldir);
+   fprintf(stderr,"%s [-p] <remote_port [%d]> -s <DGAS_spooldir [%s]> [-d] [-D]\n",progname, DEFAULT_PORT, spooldir);
    fprintf(stderr,"Use -d to enable debugging.\n");        
+   fprintf(stderr,"Use -D to run as daemon.\n");        
    exit(EXIT_SUCCESS);
 
 }
@@ -568,13 +569,21 @@ int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir) {
     
     int n = 1;
      
-    *szPort=NULL;
-    if(argc==2 && (!strncmp(argv[n], "-d", 2) || !strncmp(argv[n], "-D", 2))){
-      debug=1;
-      return 0;
-    }else if(argc==2 && !(!strncmp(argv[n], "-h", 2) || !strncmp(argv[n], "-H", 2))){
-     *szPort= argv[n];
-     return 0;
+    if(argc==2){
+       if(!strncmp(argv[n], "-d", 2)){
+          debug=1;
+          *szPort=NULL;
+          return 0;
+       }else if(!strncmp(argv[n], "-D", 2)){
+          dmn=1;
+          *szPort=NULL;
+          return 0;
+       }else if(!strncmp(argv[n], "-h", 2)){
+          print_usage();
+       }else{
+          *szPort= argv[n];
+          return 0;
+       }
     }
     
 
