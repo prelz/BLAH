@@ -1,0 +1,116 @@
+#!/bin/sh
+
+# Source function library
+. /etc/rc.d/init.d/functions
+
+GLITE_LOCATION=${GLITE_LOCATION:-/opt/glite}
+GLITE_LOCATION_VAR=${GLITE_LOCATION_VAR:-${GLITE_LOCATION}/var}
+
+[ -f $GLITE_LOCATION/etc/blparser.conf ] && . $GLITE_LOCATION/etc/blparser.conf
+
+GLITE_CE_BLPARSERPBS=${GLITE_LOCATION}/bin/BLParserPBS
+GLITE_CE_BLPARSERLSF=${GLITE_LOCATION}/bin/BLParserLSF
+
+[ -n "$GLITE_CE_USE_BLPARSERPBS" ] && LRMS1=PBS
+[ -n "$GLITE_CE_USE_BLPARSERLSF" ] && LRMS2=LSF
+
+start()
+{
+	
+        for lrms in $LRMS1 $LRMS2;do
+	
+	      GLITE_CE_BLPARSER_CMDLINE=""
+              pidfile=$GLITE_LOCATION_VAR/glite-blparser${lrms}.pid
+	      
+	      eval exe=\$`echo GLITE_CE_BLPARSER${lrms}`
+	      
+	      eval daemon=\$`echo GLITE_CE_BLPARSER${lrms}_DAEMON`
+	      eval debug=\$`echo GLITE_CE_BLPARSER${lrms}_DEBUG`
+	      eval debuglogfile=\$`echo GLITE_CE_BLPARSER${lrms}_DEBUGLOGFILE`
+	      eval binpath=\$`echo GLITE_CE_BLPARSER${lrms}_BINPATH`
+	      eval confpath=\$`echo GLITE_CE_BLPARSER${lrms}_CONFPATH`
+	      eval parsernum=\$`echo GLITE_CE_BLPARSER${lrms}_NUM`
+	      
+              [ -n "$daemon" ] && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -D`
+              [ -n "$debug" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -d`
+              [ -n "$debuglogfile" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -l $debuglogfile`
+              [ -n "$binpath" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -b $binpath`
+              [ -n "$confpath" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -c $confpath`
+              [ ! -n "$parsernum" ] && parsernum=1
+	      
+              i=1
+	      while (( i <= $parsernum ));do
+
+             	   GLITE_CE_BLPARSER_CMDIN=$GLITE_CE_BLPARSER_CMDLINE
+
+             	   portval=`echo GLITE_CE_BLPARSER${lrms}_PORT${i}`
+             	   eval portnum=\$$portval
+	     	  
+	     	   creamportval=`echo GLITE_CE_BLPARSER${lrms}_CREAMPORT${i}`
+             	   eval creamportnum=\$$creamportval
+	     	  
+	     	   [ -n "$portnum" ] && GLITE_CE_BLPARSER_CMDIN=`echo $GLITE_CE_BLPARSER_CMDIN -p $portnum`
+	     	   [ -n "$creamportnum" ] && GLITE_CE_BLPARSER_CMDIN=`echo $GLITE_CE_BLPARSER_CMDIN -m $creamportnum`
+             	  
+	     	   $exe $GLITE_CE_BLPARSER_CMDIN
+	     	  
+	     	   [ "$?" -eq 0 ] && success $"startup" || failure $" startup" 
+            
+	     	   echo
+	     	   let i=$i+1
+	     	  
+              done
+	      
+	      
+	      echo `pidofproc ${exe}` > $pidfile 
+ 
+	done
+	
+	
+}
+
+stop()
+{
+        for lrms in $LRMS1 $LRMS2;do
+             pidfile=$GLITE_LOCATION_VAR/glite-blparser${lrms}.pid
+	     eval exe=\$`echo GLITE_CE_BLPARSER${lrms}`
+             if [ -f $pidfile ]; then
+             	     pid=`cat $pidfile`
+             	     kill $pid
+             	     [ "$?" -eq 0 ] && success $"${exe} shutdown" || failure $"${exe} shutdown" 
+            	     echo ""
+             	     rm -f $pidfile
+             else
+             	     echo $pidfile does not exist - ${exe} not running? >&2
+             	     return 1
+             fi
+	done
+}
+
+status()
+{
+        for lrms in $LRMS1 $LRMS2;do
+             pidfile=$GLITE_LOCATION_VAR/glite-blparser${lrms}.pid
+	     eval exe=\$`echo GLITE_CE_BLPARSER${lrms}`
+     	     if [ -f $pidfile ]; then
+     	     	     pid=`cat $pidfile`
+     	     	     if ps p $pid >/dev/null 2>&1; then
+     	     		     echo ${exe} running as $pid 
+     	     		     return 0
+     	     	     fi
+     	     fi
+
+	     echo ${exe} not running
+	done
+	return 1
+}
+
+case x$1 in
+	xstart)	start;;
+	xstop)	stop;;
+	xrestart) stop; start;;
+	xstatus) status;;
+	x*)	echo usage: $0 start,stop,restart,status >&2
+		exit 1;;
+esac
+

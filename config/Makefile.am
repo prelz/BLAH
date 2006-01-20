@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.4 2006/01/18 11:26:38 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.5 2006/01/20 09:59:27 mezzadri Exp $ 
 #
 # File:           Makefile.am
 #
@@ -21,12 +21,13 @@ install-data-hook:
 	/bin/cp $(DESTDIR)$(sysconfdir)/blah.config $(DESTDIR)$(sysconfdir)/blah.config.template
 
 EXTRA_DIST = blah.config \
-             glite-ce-blparserpbs \
-             glite-ce-blparserlsf \
+             blparser.conf \
+             baparser.conf \
+             glite-ce-blparser \
              glite-ce-baparser
 
 bldir = $(sysconfdir)/init.d
-bl_SCRIPTS = glite-ce-blparserpbs glite-ce-blparserlsf glite-ce-baparser
+bl_SCRIPTS = glite-ce-blparser glite-ce-baparser
 
 CLEANFILES =
 
