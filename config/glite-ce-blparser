@@ -11,8 +11,8 @@ GLITE_LOCATION_VAR=${GLITE_LOCATION_VAR:-${GLITE_LOCATION}/var}
 GLITE_CE_BLPARSERPBS=${GLITE_LOCATION}/bin/BLParserPBS
 GLITE_CE_BLPARSERLSF=${GLITE_LOCATION}/bin/BLParserLSF
 
-[ x"$GLITE_CE_USE_BLPARSERPBS" == "xyes" ] && LRMS1=PBS
-[ x"$GLITE_CE_USE_BLPARSERLSF" == "xyes" ] && LRMS2=LSF
+[ "x$GLITE_CE_USE_BLPARSERPBS" == "xyes" ] && LRMS1=PBS
+[ "x$GLITE_CE_USE_BLPARSERLSF" == "xyes" ] && LRMS2=LSF
 
 start()
 {
@@ -31,8 +31,8 @@ start()
 	      eval confpath=\$`echo GLITE_CE_BLPARSER${lrms}_CONFPATH`
 	      eval parsernum=\$`echo GLITE_CE_BLPARSER${lrms}_NUM`
 	      
-              [ -n "$daemon" ] && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -D`
-              [ -n "$debug" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -d`
+              [ "x$daemon" == "xyes" ] && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -D`
+              [ "x$debug" == "xyes" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -d`
               [ -n "$debuglogfile" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -l $debuglogfile`
               [ -n "$binpath" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -b $binpath`
               [ -n "$confpath" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -c $confpath`
