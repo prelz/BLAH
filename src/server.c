@@ -44,6 +44,7 @@
 #include <pthread.h>
 #include <stdarg.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 
 #include "blahpd.h"
 #include "classad_c_helper.h"
@@ -61,7 +62,9 @@
 #define MAX_LRMS_NUMBER 	10
 #define MAX_LRMS_NAME_SIZE	4
 #define MAX_CERT_SIZE		100000
-  
+#define MAX_TEMP_ARRAY_SIZE              100
+#define MAX_FILE_LIST_BUFFER_SIZE        10000
+ 
 t_resline *first_job = NULL;
 t_resline *last_job = NULL;
 int num_jobs = 0;
@@ -99,6 +102,7 @@ char *escape_spaces(const char *str);
 int set_cmd_list_option(char **command, classad_context cad, const char *attribute, const char *option);
 int set_cmd_string_option(char **command, classad_context cad, const char *attribute, const char *option, const int quote_style);
 int limit_proxy(char* proxyname);
+void logAccInfo(char* jobId, char* server_lrms, classad_context cad);
 
 /* Global variables */
 static int server_socket;
@@ -624,6 +628,9 @@ cmd_submit_job(void *args)
  	
 	/* PUSH A SUCCESS */
 	resultLine = make_message("%s 0 No\\ error %s", reqId, jobId + JOBID_PREFIX_LEN);
+        
+	/*DGAS integration: we must log the submision to the file pointed by BLAHPD_ACCOUNTING_INFO_LOG */
+        logAccInfo(jobId, server_lrms, cad);
 
 	/* Free up all arguments and exit (exit point in case of error is the label
            pointing to last successfully allocated variable) */
@@ -1547,3 +1554,114 @@ limit_proxy(char* proxyname)
 	return res;
 }
 
+
+void logAccInfo(char* jobId, char* server_lrms, classad_context cad)
+{
+        int cs=0, result=0, fd = -1, count = 0, slen=0;
+        FILE *cmd_out;
+        FILE *log_file=NULL;
+        char *log_line;
+        char *proxname=NULL;
+        char *gridjobid=NULL;
+        char *fqan=NULL;
+        char *temp_str=NULL;
+        char date_str[MAX_TEMP_ARRAY_SIZE],date_str_trunc[MAX_TEMP_ARRAY_SIZE],jobid_trunc[MAX_TEMP_ARRAY_SIZE],userDN[MAX_TEMP_ARRAY_SIZE],userDN_trunc[MAX_TEMP_ARRAY_SIZE], server_lrms_trunc[MAX_LRMS_NAME_SIZE];
+        struct flock fl;
+        char *AccInfoLogFile;
+
+        memset(date_str,0,MAX_TEMP_ARRAY_SIZE);
+        memset(date_str_trunc,0,MAX_TEMP_ARRAY_SIZE);
+        memset(jobid_trunc,0,MAX_TEMP_ARRAY_SIZE);
+        memset(userDN,0,MAX_TEMP_ARRAY_SIZE);
+        memset(userDN_trunc,0,MAX_TEMP_ARRAY_SIZE);
+        memset(server_lrms_trunc,0,MAX_TEMP_ARRAY_SIZE);
+
+
+        if ((AccInfoLogFile = getenv("BLAHPD_ACCOUNTING_INFO_LOG")) == NULL)
+        {
+        //        AccInfoLogFile  = DEFAULT_ACC_INFO_LOG_FILE;
+                return;
+        }
+        log_file= fopen(AccInfoLogFile,"a");
+
+        /* get the lock */
+        fd = fileno(log_file);
+        fl.l_type = F_WRLCK;
+        fl.l_whence = SEEK_CUR;
+        do{
+                result = fcntl( fd, F_SETLK, &fl);
+        } while((result == -1)&&(errno == EINTR));
+
+        /* things to be logged:
+         "timestamp=<submission time to LRMS>" "userDN=<user's DN>"
+         "userFQAN=<user's FQAN>" "ceID=<CE ID>" "jobID=<grid job ID>"
+         "lrmsID=<LRMS job ID>"
+        */
+
+        /* Submission time */
+        cmd_out = NULL;
+        if((cmd_out = mtsafe_popen("date", "r"))==NULL)
+        {
+                date_str_trunc[0]=0;
+        }else
+        {
+                result  = fgets(date_str, sizeof(date_str), cmd_out);
+                result  = mtsafe_pclose(cmd_out);
+                strncpy(date_str_trunc,date_str,strlen(date_str)-1);
+                date_str_trunc[strlen(date_str)-1]=0;
+                cmd_out=NULL;
+        }
+
+        /* userDN extracted from user proxy*/
+        if ((result = classad_get_dstring_attribute(cad, "x509UserProxy", &proxname)) == C_CLASSAD_NO_ERROR)
+        {
+                temp_str=make_message("grid-cert-info -issuer -f %s", proxname);
+        }
+        if(proxname)
+        {
+                cmd_out = mtsafe_popen(temp_str, "r");
+                result = fgets(userDN, sizeof(userDN), cmd_out);
+                result = mtsafe_pclose(cmd_out);
+                //C=IT/O=AAAA/OU=Personal Certificate/L=Milano/CN=BBB CCCCC
+                while(slen<strlen(userDN))
+                {
+                        if (userDN[slen]=='\n')
+                                break;
+                        else
+                                slen++;
+                }
+                for(count=0;count<slen;count++)
+                {
+                        if(!strncmp(&userDN[count],"CN=",3))
+                        {
+                                strncpy(userDN_trunc,&userDN[count+3],slen - count - 3); break;
+                        }
+                }
+                free(proxname);
+        }else
+                userDN_trunc[0]=0;
+        /* grid jobID  */
+        classad_get_dstring_attribute(cad, "GridJobID", &gridjobid);
+        if(!gridjobid) gridjobid=make_message("");
+        /* user's FQAN */
+        classad_get_dstring_attribute(cad, "UserFQAN", &fqan);
+        if(!fqan) fqan=make_message("");
+        /* job ID */
+        strncpy(jobid_trunc, &jobId[JOBID_PREFIX_LEN], strlen(jobId) - JOBID_PREFIX_LEN);
+        jobid_trunc[strlen(jobId) - JOBID_PREFIX_LEN]=0;
+
+        /* Ce ID */
+        strncpy(server_lrms_trunc, server_lrms, 3);
+        server_lrms_trunc[3]=0;
+
+        log_line=make_message("timestamp=<%s> userDN=<%s> userFQAN=<%s> ceID=<%s> jobID=<%s> lrmsID=<%s>\n", date_str_trunc, userDN_trunc,
+			      fqan, server_lrms, gridjobid, basename(jobid_trunc));
+
+        cs = fwrite(log_line ,1, strlen(log_line), log_file);
+        fl.l_type = F_UNLCK;
+        /* release the lock */
+        result = fcntl( fd, F_SETLK, &fl);
+        fclose(log_file);
+        free(log_line);
+
+}
