@@ -1564,6 +1564,7 @@ void logAccInfo(char* jobId, char* server_lrms, classad_context cad)
         char *proxname=NULL;
         char *gridjobid=NULL;
         char *fqan=NULL;
+        char *fqanlong=NULL;
         char *temp_str=NULL;
         char date_str[MAX_TEMP_ARRAY_SIZE],date_str_trunc[MAX_TEMP_ARRAY_SIZE],jobid_trunc[MAX_TEMP_ARRAY_SIZE],userDN[MAX_TEMP_ARRAY_SIZE],userDN_trunc[MAX_TEMP_ARRAY_SIZE], server_lrms_trunc[MAX_LRMS_NAME_SIZE];
         struct flock fl;
@@ -1579,7 +1580,6 @@ void logAccInfo(char* jobId, char* server_lrms, classad_context cad)
 
         if ((AccInfoLogFile = getenv("BLAHPD_ACCOUNTING_INFO_LOG")) == NULL)
         {
-        //        AccInfoLogFile  = DEFAULT_ACC_INFO_LOG_FILE;
                 return;
         }
         log_file= fopen(AccInfoLogFile,"a");
@@ -1592,10 +1592,9 @@ void logAccInfo(char* jobId, char* server_lrms, classad_context cad)
                 result = fcntl( fd, F_SETLK, &fl);
         } while((result == -1)&&(errno == EINTR));
 
-        /* things to be logged:
-         "timestamp=<submission time to LRMS>" "userDN=<user's DN>"
-         "userFQAN=<user's FQAN>" "ceID=<CE ID>" "jobID=<grid job ID>"
-         "lrmsID=<LRMS job ID>"
+        /* These data must be logged in the log file:
+         "timestamp=<submission time to LRMS>" "userDN=<user's DN>" "userFQAN=<user's FQAN>"
+         "ceID=<CE ID>" "jobID=<grid job ID>" "lrmsID=<LRMS job ID>"
         */
 
         /* Submission time */
@@ -1612,40 +1611,72 @@ void logAccInfo(char* jobId, char* server_lrms, classad_context cad)
                 cmd_out=NULL;
         }
 
-        /* userDN extracted from user proxy*/
-        if ((result = classad_get_dstring_attribute(cad, "x509UserProxy", &proxname)) == C_CLASSAD_NO_ERROR)
+        /*      userDN extracted from user proxy        */
+        if((result = classad_get_dstring_attribute(cad, "UserSubjectName", &fqan)) == C_CLASSAD_NO_ERROR)
         {
-                temp_str=make_message("grid-cert-info -issuer -f %s", proxname);
-        }
-        if(proxname)
-        {
-                cmd_out = mtsafe_popen(temp_str, "r");
-                result = fgets(userDN, sizeof(userDN), cmd_out);
-                result = mtsafe_pclose(cmd_out);
-                //C=IT/O=AAAA/OU=Personal Certificate/L=Milano/CN=BBB CCCCC
-                while(slen<strlen(userDN))
-                {
-                        if (userDN[slen]=='\n')
-                                break;
-                        else
-                                slen++;
-                }
+                /*example:
+                /C=IT/O=INFN/OU=Personal Certificate/L=Milano/CN=Francesco Prelz/Email=francesco.prelz@mi.infn.it
+                */
+                slen=strlen(fqan);
                 for(count=0;count<slen;count++)
                 {
-                        if(!strncmp(&userDN[count],"CN=",3))
+                        if(!strncmp(&fqan[count],"CN=",3))
                         {
-                                strncpy(userDN_trunc,&userDN[count+3],slen - count - 3); break;
+                                strncpy(userDN_trunc,&fqan[count+3],slen - count - 3); break;
                         }
                 }
-                free(proxname);
+
         }else
+        /*      userDN and userFQAN extracted from user proxy   */
+        if ((result = classad_get_dstring_attribute(cad, "x509UserProxy", &proxname)) == C_CLASSAD_NO_ERROR)
+        {
+                /* command syntax:
+                openssl x509 -in proxname -subject -noout
+                */
+                fqan=(char*)malloc(MAX_TEMP_ARRAY_SIZE);
+                fqanlong=(char*)malloc(MAX_TEMP_ARRAY_SIZE);
+                temp_str=make_message("openssl x509 -in %s  -subject -noout", proxname);
+                cmd_out = mtsafe_popen(temp_str, "r");
+                result = fgets(fqanlong, MAX_TEMP_ARRAY_SIZE, cmd_out);
+                result = mtsafe_pclose(cmd_out);
+                free(temp_str);
+                /* example:
+                subject= /C=IT/O=INFN/OU=Personal Certificate/L=Milano/CN=Francesco Prelz/Email=francesco.prelz@mi.infn.it/CN=proxy
+                CN=proxy, CN=limited must be elimnated from the bottom of the string
+                */
+                slen = strlen(fqanlong);
+                while(1)
+                {
+                        if (!strncmp(&fqanlong[slen - 10],"/CN=proxy",9))
+                        {
+                                memset(&fqanlong[slen - 10],0,9);
+                                slen -=8;
+                        }else
+                        if (!strncmp(&fqanlong[slen - 11],"CN=limited",10))
+                        {
+                                memset(&fqanlong[slen - 11],0,10);
+                                slen -=10;
+                        }else
+                                break;
+                }
+                fqan=("%s",&fqanlong[9]);
+                for(count=0;count<slen;count++)
+                {
+                        if(!strncmp(&fqan[count],"CN=",3))
+                        {
+                                strncpy(userDN_trunc,&fqan[count+3],slen - count - 3); break;
+                        }
+                }
+        }else
+        {
                 userDN_trunc[0]=0;
+                fqan=make_message("");;
+        }
+
         /* grid jobID  */
-        classad_get_dstring_attribute(cad, "GridJobID", &gridjobid);
+        classad_get_dstring_attribute(cad, "edg_jobid", &gridjobid);
         if(!gridjobid) gridjobid=make_message("");
-        /* user's FQAN */
-        classad_get_dstring_attribute(cad, "UserFQAN", &fqan);
-        if(!fqan) fqan=make_message("");
+
         /* job ID */
         strncpy(jobid_trunc, &jobId[JOBID_PREFIX_LEN], strlen(jobId) - JOBID_PREFIX_LEN);
         jobid_trunc[strlen(jobId) - JOBID_PREFIX_LEN]=0;
@@ -1655,13 +1686,17 @@ void logAccInfo(char* jobId, char* server_lrms, classad_context cad)
         server_lrms_trunc[3]=0;
 
         log_line=make_message("timestamp=<%s> userDN=<%s> userFQAN=<%s> ceID=<%s> jobID=<%s> lrmsID=<%s>\n", date_str_trunc, userDN_trunc,
-			      fqan, server_lrms, gridjobid, basename(jobid_trunc));
+                              fqan, server_lrms, gridjobid, basename(jobid_trunc));
 
         cs = fwrite(log_line ,1, strlen(log_line), log_file);
         fl.l_type = F_UNLCK;
         /* release the lock */
         result = fcntl( fd, F_SETLK, &fl);
         fclose(log_file);
+        if(fqan) free(fqan);
+        if(fqanlong) free(fqanlong);
+        if(gridjobid) free(gridjobid);
         free(log_line);
 
 }
+
