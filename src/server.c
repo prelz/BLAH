@@ -1558,7 +1558,7 @@ limit_proxy(char* proxyname)
 void logAccInfo(char* jobId, char* server_lrms, classad_context cad)
 {
         int cs=0, result=0, fd = -1, count = 0, slen=0;
-        FILE *cmd_out;
+        FILE *cmd_out=NULL;
         FILE *log_file=NULL;
         char *log_line;
         char *proxname=NULL;
@@ -1566,12 +1566,11 @@ void logAccInfo(char* jobId, char* server_lrms, classad_context cad)
         char *fqan=NULL;
         char *fqanlong=NULL;
         char *temp_str=NULL;
-        char date_str[MAX_TEMP_ARRAY_SIZE],date_str_trunc[MAX_TEMP_ARRAY_SIZE],jobid_trunc[MAX_TEMP_ARRAY_SIZE],userDN[MAX_TEMP_ARRAY_SIZE],userDN_trunc[MAX_TEMP_ARRAY_SIZE], server_lrms_trunc[MAX_LRMS_NAME_SIZE];
+        char date_str[MAX_TEMP_ARRAY_SIZE], jobid_trunc[MAX_TEMP_ARRAY_SIZE],userDN[MAX_TEMP_ARRAY_SIZE],userDN_trunc[MAX_TEMP_ARRAY_SIZE], server_lrms_trunc[MAX_LRMS_NAME_SIZE];
         struct flock fl;
         char *AccInfoLogFile;
+	time_t tt;
 
-        memset(date_str,0,MAX_TEMP_ARRAY_SIZE);
-        memset(date_str_trunc,0,MAX_TEMP_ARRAY_SIZE);
         memset(jobid_trunc,0,MAX_TEMP_ARRAY_SIZE);
         memset(userDN,0,MAX_TEMP_ARRAY_SIZE);
         memset(userDN_trunc,0,MAX_TEMP_ARRAY_SIZE);
@@ -1598,20 +1597,11 @@ void logAccInfo(char* jobId, char* server_lrms, classad_context cad)
         */
 
         /* Submission time */
-        cmd_out = NULL;
-        if((cmd_out = mtsafe_popen("date", "r"))==NULL)
-        {
-                date_str_trunc[0]=0;
-        }else
-        {
-                result  = fgets(date_str, sizeof(date_str), cmd_out);
-                result  = mtsafe_pclose(cmd_out);
-                strncpy(date_str_trunc,date_str,strlen(date_str)-1);
-                date_str_trunc[strlen(date_str)-1]=0;
-                cmd_out=NULL;
-        }
+        time(&tt);
+	asctime_r(localtime(&tt),date_str);
+	date_str[strlen(date_str) - 1]=0;
 
-        /*      userDN extracted from user proxy        */
+        /* userDN extracted from classad attribute */
         if((result = classad_get_dstring_attribute(cad, "UserSubjectName", &fqan)) == C_CLASSAD_NO_ERROR)
         {
                 /*example:
@@ -1627,7 +1617,7 @@ void logAccInfo(char* jobId, char* server_lrms, classad_context cad)
                 }
 
         }else
-        /*      userDN and userFQAN extracted from user proxy   */
+        /* userDN and userFQAN extracted from user proxy */
         if ((result = classad_get_dstring_attribute(cad, "x509UserProxy", &proxname)) == C_CLASSAD_NO_ERROR)
         {
                 /* command syntax:
@@ -1685,7 +1675,7 @@ void logAccInfo(char* jobId, char* server_lrms, classad_context cad)
         strncpy(server_lrms_trunc, server_lrms, 3);
         server_lrms_trunc[3]=0;
 
-        log_line=make_message("timestamp=<%s> userDN=<%s> userFQAN=<%s> ceID=<%s> jobID=<%s> lrmsID=<%s>\n", date_str_trunc, userDN_trunc,
+        log_line=make_message("timestamp=<%s> userDN=<%s> userFQAN=<%s> ceID=<%s> jobID=<%s> lrmsID=<%s>\n", date_str, userDN_trunc,
                               fqan, server_lrms, gridjobid, basename(jobid_trunc));
 
         cs = fwrite(log_line ,1, strlen(log_line), log_file);
@@ -1697,6 +1687,6 @@ void logAccInfo(char* jobId, char* server_lrms, classad_context cad)
         if(fqanlong) free(fqanlong);
         if(gridjobid) free(gridjobid);
         free(log_line);
-
+	return;
 }
 
