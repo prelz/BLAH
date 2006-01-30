@@ -268,6 +268,7 @@ void follow(char *infile, char *line){
     struct tm *timeptr;
     char   tnow[30];
     char   evfile[MAX_CHARS]="\0";
+    char   *actualfile;
    
     if((tdir=calloc(STR_CHARS,1)) == 0){
      sysfatal("can't malloc tdir: %r");
@@ -275,6 +276,8 @@ void follow(char *infile, char *line){
     strcat(tdir,spooldir);
     strcat(tdir,"/server_logs");
 
+    actualfile=strdup(infile);
+	
     for(;;){
 
 /* In each cycle a new date file is costructed and is tested with the existing one
@@ -289,10 +292,11 @@ void follow(char *infile, char *line){
         strcat(evfile,tdir);
         strcat(evfile,"/");
         strcat(evfile,tnow);
-
-        if(strcmp(evfile,infile) != 0){
+	
+        if(strcmp(evfile,actualfile) != 0){
 
          off = 0;
+	 actualfile=strdup(evfile);
 
          while(1){
           if((fp=fopen((char *)evfile, "r")) != 0){
@@ -317,6 +321,11 @@ void follow(char *infile, char *line){
         old_off=ftell(fp);
         fseek(fp, 0L, SEEK_END);
         real_off=ftell(fp);
+        
+	if(debug){
+	 fprintf(debuglogfile, "Off:%d Old_off:%d Real_off:%d\n",off,old_off,real_off);
+         fflush(debuglogfile);
+        }
 
         if(real_off < old_off){
          off=real_off;
@@ -330,6 +339,7 @@ void follow(char *infile, char *line){
         
         off = tail(fp, line);
 	fclose(fp);
+	
 	sleep(1);
     }        
 }
@@ -339,6 +349,10 @@ long tail(FILE *fp, char *line){
 
     while(fgets(line, STR_CHARS, fp)){
       if((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_deleted)!=NULL) || (strstr(line,rex_finished)!=NULL) || (strstr(line,rex_hold)!=NULL)){
+       if(debug){
+	fprintf(debuglogfile, "Tail line:%s",line);
+        fflush(debuglogfile);
+       }
        AddToStruct(line,1);
       }
     }
