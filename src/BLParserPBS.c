@@ -307,8 +307,8 @@ void follow(char *infile, char *line){
 
         }else{
 
-         if((fp=fopen((char *)infile, "r")) == 0){
-          syserror("error opening %s: %r", infile);
+         if((fp=fopen((char *)actualfile, "r")) == 0){
+          syserror("error opening %s: %r", actualfile);
           exit(EXIT_FAILURE);
          }
 
