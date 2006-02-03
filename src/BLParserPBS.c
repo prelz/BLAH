@@ -19,6 +19,7 @@ int main(int argc, char *argv[]) {
     char *szPort;
     char *szSpoolDir;
     char *szDebugLogName;
+    char *szDebugLevel;
     
     char *espooldir;
 
@@ -32,12 +33,20 @@ int main(int argc, char *argv[]) {
     
     signal(SIGPIPE, SIG_IGN);             
         
-    ParseCmdLine(argc, argv, &szPort, &szSpoolDir, &szCreamPort, &szDebugLogName);
+    ParseCmdLine(argc, argv, &szPort, &szSpoolDir, &szCreamPort, &szDebugLogName, &szDebugLevel);
     
     if(dmn){    
      daemonize();
     }
-
+    if((argc > 1) && (szDebugLevel!=NULL)){
+     debug = strtol(szDebugLevel, &endptr, 0);
+     if (debug <=0){
+      debug=0;
+     } else if (debug >=2){
+      debug=2;
+     }
+    }
+    
     if((argc > 1) && (szPort!=NULL)){
      port = strtol(szPort, &endptr, 0);
      if ( *endptr || port < 1 || port > 65535) {
@@ -321,8 +330,8 @@ void follow(char *infile, char *line){
         old_off=ftell(fp);
         fseek(fp, 0L, SEEK_END);
         real_off=ftell(fp);
-        
-	if(debug){
+	
+	if(debug == 2){
 	 fprintf(debuglogfile, "Off:%d Old_off:%d Real_off:%d\n",off,old_off,real_off);
          fflush(debuglogfile);
         }
@@ -349,7 +358,7 @@ long tail(FILE *fp, char *line){
 
     while(fgets(line, STR_CHARS, fp)){
       if((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_deleted)!=NULL) || (strstr(line,rex_finished)!=NULL) || (strstr(line,rex_hold)!=NULL)){
-       if(debug){
+       if(debug == 2){
 	fprintf(debuglogfile, "Tail line:%s",line);
         fflush(debuglogfile);
        }
@@ -1523,24 +1532,20 @@ void daemonize(){
 void print_usage(){
 
  fprintf(stderr,"Usage:\n");
- fprintf(stderr,"%s [-p] [<remote_port [%d]>] [-s <PBS_spooldir [%s]>] [-m  <CreamPort>] [-d] [-l <DebugLogFile> [%s]] [-D]\n",progname, DEFAULT_PORT, spooldir, debuglogname);
- fprintf(stderr,"Use -d to enable debugging.\n");
+ fprintf(stderr,"%s [-p] [<remote_port [%d]>] [-s <PBS_spooldir [%s]>] [-m  <CreamPort>] [-d <loglevel>] [-l <DebugLogFile> [%s]] [-D]\n",progname, DEFAULT_PORT, spooldir, debuglogname);
+ fprintf(stderr,"Use -d 1 to enable debugging and -d 2 to have more debugging.\n");
  fprintf(stderr,"-l works only with -d (a logfile can be specified only if debugging is active)\n");
  fprintf(stderr,"Use -D to run as daemon.\n");
  exit(EXIT_SUCCESS);
  
 }
 
-int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir, char **szCreamPort, char **szDebugLogName) {
+int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir, char **szCreamPort, char **szDebugLogName, char **szDebugLevel) {
     
     int n = 1;
      
     if(argc==2){
-       if(!strncmp(argv[n], "-d", 2)){
-          debug=1;
-          *szPort=NULL;
-          return 0;
-       }else if(!strncmp(argv[n], "-D", 2)){
+       if(!strncmp(argv[n], "-D", 2)){
           dmn=1;
           *szPort=NULL;
           return 0;
@@ -1563,7 +1568,7 @@ int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir, char 
         }else if ( !strncmp(argv[n], "-l", 2) ) {
             *szDebugLogName = argv[++n];
         }else if ( !strncmp(argv[n], "-d", 2) ) {
-	    debug=1;
+	    *szDebugLevel = argv[++n];
         }else if ( !strncmp(argv[n], "-D", 2) ) {
 	    dmn=1;
         }else if ( !strncmp(argv[n], "-h", 2) ) {

@@ -260,6 +260,10 @@ long tail(FILE *fp, char *line){
 
     while(fgets(line, STR_CHARS, fp)){
       if((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_status)!=NULL) || (strstr(line,rex_signal)!=NULL)){        
+       if(debug == 2){
+	fprintf(debuglogfile, "Tail line:%s",line);
+        fflush(debuglogfile);
+       }
        AddToStruct(line,1);
       }
     }
@@ -844,6 +848,7 @@ char *GetLogDir(int largc, char *largv[]){
  char *szBinPath;
  char *szConfPath;
  char *szDebugLogName;
+ char *szDebugLevel;
  
  char *ebinpath;
  char *econfpath;
@@ -867,7 +872,7 @@ char *GetLogDir(int largc, char *largv[]){
      sysfatal("can't malloc tbuf: %r");
  }
 	
- ParseCmdLine(largc, largv, &szPort, &szBinPath, &szConfPath, &szCreamPort, &szDebugLogName);
+ ParseCmdLine(largc, largv, &szPort, &szBinPath, &szConfPath, &szCreamPort, &szDebugLogName, &szDebugLevel);
   
  if((largc > 1) && (szPort!=NULL)){
   port = strtol(szPort, &endptr, 0);
@@ -877,6 +882,15 @@ char *GetLogDir(int largc, char *largv[]){
   }
  }else{
   port=DEFAULT_PORT;
+ }
+ 
+ if((largc > 1) && (szDebugLevel!=NULL)){
+  debug = strtol(szDebugLevel, &endptr, 0);
+  if (debug <=0){
+   debug=0;
+  } else if (debug >=2){
+   debug=2;
+  }
  }
  
  if(szDebugLogName!=NULL){
@@ -1521,8 +1535,8 @@ void daemonize(){
 void print_usage(){
 
  fprintf(stderr,"Usage:\n");
- fprintf(stderr,"%s [-p] [<remote_port [%d]>] [-b <LSF_binpath [%s]>] [-c <LSF_confpath [%s]>] [-m  <CreamPort>] [-d] [-l <DebugLogFile> [%s]] [-D]\n",progname, DEFAULT_PORT, binpath, confpath, debuglogname);
- fprintf(stderr,"Use -d to enable debugging.\n");
+ fprintf(stderr,"%s [-p] [<remote_port [%d]>] [-b <LSF_binpath [%s]>] [-c <LSF_confpath [%s]>] [-m  <CreamPort>] [-d <loglevel>] [-l <DebugLogFile> [%s]] [-D]\n",progname, DEFAULT_PORT, binpath, confpath, debuglogname);
+ fprintf(stderr,"Use -d 1 to enable debugging and -d 2 to have more debugging.\n");
  fprintf(stderr,"-l works only with -d (a logfile can be specified only if debugging is active)\n");
  fprintf(stderr,"Use -D to run as daemon.\n");
  exit(EXIT_SUCCESS);
@@ -1530,16 +1544,12 @@ void print_usage(){
 }
 
 int ParseCmdLine(int argc, char *argv[], char **szPort, char **szBinPath, 
-                 char **szConfPath, char **szCreamPort, char **szDebugLogName) {
+                 char **szConfPath, char **szCreamPort, char **szDebugLogName, char **szDebugLevel) {
     
     int n = 1;
 
     if(argc==2){
-       if(!strncmp(argv[n], "-d", 2)){
-          debug=1;
-          *szPort=NULL;
-          return 0;
-       }else if(!strncmp(argv[n], "-D", 2)){
+       if(!strncmp(argv[n], "-D", 2)){
           dmn=1;
           *szPort=NULL;
           return 0;
@@ -1564,7 +1574,7 @@ int ParseCmdLine(int argc, char *argv[], char **szPort, char **szBinPath,
         }else if ( !strncmp(argv[n], "-l", 2) ) {
             *szDebugLogName = argv[++n];
         }else if ( !strncmp(argv[n], "-d", 2) ) {
-	    debug=1;
+            *szDebugLevel = argv[++n];
         }else if ( !strncmp(argv[n], "-D", 2) ) {
 	    dmn=1;
         }else if ( !strncmp(argv[n], "-h", 2) ) {

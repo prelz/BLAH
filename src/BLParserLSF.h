@@ -57,7 +57,7 @@ int GetEventsInOldLogs(char *logdate);
 int strtoken(const char *s, char delim, char **token);
 int InfoAdd(int id, char *value, const char * flag);
 char *InfoGet(int id, const char * flag);
-int ParseCmdLine(int argc, char *argv[], char **szPort, char **szBinPath, char **szConfPath, char **szCreamPort, char **szDebugLogName);
+int ParseCmdLine(int argc, char *argv[], char **szPort, char **szBinPath, char **szConfPath, char **szCreamPort, char **szDebugLogName, char **szDebugLevel);
 char *epoch2str(char *epoch);
 char *iepoch2str(int epoch);
 int str2epoch(char *str, char *f);
