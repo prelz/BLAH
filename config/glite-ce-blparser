@@ -25,14 +25,14 @@ start()
 	      eval exe=\$`echo GLITE_CE_BLPARSER${lrms}`
 	      
 	      eval daemon=\$`echo GLITE_CE_BLPARSER${lrms}_DAEMON`
-	      eval debug=\$`echo GLITE_CE_BLPARSER${lrms}_DEBUG`
+	      eval debuglevel=\$`echo GLITE_CE_BLPARSER${lrms}_DEBUGLEVEL`
 	      eval debuglogfile=\$`echo GLITE_CE_BLPARSER${lrms}_DEBUGLOGFILE`
 	      eval binpath=\$`echo GLITE_CE_BLPARSER${lrms}_BINPATH`
 	      eval confpath=\$`echo GLITE_CE_BLPARSER${lrms}_CONFPATH`
 	      eval parsernum=\$`echo GLITE_CE_BLPARSER${lrms}_NUM`
 	      
               [ "x$daemon" == "xyes" ] && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -D`
-              [ "x$debug" == "xyes" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -d`
+              [ -n "$debuglevel" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -d $debuglevel`
               [ -n "$debuglogfile" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -l $debuglogfile`
               [ -n "$binpath" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -b $binpath`
               [ -n "$confpath" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -c $confpath`
