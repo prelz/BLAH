@@ -7,6 +7,8 @@
 #
 #  Revision history:
 #   23 Apr 2004 - Origina release
+#   07 Feb 2006 - Added correct recipe to unescape special characters
+#                 in commands.
 #
 #  Description:
 #   Parse client commands
@@ -90,6 +92,37 @@ known_commands(void)
 	return (result);
 }
 
+/* Unescape special characters in command tokens.
+ * "In the GAHP protocol, the following characters must be escaped with  
+ *  the backslash if they appear within an argument:
+ * - space (this is taken care elsewhere)
+ * - backslash
+ * - carriage return ('/r')
+ * - newline ('/n')"
+ * */
+char *
+unescape_special_chars(char *str)
+{
+	int i,j,slen;
+
+	if (str == NULL) return str;
+
+	slen = strlen(str);
+
+	for (i = 0,j = 0; j < slen; i++,j++)
+	{
+		if( (str[j]=='\\' && str[j+1]=='\\') ||
+		    (str[j]=='\\' && str[j+1]=='\r') ||
+		    (str[j]=='\\' && str[j+1]=='\n') )
+		{
+			j++;
+		}
+		if (i!=j) str[i]=str[j];
+	}
+	str[i]='\000';
+	return(str);
+}
+
 /* Split a command string into tokens
  * */
 int
@@ -143,6 +176,7 @@ parse_command(const char *cmd, int *argc, char ***argv)
 			}
 			else
 			{
+				unescape_special_chars(retval[my_argc]);
 				my_argc++;
 				if ((retval = (char **) realloc (retval, (my_argc+1) * sizeof(char *))) == NULL)
 				{
@@ -154,6 +188,7 @@ parse_command(const char *cmd, int *argc, char ***argv)
 		}
 	}
 
+	unescape_special_chars(retval[my_argc]);
 	my_argc++;
 	if ((retval = (char **) realloc (retval, (my_argc+1) * sizeof(char *))) == NULL)
 	{
