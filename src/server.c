@@ -666,6 +666,7 @@ cmd_cancel_job(void* args)
 	char *jobId;
 	char error_message[1024];
 	char *error_string;
+	char answer[1024];
 
 	/* The job Id needs at least 4 chars for the "<lrms>/" prefix */
 	if (strlen(argv[2]) < 4)
@@ -716,8 +717,18 @@ cmd_cancel_job(void* args)
 		free(error_string);
 		goto cleanup_command;
 	}	
+
+       /* Multiple job cancellation */
+       while(fgets(answer, sizeof(answer), dummy))
+       {
+               answer[strlen(answer) - 1] = 0;
+               resultLine = make_message("%s%s", reqId, answer);
+               enqueue_result(resultLine);
+               free(resultLine);
+               resultLine=NULL;
+       }
+
 	retcod = mtsafe_pclose(dummy);
-	resultLine = make_message("%s %d %s", reqId, retcod, retcod ? "Error" : "No\\ error");
 
 	/* Free up all arguments and exit (exit point in case of error is the label
            pointing to last successfully allocated variable) */
@@ -727,9 +738,11 @@ cleanup_lrms:
 	free(server_lrms);
 cleanup_argv:
 	free_args(argv);
-	enqueue_result(resultLine);
-	free (resultLine);
-
+        if(resultLine)
+        {
+              enqueue_result(resultLine);
+              free (resultLine);
+        }
 	return;
 }
 
