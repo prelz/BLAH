@@ -12,11 +12,14 @@
 #       Council for the Central Laboratory of the Research Councils (CCLRC), United Kingdom
 #
 #       Authors: Francesco Prelz <francesco.prelz@mi.infn.it>
-#       Version info: $Id: configure.ac,v 1.27 2005/12/01 16:19:17 gfiorent Exp $
+#       Version info: $Id: configure.ac,v 1.28 2006/02/16 10:49:47 mezzadri Exp $
 #       Release: $Name:  $
 #
 #       Revision history:
 #       $Log: configure.ac,v $
+#       Revision 1.28  2006/02/16 10:49:47  mezzadri
+#       changed version number
+#
 #       Revision 1.27  2005/12/01 16:19:17  gfiorent
 #       Fixed bug #14007, filtered "env" attribute in submission classad
 #
@@ -83,7 +86,7 @@
 #
 
 AC_PREREQ(2.57)
-AC_INIT([GLite CE blahp], [1.6.1])
+AC_INIT([GLite CE blahp], [1.6.2])
 AC_CONFIG_AUX_DIR([./project])
 AM_INIT_AUTOMAKE([1.6.3 subdir-objects])
 AC_CONFIG_SRCDIR([src/main.c])
