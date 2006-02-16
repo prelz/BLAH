@@ -451,7 +451,7 @@ int AddToStruct(char *line, int flag){
     NotifyCream(id, "2", j2bl[id], j2wn[id], "NA", j2rt[id], flag);
    }
   
-  } else if(strcmp(rex,rex_signal)==0){
+  } else if(rex && strcmp(rex,rex_signal)==0){
   
    if(strstr(sig_status,"KILL")!=NULL){
 
@@ -480,7 +480,7 @@ int AddToStruct(char *line, int flag){
 
    }  else if(j_status && strcmp(j_status,"32")==0){
 
-    if(strcmp(j2js[id],"3")!=0){
+    if(j2js[id] && strcmp(j2js[id],"3")!=0){
      InfoAdd(id,"4","JOBSTATUS");
      InfoAdd(id,failex_status,"EXITCODE");
      InfoAdd(id,j_time,"COMPLTIME");
