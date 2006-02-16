@@ -209,6 +209,7 @@ end_of_preamble
 [ -z "$mpinodes" ]             || echo "#PBS -l nodes=$mpinodes" >> $tmp_file
 [ -z "$blahpd_inputsandbox" ]  || echo "#PBS -W stagein=$blahpd_inputsandbox" >> $tmp_file
 [ -z "$blahpd_outputsandbox" ] || echo "#PBS -W stageout=$blahpd_outputsandbox" >> $tmp_file
+echo "#PBS -m n"  >> $tmp_file
 
 # Set the required environment variables (escape values with double quotes)
 if [ "x$envir" != "x" ]  
