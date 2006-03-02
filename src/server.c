@@ -683,11 +683,13 @@ cleanup_argv:
 	free_args(argv);
 	enqueue_result(resultLine);
 	free(resultLine);
+	/* To be fixed in a safe way
 	if(glexec_mode)
 	{
 		unsetenv("GLEXEC_SOURCE_PROXY");
         	unsetenv("GLEXEC_TARGET_PROXY");
 	}
+	*/
         if(cad_fqan) free(cad_fqan);
 	return;
 }
