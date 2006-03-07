@@ -62,7 +62,7 @@
 #define MAX_LRMS_NUMBER 	10
 #define MAX_LRMS_NAME_SIZE	4
 #define MAX_CERT_SIZE		100000
-#define MAX_TEMP_ARRAY_SIZE              100
+#define MAX_TEMP_ARRAY_SIZE              1000
 #define MAX_FILE_LIST_BUFFER_SIZE        10000
  
 t_resline *first_job = NULL;
@@ -1707,12 +1707,12 @@ int getProxyInfo(char* proxname, char* fqan, char* userDN)
                 if (!strncmp(&fqanlong[slen - 10],"/CN=proxy",9))
                 {
                       memset(&fqanlong[slen - 10],0,9);
-                      slen -=8;
+                      slen -=9;
                 }else
-                if (!strncmp(&fqanlong[slen - 11],"CN=limited",10))
+                if (!strncmp(&fqanlong[slen - 12],"/CN=limited",11))
                 {
-                      memset(&fqanlong[slen - 11],0,10);
-                      slen -=10;
+                      memset(&fqanlong[slen - 12],0,11);
+                      slen -=11;
                 }else
                           break;
           }
@@ -1725,5 +1725,6 @@ int getProxyInfo(char* proxname, char* fqan, char* userDN)
 		      break;
                 }
           }
+	  if(userDN[slen - count - 4] == '/') userDN[slen - count - 4] = 0;
 	  return 0;
 }
