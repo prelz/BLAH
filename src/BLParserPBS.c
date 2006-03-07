@@ -318,7 +318,8 @@ void follow(char *infile, char *line){
 
          if((fp=fopen((char *)actualfile, "r")) == 0){
           syserror("error opening %s: %r", actualfile);
-          exit(EXIT_FAILURE);
+          continue;
+	  sleep(1);
          }
 
         }
@@ -328,7 +329,9 @@ void follow(char *infile, char *line){
         }
 
         old_off=ftell(fp);
-        fseek(fp, 0L, SEEK_END);
+        if(fseek(fp, 0L, SEEK_END) < 0){
+         sysfatal("couldn't seek: %r");
+        }
         real_off=ftell(fp);
 	
 	if(debug == 2){
