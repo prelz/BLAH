@@ -226,43 +226,21 @@ void follow(char *infile, char *line){
     long off = 0;
     long old_off = 0;
     long real_off = 0;
-    int counter = 0;
 
     for(;;){
         if((fp=fopen((char *)infile, "r")) == 0){
          syserror("error opening %s: %r", infile);
+	 sleep(1);
+	 continue;
         }
-	
-	for(;;){
-         if(fseek(fp, off, SEEK_SET) < 0){
-	  if(counter < 3){
-           counter++;
-	   sleep(1);
-	  }else{
-	   sysfatal("couldn't seek: %r");
-	  }
-         } else {
-	  break;
-	 }
-	}
-        
-	counter = 0;
-	
+        if(fseek(fp, off, SEEK_SET) < 0){
+         sysfatal("couldn't seek: %r");
+        }
+
         old_off=ftell(fp);
-	
-	for(;;){
-         if(fseek(fp, 0L, SEEK_END) < 0){
-	  if(counter < 3){
-           counter++;
-	   sleep(1);
-	  }else{
-	   sysfatal("couldn't seek: %r");
-	  }
-         } else {
-	  break;
-	 }
-	}
-	
+        if(fseek(fp, 0L, SEEK_END) < 0){
+         sysfatal("couldn't seek: %r");
+        }
         real_off=ftell(fp);
 
         if(real_off < old_off){
@@ -271,21 +249,10 @@ void follow(char *infile, char *line){
          off=old_off;
         }
    
-	counter = 0;
-	
-	for(;;){
-         if(fseek(fp, off, SEEK_SET) < 0){
-	  if(counter < 3){
-           counter++;
-	   sleep(1);
-	  }else{
-	   sysfatal("couldn't seek: %r");
-	  }
-         } else {
-	  break;
-	 }
-	}
-	
+        if(fseek(fp, off, SEEK_SET) < 0){
+          sysfatal("couldn't seek: %r");
+         }
+        
         off = tail(fp, line);
 	fclose(fp);
 	sleep(1);
