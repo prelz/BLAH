@@ -345,7 +345,7 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
 
      logfile=`find $logpath -type f -newer $curdir/$tmp_file -exec grep -l "job name = $tmp_file" {} \;`
 
-     jobID_log=`grep "job name = $tmp_file" $logfile | awk -F";" '{ print $5 }'| awk -F"." '{ print $1 }'`
+     jobID_log=`grep "job name = $tmp_file" $logfile | awk -F";" '{ print $5 }'`
 
  fi
 
