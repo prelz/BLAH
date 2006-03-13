@@ -2,7 +2,7 @@
 //  File :     classad_c_helper.C
 //
 //
-//  Author :   Francesco Prelz ($Author: mezzadri $)
+//  Author :   Francesco Prelz ($Author: gfiorent $)
 //  e-mail :   "francesco.prelz@mi.infn.it"
 //
 //  Revision history :
@@ -22,6 +22,7 @@
 
 #include <string.h>
 #include "classad_distribution.h"
+#include "classad_binary_op_unwind.h"
 
 #ifdef WANT_NAMESPACES
 using namespace classad;
@@ -329,6 +330,63 @@ extern "C"
       ad = (ClassAd *)cad;
       ad->Puke();
      }
+   }
+
+  int
+  unwind_attributes(classad_context cad, char *attribute_name, char ***results) 
+   {
+    if (cad == NULL) return C_CLASSAD_INVALID_CONTEXT;
+
+    ClassAd *ad = (ClassAd *)cad;
+
+    ExprTree *et;
+    bool need_to_delete_et = false;
+
+    et = ad->Lookup(attribute_name);
+    if (et == NULL)
+     {
+      return C_CLASSAD_VALUE_NOT_FOUND;
+     }
+
+    if (et->GetKind() == ExprTree::LITERAL_NODE)
+     {
+      // The attribute was probably stringified. Try to parse it.
+      Value v;
+      EvalState state;
+      state.SetScopes( ad );
+
+      et->Evaluate(state,v);
+      std::string strres;
+
+      if (v.IsStringValue( strres ))
+       {
+        ClassAdParser parser;
+        et=NULL;
+        parser.ParseExpression(strres,et);
+        need_to_delete_et = true;
+       }
+     }
+
+    BinaryOpUnwind res_unp; 
+    std::string result;
+    res_unp.Unparse(result, et);
+    int n_results = 0;
+    (*results) = (char **)malloc(sizeof(char **));
+    if ((*results) == NULL) return C_CLASSAD_OUT_OF_MEMORY;
+
+    std::vector<std::string>::const_iterator it;
+    for (it = res_unp.m_unwind_output.begin(); 
+         it != res_unp.m_unwind_output.end(); it++)
+     {
+      n_results++;
+      (*results) = (char **)realloc(*results, (n_results+1)*sizeof(char *));
+      if ((*results) == NULL) return C_CLASSAD_OUT_OF_MEMORY;
+      (*results)[n_results-1] = strdup(it->c_str());
+      (*results)[n_results] = NULL;
+     }
+
+    if (need_to_delete_et) delete et;
+    return C_CLASSAD_NO_ERROR;
    }
 
  } // end of extern "C"

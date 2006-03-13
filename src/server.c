@@ -64,6 +64,7 @@
 #define MAX_CERT_SIZE		100000
 #define MAX_TEMP_ARRAY_SIZE              1000
 #define MAX_FILE_LIST_BUFFER_SIZE        10000
+#define MAX_CONF_FILE_SIZE               100000
  
 t_resline *first_job = NULL;
 t_resline *last_job = NULL;
@@ -103,7 +104,8 @@ int set_cmd_list_option(char **command, classad_context cad, const char *attribu
 int set_cmd_string_option(char **command, classad_context cad, const char *attribute, const char *option, const int quote_style);
 int limit_proxy(char* proxyname);
 int getProxyInfo(char* proxname, char* fqan, char* userDN);
-void logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char* userDN);
+int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char* userDN);
+int CEReq_parse(classad_context cad, char* filename);
 
 /* Global variables */
 static int server_socket;
@@ -498,6 +500,9 @@ cmd_submit_job(void *args)
 	char *cad_fqan=NULL;
 	int count=0;
 	int enable_log=0;
+        struct timeval ts;
+	char *ce_req=NULL;
+        char *req_file=NULL;
 	cad = classad_parse(jobDescr);
 	if (cad == NULL)
 	{
@@ -548,37 +553,12 @@ cmd_submit_job(void *args)
         if (((result = classad_get_dstring_attribute(cad, "x509UserProxy", &proxyname)) == C_CLASSAD_NO_ERROR)
 	   &&(!glexec_mode ))
         { 
-               if(getProxyInfo(proxyname, fqan, userDN))
-	       {
-                	/* PUSH A FAILURE */
-                	resultLine = make_message("%s 1 Credentials\\ not\\ valid N/A", reqId);
-                	goto cleanup_command;
-               }
-               /* userDN extracted from classad attribute */
-               if((result = classad_get_dstring_attribute(cad, "UserSubjectName", &cad_fqan)) == C_CLASSAD_NO_ERROR)
-               {
-               		/* 
-			   fqan and userDN from classad must be coincident with the ones
-			   extracted from proxy file
-			*/
-			if(strcmp(fqan,cad_fqan))
-               		{
-                       		/* PUSH A FAILURE */
-                       		resultLine = make_message("%s 1 Credentials \\ not\\ coincident N/A", reqId);
-                       		free(cad_fqan);
-				cad_fqan=NULL;
-                       		goto cleanup_command;
-               		}
-			enable_log=1;
-	       }
-	       /*  if enable_log = 0 the job must be submitted but not logged, for backward compatibility */
-	       
-		proxynameNew=make_message("%s.lmt",proxyname);
+	       proxynameNew=make_message("%s.lmt",proxyname);
                cmdstr=make_message("cp %s %s",proxyname, proxynameNew);
                system(cmdstr);
                limit_proxy(proxynameNew);
 	       command_ext = make_message("%s -x %s", command, proxynameNew);
-               free(proxyname);
+               //free(proxyname);
                free(cmdstr);
                if (command_ext == NULL)
                {
@@ -606,7 +586,28 @@ cmd_submit_job(void *args)
 		resultLine = make_message("%s 7 Cannot\\ parse\\ Cmd\\ attribute\\ in\\ classad N/A", reqId);
 		goto cleanup_command;
 	}
-	
+
+        if((result = classad_get_dstring_attribute(cad, "CERequirements", &ce_req)) == C_CLASSAD_NO_ERROR)
+        {
+                gettimeofday(&ts, NULL);
+                req_file = make_message("./ce-req-file-%d%d", ts.tv_sec, ts.tv_usec);
+                if(!CEReq_parse(cad,req_file))
+                {
+                        command_ext = make_message("%s -C %s", command, cad,req_file);
+                        if (command_ext == NULL)
+                        {
+                                /* PUSH A FAILURE */
+                                resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
+                                free(req_file);
+                                goto cleanup_command;
+                        }
+                        /* Swap new command in */
+                        free(command);
+                        command = command_ext;
+                        free(req_file);
+                }
+        }
+
 	/* All other attributes are optional: fail only on memory error 
 	   IMPORTANT: Args must alway be the last!
 	*/
@@ -664,12 +665,21 @@ cmd_submit_job(void *args)
 	/* PUSH A SUCCESS */
 	resultLine = make_message("%s 0 No\\ error %s", reqId, jobId + JOBID_PREFIX_LEN);
         
-	/* 
-	   DGAS accounting : we must log the submission to the file pointed by BLAHPD_ACCOUNTING_INFO_LOG 
-	   only if we have data from proxy and classad coincident 
-	*/
+	/* DGAS accounting */
+        if(proxyname)
+        {
+                if(getProxyInfo(proxyname, fqan, userDN))
+                {
+                        /* PUSH A FAILURE */
+                        resultLine = make_message("%s 1 Credentials\\ not\\ valid N/A", reqId);
+                        goto cleanup_command;
+                }
+                if(userDN) enable_log=1;
+                free(proxyname);
+        }
         if(enable_log)
-		logAccInfo(jobId, server_lrms, cad, fqan, userDN);
+                logAccInfo(jobId, server_lrms, cad, fqan, userDN);
+        
 
 	/* Free up all arguments and exit (exit point in case of error is the label
            pointing to last successfully allocated variable) */
@@ -1609,30 +1619,92 @@ limit_proxy(char* proxyname)
 	return res;
 }
 
-
-void logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char* userDN)
+//new
+int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char* userDN)
 {
-        int cs=0, result=0, fd = -1, count = 0, slen=0;
+        int i=0, rc=0, cs=0, result=0, fd = -1, count = 0, slen = 0, slen2 = 0;
         FILE *cmd_out=NULL;
+        FILE *conf_file=NULL;
         FILE *log_file=NULL;
         char *log_line;
         char *proxname=NULL;
         char *gridjobid=NULL;
+        char *ce_id=NULL;
+        char *login=NULL;
         char *temp_str=NULL;
         char date_str[MAX_TEMP_ARRAY_SIZE], jobid_trunc[MAX_TEMP_ARRAY_SIZE], server_lrms_trunc[MAX_LRMS_NAME_SIZE];
-	struct flock fl;
-        char *AccInfoLogFile;
-	time_t tt;
-
+        struct flock fl;
+        char *AccInfoLogFile=NULL;
+        char *AccInfoLogFileDated=NULL;
+        time_t tt;
+        struct tm *t_m=NULL;
+        char *glite_loc=NULL;
+        char *blah_conf=NULL;
+        char host_name[MAX_CONF_FILE_SIZE];
+        char *jobid=NULL;
+        char *lrms_jobid=NULL;
+        char filebuffer[MAX_CONF_FILE_SIZE];
+        int id;
+	char bs[4];
+	char *queue=NULL;
         memset(jobid_trunc,0,MAX_TEMP_ARRAY_SIZE);
         memset(server_lrms_trunc,0,MAX_TEMP_ARRAY_SIZE);
 
-        if ((AccInfoLogFile = getenv("BLAHPD_ACCOUNTING_INFO_LOG")) == NULL)
+        /* Get values from environment and compose the logfile pathname */
+        if ((glite_loc = getenv("GLITE_LOCATION")) == NULL)
         {
-                return;
+                glite_loc = DEFAULT_GLITE_LOCATION;
         }
-        log_file= fopen(AccInfoLogFile,"a");
+        blah_conf=make_message("%s/etc/blah.config",glite_loc);
 
+        if(blah_conf!=NULL) conf_file= fopen(blah_conf,"r");
+        else return 1;
+
+        if(conf_file==NULL)
+        {
+                free(blah_conf);
+                return 1;
+        }
+        slen=strlen("BLAHPD_ACCOUNTING_INFO_LOG=");
+        while(fgets(filebuffer, MAX_CONF_FILE_SIZE, conf_file))
+        {
+                slen2=strlen(filebuffer);
+                if(!strncmp(filebuffer,"BLAHPD_ACCOUNTING_INFO_LOG=",slen))
+                {
+                        count = slen;
+                        while((filebuffer[count]!='\n')&& (count < slen2)) count++;
+                        AccInfoLogFile=malloc(count-slen+1);
+                        memcpy(AccInfoLogFile, &filebuffer[slen], count-slen);
+                        filebuffer[count-slen]=0;
+                        AccInfoLogFile[count-slen]=0;
+                        slen2=slen=0;
+                        break;
+                }
+                memset(filebuffer,0,MAX_CONF_FILE_SIZE);
+        }
+        fclose(conf_file);
+        /* Submission time */
+        time(&tt);
+        t_m = gmtime(&tt);
+        sprintf(date_str,"%04d-%02d-%02d %02d:%02d:%02d", 1900+t_m->tm_year, t_m->tm_mon+1, t_m->tm_mday, t_m->tm_hour, t_m->tm_min, t_m->tm_sec);
+
+        if(AccInfoLogFile!=NULL)
+        {
+                AccInfoLogFileDated=make_message("%s-%04d%02d%02d", AccInfoLogFile, 1900+t_m->tm_year, t_m->tm_mon+1, t_m->tm_mday);
+                if (AccInfoLogFileDated==NULL)
+                {
+                        free(AccInfoLogFile);
+                        return 1;
+                }
+
+                log_file=fopen(AccInfoLogFileDated,"a");
+                if (log_file==NULL)
+                {
+                        free(AccInfoLogFile);
+                        free(AccInfoLogFileDated);
+                        return 1;
+                }
+        }
         /* get the lock */
         fd = fileno(log_file);
         fl.l_type = F_WRLCK;
@@ -1645,12 +1717,6 @@ void logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
          "timestamp=<submission time to LRMS>" "userDN=<user's DN>" "userFQAN=<user's FQAN>"
          "ceID=<CE ID>" "jobID=<grid job ID>" "lrmsID=<LRMS job ID>"
         */
-
-        /* Submission time */
-        time(&tt);
-	asctime_r(localtime(&tt),date_str);
-	date_str[strlen(date_str) - 1]=0;
-
         /* grid jobID  : if we are here we suppose that the edg_jobid is present, if not we log an empty string*/
         classad_get_dstring_attribute(cad, "edg_jobid", &gridjobid);
         if(!gridjobid) gridjobid=make_message("");
@@ -1659,12 +1725,35 @@ void logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
         strncpy(jobid_trunc, &jobId[JOBID_PREFIX_LEN], strlen(jobId) - JOBID_PREFIX_LEN);
         jobid_trunc[strlen(jobId) - JOBID_PREFIX_LEN]=0;
 
-        /* Ce ID */
-        strncpy(server_lrms_trunc, server_lrms, 3);
-        server_lrms_trunc[3]=0;
+        /* lrmsID */
+        jobid=basename(jobid_trunc);
+        gethostname(host_name, MAX_CONF_FILE_SIZE);
+        slen=strlen(host_name);
+        slen2=strlen(jobid);
+        if(!strncmp(&jobid[slen2-slen], host_name, slen)) lrms_jobid=strdup(jobid);
+        else
+                lrms_jobid=make_message("%s.%s",jobid,host_name);
 
-        log_line=make_message("timestamp=<%s> userDN=<%s> userFQAN=<%s> ceID=<%s> jobID=<%s> lrmsID=<%s>\n", date_str, userDN,
-                              fqan, server_lrms, gridjobid, basename(jobid_trunc));
+        /* Ce ID */
+	memcpy(bs,jobid_trunc,3);
+	bs[3]=0;
+        classad_get_dstring_attribute(cad, "CeID", &ce_id);
+        if(!ce_id) 
+	{
+		
+		classad_get_dstring_attribute(cad, "Queue", &queue);
+		if(queue)
+		{
+			ce_id=make_message("%s:2119/blah-%s-%s",host_name,bs,queue);
+			free(queue);
+		}else
+			ce_id=make_message("%s:2119/blah-%s-",host_name,bs);
+	}
+
+        /* log line with in addiction unixuser */
+        if (fqan==NULL) fqan=make_message("");
+        log_line=make_message("\"timestamp=%s\" \"userDN=%s\" \"userFQAN=%s\" \"ceID=%s\" \"jobID=%s\" \"lrmsID=%s\" \"unixuser=%d\"\n",
+        date_str, userDN, fqan, ce_id, gridjobid, lrms_jobid, getuid());
 
         cs = fwrite(log_line ,1, strlen(log_line), log_file);
         fl.l_type = F_UNLCK;
@@ -1673,28 +1762,31 @@ void logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
         fclose(log_file);
         if(gridjobid) free(gridjobid);
         free(log_line);
-	return;
+        free(AccInfoLogFile);
+        free(AccInfoLogFileDated);
+        if (!strcmp(fqan," ")) free (fqan);
+        if (!strcmp(ce_id," ")) free(ce_id);
+        free(jobid);
+        free(lrms_jobid);
+        return 0;
 }
 
 int getProxyInfo(char* proxname, char* fqan, char* userDN)
-{        
-	 /* 
-	   command syntax:
-           openssl x509 -in proxname -subject -noout
-         */
-        char *temp_str=NULL;        
-	FILE *cmd_out=NULL;
-	int  result=0; 
-	int  slen=0;
-	int  count=0;
-	char fqanlong[MAX_TEMP_ARRAY_SIZE];
-	temp_str=make_message("openssl x509 -in %s  -subject -noout", proxname);
+{
+        /* command : openssl x509 -in proxname -subject -noout */
+        char *temp_str=NULL;
+        FILE *cmd_out=NULL;
+        int  result=0;
+        int  slen=0,slenE=0,slenW=0;
+        int  count=0;
+        char fqanlong[MAX_TEMP_ARRAY_SIZE];
+        temp_str=make_message("openssl x509 -in %s  -subject -noout", proxname);
         if ((cmd_out=mtsafe_popen(temp_str, "r")) == NULL)
         {
-             	if(temp_str) free(temp_str);
-		return 1;
+                if(temp_str) free(temp_str);
+                return 1;
         }
-	result = fgets(fqanlong, MAX_TEMP_ARRAY_SIZE, cmd_out);
+        result = fgets(fqanlong, MAX_TEMP_ARRAY_SIZE, cmd_out);
         result = mtsafe_pclose(cmd_out);
         free(temp_str);
         /* example:
@@ -1716,15 +1808,59 @@ int getProxyInfo(char* proxname, char* fqan, char* userDN)
                 }else
                           break;
           }
-          strcpy(fqan,&fqanlong[9]);
-          for(count=0;count<slen;count++)
+          strcpy(userDN,&fqanlong[9]);
+          slen-=9;
+          if(userDN[slen - 1] == '/') userDN[slen - 1] = 0;
+          /* user'sFQAN detection */
+          fqanlong[0]=0;
+          /* command : voms-proxy-info -file proxname -fqan  */
+	  temp_str=make_message("voms-proxy-info -file %s -fqan 2> /dev/null", proxname);
+          if ((cmd_out=mtsafe_popen(temp_str, "r")) == NULL)
           {
-                if(!strncmp(&fqan[count],"CN=",3))
+                if(temp_str) free(temp_str);
+                return 1;
+          }
+          slenE=strlen("ERROR");
+          slenW=strlen("WARNING");
+          while(fgets(fqanlong, MAX_CONF_FILE_SIZE, cmd_out))
+          {
+                if(strncmp(fqanlong,"WARNING",slenW)&&strncmp(fqanlong,"ERROR",slenE))
                 {
-                      strncpy(userDN,&fqan[count+3],slen - count - 3);
-		      break;
+                        strcat(fqan,"userFQAN");
+                        strcat(fqan,fqanlong);
+                        if(temp_str) free(temp_str);
                 }
           }
-	  if(userDN[slen - count - 4] == '/') userDN[slen - count - 4] = 0;
-	  return 0;
+
+         result = mtsafe_pclose(cmd_out);
+         free(temp_str);
+         return 0;
 }
+
+int CEReq_parse(classad_context cad, char* filename)
+{
+        FILE *req_file=NULL;
+        char **reqstr=NULL;
+        int cs=0;
+        req_file= fopen(filename,"w");
+        if(req_file==NULL) return 1;
+        /**
+        int unwind_attributes(classad_context cad, char *attribute_name, char ***results);
+        **/
+
+        unwind_attributes(cad,"CERequirements",&reqstr);
+        while(*reqstr != NULL)
+        {
+                cs = fwrite(*reqstr ,1, strlen(*reqstr), req_file);
+                cs = fwrite("\n" ,1, strlen("\n"), req_file);
+                reqstr++;
+        }
+        fclose(req_file);
+        return 0;
+}
+
+
+
+
+
+

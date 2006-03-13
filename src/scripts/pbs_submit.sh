@@ -70,7 +70,7 @@ BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 # Parse parameters
 ###############################################################
 original_args=$@
-while getopts "i:o:e:c:s:v:dw:q:n:rp:l:x:j:" arg 
+while getopts "i:o:e:c:s:v:dw:q:n:rp:l:x:j:C" arg 
 do
     case "$arg" in
     i) stdin="$OPTARG" ;;
@@ -88,6 +88,7 @@ do
     l) prnlifetime="$OPTARG" ;;
     x) proxy_string="$OPTARG" ;;
     j) creamjobid="$OPTARG" ;;
+    C) req_file="$OPTARG";;
     -) break ;;
     ?) echo $usage_string
        exit 1 ;;
@@ -299,9 +300,15 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+if [ ! -z $req_file ] ; then
+        source $req_file
+fi
 datenow=`date +%Y%m%d`
 jobIDtmp=`${binpath}qsub $curdir/$tmp_file` # actual submission
 retcode=$?
+if [ ! -z $req_file ] ; then
+        rm $req_file
+fi
 
 jobID=`echo $jobIDtmp|awk -F"." '{ print $1 }'`
 

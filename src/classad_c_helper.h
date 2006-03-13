@@ -2,7 +2,7 @@
   File :     classad_c_helper.h
 
 
-  Author :   Francesco Prelz ($Author: pandreet $)
+  Author :   Francesco Prelz ($Author: gfiorent $)
   e-mail :   "francesco.prelz@mi.infn.it"
 
   Revision history :
@@ -53,3 +53,5 @@ int classad_put_bool_attribute (classad_context *cad, const char *name,
 void classad_free (classad_context cad);
 void classad_free_string_list(char **strl);
 void classad_dump (classad_context cad);
+int unwind_attributes(classad_context cad, char *attribute_name, char ***results);
+

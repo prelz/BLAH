@@ -2,11 +2,11 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.8 2005/12/15 10:07:33 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.9 2006/03/13 09:11:47 gfiorent Exp $ 
 #
 # File:           Makefile.am
 #
-# Author(s):      Francesco Prelz ($Author: mezzadri $)
+# Author(s):      Francesco Prelz ($Author: gfiorent $)
 #        e-mail: "Francesco.Prelz@mi.infn.it"
 #
 # Revision history:
@@ -20,7 +20,7 @@ SUBDIRS = scripts
 
 bin_PROGRAMS = blahpd blahpd_daemon BPRclient BPRserver BLClient BLParserLSF BLParserPBS BAParser BAClient
 
-common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_c_helper.C mtsafe_popen.c
+common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C mtsafe_popen.c
 
 blahpd_SOURCES = main.c $(common_sources)
 
@@ -62,7 +62,7 @@ BAClient_SOURCES = BAClient.c BPRcomm.c tokens.c BLhelper.c
 BAClient_LDADD = \
 $(GLOBUS_GSS_NOTHR_LIBS) $(GLOBUS_SSL_NOTHR_LIBS)
 
-noinst_HEADERS = blahpd.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h mtsafe_popen.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h BAParser.h
+noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h mtsafe_popen.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h BAParser.h
 
 #bin_SCRIPTS = pbs_cancel.sh pbs_status.sh pbs_submit.sh lsf_cancel.sh lsf_status.sh lsf_submit.sh
 
