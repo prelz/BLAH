@@ -387,7 +387,7 @@ cmd_set_glexec_dn(void *args)
 	char *cmdstr = NULL;
 	char *proxynameNew = NULL;
 	
-	if((!stat(ssl_client_cert, &buf))&&(!stat(ssl_client_cert, &buf)))
+	if((!stat(proxt4, &buf))&&(!stat(ssl_client_cert, &buf)))
         {
                 res = setenv("GLEXEC_MODE","lcmaps_get_account",1);
                 if (res)
