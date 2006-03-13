@@ -304,11 +304,17 @@ if [ ! -z $req_file ] ; then
         source $req_file
 fi
 datenow=`date +%Y%m%d`
-jobIDtmp=`${binpath}qsub $curdir/$tmp_file` # actual submission
+jobIDtmp=`${binpath}qsub $curdir/$tmp_file 2 > /dev/null` # actual submission
 retcode=$?
 if [ ! -z $req_file ] ; then
         rm $req_file
 fi
+if [ "$retcode" == "0" ] ; then
+	rm $curdir/$tmp_file
+	exit 1
+fi
+
+
 
 jobID=`echo $jobIDtmp|awk -F"." '{ print $1 }'`
 
