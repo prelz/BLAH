@@ -1619,7 +1619,7 @@ limit_proxy(char* proxyname)
 	return res;
 }
 
-//new
+
 int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char* userDN)
 {
         int i=0, rc=0, cs=0, result=0, fd = -1, count = 0, slen = 0, slen2 = 0;
@@ -1632,7 +1632,7 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
         char *ce_id=NULL;
         char *login=NULL;
         char *temp_str=NULL;
-        char date_str[MAX_TEMP_ARRAY_SIZE], jobid_trunc[MAX_TEMP_ARRAY_SIZE], server_lrms_trunc[MAX_LRMS_NAME_SIZE];
+        char date_str[MAX_TEMP_ARRAY_SIZE], jobid_trunc[MAX_TEMP_ARRAY_SIZE];
         struct flock fl;
         char *AccInfoLogFile=NULL;
         char *AccInfoLogFileDated=NULL;
@@ -1648,7 +1648,6 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
 	char bs[4];
 	char *queue=NULL;
         memset(jobid_trunc,0,MAX_TEMP_ARRAY_SIZE);
-        memset(server_lrms_trunc,0,MAX_TEMP_ARRAY_SIZE);
 
         /* Get values from environment and compose the logfile pathname */
         if ((glite_loc = getenv("GLITE_LOCATION")) == NULL)
@@ -1751,8 +1750,7 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
 	}
 
         /* log line with in addiction unixuser */
-        if (fqan==NULL) fqan=make_message("");
-        log_line=make_message("\"timestamp=%s\" \"userDN=%s\" \"userFQAN=%s\" \"ceID=%s\" \"jobID=%s\" \"lrmsID=%s\" \"unixuser=%d\"\n",
+        log_line=make_message("\"timestamp=%s\" \"userDN=%s\" %s \"ceID=%s\" \"jobID=%s\" \"lrmsID=%s\" \"unixuser=%d\"\n",
         date_str, userDN, fqan, ce_id, gridjobid, lrms_jobid, getuid());
 
         cs = fwrite(log_line ,1, strlen(log_line), log_file);
@@ -1764,7 +1762,6 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
         free(log_line);
         free(AccInfoLogFile);
         free(AccInfoLogFileDated);
-        if (!strcmp(fqan," ")) free (fqan);
         if (!strcmp(ce_id," ")) free(ce_id);
         free(jobid);
         free(lrms_jobid);
@@ -1774,21 +1771,17 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
 int getProxyInfo(char* proxname, char* fqan, char* userDN)
 {
         /* command : openssl x509 -in proxname -subject -noout */
-        char *temp_str=NULL;
+        char temp_str[MAX_TEMP_ARRAY_SIZE];
         FILE *cmd_out=NULL;
         int  result=0;
         int  slen=0,slenE=0,slenW=0;
         int  count=0;
         char fqanlong[MAX_TEMP_ARRAY_SIZE];
-        temp_str=make_message("openssl x509 -in %s  -subject -noout", proxname);
+        sprintf(temp_str,"openssl x509 -in %s  -subject -noout", proxname);
         if ((cmd_out=mtsafe_popen(temp_str, "r")) == NULL)
-        {
-                if(temp_str) free(temp_str);
                 return 1;
-        }
         result = fgets(fqanlong, MAX_TEMP_ARRAY_SIZE, cmd_out);
         result = mtsafe_pclose(cmd_out);
-        free(temp_str);
         /* example:
            subject= /C=IT/O=INFN/OU=Personal Certificate/L=Milano/CN=Francesco Prelz/Email=francesco.prelz@mi.infn.it/CN=proxy
            CN=proxy, CN=limited must be elimnated from the bottom of the string
@@ -1814,27 +1807,27 @@ int getProxyInfo(char* proxname, char* fqan, char* userDN)
           /* user'sFQAN detection */
           fqanlong[0]=0;
           /* command : voms-proxy-info -file proxname -fqan  */
-	  temp_str=make_message("voms-proxy-info -file %s -fqan 2> /dev/null", proxname);
+	  memset(temp_str,0,MAX_TEMP_ARRAY_SIZE);
+	  sprintf(temp_str,"voms-proxy-info -file %s -fqan 2> /dev/null", proxname);
+	  //test:sprintf(temp_str,"for i in `seq 1 10` ; do echo VONR$i ; done");
           if ((cmd_out=mtsafe_popen(temp_str, "r")) == NULL)
-          {
-                if(temp_str) free(temp_str);
                 return 1;
-          }
           slenE=strlen("ERROR");
           slenW=strlen("WARNING");
-          while(fgets(fqanlong, MAX_CONF_FILE_SIZE, cmd_out))
+          while(fgets(fqanlong, MAX_TEMP_ARRAY_SIZE, cmd_out))
           {
                 if(strncmp(fqanlong,"WARNING",slenW)&&strncmp(fqanlong,"ERROR",slenE))
                 {
-                        strcat(fqan,"userFQAN");
-                        strcat(fqan,fqanlong);
-                        if(temp_str) free(temp_str);
+			strcat(fqan,"\"userFQAN=");
+			strcat(fqan,fqanlong);
+			if(fqan[strlen(fqan)-1]=='\n') fqan[strlen(fqan)-1] = 0;
+			strcat(fqan,"\" ");
                 }
           }
-
-         result = mtsafe_pclose(cmd_out);
-         free(temp_str);
-         return 0;
+	 if (!strcmp(fqan,"")) sprintf(fqan,"\"userFQAN=\"");
+	 if(fqan[strlen(fqan)-1]==' ') fqan[strlen(fqan)-1]=0;	
+	 result = mtsafe_pclose(cmd_out);
+	 return 0;
 }
 
 int CEReq_parse(classad_context cad, char* filename)
