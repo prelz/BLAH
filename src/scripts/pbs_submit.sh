@@ -296,7 +296,7 @@ fi
 if [ $? -ne 0 ]; then
     echo "Failed to CD to Initial Working Directory." >&2
     echo Error # for the sake of waiting fgets in blahpd
-    rm $curdir/$tmp_file
+    rm -f $curdir/$tmp_file
     exit 1
 fi
 
@@ -307,10 +307,10 @@ datenow=`date +%Y%m%d`
 jobIDtmp=`${binpath}qsub $curdir/$tmp_file 2> /dev/null` # actual submission
 retcode=$?
 if [ ! -z $req_file ] ; then
-        rm $req_file
+        rm -f $req_file
 fi
 if [ "$retcode" != "0" ] ; then
-	rm $curdir/$tmp_file
+	rm -f $curdir/$tmp_file
 	exit 1
 fi
 
@@ -350,7 +350,7 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
   ${binpath}qdel $jobID
   echo "Error: not able to talk with logparser on ${BLPserver}:${BLPport}" >&2
   echo Error # for the sake of waiting fgets in blahpd
-  rm $curdir/$tmp_file
+  rm -f $curdir/$tmp_file
   exit 1
  fi
 
@@ -366,7 +366,7 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
      ${binpath}qdel $jobID
      echo "Error: job not found in logs" >&2
      echo Error # for the sake of waiting fgets in blahpd
-     rm $curdir/$tmp_file
+     rm -f $curdir/$tmp_file
      exit 1
  fi
  
@@ -389,7 +389,7 @@ echo "BLAHP_JOBID_PREFIXpbs/`basename $logfile`/$jobID"
 
 # Clean temporary files
 cd $curdir
-rm $tmp_file
+rm -f $tmp_file
 
 # Create a softlink to proxy file for proxy renewal
 if [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] ; then

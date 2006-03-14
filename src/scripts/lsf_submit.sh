@@ -286,7 +286,7 @@ fi
 jobID=`${binpath}bsub < $curdir/$tmp_file | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"` # actual submission
 retcode=$?
 if [ ! -z $req_file ] ; then
-        rm $req_file
+        rm -f $req_file
 fi
 # Don't trust bsub retcode, it could have crashed
 # between submission and id output, and we would
@@ -316,7 +316,7 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
    ${binpath}bkill $jobID
    echo "Error: not able to talk with logparser on ${BLPserver}:${BLPport}" >&2
    echo Error # for the sake of waiting fgets in blahpd
-   rm $curdir/$tmp_file
+   rm -f $curdir/$tmp_file
    exit 1
  fi
 
@@ -331,7 +331,7 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
      ${binpath}bkill $jobID
      echo "Error: job not found in logs" >&2
      echo Error # for the sake of waiting fgets in blahpd
-     rm $curdir/$tmp_file
+     rm -f $curdir/$tmp_file
      exit 1
  fi
 
@@ -354,7 +354,7 @@ echo "BLAHP_JOBID_PREFIXlsf/${datenow}/$jobID"
 
 # Clean temporary files
 cd $curdir
-rm $tmp_file
+rm -f $tmp_file
 
 # Create a softlink to proxy file for proxy renewal
 if [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] ; then
