@@ -309,7 +309,7 @@ retcode=$?
 if [ ! -z $req_file ] ; then
         rm $req_file
 fi
-if [ "$retcode" == "0" ] ; then
+if [ "$retcode" != "0" ] ; then
 	rm $curdir/$tmp_file
 	exit 1
 fi
