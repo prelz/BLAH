@@ -656,7 +656,7 @@ cmd_submit_job(void *args)
 	if ((retcod != 0)||(res != 0))
 	{
 		/* PUSH A FAILURE */
-		resultLine = make_message("%s 2 Submit\\ command\\ didn't\\ return\\ jobId\\ (exit code = %d) N/A", reqId, WEXITSTATUS(retcod));
+		resultLine = make_message("%s 2 Submit\\ command\\ didn't\\ return\\ jobId\\ (exit\\ code\\ =\\ %d) N/A", reqId, WEXITSTATUS(retcod));
 		goto cleanup_command;
 	}
 	
