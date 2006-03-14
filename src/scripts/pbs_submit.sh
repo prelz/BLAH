@@ -304,7 +304,7 @@ if [ ! -z $req_file ] ; then
         source $req_file
 fi
 datenow=`date +%Y%m%d`
-jobIDtmp=`${binpath}qsub $curdir/$tmp_file 2 > /dev/null` # actual submission
+jobIDtmp=`${binpath}qsub $curdir/$tmp_file 2> /dev/null` # actual submission
 retcode=$?
 if [ ! -z $req_file ] ; then
         rm $req_file
