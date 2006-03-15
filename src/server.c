@@ -1127,10 +1127,10 @@ hold_resume(void* args, int action )
         char errstr[MAX_JOB_NUMBER][ERROR_MAX_LEN];
         char *resultLine = NULL;
         int jobStatus, retcode;
-        char *reqId = NULL;
+        char *reqId = argv[1];
         char jobdescr[MAX_JOB_NUMBER][JOBID_MAX_LEN];
         int i,job_number;
-        char *dummyargv = strdup(argv[2]);
+        char *dummyargv = argv[2];
         char *tmpjobdescr=NULL;
 
         /* job status check */

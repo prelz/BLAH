@@ -221,7 +221,6 @@ END {
 	if [ "x$usedBLParser" == "xyes" ] ; then
 
     		pr_removal=`echo $result | sed -e 's/^.*\///'`
-    		echo $result
 		result=`echo $result | sed 's/\/.*//'`
     		echo "0"$result
 		if [ "x$pr_removal" == "xYes" ] ; then
