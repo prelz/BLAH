@@ -1758,6 +1758,7 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
         /* release the lock */
         result = fcntl( fd, F_SETLK, &fl);
         fclose(log_file);
+	chmod(AccInfoLogFileDated, S_IRUSR|S_IROTH|S_IRGRP|S_IWOTH|S_IWGRP|S_IWUSR);
         if(gridjobid) free(gridjobid);
         free(log_line);
         free(AccInfoLogFile);
@@ -1777,6 +1778,7 @@ int getProxyInfo(char* proxname, char* fqan, char* userDN)
         int  slen=0,slenE=0,slenW=0;
         int  count=0;
         char fqanlong[MAX_TEMP_ARRAY_SIZE];
+	if(glexec_mode) proxname=bssp;
         sprintf(temp_str,"openssl x509 -in %s  -subject -noout", proxname);
         if ((cmd_out=mtsafe_popen(temp_str, "r")) == NULL)
                 return 1;
@@ -1794,10 +1796,10 @@ int getProxyInfo(char* proxname, char* fqan, char* userDN)
                       memset(&fqanlong[slen - 10],0,9);
                       slen -=9;
                 }else
-                if (!strncmp(&fqanlong[slen - 12],"/CN=limited",11))
+                if (!strncmp(&fqanlong[slen - 18],"/CN=limited proxy",17))
                 {
-                      memset(&fqanlong[slen - 12],0,11);
-                      slen -=11;
+                      memset(&fqanlong[slen - 18],0,17);
+                      slen -=17;
                 }else
                           break;
           }

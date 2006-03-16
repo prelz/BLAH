@@ -283,11 +283,16 @@ fi
 if [ ! -z $req_file ] ; then
         source $req_file
 fi
-jobID=`${binpath}bsub < $curdir/$tmp_file | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"` # actual submission
+jobID=`${binpath}bsub < $curdir/$tmp_file 2> /dev/null | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"` # actual submission
 retcode=$?
 if [ ! -z $req_file ] ; then
         rm -f $req_file
 fi
+if [ "$retcode" != "0" ] ; then
+        rm -f $tmp_file
+        exit 1
+fi
+
 # Don't trust bsub retcode, it could have crashed
 # between submission and id output, and we would
 # loose track of the job
