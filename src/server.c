@@ -626,6 +626,18 @@ cmd_submit_job(void *args)
 		resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
 		goto cleanup_command;
 	}
+        /* DGAS accounting */
+        if(proxyname)
+        {
+                if(getProxyInfo(proxyname, fqan, userDN))
+                {
+                        /* PUSH A FAILURE */
+                        resultLine = make_message("%s 1 Credentials\\ not\\ valid N/A", reqId);
+                        goto cleanup_command;
+                }
+                if(userDN) enable_log=1;
+                free(proxyname);
+        }
 
 	/* Execute the submission command */
 	/* fprintf(stderr, "DEBUG: submission cmd = '%s'\n", command); */
@@ -664,7 +676,7 @@ cmd_submit_job(void *args)
  	
 	/* PUSH A SUCCESS */
 	resultLine = make_message("%s 0 No\\ error %s", reqId, jobId + JOBID_PREFIX_LEN);
-        
+#if 0        
 	/* DGAS accounting */
         if(proxyname)
         {
@@ -677,9 +689,9 @@ cmd_submit_job(void *args)
                 if(userDN) enable_log=1;
                 free(proxyname);
         }
+#endif
         if(enable_log)
-                logAccInfo(jobId, server_lrms, cad, fqan, userDN);
-        
+                logAccInfo(jobId, server_lrms, cad, fqan, userDN);        
 
 	/* Free up all arguments and exit (exit point in case of error is the label
            pointing to last successfully allocated variable) */
@@ -957,8 +969,8 @@ cmd_renew_proxy(void *args)
 						}
 						
 						if(command) { free(command); command=NULL;}
-						command = make_message("export LD_LIBRARY_PATH=%s/lib; %s/BPRclient %s %s %s &>2 /dev/null",
-				                        getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus",
+						command = make_message("export LD_LIBRARY_PATH=%s/lib; %s %s/BPRclient %s %s %s &>2 /dev/null",
+				                        getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus", gloc,
 				                        blah_script_location, proxyFileNameNew, jobDescr, workernode);
 						free(workernode);
 						workernode=NULL;
@@ -1647,6 +1659,7 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
         int id;
 	char bs[4];
 	char *queue=NULL;
+	char uid[MAX_TEMP_ARRAY_SIZE];
         memset(jobid_trunc,0,MAX_TEMP_ARRAY_SIZE);
 
         /* Get values from environment and compose the logfile pathname */
@@ -1749,9 +1762,22 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
 			ce_id=make_message("%s:2119/blah-%s-",host_name,bs);
 	}
 
+#if 0
+	if(glexec_mode)
+	{
+	 	/* need to fork and glexec an id command to obtain real user */
+		temp_str=make_message("%s id -u",gloc);
+        	if ((cmd_out=mtsafe_popen(temp_str, "r")) == NULL)
+                	return 1;
+        	fgets(uid, MAX_TEMP_ARRAY_SIZE, cmd_out);
+        	mtsafe_pclose(cmd_out);
+		free(temp_str);	
+	}else
+#endif	
+	sprintf(uid,"%d",getuid());
         /* log line with in addiction unixuser */
-        log_line=make_message("\"timestamp=%s\" \"userDN=%s\" %s \"ceID=%s\" \"jobID=%s\" \"lrmsID=%s\" \"unixuser=%d\"\n",
-        date_str, userDN, fqan, ce_id, gridjobid, lrms_jobid, getuid());
+        log_line=make_message("\"timestamp=%s\" \"userDN=%s\" %s \"ceID=%s\" \"jobID=%s\" \"lrmsID=%s\" \"localUser=%s\"\n",
+        date_str, userDN, fqan, ce_id, gridjobid, lrms_jobid, uid);
 
         cs = fwrite(log_line ,1, strlen(log_line), log_file);
         fl.l_type = F_UNLCK;
