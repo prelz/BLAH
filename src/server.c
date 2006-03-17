@@ -593,7 +593,7 @@ cmd_submit_job(void *args)
                 req_file = make_message("./ce-req-file-%d%d", ts.tv_sec, ts.tv_usec);
                 if(!CEReq_parse(cad,req_file))
                 {
-                        command_ext = make_message("%s -C %s", command, cad,req_file);
+                        command_ext = make_message("%s -C %s", command, req_file);
                         if (command_ext == NULL)
                         {
                                 /* PUSH A FAILURE */
@@ -676,20 +676,8 @@ cmd_submit_job(void *args)
  	
 	/* PUSH A SUCCESS */
 	resultLine = make_message("%s 0 No\\ error %s", reqId, jobId + JOBID_PREFIX_LEN);
-#if 0        
+	
 	/* DGAS accounting */
-        if(proxyname)
-        {
-                if(getProxyInfo(proxyname, fqan, userDN))
-                {
-                        /* PUSH A FAILURE */
-                        resultLine = make_message("%s 1 Credentials\\ not\\ valid N/A", reqId);
-                        goto cleanup_command;
-                }
-                if(userDN) enable_log=1;
-                free(proxyname);
-        }
-#endif
         if(enable_log)
                 logAccInfo(jobId, server_lrms, cad, fqan, userDN);        
 
@@ -883,22 +871,24 @@ cmd_renew_proxy(void *args)
 	char *workernode;
 	char *command;
 	char *server_lrms;
-	char *esc_strerr;
-	char *proxy_link;
+	char *proxy_link=NULL;
 	char old_proxy[FILENAME_MAX];
+	char real_home[MAX_TEMP_ARRAY_SIZE];
+	char *temp_str=NULL;
+	char *res_str=NULL;
 	int jobStatus, retcod, result;
 	FILE *dummy;
 	char error_message[ERROR_MAX_LEN];
 	char *error_string;
-	char *proxyFileNameNew;
+	char proxyFileNameNew[MAX_TEMP_ARRAY_SIZE];
 	int  job_number;
 
 	retcod = get_status(jobDescr, status_ad, errstr, 1, &job_number);
 	if(!glexec_mode)
 	{
-		proxyFileNameNew = make_message("%s.lmt",proxyFileName);
+		sprintf(proxyFileNameNew, "%s.lmt",proxyFileName);
 	}else
-		proxyFileNameNew = strdup(proxyFileName);
+		sprintf(proxyFileNameNew, "%s",proxyFileName);
 	if (!strcmp(errstr[0],"No Error"))
 	{
 			esc_errstr = escape_spaces(errstr[0]);
@@ -908,19 +898,58 @@ cmd_renew_proxy(void *args)
 			{
 				case 1: /* job queued */
 					/* copy the proxy locally */
-					proxy_link = make_message("%s/.blah_jobproxy_dir/%s.proxy", getenv("HOME"), jobDescr);
-					if ((result = readlink(proxy_link, old_proxy, sizeof(old_proxy) - 1)) == -1)
+					if(!glexec_mode)
 					{
-						esc_strerr = escape_spaces(strerror(errno));
-						resultLine = make_message("%s 1 Error\\ locating\\ original\\ proxy: %s", reqId, esc_strerr);
-						free(esc_strerr);
+						proxy_link = make_message("%s/.blah_jobproxy_dir/%s.proxy", getenv("HOME"), jobDescr);
+						result = readlink(proxy_link, old_proxy, sizeof(old_proxy) - 1);
 					}
 					else
 					{
-						old_proxy[result] = '\0'; /* readlink doesn't append the NULL char */
+						/* /bin/echo */
+                				temp_str=make_message("%s /bin/echo $HOME", gloc);
+                				if ((dummy=mtsafe_popen(temp_str, "r")) == NULL)
+						{
+                                                	resultLine = make_message("%s 1 Error\\ reading\\ proxy\\ %s", reqId, proxyFileName);
+                                                        free(temp_str);
+                                                        break;
+						}
+                				res_str=fgets(real_home, MAX_TEMP_ARRAY_SIZE, dummy);
+                				mtsafe_pclose(dummy);
+						dummy=NULL;
+                				free(temp_str);
+                				real_home[strlen(real_home)-1] = 0;
+						if(res_str)
+						{
+							res_str=NULL;
+							proxy_link = make_message("%s/.blah_jobproxy_dir/%s.proxy", real_home, jobDescr);
+                                                	/* /usr/bin/readlink  */
+                                               		temp_str=make_message("%s /usr/bin/readlink %s", gloc, proxy_link);
+                                                	if ((dummy=mtsafe_popen(temp_str, "r")) == NULL)
+                                                	{
+                                                        	resultLine = make_message("%s 1 Error\\ reading\\ proxy\\ link %s", reqId, proxy_link);
+                                                        	free(temp_str);
+                                                        	break;
+                                                	}
+                                                	res_str=fgets(old_proxy,FILENAME_MAX, dummy);
+                                                	mtsafe_pclose(dummy);
+                                                	dummy=NULL;
+                                                	free(temp_str);
+							if(old_proxy[0]==0) result=-1;
+							else
+							{
+                                                		old_proxy[strlen(old_proxy)-1] = 0;
+								result=0;
+							}
+						}
+					}
+					
+					if (result == -1)
+						resultLine = make_message("%s 1 Error\\ locating\\ original\\ proxy", reqId);
+					else
+					{
+						old_proxy[strlen(old_proxy)] = '\0'; /* readlink doesn't append the NULL char */
 						if (strcmp(proxyFileNameNew, old_proxy) != 0) /* If Condor didn't change the old proxy file already */
 						{
-							
                                                         if(!glexec_mode)
                                                         {
 								//if (rename(proxyFileName, old_proxy) == 0) /* FIXME with a safe portable rotation */
@@ -929,14 +958,12 @@ cmd_renew_proxy(void *args)
 								if((dummy = mtsafe_popen(command, "r")) == NULL)
 								{
                                                                 	resultLine = make_message("%s 1 Error\\ reading\\ proxy\\ %s", reqId, proxyFileName);
-									free(proxyFileNameNew);
                                                                 	free(command);
 									command=NULL;
 									break;
 								}	
 								limit_proxy(proxyFileNameNew);
 							}
-							free(proxyFileNameNew);proxyFileNameNew=NULL;
 							if(command) free(command);
 							resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
 						}
@@ -945,21 +972,19 @@ cmd_renew_proxy(void *args)
 							resultLine = make_message("%s 0 Proxy\\ renewed\\ (in\\ place\\ -\\ job\\ pending)", reqId);
 						}
 					}
-					free (proxy_link);
+					if(proxy_link) free(proxy_link);
 					break;
 				case 2: /* job running */
 					/* send the proxy to remote host */
 					if (((result = classad_get_dstring_attribute(status_ad[0], "WorkerNode", &workernode)) == C_CLASSAD_NO_ERROR)&&(strcmp(workernode,"")))
 					{
-						
                                                 if(!glexec_mode)
                                                 {
 							/* proxy must be limited */
-        						command = make_message("cp %s %s &>2 /dev/null",proxyFileName, proxyFileNameNew);
+        						command = make_message("%s cp %s %s &>2 /dev/null",gloc, proxyFileName, proxyFileNameNew);
 							if((dummy = mtsafe_popen(command, "r")) == NULL)
                                                 	{
                                                 		resultLine = make_message("%s 1 Error\\ reading\\ proxy\\ %s", reqId, proxyFileName);
-                                                		free(proxyFileNameNew);
                                                 		free(command);
 								command=NULL;
                                                 		break;
@@ -968,13 +993,11 @@ cmd_renew_proxy(void *args)
 							limit_proxy(proxyFileNameNew);
 						}
 						
-						if(command) { free(command); command=NULL;}
+						if(command) free(command);
 						command = make_message("export LD_LIBRARY_PATH=%s/lib; %s %s/BPRclient %s %s %s &>2 /dev/null",
 				                        getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus", gloc,
 				                        blah_script_location, proxyFileNameNew, jobDescr, workernode);
 						free(workernode);
-						workernode=NULL;
-						free(proxyFileNameNew);proxyFileNameNew=NULL;
 						/* Execute the command */
 						/* fprintf(stderr, "DEBUG: executing %s\n", command); */
 						if((dummy = mtsafe_popen(command, "r")) == NULL)
@@ -1016,10 +1039,8 @@ cmd_renew_proxy(void *args)
 					resultLine = make_message("%s 1 Wrong\\ state\\ (%d)", reqId, jobStatus);
 			}
 		}else
-		{
-			//resultLine = make_message("%s %d %s", reqId, retcod, esc_errstr);
 			resultLine = make_message("%s %d %s", reqId, 1, escape_spaces(errstr[0]));
-		}
+		
 		if (resultLine)
 		{
 			enqueue_result(resultLine);
@@ -1034,8 +1055,6 @@ cmd_renew_proxy(void *args)
 	/* Free up all arguments */
 	classad_free(status_ad[0]);
 	free_args(argv);
-	if(proxyFileNameNew) free(proxyFileNameNew);
-	if(command) free(command);
 	return;
 }
 
@@ -1761,20 +1780,18 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
 		}else
 			ce_id=make_message("%s:2119/blah-%s-",host_name,bs);
 	}
-
-#if 0
 	if(glexec_mode)
 	{
 	 	/* need to fork and glexec an id command to obtain real user */
-		temp_str=make_message("%s id -u",gloc);
+		temp_str=make_message("%s /usr/bin/id -u",gloc);
         	if ((cmd_out=mtsafe_popen(temp_str, "r")) == NULL)
                 	return 1;
         	fgets(uid, MAX_TEMP_ARRAY_SIZE, cmd_out);
         	mtsafe_pclose(cmd_out);
-		free(temp_str);	
+		free(temp_str);
+		uid[strlen(uid)-1]=0;	
 	}else
-#endif	
-	sprintf(uid,"%d",getuid());
+		sprintf(uid,"%d",getuid());
         /* log line with in addiction unixuser */
         log_line=make_message("\"timestamp=%s\" \"userDN=%s\" %s \"ceID=%s\" \"jobID=%s\" \"lrmsID=%s\" \"localUser=%s\"\n",
         date_str, userDN, fqan, ce_id, gridjobid, lrms_jobid, uid);
