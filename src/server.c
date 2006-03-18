@@ -870,12 +870,13 @@ cmd_renew_proxy(void *args)
 	char *proxyFileName = argv[3];
 	char *workernode;
 	char *command;
-	char *server_lrms;
 	char *proxy_link=NULL;
-	char old_proxy[FILENAME_MAX];
+	//char old_proxy[FILENAME_MAX];
+	char old_proxy[MAX_TEMP_ARRAY_SIZE];
 	char real_home[MAX_TEMP_ARRAY_SIZE];
 	char *temp_str=NULL;
 	char *res_str=NULL;
+	
 	int jobStatus, retcod, result;
 	FILE *dummy;
 	char error_message[ERROR_MAX_LEN];
@@ -883,7 +884,7 @@ cmd_renew_proxy(void *args)
 	char proxyFileNameNew[MAX_TEMP_ARRAY_SIZE];
 	int  job_number;
 
-	retcod = get_status(jobDescr, status_ad, errstr, 1, &job_number);
+	retcod = get_status(jobDescr, status_ad, errstr, 0, &job_number);
 	if(!glexec_mode)
 	{
 		sprintf(proxyFileNameNew, "%s.lmt",proxyFileName);
@@ -905,19 +906,19 @@ cmd_renew_proxy(void *args)
 					}
 					else
 					{
-						/* /bin/echo */
-                				temp_str=make_message("%s /bin/echo $HOME", gloc);
-                				if ((dummy=mtsafe_popen(temp_str, "r")) == NULL)
-						{
-                                                	resultLine = make_message("%s 1 Error\\ reading\\ proxy\\ %s", reqId, proxyFileName);
-                                                        free(temp_str);
-                                                        break;
-						}
-                				res_str=fgets(real_home, MAX_TEMP_ARRAY_SIZE, dummy);
-                				mtsafe_pclose(dummy);
-						dummy=NULL;
-                				free(temp_str);
-                				real_home[strlen(real_home)-1] = 0;
+							/* /bin/echo */
+                					temp_str=make_message("%s /bin/pwd", gloc);
+                					if ((dummy=mtsafe_popen(temp_str, "r")) == NULL)
+							{
+                                                		resultLine = make_message("%s 1 Error\\ reading\\ proxy\\ %s", reqId, proxyFileName);
+                                                        	free(temp_str);
+                                                        	break;
+							}
+                					res_str=fgets(real_home, MAX_TEMP_ARRAY_SIZE, dummy);
+                					mtsafe_pclose(dummy);
+							dummy=NULL;
+                					free(temp_str);
+                					real_home[strlen(real_home)-1] = 0;
 						if(res_str)
 						{
 							res_str=NULL;
@@ -930,8 +931,9 @@ cmd_renew_proxy(void *args)
                                                         	free(temp_str);
                                                         	break;
                                                 	}
-                                                	res_str=fgets(old_proxy,FILENAME_MAX, dummy);
-                                                	mtsafe_pclose(dummy);
+                                                	//res_str=fgets(old_proxy,FILENAME_MAX, dummy);
+                                                	res_str=fgets(old_proxy,MAX_TEMP_ARRAY_SIZE, dummy);
+							mtsafe_pclose(dummy);
                                                 	dummy=NULL;
                                                 	free(temp_str);
 							if(old_proxy[0]==0) result=-1;
@@ -981,7 +983,7 @@ cmd_renew_proxy(void *args)
                                                 if(!glexec_mode)
                                                 {
 							/* proxy must be limited */
-        						command = make_message("%s cp %s %s &>2 /dev/null",gloc, proxyFileName, proxyFileNameNew);
+        						command = make_message("cp %s %s &>2 /dev/null",proxyFileName, proxyFileNameNew);
 							if((dummy = mtsafe_popen(command, "r")) == NULL)
                                                 	{
                                                 		resultLine = make_message("%s 1 Error\\ reading\\ proxy\\ %s", reqId, proxyFileName);
@@ -995,7 +997,7 @@ cmd_renew_proxy(void *args)
 						
 						if(command) free(command);
 						command = make_message("export LD_LIBRARY_PATH=%s/lib; %s %s/BPRclient %s %s %s &>2 /dev/null",
-				                        getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus", gloc,
+				                        getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus", glexec_mode ? gloc : " ",
 				                        blah_script_location, proxyFileNameNew, jobDescr, workernode);
 						free(workernode);
 						/* Execute the command */
