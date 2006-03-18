@@ -77,7 +77,7 @@ BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 # Parse parameters
 ###############################################################
 
-while getopts "i:o:e:c:s:v:dw:q:n:rp:l:x:j:C" arg 
+while getopts "i:o:e:c:s:v:dw:q:n:rp:l:x:j:C:" arg 
 do
     case "$arg" in
     i) stdin="$OPTARG" ;;
@@ -155,6 +155,16 @@ cat > $tmp_file << end_of_preamble
 #BSUB -J $tmp_file
 end_of_preamble
 
+#local batch system-specific file output must be added to the submit file
+if [ ! -z $req_file ] ; then
+    echo \#\!/bin/sh >> temp_req_script_$req_file 
+    cat $req_file >> temp_req_script_$req_file 
+    echo "source ${GLITE_LOCATION:-/opt/glite}/bin/lsf_local_submit_attributes.sh" >> temp_req_script_$req_file 
+    chmod +x temp_req_script_$req_file 
+    ./temp_req_script_$req_file  >> $tmp_file 2> /dev/null
+    rm -f temp_req_script_$req_file 
+    rm -f $req_file
+fi
 
 # Write LSF directives according to command line options
 
@@ -280,14 +290,8 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-if [ ! -z $req_file ] ; then
-        source $req_file
-fi
 jobID=`${binpath}bsub < $curdir/$tmp_file 2> /dev/null | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"` # actual submission
 retcode=$?
-if [ ! -z $req_file ] ; then
-        rm -f $req_file
-fi
 if [ "$retcode" != "0" ] ; then
         rm -f $tmp_file
         exit 1
