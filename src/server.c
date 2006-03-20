@@ -1829,7 +1829,7 @@ int getProxyInfo(char* proxname, char* fqan, char* userDN)
         char temp_str[MAX_TEMP_ARRAY_SIZE];
         FILE *cmd_out=NULL;
         int  result=0;
-        int  slen=0,slenE=0,slenW=0;
+        int  slen=0;
         int  count=0;
         char fqanlong[MAX_TEMP_ARRAY_SIZE];
 	if(glexec_mode) proxname=bssp;
@@ -1867,17 +1867,12 @@ int getProxyInfo(char* proxname, char* fqan, char* userDN)
 	  sprintf(temp_str,"voms-proxy-info -file %s -fqan 2> /dev/null", proxname);
           if ((cmd_out=mtsafe_popen(temp_str, "r")) == NULL)
                 return 1;
-          slenE=strlen("ERROR");
-          slenW=strlen("WARNING");
           while(fgets(fqanlong, MAX_TEMP_ARRAY_SIZE, cmd_out))
           {
-               
-                {
-			strcat(fqan,"\"userFQAN=");
-			strcat(fqan,fqanlong);
-			if(fqan[strlen(fqan)-1]=='\n') fqan[strlen(fqan)-1] = 0;
-			strcat(fqan,"\" ");
-                }
+		strcat(fqan,"\"userFQAN=");
+		strcat(fqan,fqanlong);
+		if(fqan[strlen(fqan)-1]=='\n') fqan[strlen(fqan)-1] = 0;
+		strcat(fqan,"\" ");
           }
 	 if (!strcmp(fqan,"")) sprintf(fqan,"\"userFQAN=\"");
 	 if(fqan[strlen(fqan)-1]==' ') fqan[strlen(fqan)-1]=0;	
