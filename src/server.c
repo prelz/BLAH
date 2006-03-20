@@ -154,7 +154,9 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	char *conffilestr = NULL;
 	char buffer[128];
 	int bc=0;
-
+	char *needed_libs=NULL;
+	char *old_ld_lib=NULL;
+	char *new_ld_lib=NULL;
 	init_resbuffer();
 	if (cli_socket == 0) server_socket = 1;
 	else                 server_socket = cli_socket;
@@ -164,11 +166,18 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	{
 		result = DEFAULT_GLITE_LOCATION;
 	}
+
+	needed_libs = make_message("%s/lib:%s/externals/lib:%s/lib:/opt/lcg/lib", result, result, getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus");
+        old_ld_lib=getenv("LD_LIBRARY_PATH");
+        if(old_ld_lib)
+        {
+        	new_ld_lib =(char*)malloc(strlen(old_ld_lib) + 2 + strlen(needed_libs));
+          	sprintf(new_ld_lib,"%s;%s",old_ld_lib,needed_libs);
+          	setenv("LD_LIBRARY_PATH",new_ld_lib,1);
+        }else
+         	 setenv("LD_LIBRARY_PATH",needed_libs,1);
+	
 	blah_script_location = make_message(BINDIR_LOCATION, result);
-/*	if ((server_lrms = getenv("BLAH_LRMS")) == NULL)
-	{
-		server_lrms = DEFAULT_LRMS;
-	} */
 	blah_version = make_message(RCSID_VERSION, VERSION, "poly");
         if ((gloc=getenv("GLEXEC_COMMAND")) == NULL)
         {
@@ -1856,14 +1865,13 @@ int getProxyInfo(char* proxname, char* fqan, char* userDN)
           /* command : voms-proxy-info -file proxname -fqan  */
 	  memset(temp_str,0,MAX_TEMP_ARRAY_SIZE);
 	  sprintf(temp_str,"voms-proxy-info -file %s -fqan 2> /dev/null", proxname);
-	  //test:sprintf(temp_str,"for i in `seq 1 10` ; do echo VONR$i ; done");
           if ((cmd_out=mtsafe_popen(temp_str, "r")) == NULL)
                 return 1;
           slenE=strlen("ERROR");
           slenW=strlen("WARNING");
           while(fgets(fqanlong, MAX_TEMP_ARRAY_SIZE, cmd_out))
           {
-                if(strncmp(fqanlong,"WARNING",slenW)&&strncmp(fqanlong,"ERROR",slenE))
+               
                 {
 			strcat(fqan,"\"userFQAN=");
 			strcat(fqan,fqanlong);
