@@ -823,7 +823,7 @@ cmd_status_job(void *args)
         int jobStatus, retcode;
         int i, job_number;
 
-        retcode = get_status(jobDescr, status_ad, errstr, 0, &job_number);
+        retcode = get_status(jobDescr, status_ad, errstr, 1, &job_number);
         if (!retcode)
         {
                 for(i = 0;i < job_number; i++)
@@ -878,7 +878,7 @@ cmd_renew_proxy(void *args)
 	char *jobDescr = argv[2];
 	char *proxyFileName = argv[3];
 	char *workernode;
-	char *command;
+	char *command=NULL;
 	char *proxy_link=NULL;
 	//char old_proxy[FILENAME_MAX];
 	char old_proxy[MAX_TEMP_ARRAY_SIZE];
@@ -893,7 +893,7 @@ cmd_renew_proxy(void *args)
 	char proxyFileNameNew[MAX_TEMP_ARRAY_SIZE];
 	int  job_number;
 
-	retcod = get_status(jobDescr, status_ad, errstr, 0, &job_number);
+	retcod = get_status(jobDescr, status_ad, errstr, 1, &job_number);
 	if(!glexec_mode)
 	{
 		sprintf(proxyFileNameNew, "%s.lmt",proxyFileName);
@@ -915,19 +915,20 @@ cmd_renew_proxy(void *args)
 					}
 					else
 					{
-							/* /bin/echo */
-                					temp_str=make_message("%s /bin/pwd", gloc);
-                					if ((dummy=mtsafe_popen(temp_str, "r")) == NULL)
-							{
-                                                		resultLine = make_message("%s 1 Error\\ reading\\ proxy\\ %s", reqId, proxyFileName);
-                                                        	free(temp_str);
-                                                        	break;
-							}
-                					res_str=fgets(real_home, MAX_TEMP_ARRAY_SIZE, dummy);
-                					mtsafe_pclose(dummy);
-							dummy=NULL;
-                					free(temp_str);
-                					real_home[strlen(real_home)-1] = 0;
+						/* /bin/echo */
+                				setenv("GLEXEC_TARGET_PROXY",proxyFileNameNew,1);
+						temp_str=make_message("%s /bin/pwd", gloc);
+                				if ((dummy=mtsafe_popen(temp_str, "r")) == NULL)
+						{
+                                                	resultLine = make_message("%s 1 Error\\ reading\\ proxy\\ %s", reqId, proxyFileName);
+                                                       	free(temp_str);
+                                                       	break;
+						}
+                				res_str=fgets(real_home, MAX_TEMP_ARRAY_SIZE, dummy);
+                				mtsafe_pclose(dummy);
+						dummy=NULL;
+                				if(temp_str) free(temp_str);
+                				real_home[strlen(real_home)-1] = 0;
 						if(res_str)
 						{
 							res_str=NULL;
@@ -940,7 +941,6 @@ cmd_renew_proxy(void *args)
                                                         	free(temp_str);
                                                         	break;
                                                 	}
-                                                	//res_str=fgets(old_proxy,FILENAME_MAX, dummy);
                                                 	res_str=fgets(old_proxy,MAX_TEMP_ARRAY_SIZE, dummy);
 							mtsafe_pclose(dummy);
                                                 	dummy=NULL;
@@ -958,30 +958,31 @@ cmd_renew_proxy(void *args)
 						resultLine = make_message("%s 1 Error\\ locating\\ original\\ proxy", reqId);
 					else
 					{
-						old_proxy[strlen(old_proxy)] = '\0'; /* readlink doesn't append the NULL char */
-						if (strcmp(proxyFileNameNew, old_proxy) != 0) /* If Condor didn't change the old proxy file already */
-						{
-                                                        if(!glexec_mode)
-                                                        {
-								//if (rename(proxyFileName, old_proxy) == 0) /* FIXME with a safe portable rotation */
+                                        	if(!glexec_mode)
+                                                {
 								/* proxy must be copied and (if we are not in glexec_mode) limited */
-        							command = make_message("cp -f %s %s &>2 /dev/null",proxyFileName, old_proxy);
+        							command = make_message("cp -f %s %s &>2 /dev/null;",proxyFileName, old_proxy);
 								if((dummy = mtsafe_popen(command, "r")) == NULL)
 								{
                                                                 	resultLine = make_message("%s 1 Error\\ reading\\ proxy\\ %s", reqId, proxyFileName);
                                                                 	free(command);
-									command=NULL;
 									break;
-								}	
-								limit_proxy(proxyFileNameNew);
-							}
-							if(command) free(command);
-							resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
-						}
-						else
+								}
+								limit_proxy(old_proxy);
+						}else
 						{
-							resultLine = make_message("%s 0 Proxy\\ renewed\\ (in\\ place\\ -\\ job\\ pending)", reqId);
-						}
+						                /* proxy must be copied and (if we are not in glexec_mode) limited */
+                                                                command = make_message("%s cp -f %s %s &>2 /dev/null", gloc, proxyFileName, old_proxy);
+                                                                if((dummy = mtsafe_popen(command, "r")) == NULL)
+                                                                {
+                                                                        resultLine = make_message("%s 1 Error\\ reading\\ proxy\\ %s", reqId, proxyFileName);
+                                                                        free(command);
+                                                                        command=NULL;
+									break;
+                                                                }
+                                                }
+						if(command) free(command);
+						resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
 					}
 					if(proxy_link) free(proxy_link);
 					break;
@@ -1002,10 +1003,12 @@ cmd_renew_proxy(void *args)
                                                 	}else
                                                         mtsafe_pclose(dummy);
 							limit_proxy(proxyFileNameNew);
-						}
+						}else
+							setenv("GLEXEC_TARGET_PROXY",proxyFileNameNew,1);
+						
 						
 						if(command) free(command);
-						command = make_message("export LD_LIBRARY_PATH=%s/lib; %s %s/BPRclient %s %s %s &>2 /dev/null",
+						command = make_message("export LD_LIBRARY_PATH=%s/lib; %s %s/BPRclient %s %s %s &>2 /dev/null;sleep 5",
 				                        getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus", glexec_mode ? gloc : " ",
 				                        blah_script_location, proxyFileNameNew, jobDescr, workernode);
 						free(workernode);
@@ -1064,7 +1067,7 @@ cmd_renew_proxy(void *args)
 		}
 	
 	/* Free up all arguments */
-	classad_free(status_ad[0]);
+	if (status_ad[0]) classad_free(status_ad[0]);
 	free_args(argv);
 	return;
 }
@@ -1760,7 +1763,12 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
          "ceID=<CE ID>" "jobID=<grid job ID>" "lrmsID=<LRMS job ID>"
         */
         /* grid jobID  : if we are here we suppose that the edg_jobid is present, if not we log an empty string*/
-        classad_get_dstring_attribute(cad, "edg_jobid", &gridjobid);
+        if(glexec_mode)
+	{
+		classad_get_dstring_attribute(cad, "edg_jobid", &gridjobid);
+		if(gridjobid==NULL) classad_get_dstring_attribute(cad, "uniquejobid", &gridjobid);
+	}else
+		classad_get_dstring_attribute(cad, "edg_jobid", &gridjobid);
         if(!gridjobid) gridjobid=make_message("");
 
         /* job ID */
@@ -1885,12 +1893,20 @@ int CEReq_parse(classad_context cad, char* filename)
         FILE *req_file=NULL;
         char **reqstr=NULL;
         int cs=0;
+        char *vo=NULL;
         req_file= fopen(filename,"w");
         if(req_file==NULL) return 1;
         /**
         int unwind_attributes(classad_context cad, char *attribute_name, char ***results);
         **/
-
+	classad_get_dstring_attribute(cad, "VirtualOrganisation", &vo);
+	if(vo)
+	{
+		cs = fwrite("VirtualOrganisation=", 1, strlen("VirtualOrganisation="), req_file);
+		cs = fwrite(vo, 1, strlen(vo), req_file);
+                cs = fwrite("\n" ,1, strlen("\n"), req_file);
+        	free(vo);
+	}
         unwind_attributes(cad,"CERequirements",&reqstr);
         while(*reqstr != NULL)
         {
