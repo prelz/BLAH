@@ -333,7 +333,10 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
 
    logfile=`find $logpath/$logfilename* -type f -newer $curdir/$tmp_file -exec grep -lP "\"JOB_NEW\" \"[0-9\.]+\" [0-9]+ $jobID " {} \;`
 
-   jobID_log=`grep \"JOB_NEW\" $logfile | awk -F" " '{ print $4" " $42 }' | grep $tmp_file|awk -F" " '{ print $1 }'`
+   if [ "x$logfile" != "x" ] ; then
+
+     jobID_log=`grep \"JOB_NEW\" $logfile | awk -F" " '{ print $4" " $42 }' | grep $tmp_file|awk -F" " '{ print $1 }'`
+   fi
  fi
  
  if (( log_check_retry_count++ >= 12 )); then

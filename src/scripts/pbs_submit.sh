@@ -362,9 +362,10 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
  if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
 
      logfile=`find $logpath -type f -newer $curdir/$tmp_file -exec grep -l "job name = $tmp_file" {} \;`
+     if [ "x$logfile" != "x" ] ; then
 
-     jobID_log=`grep "job name = $tmp_file" $logfile | awk -F";" '{ print $5 }'`
-
+       jobID_log=`grep "job name = $tmp_file" $logfile | awk -F";" '{ print $5 }'`
+     fi
  fi
 
  if (( log_check_retry_count++ >= 12 )); then
