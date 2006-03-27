@@ -1872,7 +1872,7 @@ int getProxyInfo(char* proxname, char* fqan, char* userDN)
           fqanlong[0]=0;
           /* command : voms-proxy-info -file proxname -fqan  */
 	  memset(temp_str,0,MAX_TEMP_ARRAY_SIZE);
-	  sprintf(temp_str,"voms-proxy-info -file %s -fqan 2> /dev/null", proxname);
+	  sprintf(temp_str,"%s/voms-proxy-info -file %s -fqan 2> /dev/null",  blah_script_location, proxname);
           if ((cmd_out=mtsafe_popen(temp_str, "r")) == NULL)
                 return 1;
           while(fgets(fqanlong, MAX_TEMP_ARRAY_SIZE, cmd_out))
