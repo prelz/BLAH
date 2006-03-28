@@ -424,7 +424,6 @@ cmd_set_glexec_dn(void *args)
 		if(strlen(certbuffer) > 0)
 		{
 			/* save blah_save_source_proxy */
-			bssp = strdup(proxt4);			
 			res = setenv("SSL_CLIENT_CERT",certbuffer,1);
 			/* proxt4 must be limited for subsequent submission */		
                		proxynameNew=make_message("%s.lmt",proxt4);
@@ -441,7 +440,8 @@ cmd_set_glexec_dn(void *args)
 
 
 			limit_proxy(proxynameNew);
-               		bssp = strdup(proxynameNew);
+               		if(bssp) free(bssp);
+			bssp = strdup(proxynameNew);
 			free(cmdstr);
 			free(proxynameNew);
 		}
@@ -916,7 +916,8 @@ cmd_renew_proxy(void *args)
 					else
 					{
 						/* /bin/echo */
-                				setenv("GLEXEC_TARGET_PROXY",proxyFileNameNew,1);
+                				setenv("GLEXEC_SOURCE_PROXY",bssp,1);
+						setenv("GLEXEC_TARGET_PROXY",proxyFileNameNew,1);
 						temp_str=make_message("%s /bin/pwd", gloc);
                 				if ((dummy=mtsafe_popen(temp_str, "r")) == NULL)
 						{
@@ -1004,7 +1005,10 @@ cmd_renew_proxy(void *args)
                                                         mtsafe_pclose(dummy);
 							limit_proxy(proxyFileNameNew);
 						}else
+						{
+							setenv("GLEXEC_SOURCE_PROXY",bssp,1);
 							setenv("GLEXEC_TARGET_PROXY",proxyFileNameNew,1);
+						}
 						
 						
 						if(command) free(command);
