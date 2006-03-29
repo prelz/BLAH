@@ -9,6 +9,7 @@ int main(int argc, char *argv[]) {
     int       list_s;
     int       list_c;
     char     *Cendptr;
+    FILE      *fpt;
 
     pthread_t ReadThd[NUMTHRDS];
     pthread_t UpdateThd;
@@ -45,6 +46,14 @@ int main(int argc, char *argv[]) {
     strcat(eventsfile,lsbevents);
     
     free(ldir);
+
+    /* test if logfile exists and is readable */
+    
+    if((fpt=fopen((char *)eventsfile, "r")) == 0){
+     sysfatal("error opening %s: %r", eventsfile);
+    }else{
+     fclose(fpt);
+    }
     
     /*  Create the listening socket  */
 
@@ -838,6 +847,7 @@ int GetEventsInOldLogs(char *logdate){
 
 char *GetLogDir(int largc, char *largv[]){
 
+ char *lsf_base_pathtmp;
  char *lsf_base_path;
  char conffile[STR_CHARS];
  char lsf_clustername[STR_CHARS];
@@ -929,15 +939,18 @@ char *GetLogDir(int largc, char *largv[]){
 
  maxtok=strtoken(line,'=',tbuf);
  if(tbuf[1]){
-  lsf_base_path=strdup(tbuf[1]);
+  lsf_base_pathtmp=strdup(tbuf[1]);
  } else {
   fprintf(stderr,"%s: Unable to find logdir in conf file.\n",progname);
   exit(EXIT_FAILURE);  
  }
  
- if ((cp = strrchr (lsf_base_path, '\n')) != NULL){
+ if ((cp = strrchr (lsf_base_pathtmp, '\n')) != NULL){
   *cp = '\0';
  }
+ 
+ lsf_base_path=strdel(lsf_base_pathtmp, "\" ");
+ free(lsf_base_pathtmp);
  
  sprintf(command_string,"ls %s/lsid 2>/dev/null",binpath);
  ls_output = popen(command_string,"r");
@@ -1420,6 +1433,27 @@ int strtoken(const char *s, char delim, char **token)
     token[i] = NULL;
     free(tmp);
     return i;
+}
+
+char *strdel(char *s, const char *delete){
+    char *tmp, *cptr, *sptr;
+    
+    if(!delete || !strlen(delete))
+        return s;
+        
+    if(!s || !strlen(s))
+        return s;
+        
+    tmp = strndup(s, STR_CHARS);
+       
+    assert(tmp);
+    
+    for(sptr = tmp; cptr = strpbrk(sptr, delete); sptr = tmp) {
+        *cptr = '\0';
+        strcat(tmp, ++cptr);
+    }
+    
+    return tmp;
 }
 
 char *epoch2str(char *epoch){

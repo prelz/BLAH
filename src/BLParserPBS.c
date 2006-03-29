@@ -22,6 +22,7 @@ int main(int argc, char *argv[]) {
     char *szDebugLevel;
     
     char *espooldir;
+    FILE      *fpt;
 
     pthread_t ReadThd[NUMTHRDS];
     pthread_t UpdateThd;
@@ -88,7 +89,15 @@ int main(int argc, char *argv[]) {
     strcat(eventsfile,ldir);
     strcat(eventsfile,"/");
     strcat(eventsfile,cnow);
+
+    /* test if logfile exists and is readable */
     
+    if((fpt=fopen((char *)eventsfile, "r")) == 0){
+     sysfatal("error opening %s: %r", eventsfile);
+    }else{
+     fclose(fpt);
+    }
+
     /*  Create the listening socket  */
 
     if ( (list_s = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {

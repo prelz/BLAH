@@ -55,6 +55,7 @@ char *GetLogDir(int largc, char *largv[]);
 char *GetLogList(char *logdate);
 int GetEventsInOldLogs(char *logdate);
 int strtoken(const char *s, char delim, char **token);
+char *strdel(char *s, const char *delete);
 int InfoAdd(int id, char *value, const char * flag);
 char *InfoGet(int id, const char * flag);
 int ParseCmdLine(int argc, char *argv[], char **szPort, char **szBinPath, char **szConfPath, char **szCreamPort, char **szDebugLogName, char **szDebugLevel);
