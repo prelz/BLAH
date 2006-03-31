@@ -155,6 +155,10 @@ cat > $tmp_file << end_of_preamble
 #BSUB -J $tmp_file
 end_of_preamble
 
+#set the queue name first, so that the local script is allowed to change it
+#(as per request by CERN LSF admins).
+[ -z "$queue" ]          || echo "#BSUB -q $queue" >> $tmp_file
+
 #local batch system-specific file output must be added to the submit file
 if [ ! -z $req_file ] ; then
     echo \#\!/bin/sh >> temp_req_script_$req_file 
@@ -196,7 +200,6 @@ fi
 # Set the remaining parameters
 [ -z "$proxyrenew" ]     || echo "#BSUB -f \"$proxyrenewald > `basename $proxyrenewald`.$uni_ext\"" >> $tmp_file
 [ "x$stgcmd" != "xyes" ] || echo "#BSUB -f \"$the_command > `basename $the_command`\"" >> $tmp_file
-[ -z "$queue" ]          || echo "#BSUB -q $queue" >> $tmp_file
 [ -z "$mpinodes" ]       || echo "#BSUB -n $mpinodes" >> $tmp_file
 
 # Setup proxy transfer
@@ -209,6 +212,13 @@ if [ "x$stgproxy" == "xyes" ] ; then
         echo "#BSUB -f \"$proxy_local_file > $proxy_unique\"" >> $tmp_file
     fi
 fi
+
+# Accommodate for CERN-specific job subdirectory creation.
+echo "" >> $tmp_file
+echo "# Check whether we need to move to the LSF original CWD:" >> $tmp_file
+echo "if [ -d \"\$CERN_STARTER_ORIGINAL_CWD\" ]; then" >> $tmp_file
+echo "    cd \$CERN_STARTER_ORIGINAL_CWD" >> $tmp_file
+echo "fi" >> $tmp_file
 
 # Set the required environment variables (escape values with double quotes)
 if [ "x$envir" != "x" ] ; then
