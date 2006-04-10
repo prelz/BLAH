@@ -344,7 +344,7 @@ void follow(char *infile, char *line){
         real_off=ftell(fp);
 	
 	if(debug == 2){
-	 fprintf(debuglogfile, "Off:%d Old_off:%d Real_off:%d\n",off,old_off,real_off);
+	 fprintf(debuglogfile, "Off:%ld Old_off:%ld Real_off:%ld\n",off,old_off,real_off);
          fflush(debuglogfile);
         }
 
@@ -462,7 +462,6 @@ int InfoAdd(int id, char *value, const char * flag){
 int AddToStruct(char *line, int flag){
 
  int has_blah=0;
- unsigned h_blahjob;
  
  char *	trex;
  char *	rex;
@@ -1192,7 +1191,6 @@ int NotifyFromDate(char *in_buf){
     char *notstr;
     char *notstrshort;
     char *notdate;
-    char *lnotdate;
     int   notepoch;
     int   logepoch;
 

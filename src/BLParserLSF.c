@@ -1448,7 +1448,7 @@ char *strdel(char *s, const char *delete){
        
     assert(tmp);
     
-    for(sptr = tmp; cptr = strpbrk(sptr, delete); sptr = tmp) {
+    for(sptr = tmp; (cptr = strpbrk(sptr, delete)); sptr = tmp) {
         *cptr = '\0';
         strcat(tmp, ++cptr);
     }
