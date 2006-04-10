@@ -506,7 +506,6 @@ cmd_submit_job(void *args)
 	char *cmdstr = NULL;
 	char *command_ext = NULL;
         char fqan[MAX_TEMP_ARRAY_SIZE], userDN[MAX_TEMP_ARRAY_SIZE];
-	char *cad_fqan=NULL;
 	int count=0;
 	int enable_log=0;
         struct timeval ts;
@@ -709,7 +708,6 @@ cleanup_argv:
         	unsetenv("GLEXEC_TARGET_PROXY");
 	}
 	*/
-        if(cad_fqan) free(cad_fqan);
 	return;
 }
 
