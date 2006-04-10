@@ -18,6 +18,7 @@
 
 #define DEFAULT_POLL_INTERVAL 60
 #define DEFAULT_MIN_PROXY_LIFETIME 180
+#define PROXYTMP "tmp_proxy_XXXXXX"
 
 int
 main(int argc, char **argv)
@@ -45,8 +46,10 @@ main(int argc, char **argv)
 	gss_ctx_id_t	context_handle = GSS_C_NO_CONTEXT;
 	OM_uint32       major_status = 0, minor_status = 0;
 
-	char *proxy_file_name[MAXPATHLEN];
+	char **proxy_file_name;
 	char *proxy_tmp_name = NULL;
+        char *proxy_dir;
+        char *proxy_file_name_copy;
 	       
 	if (globus_gsi_sysconfig_get_proxy_filename_unix(proxy_file_name, GLOBUS_PROXY_FILE_INPUT) != 0)
 	{
@@ -173,7 +176,14 @@ main(int argc, char **argv)
 					fprintf(stderr, "Client name: %s\n", client_name);
 					fprintf(stderr, "Receiving new proxy...\n");
 					receive_string(&message, context_handle, read_socket);
-					proxy_tmp_name = strdup("/tmp/tmp_proxy_XXXXXX");
+					proxy_file_name_copy = strdup(*proxy_file_name);
+					proxy_dir = dirname(proxy_file_name_copy); /* Use a copy as dirname can change the argument */
+					if ((proxy_tmp_name = (char *)malloc(strlen(proxy_dir) + strlen(PROXYTMP) + 2)) == NULL)
+					{
+						fprintf(stderr, "Cannot allocate memory for tempfile name!\n");
+						exit(1);
+					}
+					sprintf(proxy_tmp_name, "%s/%s", proxy_dir, PROXYTMP);
 					proxy_file = mkstemp(proxy_tmp_name);
 					if (proxy_file == -1)
 					{
@@ -183,10 +193,16 @@ main(int argc, char **argv)
 					write(proxy_file, message, strlen(message));
 					close(proxy_file);
 					fprintf(stderr, "Renaming %s to %s\n", proxy_tmp_name, *proxy_file_name);
-					rename(proxy_tmp_name, *proxy_file_name);
+					if (rename(proxy_tmp_name, *proxy_file_name))
+					{
+						perror("Error while renaming");
+						unlink(proxy_tmp_name);
+						exit(1);
+					}
 					gss_release_cred(&major_status, &credential_handle);
 					gss_delete_sec_context(&minor_status, &context_handle, GSS_C_NO_BUFFER);
 					if (message) free (message);
+					free(proxy_file_name_copy);
 					free(proxy_tmp_name);
 					close(read_socket);
 					fprintf(stderr, "New proxy saved.\n");

@@ -229,6 +229,10 @@ int verify_context(gss_ctx_id_t context_handle)
 
 	char	*target_name_str = NULL;
 	char	*src_name_str = NULL;
+        int	DN_cleaned = 0;
+	int	CNoffset, i;
+
+        const char *ignored_CNs[] = {", CN=proxy", ", CN=limited proxy"};
 
 	major_status = gss_inquire_context(
 		&minor_status, /* minor_status */
@@ -277,11 +281,35 @@ int verify_context(gss_ctx_id_t context_handle)
 	major_status = gss_release_name(&minor_status, &target_name);
 	major_status = gss_release_buffer(&minor_status, &name_buffer);
 
-	/* Strip trailing "/CN=proxy" */
-	while (strcmp(src_name_str + strlen(src_name_str) - 9, "/CN=proxy") == 0)
-		src_name_str[strlen(src_name_str) - 9] = '\0';
-	while (strcmp(target_name_str + strlen(target_name_str) - 9, "/CN=proxy") == 0)
-		target_name_str[strlen(target_name_str) - 9] = '\0';
+	/* Strip trailing CNs */
+        while (!DN_cleaned)
+	{
+		DN_cleaned = 1;
+		for (i = 0; i < sizeof(ignored_CNs)/sizeof(char *); i++)
+		{
+			CNoffset = strlen(src_name_str) - strlen(ignored_CNs[i]);
+			if (strcmp(src_name_str + CNoffset, ignored_CNs[i]) == 0)
+			{
+				src_name_str[CNoffset] = '\0';
+				DN_cleaned = 0;
+			}
+		}
+	}
+        DN_cleaned = 0;
+        while (!DN_cleaned)
+	{
+		DN_cleaned = 1;
+		for (i = 0; i < sizeof(ignored_CNs)/sizeof(char *); i++)
+		{
+			CNoffset = strlen(target_name_str) - strlen(ignored_CNs[i]);
+			if (strcmp(target_name_str + CNoffset, ignored_CNs[i]) == 0)
+			{
+				target_name_str[CNoffset] = '\0';
+				DN_cleaned = 0;
+			}
+		}
+	}
+
 
 	fprintf(stderr, "DEBUG Client: %s\nDEBUG Server: %s\n", src_name_str, target_name_str);
 	return (strcmp(src_name_str, target_name_str));
