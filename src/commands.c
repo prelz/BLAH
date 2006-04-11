@@ -9,6 +9,8 @@
 #   23 Apr 2004 - Origina release
 #   07 Feb 2006 - Added correct recipe to unescape special characters
 #                 in commands.
+#   27 Mar 2006 - COMMANDS_NUM definition changed (no need to update
+#                 it manually when adding/removing commands).
 #
 #  Description:
 #   Parse client commands
@@ -29,8 +31,7 @@
 /* Initialise commands array (strict alphabetical order)
  * handler functions prototypes are in commands.h
  * */    
-#define COMMANDS_NUM 15
-command_t commands_array[COMMANDS_NUM] = {
+command_t commands_array[] = {
 	/* cmd string, # of pars, threaded, handler */
 	{ "ASYNC_MODE_OFF",               0, 0, cmd_async_off },
 	{ "ASYNC_MODE_ON",                0, 0, cmd_async_on },
@@ -48,9 +49,14 @@ command_t commands_array[COMMANDS_NUM] = {
 	{ "RESULTS",                      0, 0, cmd_results },
 	{ "VERSION",                      0, 0, cmd_version }
 };
+/* N.B.: KEEP STRICT ALPHABETICAL ORDER WHEN ADDING COMMANDS !!!*/
+
+#define COMMANDS_NUM ( sizeof(commands_array) / sizeof(command_t) )
+
 /* Key comparison function 
  * */
-int cmd_search_array(const void *key, const void *cmd_struct)
+int
+cmd_search_array(const void *key, const void *cmd_struct)
 {
 	return(strcasecmp((char *)key, ((command_t *)cmd_struct)->cmd_name));
 }
