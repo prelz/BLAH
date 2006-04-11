@@ -1831,7 +1831,6 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
         free(AccInfoLogFileDated);
         if (!strcmp(ce_id," ")) free(ce_id);
         memset(fqan,0,MAX_TEMP_ARRAY_SIZE);
-	free(jobid);
         free(lrms_jobid);
         return 0;
 }
