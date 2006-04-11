@@ -1778,9 +1778,9 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
         jobid_trunc[strlen(jobId) - JOBID_PREFIX_LEN]=0;
 
         /* lrmsID */
-        /* No need to add hostname
 	jobid=basename(jobid_trunc);
-        gethostname(host_name, MAX_CONF_FILE_SIZE);
+        /* No need to add hostname
+	gethostname(host_name, MAX_CONF_FILE_SIZE);
         slen=strlen(host_name);
         slen2=strlen(jobid);
         if(!strncmp(&jobid[slen2-slen], host_name, slen)) lrms_jobid=strdup(jobid);
