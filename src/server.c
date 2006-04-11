@@ -1778,14 +1778,16 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
         jobid_trunc[strlen(jobId) - JOBID_PREFIX_LEN]=0;
 
         /* lrmsID */
-        jobid=basename(jobid_trunc);
+        /* No need to add hostname
+	jobid=basename(jobid_trunc);
         gethostname(host_name, MAX_CONF_FILE_SIZE);
         slen=strlen(host_name);
         slen2=strlen(jobid);
         if(!strncmp(&jobid[slen2-slen], host_name, slen)) lrms_jobid=strdup(jobid);
         else
                 lrms_jobid=make_message("%s.%s",jobid,host_name);
-
+	*/
+	lrms_jobid=strdup(jobid);
         /* Ce ID */
 	memcpy(bs,jobid_trunc,3);
 	bs[3]=0;
@@ -1828,7 +1830,8 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
         free(AccInfoLogFile);
         free(AccInfoLogFileDated);
         if (!strcmp(ce_id," ")) free(ce_id);
-        free(jobid);
+        memset(fqan,0,MAX_TEMP_ARRAY_SIZE);
+	free(jobid);
         free(lrms_jobid);
         return 0;
 }
@@ -1872,6 +1875,7 @@ int getProxyInfo(char* proxname, char* fqan, char* userDN)
           if(userDN[slen - 1] == '/') userDN[slen - 1] = 0;
           /* user'sFQAN detection */
           fqanlong[0]=0;
+          memset(fqanlong,0,MAX_TEMP_ARRAY_SIZE);
           /* command : voms-proxy-info -file proxname -fqan  */
 	  memset(temp_str,0,MAX_TEMP_ARRAY_SIZE);
 	  sprintf(temp_str,"%s/voms-proxy-info -file %s -fqan 2> /dev/null",  blah_script_location, proxname);
@@ -1881,6 +1885,7 @@ int getProxyInfo(char* proxname, char* fqan, char* userDN)
           {
 		strcat(fqan,"\"userFQAN=");
 		strcat(fqan,fqanlong);
+                memset(fqanlong,0,MAX_TEMP_ARRAY_SIZE);
 		if(fqan[strlen(fqan)-1]=='\n') fqan[strlen(fqan)-1] = 0;
 		strcat(fqan,"\" ");
           }
