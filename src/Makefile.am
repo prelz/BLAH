@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.9 2006/03/13 09:11:47 gfiorent Exp $ 
+# $Id: Makefile.am,v 1.10 2006/04/14 14:16:15 gfiorent Exp $ 
 #
 # File:           Makefile.am
 #
@@ -18,7 +18,7 @@ INCLUDES = -I. $(CLASSAD_CFLAGS) $(GLOBUS_NOTHR_CFLAGS)
 
 SUBDIRS = scripts
 
-bin_PROGRAMS = blahpd blahpd_daemon BPRclient BPRserver BLClient BLParserLSF BLParserPBS BAParser BAClient
+bin_PROGRAMS = blahpd blahpd_daemon BPRclient BPRserver BLClient BLParserLSF BLParserPBS BAParser BAClient BDlogger
 
 common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C mtsafe_popen.c
 
@@ -61,6 +61,11 @@ BAClient_SOURCES = BAClient.c BPRcomm.c tokens.c BLhelper.c
 
 BAClient_LDADD = \
 $(GLOBUS_GSS_NOTHR_LIBS) $(GLOBUS_SSL_NOTHR_LIBS)
+
+BDlogger_SOURCES = BDlogger.c
+
+BDlogger_LDADD =
+
 
 noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h mtsafe_popen.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h BAParser.h
 

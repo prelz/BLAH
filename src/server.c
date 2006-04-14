@@ -1672,7 +1672,6 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
         int i=0, rc=0, cs=0, result=0, fd = -1, count = 0, slen = 0, slen2 = 0;
         FILE *cmd_out=NULL;
         FILE *conf_file=NULL;
-        FILE *log_file=NULL;
         char *log_line;
         char *proxname=NULL;
         char *gridjobid=NULL;
@@ -1680,9 +1679,6 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
         char *login=NULL;
         char *temp_str=NULL;
         char date_str[MAX_TEMP_ARRAY_SIZE], jobid_trunc[MAX_TEMP_ARRAY_SIZE];
-        struct flock fl;
-        char *AccInfoLogFile=NULL;
-        char *AccInfoLogFileDated=NULL;
         time_t tt;
         struct tm *t_m=NULL;
         char *glite_loc=NULL;
@@ -1690,10 +1686,10 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
         char host_name[MAX_CONF_FILE_SIZE];
         char *jobid=NULL;
         char *lrms_jobid=NULL;
-        char filebuffer[MAX_CONF_FILE_SIZE];
         int id;
 	char bs[4];
 	char *queue=NULL;
+	char *esc_userDN=NULL;
 	char uid[MAX_TEMP_ARRAY_SIZE];
         memset(jobid_trunc,0,MAX_TEMP_ARRAY_SIZE);
 
@@ -1703,62 +1699,10 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
                 glite_loc = DEFAULT_GLITE_LOCATION;
         }
         blah_conf=make_message("%s/etc/blah.config",glite_loc);
-
-        if(blah_conf!=NULL) conf_file= fopen(blah_conf,"r");
-        else return 1;
-
-        if(conf_file==NULL)
-        {
-                free(blah_conf);
-                return 1;
-        }
-        slen=strlen("BLAHPD_ACCOUNTING_INFO_LOG=");
-        while(fgets(filebuffer, MAX_CONF_FILE_SIZE, conf_file))
-        {
-                slen2=strlen(filebuffer);
-                if(!strncmp(filebuffer,"BLAHPD_ACCOUNTING_INFO_LOG=",slen))
-                {
-                        count = slen;
-                        while((filebuffer[count]!='\n')&& (count < slen2)) count++;
-                        AccInfoLogFile=malloc(count-slen+1);
-                        memcpy(AccInfoLogFile, &filebuffer[slen], count-slen);
-                        filebuffer[count-slen]=0;
-                        AccInfoLogFile[count-slen]=0;
-                        slen2=slen=0;
-                        break;
-                }
-                memset(filebuffer,0,MAX_CONF_FILE_SIZE);
-        }
-        fclose(conf_file);
         /* Submission time */
         time(&tt);
         t_m = gmtime(&tt);
-        sprintf(date_str,"%04d-%02d-%02d %02d:%02d:%02d", 1900+t_m->tm_year, t_m->tm_mon+1, t_m->tm_mday, t_m->tm_hour, t_m->tm_min, t_m->tm_sec);
-
-        if(AccInfoLogFile!=NULL)
-        {
-                AccInfoLogFileDated=make_message("%s-%04d%02d%02d", AccInfoLogFile, 1900+t_m->tm_year, t_m->tm_mon+1, t_m->tm_mday);
-                if (AccInfoLogFileDated==NULL)
-                {
-                        free(AccInfoLogFile);
-                        return 1;
-                }
-
-                log_file=fopen(AccInfoLogFileDated,"a");
-                if (log_file==NULL)
-                {
-                        free(AccInfoLogFile);
-                        free(AccInfoLogFileDated);
-                        return 1;
-                }
-        }
-        /* get the lock */
-        fd = fileno(log_file);
-        fl.l_type = F_WRLCK;
-        fl.l_whence = SEEK_CUR;
-        do{
-                result = fcntl( fd, F_SETLK, &fl);
-        } while((result == -1)&&(errno == EINTR));
+        sprintf(date_str,"%04d-%02d-%02d\\\ %02d:%02d:%02d", 1900+t_m->tm_year, t_m->tm_mon+1, t_m->tm_mday, t_m->tm_hour, t_m->tm_min, t_m->tm_sec);
 
         /* These data must be logged in the log file:
          "timestamp=<submission time to LRMS>" "userDN=<user's DN>" "userFQAN=<user's FQAN>"
@@ -1779,14 +1723,6 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
 
         /* lrmsID */
 	jobid=basename(jobid_trunc);
-        /* No need to add hostname
-	gethostname(host_name, MAX_CONF_FILE_SIZE);
-        slen=strlen(host_name);
-        slen2=strlen(jobid);
-        if(!strncmp(&jobid[slen2-slen], host_name, slen)) lrms_jobid=strdup(jobid);
-        else
-                lrms_jobid=make_message("%s.%s",jobid,host_name);
-	*/
 	lrms_jobid=strdup(jobid);
         /* Ce ID */
 	memcpy(bs,jobid_trunc,3);
@@ -1816,19 +1752,14 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
 	}else
 		sprintf(uid,"%d",getuid());
         /* log line with in addiction unixuser */
-        log_line=make_message("\"timestamp=%s\" \"userDN=%s\" %s \"ceID=%s\" \"jobID=%s\" \"lrmsID=%s\" \"localUser=%s\"\n",
-        date_str, userDN, fqan, ce_id, gridjobid, lrms_jobid, uid);
-
-        cs = fwrite(log_line ,1, strlen(log_line), log_file);
-        fl.l_type = F_UNLCK;
-        /* release the lock */
-        result = fcntl( fd, F_SETLK, &fl);
-        fclose(log_file);
-	chmod(AccInfoLogFileDated, S_IRUSR|S_IROTH|S_IRGRP|S_IWOTH|S_IWGRP|S_IWUSR);
+	// call to suided tool
+	esc_userDN=escape_spaces(userDN);
+	log_line=make_message("/opt/glite/bin/BDlogger %s \\\"timestamp=%s\\\"\\\ \\\"userDN=%s\\\"\\\ %s\\\"ceID=%s\\\"\\\ \\\"jobID=%s\\\"\\\ \\\"lrmsID=%s\\\"\\\ \\\"localUser=%s\\\"",blah_conf, date_str, esc_userDN, fqan, ce_id, gridjobid, lrms_jobid, uid);
+	system(log_line);
+	
         if(gridjobid) free(gridjobid);
         free(log_line);
-        free(AccInfoLogFile);
-        free(AccInfoLogFileDated);
+	free(esc_userDN);
         if (!strcmp(ce_id," ")) free(ce_id);
         memset(fqan,0,MAX_TEMP_ARRAY_SIZE);
         free(lrms_jobid);
@@ -1882,14 +1813,13 @@ int getProxyInfo(char* proxname, char* fqan, char* userDN)
                 return 1;
           while(fgets(fqanlong, MAX_TEMP_ARRAY_SIZE, cmd_out))
           {
-		strcat(fqan,"\"userFQAN=");
+		strcat(fqan,"\\\"userFQAN=");
 		strcat(fqan,fqanlong);
                 memset(fqanlong,0,MAX_TEMP_ARRAY_SIZE);
 		if(fqan[strlen(fqan)-1]=='\n') fqan[strlen(fqan)-1] = 0;
-		strcat(fqan,"\" ");
+		strcat(fqan,"\\\"\\\ ");
           }
-	 if (!strcmp(fqan,"")) sprintf(fqan,"\"userFQAN=\"");
-	 if(fqan[strlen(fqan)-1]==' ') fqan[strlen(fqan)-1]=0;	
+	 if (!strcmp(fqan,"")) sprintf(fqan,"\\\"userFQAN=\\\"\\\ ");
 	 result = mtsafe_pclose(cmd_out);
 	 return 0;
 }
