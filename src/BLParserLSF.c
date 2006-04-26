@@ -996,13 +996,13 @@ char *GetLogDir(int largc, char *largv[]){
 
 char *GetLogList(char *logdate){
  
- char datefile[STR_CHARS];
- char touch_out[STR_CHARS];
- char rm_out[STR_CHARS];
- char logs[MAX_CHARS]="\0";
+ char *datefile;
+ char *touch_out;
+ char *rm_out;
+ char *logs;
  char *slogs;
- char tlogs[MAX_CHARS];
- char command_string[MAX_CHARS]="\0";
+ char *tlogs;
+ char *command_string;
  FILE *mktemp_output;
  FILE *touch_output;
  FILE *find_output;
@@ -1013,14 +1013,32 @@ char *GetLogList(char *logdate){
  int i=0;
  char **oplogs;
 
+ if((logs=malloc(MAX_CHARS)) == 0){
+  sysfatal("can't malloc logs: %r");
+ }
  if((slogs=malloc(MAX_CHARS)) == 0){
   sysfatal("can't malloc slogs: %r");
+ }
+ if((tlogs=malloc(MAX_CHARS)) == 0){
+  sysfatal("can't malloc tlogs: %r");
+ }
+ if((command_string=malloc(MAX_CHARS)) == 0){
+  sysfatal("can't malloc command_string: %r");
+ }
+ if((datefile=malloc(STR_CHARS)) == 0){
+  sysfatal("can't malloc datefile: %r");
+ }
+ if((touch_out=malloc(STR_CHARS)) == 0){
+  sysfatal("can't malloc touch_out: %r");
+ }
+ if((rm_out=malloc(STR_CHARS)) == 0){
+  sysfatal("can't malloc rm_out: %r");
  }
  
  sprintf(command_string,"mktemp -q /tmp/blahdate_XXXXXX");
  mktemp_output = popen(command_string,"r");
  if (mktemp_output != NULL){
-  len = fread(datefile, sizeof(char), sizeof(datefile) - 1 , mktemp_output);
+  len = fread(datefile, sizeof(char), STR_CHARS - 1 , mktemp_output);
   if (len>0){
    datefile[len-1]='\000';
   }
@@ -1030,7 +1048,7 @@ char *GetLogList(char *logdate){
  sprintf(command_string,"touch -t %s %s 2>/dev/null",logdate,datefile);
  touch_output = popen(command_string,"r");
  if (touch_output != NULL){
-  len = fread(touch_out, sizeof(char), sizeof(touch_out) - 1 , touch_output);
+  len = fread(touch_out, sizeof(char), STR_CHARS - 1 , touch_output);
   if (len>0){
    touch_out[len-1]='\000';
   }
@@ -1040,7 +1058,7 @@ char *GetLogList(char *logdate){
  sprintf(command_string,"find %s.[0-9]* -type f -newer %s -printf \"%%p \" 2>/dev/null", eventsfile, datefile);
  find_output = popen(command_string,"r");
  if (find_output != NULL){
-  len = fread(logs, sizeof(char), sizeof(logs) - 1 , find_output);
+  len = fread(logs, sizeof(char), MAX_CHARS - 1 , find_output);
   if (len>0){
    logs[len-1]='\000';
   }
@@ -1050,7 +1068,7 @@ char *GetLogList(char *logdate){
  sprintf(command_string,"rm -f %s", datefile);
  rm_output = popen(command_string,"r");
  if (rm_output != NULL){
-  len = fread(rm_out, sizeof(char), sizeof(rm_out) - 1 , rm_output);
+  len = fread(rm_out, sizeof(char), STR_CHARS - 1 , rm_output);
   if (len>0){
    rm_out[len-1]='\000';
   }
@@ -1060,18 +1078,30 @@ char *GetLogList(char *logdate){
 /* this is done to avoid ls -tr to run without args so that local dir is listed */
  
  if((logs == NULL) || (strlen(logs) < 2)){
+  free(command_string);
+  free(datefile);
+  free(touch_out);
+  free(rm_out);
+  free(logs);
+  free(tlogs);
+  free(slogs);
   return NULL;
  }
  
  sprintf(command_string,"ls -tr %s", logs);
  ls_output = popen(command_string,"r");
  if (ls_output != NULL){
-  len = fread(tlogs, sizeof(char), sizeof(tlogs) - 1 , ls_output);
+  len = fread(tlogs, sizeof(char), MAX_CHARS - 1 , ls_output);
   if (len>0){
    tlogs[len-1]='\000';
   }
   pclose(ls_output);
   
+  free(command_string);
+  free(datefile);
+  free(touch_out);
+  free(rm_out);
+  free(logs);
  
   slogs[0]='\0';
 
@@ -1080,6 +1110,7 @@ char *GetLogList(char *logdate){
   }
   
   maxtok = strtoken(tlogs, '\n', oplogs);
+  free(tlogs);
   
   for(i=0; i<maxtok; i++){ 
    strcat(slogs,oplogs[i]);
@@ -1089,12 +1120,20 @@ char *GetLogList(char *logdate){
   free(oplogs);
   
   if(maxtok==0){
+   free(slogs);
    return NULL;
   }
   return slogs;
   
  } else {
  
+  free(command_string);
+  free(datefile);
+  free(touch_out);
+  free(rm_out);
+  free(logs);
+  free(tlogs);
+  free(slogs);
   return NULL;
   
  }
