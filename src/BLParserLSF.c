@@ -448,7 +448,7 @@ int AddToStruct(char *line, int flag){
  
  id=UpdatePtr(realid);
  
- if(rex && (strcmp(rex,rex_queued)==0) && (has_blah) && (j2js[id]==NULL)){
+ if(rex && (strcmp(rex,rex_queued)==0) && (has_blah)){
 
   InfoAdd(id,jobid,"JOBID");
   InfoAdd(id,j_time,"STARTTIME");
@@ -743,7 +743,7 @@ void *LookupAndSend(int m_sock){
 	 
           id=GetRdxId(atoi(jobid));
 
-    	  if(j2js[id]!=NULL){
+    	  if(id>0 && j2js[id]!=NULL){
 	   
            if((out_buf=malloc(STR_CHARS)) == 0){
             sysfatal("can't malloc out_buf in LookupAndSend: %r");
@@ -771,7 +771,9 @@ void *LookupAndSend(int m_sock){
 	  
      	   GetEventsInOldLogs(logdate);
 	   
-     	   if(j2js[id]!=NULL){
+           id=GetRdxId(atoi(jobid));
+
+     	   if(id>0 && j2js[id]!=NULL){
 
             if((out_buf=malloc(STR_CHARS)) == 0){
              sysfatal("can't malloc out_buf in LookupAndSend: %r");
@@ -1441,11 +1443,11 @@ int UpdatePtr(int jid){
  
  
  if((rid=GetRdxId(jid))==-1){
-  rptr[ptrcnt++]=jid;
   if(debug>=3){
     fprintf(debuglogfile, "JobidNew Counter:%d jobid:%d\n",ptrcnt,jid);
     fflush(debuglogfile);
   }
+  rptr[ptrcnt++]=jid;
   return(ptrcnt-1);
  }else{
   if(debug>=3){
