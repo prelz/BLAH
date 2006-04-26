@@ -4,7 +4,7 @@ int main(int argc, char *argv[]) {
 
     struct    sockaddr_in servaddr;  /*  socket address structure  */
     int       set = 1;
-    int       i;
+    int       i,j;
     int       status;
     int       list_s;
     int       list_c;
@@ -13,7 +13,6 @@ int main(int argc, char *argv[]) {
 
     pthread_t ReadThd[NUMTHRDS];
     pthread_t UpdateThd;
-    /* pthread_t CreamThd[CRMTHRDS]; */
     pthread_t CreamThd;
 
     argv0 = argv[0];
@@ -55,6 +54,15 @@ int main(int argc, char *argv[]) {
      fclose(fpt);
     }
     
+    /* Set to zero all the cache */
+    
+    for(j=0;j<RDXHASHSIZE;j++){
+     rptr[j]=0;
+    }
+    for(j=0;j<CRMHASHSIZE;j++){
+     nti[j]=0;
+    }
+    
     /*  Create the listening socket  */
 
     if ( (list_s = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
@@ -66,16 +74,10 @@ int main(int argc, char *argv[]) {
         fprintf(stderr,"%s: setsockopt() failed\n",progname);
     }
 
-    /*  Set all bytes in socket address structure to
-        zero, and fill in the relevant data members   */
-
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family      = AF_INET;
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     servaddr.sin_port        = htons(port);
-
-    /*  Bind our socket addresss to the 
-	listening socket, and call listen()  */
 
     if ( bind(list_s, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0 ) {
 	fprintf(stderr, "%s: Error calling bind() in main\n",progname);
@@ -87,7 +89,8 @@ int main(int argc, char *argv[]) {
     	exit(EXIT_FAILURE);
     }
     
-/* create listening socket for Cream */
+    /* create listening socket for Cream */
+    
     if(usecream>0){
       creamport = strtol(szCreamPort, &Cendptr, 0);
       
@@ -105,16 +108,10 @@ int main(int argc, char *argv[]) {
      	  fprintf(stderr,"%s: setsockopt() failed\n",progname);
       }
 
-      /*  Set all bytes in socket address structure to
-     	  zero, and fill in the relevant data members	*/
-
       memset(&cservaddr, 0, sizeof(cservaddr));
       cservaddr.sin_family	= AF_INET;
       cservaddr.sin_addr.s_addr = htonl(INADDR_ANY);
       cservaddr.sin_port	= htons(creamport);
-
-      /*  Bind our socket addresss to the 
-   	  listening socket, and call listen()  */
 
       if ( bind(list_c, (struct sockaddr *) &cservaddr, sizeof(cservaddr)) < 0 ) {
    	  fprintf(stderr, "%s: Error calling bind() in main\n",progname);
@@ -126,19 +123,14 @@ int main(int argc, char *argv[]) {
      	  exit(EXIT_FAILURE);
       }
     }
+    
     for(i=0;i<NUMTHRDS;i++){
      pthread_create(&ReadThd[i], NULL, LookupAndSend, (void *)list_s);
     }
     
     if(usecream>0){
-/*
-     for(i=0;i<CRMTHRDS;i++){
-      pthread_create(&CreamThd[i], NULL, CreamConnection, (void *)list_c);
-     }
-*/
      pthread_create(&CreamThd, NULL, CreamConnection, (void *)list_c);
     }
-    
     pthread_create(&UpdateThd, NULL, mytail, (void *)eventsfile);
     pthread_join(UpdateThd, (void **)&status);
     
@@ -147,8 +139,6 @@ int main(int argc, char *argv[]) {
 }
 
 /*---functions---*/
-
-/*  Read a line from a socket  */
 
 ssize_t Readline(int sockd, void *vptr, size_t maxlen) {
     ssize_t n, rc;
@@ -179,8 +169,6 @@ ssize_t Readline(int sockd, void *vptr, size_t maxlen) {
     *buffer = 0;
     return n;
 }
-
-/*  Write a line to a socket  */
 
 ssize_t Writeline(int sockd, const void *vptr, size_t n) {
     size_t      nleft;
@@ -213,7 +201,7 @@ unsigned hash(char *s){
  for(hashval = 0; *s!='\0';s++){
   hashval = *s + 31 *hashval;
  }
- return hashval % HASHSIZE;
+ return hashval % RDXHASHSIZE;
 }
 
 
@@ -273,7 +261,7 @@ long tail(FILE *fp, char *line){
 
     while(fgets(line, STR_CHARS, fp)){
       if((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_status)!=NULL) || (strstr(line,rex_signal)!=NULL)){        
-       if(debug == 2){
+       if(debug >= 2){
 	fprintf(debuglogfile, "Tail line:%s",line);
         fflush(debuglogfile);
        }
@@ -290,12 +278,8 @@ long tail(FILE *fp, char *line){
 
 int InfoAdd(int id, char *value, const char * flag){
 
- if((id <= 0) || (id >= HASHSIZE)){
-  return -1;
- }
-  
  if(debug){
-  fprintf(debuglogfile, "Adding: ID:%d Type:%s Value:%s\n",id,flag,value);
+  fprintf(debuglogfile, "Adding: ID:%d Type:%s Value:%s\n",rptr[id],flag,value);
   fflush(debuglogfile);
  } 
  /* set write lock */
@@ -312,33 +296,57 @@ int InfoAdd(int id, char *value, const char * flag){
   j2rt[id] = strdup("\0");
   j2ct[id] = strdup("\0");
   
+ } else if((strcmp(flag,"JOBID")==0) && recycled==1){
+ 
+  free(j2js[id]);
+  free(j2bl[id]);
+  free(j2wn[id]);
+  free(j2ec[id]);
+  free(j2st[id]);
+  free(j2rt[id]);
+  free(j2ct[id]);
   
+  j2js[id] = strdup("1");  
+  j2bl[id] = strdup("\0");
+  j2wn[id] = strdup("\0");
+  j2ec[id] = strdup("\0");
+  j2st[id] = strdup("\0");
+  j2rt[id] = strdup("\0");
+  j2ct[id] = strdup("\0");
+    
  } else if(strcmp(flag,"BLAHPNAME")==0){
  
+  free(j2bl[id]);
   j2bl[id] = strdup(value);
   
  } else if(strcmp(flag,"WN")==0){
  
+  free(j2wn[id]);
   j2wn[id] = strdup(value);
   
  } else if(strcmp(flag,"JOBSTATUS")==0){
  
+  free(j2js[id]);
   j2js[id] = strdup(value);
   
  } else if(strcmp(flag,"EXITCODE")==0){
 
+  free(j2ec[id]);
   j2ec[id] = strdup(value);
  
  } else if(strcmp(flag,"STARTTIME")==0){
 
+  free(j2st[id]);
   j2st[id] = strdup(value);
  
  } else if(strcmp(flag,"RUNNINGTIME")==0){
 
+  free(j2rt[id]);
   j2rt[id] = strdup(value);
  
  } else if(strcmp(flag,"COMPLTIME")==0){
 
+  free(j2ct[id]);
   j2ct[id] = strdup(value);
  
  } else {
@@ -366,7 +374,7 @@ int AddToStruct(char *line, int flag){
  unsigned h_blahjob;
  char *	rex;
  
- int id;
+ int id,realid;
  
  int  maxtok,ii; 
  char **tbuf;
@@ -399,7 +407,7 @@ int AddToStruct(char *line, int flag){
  }
  if(maxtok>3){
   jobid=strdup(tbuf[3]);
-  id=atoi(jobid);
+  realid=atoi(jobid);
  }
  if(maxtok>4){
   j_status=strdup(tbuf[4]);
@@ -438,6 +446,7 @@ int AddToStruct(char *line, int flag){
   sleep(1);
  }
  
+ id=UpdatePtr(realid);
  
  if(rex && (strcmp(rex,rex_queued)==0) && (has_blah) && (j2js[id]==NULL)){
 
@@ -562,14 +571,14 @@ char *GetAllEvents(char *file){
  
  maxtok = strtoken(file, ' ', opfile);
 
- if((line=malloc(MAX_LINES)) == 0){
+ if((line=malloc(STR_CHARS)) == 0){
   sysfatal("can't malloc line: %r");
  }
   
  for(i=0; i<maxtok; i++){ 
  
   if((fp=fopen(opfile[i], "r")) != 0){
-   while(fgets(line, MAX_LINES, fp)){
+   while(fgets(line, STR_CHARS, fp)){
     if((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_status)!=NULL) || (strstr(line,rex_signal)!=NULL)){
      AddToStruct(line,0);
     }
@@ -624,8 +633,7 @@ void *LookupAndSend(int m_sock){
 	  sysfatal("can't malloc h_jobid in LookupAndSend: %r");
 	}
         h_jobid[0]='\0';
-
-        /* read line from socket */
+ 
 	Readline(conn_s, buffer, STR_CHARS-1);	
 	if(debug){
 	 fprintf(debuglogfile, "Received:%s",buffer);
@@ -733,7 +741,7 @@ void *LookupAndSend(int m_sock){
 	
 	 if(wlock==0){
 	 
- 	  id=atoi(jobid);
+          id=GetRdxId(atoi(jobid));
 
     	  if(j2js[id]!=NULL){
 	   
@@ -902,8 +910,6 @@ char *GetLogDir(int largc, char *largv[]){
   debug = strtol(szDebugLevel, &endptr, 0);
   if (debug <=0){
    debug=0;
-  } else if (debug >=2){
-   debug=2;
   }
  }
  
@@ -926,7 +932,7 @@ char *GetLogDir(int largc, char *largv[]){
  sprintf(conffile,"%s/lsf.conf",confpath);
  
  if((fp=fopen(conffile, "r")) != 0){
-  while(fgets(line, MAX_LINES, fp)){
+  while(fgets(line, STR_CHARS, fp)){
    if(strstr(line,"LSB_SHAREDIR")!=0){
     break;
    }
@@ -991,20 +997,15 @@ char *GetLogDir(int largc, char *largv[]){
 char *GetLogList(char *logdate){
  
  char datefile[STR_CHARS];
- char lastfile[STR_CHARS];
  char touch_out[STR_CHARS];
- char lastlog_out[STR_CHARS];
  char rm_out[STR_CHARS];
  char logs[MAX_CHARS]="\0";
  char *slogs;
  char tlogs[MAX_CHARS];
  char command_string[MAX_CHARS]="\0";
  FILE *mktemp_output;
- FILE *mklast_output;
  FILE *touch_output;
- FILE *lastlog_output;
  FILE *find_output;
- FILE *findlast_output;
  FILE *rm_output;
  FILE *ls_output;
  int len; 
@@ -1025,17 +1026,7 @@ char *GetLogList(char *logdate){
   }
  }
  pclose(mktemp_output);
- 
- sprintf(command_string,"mktemp -q /tmp/blahlast_XXXXXX");
- mklast_output = popen(command_string,"r");
- if (mklast_output != NULL){
-  len = fread(lastfile, sizeof(char), sizeof(lastfile) - 1 , mklast_output);
-  if (len>0){
-   lastfile[len-1]='\000';
-  }
- }
- pclose(mklast_output);
- 
+  
  sprintf(command_string,"touch -t %s %s 2>/dev/null",logdate,datefile);
  touch_output = popen(command_string,"r");
  if (touch_output != NULL){
@@ -1046,24 +1037,7 @@ char *GetLogList(char *logdate){
  }
  pclose(touch_output);
  
-  if(strcmp(LastLogDate,"\0")!=0){
-/* This is done to create a file with the lastlog exact date */
-
-  sprintf(command_string,"touch -d \"%s\" %s 2>/dev/null",LastLogDate,lastfile);
-  lastlog_output = popen(command_string,"r");
-  if (lastlog_output != NULL){
-   len = fread(lastlog_out, sizeof(char), sizeof(lastlog_out) - 1 , lastlog_output);
-   if (len>0){
-    lastlog_out[len-1]='\000';
-   }
-  }
-  pclose(lastlog_output);
- 
-  sprintf(command_string,"find %s.[0-9]* -type f -newer %s ! -newer %s -printf \"%%p \" 2>/dev/null", eventsfile, datefile, lastfile);
- } else{
-  sprintf(command_string,"find %s.[0-9]* -type f -newer %s -printf \"%%p \" 2>/dev/null", eventsfile, datefile);
- }
- 
+ sprintf(command_string,"find %s.[0-9]* -type f -newer %s -printf \"%%p \" 2>/dev/null", eventsfile, datefile);
  find_output = popen(command_string,"r");
  if (find_output != NULL){
   len = fread(logs, sizeof(char), sizeof(logs) - 1 , find_output);
@@ -1073,7 +1047,7 @@ char *GetLogList(char *logdate){
  }
  pclose(find_output);
  
- sprintf(command_string,"rm -f %s %s", datefile, lastfile);
+ sprintf(command_string,"rm -f %s", datefile);
  rm_output = popen(command_string,"r");
  if (rm_output != NULL){
   len = fread(rm_out, sizeof(char), sizeof(rm_out) - 1 , rm_output);
@@ -1107,17 +1081,6 @@ char *GetLogList(char *logdate){
   
   maxtok = strtoken(tlogs, '\n', oplogs);
   
-/* This is done to get date from lastlog file */
-  sprintf(command_string,"find %s -printf \"%%c \" 2>/dev/null",oplogs[0]);
-  findlast_output = popen(command_string,"r");
-  if (findlast_output != NULL){
-   len = fread(LastLogDate, sizeof(char), sizeof(LastLogDate) - 1 , findlast_output);
-   if (len>0){
-    LastLogDate[len-1]='\000';
-   }
-  }
-  pclose(findlast_output);
-  
   for(i=0; i<maxtok; i++){ 
    strcat(slogs,oplogs[i]);
    strcat(slogs," ");
@@ -1125,8 +1088,6 @@ char *GetLogList(char *logdate){
   }
   free(oplogs);
   
-/* last_tag is used to see if there is only one log file and to avoid to rescan it*/
-
   if(maxtok==0){
    return NULL;
   }
@@ -1144,8 +1105,8 @@ void CreamConnection(int c_sock){
     char      *buffer;
     int       retcod;
     
-    struct   pollfd fds[2];   /*      poll file descp. struct	       */
-    struct   pollfd *pfds;    /*      pointer to fds		       */
+    struct   pollfd fds[2];
+    struct   pollfd *pfds;
     int      nfds = 1;
     int      timeout= 5;
     
@@ -1251,18 +1212,33 @@ int NotifyFromDate(char *in_buf){
       
       notepoch=str2epoch(notdate,"S");
       
-      if(strcmp(LastLogDate,"\0")==0){
-       logepoch=nti[0];
+      if(cream_recycled){
+       logepoch=nti[jcount+1];
       }else{
-       logepoch=str2epoch(LastLogDate,"L");
-      }
-      
+       logepoch=nti[0];
+      }      
+
       if(notepoch<=logepoch){
        lnotdate=iepoch2str(notepoch);
        GetEventsInOldLogs(lnotdate);
       }
       
-      for(ii=0;ii<jcount;ii++){
+      if(cream_recycled){
+
+       for(ii=jcount+1;ii<CRMHASHSIZE;ii++){
+        if(notepoch<=nti[ii]){
+         sprintf(out_buf,"NTFDATE/%s",ntf[ii]);
+         Writeline(conn_c, out_buf, strlen(out_buf));
+         if(debug){
+          fprintf(debuglogfile, "Sent for Cream_nftdate:%s",out_buf);
+          fflush(debuglogfile); 
+         }
+        }
+       }
+
+      }
+            
+      for(ii=0;ii<=jcount;ii++){
        if(notepoch<=nti[ii]){
         sprintf(out_buf,"NTFDATE/%s",ntf[ii]);  
         Writeline(conn_c, out_buf, strlen(out_buf));
@@ -1346,6 +1322,15 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
 
     /* set lock for cream cache */
     pthread_mutex_lock( &cr_write_mutex );
+
+    if(jcount>=CRMHASHSIZE){
+     jcount=1;
+     cream_recycled=1;
+     if(debug>=3){
+      fprintf(debuglogfile, "Cream Counter Recycled\n");
+      fflush(debuglogfile);
+     }  
+    } 
     
     nti[jcount]=str2epoch(timestamp,"S");
     ntf[jcount++]=strdup(buffer);
@@ -1397,8 +1382,53 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
     
 }
 
-int strtoken(const char *s, char delim, char **token)
-{
+int UpdatePtr(int jid){
+
+ int rid;
+ 
+ if((jid <= 0)){
+  return -1;
+ }
+ 
+ /* if it is over RDXHASHSIZE the ptrcnt is recycled */
+ if(ptrcnt>=RDXHASHSIZE){
+  ptrcnt=1;
+  recycled=1;  
+  if(debug>=3){
+    fprintf(debuglogfile, "Counter Recycled\n");
+    fflush(debuglogfile);
+  }  
+ }
+ 
+ 
+ if((rid=GetRdxId(jid))==-1){
+  rptr[ptrcnt++]=jid;
+  if(debug>=3){
+    fprintf(debuglogfile, "JobidNew Counter:%d jobid:%d\n",ptrcnt,jid);
+    fflush(debuglogfile);
+  }
+  return(ptrcnt-1);
+ }else{
+  if(debug>=3){
+    fprintf(debuglogfile, "JobidOld Counter:%d jobid:%d\n",rid,jid);
+    fflush(debuglogfile);
+  }
+  return rid;
+ }
+  
+}
+
+int GetRdxId(int cnt){
+  int i;
+  for(i=0;i<RDXHASHSIZE;i++){
+   if(rptr[i] == cnt){
+    return i;
+   }
+  }
+ return -1;
+}
+
+int strtoken(const char *s, char delim, char **token){
     char *tmp;
     char *ptr, *dptr;
     int i = 0;
@@ -1624,11 +1654,7 @@ int ParseCmdLine(int argc, char *argv[], char **szPort, char **szBinPath,
     return 0;
 }
 
-/* the reset is error processing stuff */
-
-void
-eprint(int err, char *fmt, va_list args)
-{
+void eprint(int err, char *fmt, va_list args){
     extern int errno;
 
     fprintf(stderr, "%s: ", argv0);
@@ -1640,9 +1666,7 @@ eprint(int err, char *fmt, va_list args)
     errno = 0;
 }
 
-char *
-chopfmt(char *fmt)
-{
+char *chopfmt(char *fmt){
     static char errstr[ERRMAX];
     char *p;
 
@@ -1653,9 +1677,7 @@ chopfmt(char *fmt)
 }
 
 /* syserror: print error and continue */
-void
-syserror(char *fmt, ...)
-{
+void syserror(char *fmt, ...){
     va_list args;
     char *xfmt;
 
@@ -1666,9 +1688,7 @@ syserror(char *fmt, ...)
 }
 
 /* sysfatal: print error and die */
-void
-sysfatal(char *fmt, ...)
-{
+void sysfatal(char *fmt, ...){
     va_list args;
     char *xfmt;
 
