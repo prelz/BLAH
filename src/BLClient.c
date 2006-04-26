@@ -13,6 +13,7 @@
 
 #define MAX_LINE           (100000)
 
+char     *progname = "BLClient";
 
 /*  Function declarations  */
 
@@ -35,26 +36,23 @@ int main(int argc, char *argv[]) {
 
     ParseCmdLine(argc, argv, &szAddress, &szPort);
 
-
     /*  Set the remote port  */
-
-    port = strtol(szPort, &endptr, 0);
-    if ( *endptr ) {
-	printf("BLClient: Invalid port supplied.\n");
-	exit(EXIT_FAILURE);
+    
+    if(szPort !=NULL){
+     port = strtol(szPort, &endptr, 0);
+     if ( *endptr ) {
+         fprintf(stderr,"%s: Invalid port supplied.\n",progname);
+	 exit(EXIT_FAILURE);
+     }
+    }else{
+      fprintf(stderr,"%s: Invalid port supplied.\n",progname);
+      exit(EXIT_FAILURE);
     }
-	
-
-    /*  Create the listening socket  */
-
+   
     if ( (conn_s = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
-	fprintf(stderr, "BLClient: Error creating listening socket.\n");
+	fprintf(stderr, "%s: Error creating listening socket.\n",progname);
 	exit(EXIT_FAILURE);
     }
-
-
-    /*  Set all bytes in socket address structure to
-        zero, and fill in the relevant data members   */
 
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family      = AF_INET;
@@ -63,35 +61,27 @@ int main(int argc, char *argv[]) {
 
     /*  Set the remote IP address  */
 
-    if ( inet_aton(szAddress, &servaddr.sin_addr) <= 0 ) {
-	printf("BLClient: Invalid remote IP address.\n");
+    if ( !szAddress || inet_aton(szAddress, &servaddr.sin_addr) <= 0 ) {
+	fprintf(stderr, "%s: Invalid remote IP address.\n",progname);
 	exit(EXIT_FAILURE);
     }
-
-    
-    /*  connect() to the remote server  */
 
     if ( connect(conn_s, (struct sockaddr *) &servaddr, sizeof(servaddr) ) < 0 ) {
-	printf("BLClient: Error calling connect()\n");
+	fprintf(stderr, "%s: Error calling connect().\n",progname);
 	exit(EXIT_FAILURE);
     }
 
-
     fgets(buffer, MAX_LINE, stdin);
-    
-
-    /*  Send string to the server, and retrieve response  */
 
     Writeline(conn_s, buffer, strlen(buffer));
     Readline(conn_s, buffer, MAX_LINE-1);
-
 
     printf("%s", buffer);
 
    /*  Close the connected socket  */
 
    if ( close(conn_s) < 0 ) {
-     fprintf(stderr, "BLClient: Error calling close()\n");
+     fprintf(stderr, "%s: Error calling close()\n",progname);
      exit(EXIT_FAILURE);
    }
 
@@ -102,7 +92,7 @@ int main(int argc, char *argv[]) {
 void print_usage(){
 
      fprintf(stderr,"Usage:\n");
-     fprintf(stderr,"BLClient -a (remote IP) -p (remote port)\n");
+     fprintf(stderr,"%s -a (remote IP) -p (remote port)\n",progname);
      exit(EXIT_SUCCESS);
 
 }
@@ -111,10 +101,12 @@ int ParseCmdLine(int argc, char *argv[], char **szAddress, char **szPort) {
 
     int n = 1;
 
-    if(argc == 1){
+    if(argc < 3){
       print_usage();
     }
-
+    
+    *szAddress=NULL;
+    *szPort=NULL;
 
     while ( n < argc ) {
 	if ( !strncmp(argv[n], "-a", 2) ) {
@@ -128,7 +120,7 @@ int ParseCmdLine(int argc, char *argv[], char **szAddress, char **szPort) {
 	}
 	++n;
     }
-
+    
     return 0;
 }
 

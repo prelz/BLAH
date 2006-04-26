@@ -22,7 +22,6 @@
 
 #define MAX_LINE           (100000)
 
-
 char     *progname = "BAClient";
 
 /*  Function declarations  */
@@ -42,7 +41,6 @@ int main(int argc, char *argv[]) {
     char     *endptr;                /*  for strtol()              */
     
     
-
     OM_uint32	    major_status;
     OM_uint32	    minor_status;
     int 	    token_status = 0;
@@ -50,18 +48,21 @@ int main(int argc, char *argv[]) {
     OM_uint32	    ret_flags = 0;
     gss_ctx_id_t    context_handle = GSS_C_NO_CONTEXT;
 
-
     /*  Get command line arguments  */
 
     ParseCmdLine(argc, argv, &szAddress, &szPort);
 
-
     /*  Set the remote port  */
 
-    port = strtol(szPort, &endptr, 0);
-    if ( *endptr ) {
-        fprintf(stderr,"%s: Invalid port supplied.\n",progname);
-	exit(EXIT_FAILURE);
+    if(szPort !=NULL){
+      port = strtol(szPort, &endptr, 0);
+      if ( *endptr ) {
+         fprintf(stderr,"%s: Invalid port supplied.\n",progname);
+	 exit(EXIT_FAILURE);
+      }
+    }else{
+      fprintf(stderr,"%s: Invalid port supplied.\n",progname);
+      exit(EXIT_FAILURE);
     }
 	
         /* Acquire GSS credential */
@@ -71,16 +72,11 @@ int main(int argc, char *argv[]) {
                 exit(EXIT_FAILURE);
         }
 
-    /*  Create the listening socket  */
 
     if ( (conn_s = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
         fprintf(stderr,"%s: Error creating listening socket.\n",progname);
 	exit(EXIT_FAILURE);
     }
-
-
-    /*  Set all bytes in socket address structure to
-        zero, and fill in the relevant data members   */
 
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family      = AF_INET;
@@ -112,12 +108,8 @@ int main(int argc, char *argv[]) {
      }
 
 
-
     fgets(buffer, MAX_LINE, stdin);
     
-
-    /*  Send string to the server, and retrieve response  */
-
     Writeline(conn_s, buffer, strlen(buffer));
     Readline(conn_s, buffer, MAX_LINE-1);
 
@@ -148,9 +140,12 @@ int ParseCmdLine(int argc, char *argv[], char **szAddress, char **szPort) {
 
     int n = 1;
     
-    if(argc == 1){
+    if(argc < 3){
        print_usage();
     }
+
+    *szAddress=NULL;
+    *szPort=NULL;
 
     while ( n < argc ) {
 	if ( !strncmp(argv[n], "-a", 2) ) {
