@@ -584,8 +584,8 @@ char *GetAllEvents(char *file){
     }
    }
   } else {
-   printf("Cannot open %s file\n",opfile[i]);
-   exit(-1);
+   fprintf(stderr, "%s: Cannot open %s file\n",progname,opfile[i]);
+   exit(EXIT_FAILURE);
   }
   
   fclose(fp);
@@ -607,7 +607,7 @@ void *LookupAndSend(int m_sock){
     char      *logdate;
     char      *jobid;
     char      *h_jobid;
-    char      t_wnode[STR_CHARS];
+    char      *t_wnode;
     char      *pr_removal="Not";
     int       i,maxtok,ii;
     int       id;
@@ -633,7 +633,7 @@ void *LookupAndSend(int m_sock){
 	  sysfatal("can't malloc h_jobid in LookupAndSend: %r");
 	}
         h_jobid[0]='\0';
- 
+	
 	Readline(conn_s, buffer, STR_CHARS-1);	
 	if(debug){
 	 fprintf(debuglogfile, "Received:%s",buffer);
@@ -748,6 +748,10 @@ void *LookupAndSend(int m_sock){
            if((out_buf=malloc(STR_CHARS)) == 0){
             sysfatal("can't malloc out_buf in LookupAndSend: %r");
            }
+	   
+	   if((t_wnode=malloc(STR_CHARS)) == 0){
+	    sysfatal("can't malloc t_wnode in LookupAndSend: %r");
+	   }
 	   	   
            if(strcmp(j2wn[id],"\0")==0){
             t_wnode[0]='\0';
@@ -766,7 +770,7 @@ void *LookupAndSend(int m_sock){
            }else{
             sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], pr_removal);
            }
-	   
+	   free(t_wnode);
 	  } else {
 	  
      	   GetEventsInOldLogs(logdate);
@@ -779,6 +783,10 @@ void *LookupAndSend(int m_sock){
              sysfatal("can't malloc out_buf in LookupAndSend: %r");
             }
 	    
+	    if((t_wnode=malloc(STR_CHARS)) == 0){
+	     sysfatal("can't malloc t_wnode in LookupAndSend: %r");
+	    }
+	   	   
             if(strcmp(j2wn[id],"\0")==0){
              t_wnode[0]='\0';
             }else{
@@ -796,7 +804,8 @@ void *LookupAndSend(int m_sock){
             }else{
              sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], pr_removal);
             }
-	    
+	    free(t_wnode);
+	     
 	   } else {
             if((out_buf=malloc(STR_CHARS)) == 0){
              sysfatal("can't malloc out_buf in LookupAndSend: %r");
@@ -859,12 +868,12 @@ char *GetLogDir(int largc, char *largv[]){
 
  char *lsf_base_pathtmp;
  char *lsf_base_path;
- char conffile[STR_CHARS];
- char lsf_clustername[STR_CHARS];
- char ls_out[STR_CHARS];
+ char *conffile;
+ char *lsf_clustername;
+ char *ls_out;
  char *logpath;
  char *line;
- char command_string[STR_CHARS];
+ char *command_string;
  int len;
  
  char *endptr;
@@ -890,6 +899,18 @@ char *GetLogDir(int largc, char *largv[]){
  }
  if((logpath=malloc(STR_CHARS)) == 0){
     sysfatal("can't malloc line: %r");
+ }
+ if((lsf_clustername=malloc(STR_CHARS)) == 0){
+    sysfatal("can't malloc lsf_clustername: %r");
+ }
+ if((ls_out=malloc(STR_CHARS)) == 0){
+    sysfatal("can't malloc ls_out: %r");
+ }
+ if((conffile=malloc(STR_CHARS)) == 0){
+    sysfatal("can't malloc conffile: %r");
+ }
+ if((command_string=malloc(STR_CHARS)) == 0){
+    sysfatal("can't malloc command_string: %r");
  }
 
  if((tbuf=malloc(10 * sizeof *tbuf)) == 0){
@@ -940,8 +961,8 @@ char *GetLogDir(int largc, char *largv[]){
    }
   }
  } else {
-  printf("Cannot open %s file\n",conffile);
-  exit(-1);
+  fprintf(stderr,"%s: Cannot open %s file.\n",progname,conffile);
+  exit(EXIT_FAILURE);
  }
  fclose(fp);
 
@@ -963,11 +984,11 @@ char *GetLogDir(int largc, char *largv[]){
  sprintf(command_string,"ls %s/lsid 2>/dev/null",binpath);
  ls_output = popen(command_string,"r");
  if (ls_output != NULL){
-  len = fread(ls_out, sizeof(char), sizeof(ls_out) - 1 , ls_output);
+  len = fread(ls_out, sizeof(char), STR_CHARS - 1 , ls_output);
   if (len==0){
-   printf("%s/lsid does not exist\n",binpath);
-   printf("Change %s setting the env LSF_BIN_PATH\n",binpath);
-   exit(-1);
+   fprintf(stderr,"%s: %s/lsid does not exist.\n",progname,binpath);
+   fprintf(stderr,"%s: Change %s setting the env LSF_BIN_PATH.\n",progname,binpath);
+   exit(EXIT_FAILURE);
   }
  }
  pclose(ls_output);
@@ -976,7 +997,7 @@ char *GetLogDir(int largc, char *largv[]){
  file_output = popen(command_string,"r");
  
  if (file_output != NULL){
-  len = fread(lsf_clustername, sizeof(char), sizeof(lsf_clustername) - 1 , file_output);
+  len = fread(lsf_clustername, sizeof(char), STR_CHARS - 1 , file_output);
   if (len>0){
    lsf_clustername[len-1]='\000';
   }
@@ -990,7 +1011,11 @@ char *GetLogDir(int largc, char *largv[]){
  }
  free(line);
  free(tbuf);
- free(lsf_base_path);	 
+ free(lsf_base_path);
+ free(lsf_clustername);
+ free(ls_out);
+ free(conffile);
+ free(command_string);
  
  return logpath;
 
@@ -1312,7 +1337,7 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
    
     char     *buffer;
     char     *outreason;
-    char     sjobid[STR_CHARS];
+    char     *sjobid;
   
     int      retcod;
         
@@ -1329,7 +1354,6 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
     fds[0].events = ( POLLIN | POLLOUT | POLLPRI | POLLERR | POLLHUP | POLLNVAL ) ;
     pfds = fds;
     
-    sprintf(sjobid, "%d",jobid);
     
     if((buffer=malloc(STR_CHARS)) == 0){
      sysfatal("can't malloc buffer: %r");
@@ -1340,6 +1364,11 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
     if((clientjobid=malloc(10 * sizeof *clientjobid)) == 0){
        sysfatal("can't malloc clientjobid %r");
     }
+    if((sjobid=malloc(10 * sizeof *sjobid)) == 0){
+       sysfatal("can't malloc sjobid %r");
+    }
+    
+    sprintf(sjobid, "%d",jobid);
     
     buffer[0]='\0';
     outreason[0]='\0';
@@ -1361,6 +1390,8 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
     }
     free(clientjobid);
 
+    free(sjobid);
+    
     /* set lock for cream cache */
     pthread_mutex_lock( &cr_write_mutex );
 
@@ -1737,5 +1768,5 @@ void sysfatal(char *fmt, ...){
     xfmt = chopfmt(fmt);
     eprint(xfmt!=fmt, xfmt, args);
     va_end(args);
-    exit(1);
+    exit(EXIT_FAILURE);
 }

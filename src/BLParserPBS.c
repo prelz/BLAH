@@ -11,7 +11,7 @@ int main(int argc, char *argv[]) {
     int       list_c;
     char     *Cendptr;
     
-    char      eventsfile[MAX_CHARS]="\0";
+    char      *eventsfile;
     
     time_t now;
     struct tm *tptr;
@@ -83,6 +83,10 @@ int main(int argc, char *argv[]) {
     now=time(NULL);
     tptr=localtime(&now);
     strftime(cnow,sizeof(cnow),"%Y%m%d",tptr);
+
+    if((eventsfile=malloc(STR_CHARS)) == 0){
+     sysfatal("can't malloc eventsfile: %r");
+    }
     
     strcat(eventsfile,ldir);
     strcat(eventsfile,"/");
@@ -271,7 +275,7 @@ void follow(char *infile, char *line){
     time_t lnow;
     struct tm *timeptr;
     char   tnow[30];
-    char   evfile[MAX_CHARS]="\0";
+    char   evfile[STR_CHARS]="\0";
     char   *actualfile;
    
     if((tdir=calloc(STR_CHARS,1)) == 0){
@@ -714,16 +718,21 @@ char *GetAllEvents(char *file){
  
  FILE *fp;
  char *line;
- char *opfile[STR_CHARS];
+ char **opfile;
  int i=0;
  int maxtok;
 
+ if((opfile=malloc(STR_CHARS * sizeof *opfile)) == 0){
+     sysfatal("can't malloc tbuf: %r");
+ }
+ 
  maxtok = strtoken(file, ' ', opfile);
 
+ if((line=malloc(STR_CHARS)) == 0){
+  sysfatal("can't malloc line: %r");
+ }
+  
  for(i=0; i<maxtok; i++){ 
-  if((line=malloc(STR_CHARS)) == 0){
-   sysfatal("can't malloc line: %r");
-  }
  
   if((fp=fopen(opfile[i], "r")) != 0){
    while(fgets(line, STR_CHARS, fp)){
@@ -732,15 +741,18 @@ char *GetAllEvents(char *file){
     }
    }
   } else {
-   printf("Cannot open %s file\n",opfile[i]);
+   fprintf(stderr, "%s: Cannot open %s file\n",progname,opfile[i]);
    exit(EXIT_FAILURE);
   }
   fclose(fp);
-  free(line);
+  free(opfile[i]);
 
 
- } /* close for*/
-    
+ } /* close for*/    
+ free(file);
+ free(line);
+ free(opfile);
+ 
  return NULL;
 
 }
@@ -751,7 +763,7 @@ void *LookupAndSend(int m_sock){
     char      *out_buf;
     char      *logdate;
     char      *jobid;
-    char      jstat[NUM_CHARS];
+    char      *jstat;
     char      *pr_removal="Not";
     int       i,maxtok,ii;
     int       id;
@@ -773,6 +785,10 @@ void *LookupAndSend(int m_sock){
 	  sysfatal("can't malloc buffer in LookupAndSend: %r");
 	}
         buffer[0]='\0';
+	if((jstat=malloc(STR_CHARS)) == 0){
+	  sysfatal("can't malloc jstat in LookupAndSend: %r");
+	}
+        jstat[0]='\0';
 	
 	Readline(conn_s, buffer, STR_CHARS-1);
 	if(debug){
@@ -893,8 +909,6 @@ void *LookupAndSend(int m_sock){
             sprintf(jstat," JobStatus=%s;",j2js[id]);
 	   }
 	   
-	   printf("AAAAAj2rt:%sXX\n",j2rt[id]);
-	   
            if(strcmp(j2js[id],"4")==0){
             sprintf(out_buf,"[BatchJobId=\"%s\";%s LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\"; ExitCode=%s;/%s\n",jobid, jstat, j2st[id], j2rt[id], j2ct[id], j2ec[id], pr_removal);
            }else if(strcmp(j2rt[id],"\0")!=0){
@@ -967,6 +981,7 @@ close:
 	free(buffer);
         free(logdate);
         free(jobid);
+        free(jstat);
 	
 	/*  Close the connected socket  */
 
@@ -1325,7 +1340,7 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
    
     char     *buffer;
     char     *outreason;
-    char     sjobid[STR_CHARS];
+    char     *sjobid;
   
     int      retcod;
         
@@ -1342,7 +1357,6 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
     fds[0].events = ( POLLIN | POLLOUT | POLLPRI | POLLERR | POLLHUP | POLLNVAL ) ;
     pfds = fds;
     
-    sprintf(sjobid, "%d",jobid);
     
     if((buffer=malloc(STR_CHARS)) == 0){
      sysfatal("can't malloc buffer: %r");
@@ -1353,6 +1367,11 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
     if((clientjobid=malloc(10 * sizeof *clientjobid)) == 0){
        sysfatal("can't malloc clientjobid %r");
     }
+    if((sjobid=malloc(10 * sizeof *sjobid)) == 0){
+       sysfatal("can't malloc sjobid %r");
+    }
+    
+    sprintf(sjobid, "%d",jobid);
     
     buffer[0]='\0';
     outreason[0]='\0';
@@ -1373,6 +1392,8 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
      free(clientjobid[i]);
     }
     free(clientjobid);
+
+    free(sjobid);
 
     /* set lock for cream cache */
     pthread_mutex_lock( &cr_write_mutex );
@@ -1734,5 +1755,5 @@ void sysfatal(char *fmt, ...){
     xfmt = chopfmt(fmt);
     eprint(xfmt!=fmt, xfmt, args);
     va_end(args);
-    exit(1);
+    exit(EXIT_FAILURE);
 }
