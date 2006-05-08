@@ -1676,6 +1676,7 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
         char *proxname=NULL;
         char *gridjobid=NULL;
         char *ce_id=NULL;
+        char *ce_idtmp=NULL;
         char *login=NULL;
         char *temp_str=NULL;
         char date_str[MAX_TEMP_ARRAY_SIZE], jobid_trunc[MAX_TEMP_ARRAY_SIZE];
@@ -1738,6 +1739,15 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
 			free(queue);
 		}else
 			ce_id=make_message("%s:2119/blah-%s-",host_name,bs);
+	}else
+	{
+                classad_get_dstring_attribute(cad, "Queue", &queue);
+		if(queue&&(strncmp(&ce_id[strlen(ce_id) - strlen(queue)],queue,strlen(queue))))
+		{ 
+			ce_idtmp=make_message("%s-%s",ce_id,queue);
+			free(ce_id);
+			ce_id=ce_idtmp;
+		}
 	}
 	if(glexec_mode)
 	{
