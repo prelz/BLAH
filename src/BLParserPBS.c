@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
       
       if ( *Cendptr ) {
      	 fprintf(stderr, "%s: Invalid port supplied for Cream\n",progname);
-     	 return -1;
+     	 exit(EXIT_FAILURE);
       }
 
       if ( (list_c = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
