@@ -28,6 +28,9 @@
 #define TBUFSIZE           400 
 #define WRETRIES           10
 
+#define VERSION            "1.8.0-1"
+
+
 /*  Function declarations  */
 
 ssize_t Readline(int fd, void *vptr, size_t maxlen);
@@ -53,6 +56,7 @@ char *iepoch2str(int epoch, char *f);
 int str2epoch(char *str, char *f);
 void daemonize();
 void print_usage();
+void print_version();
 int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir, char **szCreamPort, char **szDebugLogName, char **szDebugLevel); 
 void eprint(int err, char *fmt, va_list args);
 char *chopfmt(char *fmt);

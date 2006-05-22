@@ -28,6 +28,8 @@
 #define TBUFSIZE           400 
 #define WRETRIES           10
 
+#define VERSION            "1.8.0-1"
+
 
 /*  Function declarations  */
 
@@ -56,6 +58,7 @@ char *iepoch2str(int epoch);
 int str2epoch(char *str, char *f);
 void daemonize();
 void print_usage();
+void print_version();
 int ParseCmdLine(int argc, char *argv[], char **szPort, char **szBinPath, char **szConfPath, char **szCreamPort, char **szDebugLogName, char **szDebugLevel);
 void eprint(int err, char *fmt, va_list args);
 char *chopfmt(char *fmt);

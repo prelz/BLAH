@@ -1675,10 +1675,19 @@ void daemonize(){
 void print_usage(){
 
  fprintf(stderr,"Usage:\n");
- fprintf(stderr,"%s [-p] [<remote_port [%d]>] [-b <LSF_binpath [%s]>] [-c <LSF_confpath [%s]>] [-m  <CreamPort>] [-d <loglevel>] [-l <DebugLogFile> [%s]] [-D]\n",progname, DEFAULT_PORT, binpath, confpath, debuglogname);
- fprintf(stderr,"Use -d 1 to enable debugging and -d 2 to have more debugging.\n");
- fprintf(stderr,"-l works only with -d (a logfile can be specified only if debugging is active)\n");
- fprintf(stderr,"Use -D to run as daemon.\n");
+ fprintf(stderr,"%s [-p] [<remote_port [%d]>] [-b <LSF_binpath [%s]>] [-c <LSF_confpath [%s]>] [-m  <CreamPort>] [-d <loglevel>] [-l <DebugLogFile> [%s]] [-D] [-v]\n",progname, DEFAULT_PORT, binpath, confpath, debuglogname);
+ fprintf(stderr,"-d\t\t enable debugging (1|2|3)\n");
+ fprintf(stderr,"-l\t\t to specify a logfile (works only with -d)\n");
+ fprintf(stderr,"-D\t\t to run as daemon.\n");
+ fprintf(stderr,"-v\t\t print version\n");
+ fprintf(stderr,"-h\t\t print this help\n");
+ exit(EXIT_SUCCESS);
+ 
+}
+
+void print_version(){
+
+ fprintf(stderr,"%s Version: %s\n",progname,VERSION);
  exit(EXIT_SUCCESS);
  
 }
@@ -1693,8 +1702,10 @@ int ParseCmdLine(int argc, char *argv[], char **szPort, char **szBinPath,
           dmn=1;
           *szPort=NULL;
           return 0;
-       }else if(!strncmp(argv[n], "-h", 2)){
+       }else if ( !strncmp(argv[n], "-h", 2)){
           print_usage();
+       }else if ( !strncmp(argv[n], "-v", 2) ) {
+          print_version();
        }else{
           *szPort= argv[n];
           return 0;
@@ -1717,6 +1728,8 @@ int ParseCmdLine(int argc, char *argv[], char **szPort, char **szBinPath,
             *szDebugLevel = argv[++n];
         }else if ( !strncmp(argv[n], "-D", 2) ) {
 	    dmn=1;
+        }else if ( !strncmp(argv[n], "-v", 2) ) {
+            print_version();
         }else if ( !strncmp(argv[n], "-h", 2) ) {
             print_usage();
         }
