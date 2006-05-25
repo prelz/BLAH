@@ -28,7 +28,7 @@ BLParser=`grep pbs_BLParser $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed
 BLPserver=`grep pbs_BLPserver $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
 BLPport=`grep pbs_BLPport $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
 
-usage_string="Usage: $0 [-w]"
+usage_string="Usage: $0 [-w] [-n]"
 
 logpath=${spoolpath}server_logs
 
