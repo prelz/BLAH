@@ -150,8 +150,6 @@ cat > $tmp_file << end_of_preamble
 #
 # LSF directives:
 #BSUB -L /bin/bash
-#BSUB -N
-#BSUB -u blahp_sink@mi.infn.it
 #BSUB -J $tmp_file
 end_of_preamble
 
@@ -300,7 +298,8 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-jobID=`${binpath}bsub < $curdir/$tmp_file 2> /dev/null | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"` # actual submission
+jobID=`cd && ${binpath}bsub -o /dev/null -e /dev/null -i /dev/null < $curdir/$tmp_file | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"`
+
 retcode=$?
 if [ "$retcode" != "0" ] ; then
         rm -f $tmp_file
