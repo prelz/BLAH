@@ -298,7 +298,12 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-jobID=`cd && ${binpath}bsub -o /dev/null -e /dev/null -i /dev/null < $curdir/$tmp_file | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"`
+if [ ! -z "$HOME" ]; then
+    jobID=`cd && ${binpath}bsub -o /dev/null -e /dev/null -i /dev/null < $curdir/$tmp_file | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"`
+else
+    jobID=`${binpath}bsub -o /dev/null -e /dev/null -i /dev/null < $curdir/$tmp_file | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"`
+fi  
+
 
 retcode=$?
 if [ "$retcode" != "0" ] ; then
