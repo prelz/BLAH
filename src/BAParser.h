@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <popt.h>
 #include <globus_gss_assist.h>
 #include <globus_gsi_proxy.h>
 #include <globus_gsi_system_config.h>
@@ -22,6 +23,10 @@
 #define NUMTHRDS           20
 #define ERRMAX             80
 #define TBUFSIZE           400
+
+#ifndef VERSION
+#define VERSION            "1.8.0"
+#endif
 
 #define CHECK_GLOBUS_CALL(error_str, error_code, token_status) \
         if (major_status != GSS_S_COMPLETE) \
@@ -42,13 +47,11 @@ char *chopfmt(char *fmt);
 void syserror(char *fmt, ...);
 void sysfatal(char *fmt, ...);
 void *GetAndSend (int m_sock);
-int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir);
 char *ParseDGASFile(char *jobid,char *lrms);
 int WriteDN(char *jobid,char *lrms);
 int ReadDN(char *jobid,char *lrms);
 char *verify_dn(gss_ctx_id_t context_handle);
 int strtoken(const char *s, char delim, char **token);
-void print_usage();
 void daemonize();
 
 char *argv0;

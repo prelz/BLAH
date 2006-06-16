@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <popt.h>
 #include <globus_gss_assist.h>
 #include <globus_gsi_credential.h>
 #include <globus_gsi_proxy.h>
@@ -18,28 +19,28 @@
 #include "BPRcomm.h"
 #include "BLhelper.h"
 
-/*  Global constants  */
-
-#define MAX_LINE           (100000)
+#define MAX_LINE           100000
+#ifndef VERSION
+#define VERSION            "1.8.0"
+#endif
 
 char     *progname = "BAClient";
 
-/*  Function declarations  */
-
-int ParseCmdLine(int argc, char *argv[], char **szAddress, char **szPort);
-void print_usage();
-
-
 int main(int argc, char *argv[]) {
 
-    int       conn_s;                /*  connection socket         */
-    short int port;                  /*  port number               */
-    struct    sockaddr_in servaddr;  /*  socket address structure  */
-    char      buffer[MAX_LINE];      /*  character buffer          */
-    char     *szAddress;             /*  Holds remote IP address   */
-    char     *szPort;                /*  Holds remote port         */
-    char     *endptr;                /*  for strtol()              */
+    int       conn_s;
+    struct    sockaddr_in servaddr;
+    char      buffer[MAX_LINE];
     
+    char      *address=NULL;
+    int       port = 0;
+    int       version=0;
+
+    fd_set   wset;
+    struct   timeval to;
+    int      r;
+    int opt;
+    size_t optlen = sizeof(opt);
     
     OM_uint32	    major_status;
     OM_uint32	    minor_status;
@@ -50,27 +51,39 @@ int main(int argc, char *argv[]) {
 
     /*  Get command line arguments  */
 
-    ParseCmdLine(argc, argv, &szAddress, &szPort);
+    poptContext poptcon;
+    int rc;
+    struct poptOption poptopt[] = {
+        { "server",    'a', POPT_ARG_STRING, &address, 0, "server address", "<dotted-quad ip address>" },
+        { "port",      'p', POPT_ARG_INT,    &port,    0, "port",               "<port number>" },
+        { "version",   'v', POPT_ARG_NONE,   &version, 0, "print version and exit",            NULL },
+        POPT_AUTOHELP
+        POPT_TABLEEND
+    };
 
-    /*  Set the remote port  */
+    poptcon = poptGetContext(NULL, argc, (const char **) argv, poptopt, 0);
 
-    if(szPort !=NULL){
-      port = strtol(szPort, &endptr, 0);
-      if ( *endptr ) {
-         fprintf(stderr,"%s: Invalid port supplied.\n",progname);
-	 exit(EXIT_FAILURE);
-      }
-    }else{
-      fprintf(stderr,"%s: Invalid port supplied.\n",progname);
-      exit(EXIT_FAILURE);
+    if((rc = poptGetNextOpt(poptcon)) != -1){
+        fprintf(stderr,"%s: Invalid flag supplied.\n",progname);
+        exit(EXIT_FAILURE);
+    }
+
+    if ( version ) {
+        printf("%s Version: %s\n",progname,VERSION);
+        exit(EXIT_SUCCESS);
+    }
+
+    if ( !port ) {
+        fprintf(stderr,"%s: Invalid port supplied.\n",progname);
+        exit(EXIT_FAILURE);
     }
 	
-        /* Acquire GSS credential */
-        if ((credential_handle = acquire_cred(GSS_C_INITIATE)) == GSS_C_NO_CREDENTIAL)
-        {
-                fprintf(stderr,"%s: Unable to acquire credentials, exiting...\n",progname);
-                exit(EXIT_FAILURE);
-        }
+    /* Acquire GSS credential */
+    if ((credential_handle = acquire_cred(GSS_C_INITIATE)) == GSS_C_NO_CREDENTIAL)
+    {
+    	    fprintf(stderr,"%s: Unable to acquire credentials, exiting...\n",progname);
+    	    exit(EXIT_FAILURE);
+    }
 
 
     if ( (conn_s = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
@@ -85,9 +98,9 @@ int main(int argc, char *argv[]) {
 
     /*  Set the remote IP address  */
 
-    if ( !szAddress || inet_aton(szAddress, &servaddr.sin_addr) <= 0 ) {
-        fprintf(stderr,"%s: Invalid remote IP address.\n",progname);
-	exit(EXIT_FAILURE);
+    if ( !address || inet_aton(address, &servaddr.sin_addr) <= 0 ) {
+        fprintf(stderr, "%s: Invalid remote IP address.\n",progname);
+        exit(EXIT_FAILURE);
     }
     
     if ( connect(conn_s, (struct sockaddr *) &servaddr, sizeof(servaddr) ) < 0 ) {
@@ -124,42 +137,6 @@ int main(int argc, char *argv[]) {
    }
 
 
-    return EXIT_SUCCESS;
-}
-
-void print_usage(){
-
-     fprintf(stderr,"Usage:\n");
-     fprintf(stderr,"%s -a (remote IP) -p (remote port)\n",progname);
-     exit(EXIT_SUCCESS);
-
-}
-
-
-int ParseCmdLine(int argc, char *argv[], char **szAddress, char **szPort) {
-
-    int n = 1;
-    
-    if(argc < 3){
-       print_usage();
-    }
-
-    *szAddress=NULL;
-    *szPort=NULL;
-
-    while ( n < argc ) {
-	if ( !strncmp(argv[n], "-a", 2) ) {
-	    *szAddress = argv[++n];
-	}
-	else if ( !strncmp(argv[n], "-p", 2) ) {
-	    *szPort = argv[++n];
-	}
-	else if ( !strncmp(argv[n], "-h", 2) ) {
-            print_usage();
-	}
-	++n;
-    }
-
-    return 0;
+    exit(EXIT_SUCCESS);
 }
 

@@ -2,11 +2,11 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.10 2006/04/14 14:16:15 gfiorent Exp $ 
+# $Id: Makefile.am,v 1.11 2006/06/16 13:02:40 mezzadri Exp $ 
 #
 # File:           Makefile.am
 #
-# Author(s):      Francesco Prelz ($Author: gfiorent $)
+# Author(s):      Francesco Prelz ($Author: mezzadri $)
 #        e-mail: "Francesco.Prelz@mi.infn.it"
 #
 # Revision history:
@@ -42,24 +42,24 @@ $(GLOBUS_GSS_NOTHR_LIBS) $(GLOBUS_SSL_NOTHR_LIBS)
 
 BLClient_SOURCES = BLClient.c BLhelper.c
 
-BLClient_LDADD =
+BLClient_LDADD = -lpopt
 
 BLParserLSF_SOURCES = BLParserLSF.c
 
-BLParserLSF_LDADD =
+BLParserLSF_LDADD = -lpopt
 
 BLParserPBS_SOURCES = BLParserPBS.c
 
-BLParserPBS_LDADD =
+BLParserPBS_LDADD = -lpopt
 
 BAParser_SOURCES = BAParser.c BPRcomm.c tokens.c
 
-BAParser_LDADD = \
+BAParser_LDADD = -lpopt \
 $(GLOBUS_GSS_NOTHR_LIBS) $(GLOBUS_SSL_NOTHR_LIBS)
 
 BAClient_SOURCES = BAClient.c BPRcomm.c tokens.c BLhelper.c
 
-BAClient_LDADD = \
+BAClient_LDADD = -lpopt \
 $(GLOBUS_GSS_NOTHR_LIBS) $(GLOBUS_SSL_NOTHR_LIBS)
 
 BDlogger_SOURCES = BDlogger.c

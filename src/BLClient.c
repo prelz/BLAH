@@ -6,49 +6,67 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <popt.h>
 
 #include "BLhelper.h"
 
-/*  Global constants  */
+#define MAX_LINE            100000
+#define CONN_TIMEOUT_SEC    0
+#define CONN_TIMEOUT_MSEC   100000
 
-#define MAX_LINE           (100000)
+#ifndef VERSION
+#define VERSION            "1.8.0"
+#endif
 
 char     *progname = "BLClient";
 
-/*  Function declarations  */
-
-int ParseCmdLine(int argc, char *argv[], char **szAddress, char **szPort);
-void print_usage();
-
-
 int main(int argc, char *argv[]) {
 
-    int       conn_s;                /*  connection socket         */
-    short int port;                  /*  port number               */
-    struct    sockaddr_in servaddr;  /*  socket address structure  */
-    char      buffer[MAX_LINE];      /*  character buffer          */
-    char     *szAddress;             /*  Holds remote IP address   */
-    char     *szPort;                /*  Holds remote port         */
-    char     *endptr;                /*  for strtol()              */
+    int       conn_s;
+    struct    sockaddr_in servaddr;
+    char      buffer[MAX_LINE];
+    
+    char      *address=NULL;
+    int       port = 0;
+    int       version=0;
 
+    fd_set   wset;
+    struct   timeval to;
+    int      r;
+    int opt;
+    size_t optlen = sizeof(opt);
 
     /*  Get command line arguments  */
 
-    ParseCmdLine(argc, argv, &szAddress, &szPort);
-
-    /*  Set the remote port  */
+    poptContext poptcon;	
+    int rc;				
+    struct poptOption poptopt[] = { 	
+        { "server",    'a', POPT_ARG_STRING, &address,  0, "server address", "<dotted-quad ip address>" },
+        { "port",      'p', POPT_ARG_INT,    &port,    0, "port",               "<port number>" },
+        { "version",   'v', POPT_ARG_NONE,   &version, 0, "print version and exit",            NULL },
+        POPT_AUTOHELP
+        POPT_TABLEEND
+    };
     
-    if(szPort !=NULL){
-     port = strtol(szPort, &endptr, 0);
-     if ( *endptr ) {
-         fprintf(stderr,"%s: Invalid port supplied.\n",progname);
-	 exit(EXIT_FAILURE);
-     }
-    }else{
-      fprintf(stderr,"%s: Invalid port supplied.\n",progname);
-      exit(EXIT_FAILURE);
+    poptcon = poptGetContext(NULL, argc, (const char **) argv, poptopt, 0);
+       
+    if((rc = poptGetNextOpt(poptcon)) != -1){
+        fprintf(stderr,"%s: Invalid flag supplied.\n",progname);
+	exit(EXIT_FAILURE);
     }
-   
+
+    if ( version ) {
+        printf("%s Version: %s\n",progname,VERSION);
+        exit(EXIT_SUCCESS);
+    } 
+
+    if ( !port ) {
+        fprintf(stderr,"%s: Invalid port supplied.\n",progname);
+	exit(EXIT_FAILURE);
+    }
+     
     if ( (conn_s = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
 	fprintf(stderr, "%s: Error creating listening socket.\n",progname);
 	exit(EXIT_FAILURE);
@@ -58,69 +76,84 @@ int main(int argc, char *argv[]) {
     servaddr.sin_family      = AF_INET;
     servaddr.sin_port        = htons(port);
 
-
-    /*  Set the remote IP address  */
-
-    if ( !szAddress || inet_aton(szAddress, &servaddr.sin_addr) <= 0 ) {
+    if ( !address || inet_aton(address, &servaddr.sin_addr) <= 0 ) {
 	fprintf(stderr, "%s: Invalid remote IP address.\n",progname);
 	exit(EXIT_FAILURE);
     }
-
-    if ( connect(conn_s, (struct sockaddr *) &servaddr, sizeof(servaddr) ) < 0 ) {
-	fprintf(stderr, "%s: Error calling connect().\n",progname);
+   
+    if((r = fcntl(conn_s, F_GETFL, NULL)) < 0) {
+	fprintf(stderr, "%s: Error in getfl for socket.\n",progname);
 	exit(EXIT_FAILURE);
     }
-
-    fgets(buffer, MAX_LINE, stdin);
-
-    Writeline(conn_s, buffer, strlen(buffer));
-    Readline(conn_s, buffer, MAX_LINE-1);
-
-    printf("%s", buffer);
-
-   /*  Close the connected socket  */
-
-   if ( close(conn_s) < 0 ) {
-     fprintf(stderr, "%s: Error calling close()\n",progname);
-     exit(EXIT_FAILURE);
-   }
-
-
-    return EXIT_SUCCESS;
-}
-
-void print_usage(){
-
-     fprintf(stderr,"Usage:\n");
-     fprintf(stderr,"%s -a (remote IP) -p (remote port)\n",progname);
-     exit(EXIT_SUCCESS);
-
-}
-
-int ParseCmdLine(int argc, char *argv[], char **szAddress, char **szPort) {
-
-    int n = 1;
-
-    if(argc < 3){
-      print_usage();
+ 
+    r |= O_NONBLOCK;
+ 
+    if(fcntl(conn_s, F_SETFL, r) < 0) {
+	fprintf(stderr, "%s: Error in setfl for socket.\n",progname);
+	exit(EXIT_FAILURE);
     }
-    
-    *szAddress=NULL;
-    *szPort=NULL;
+        
+    if ( connect(conn_s, (struct sockaddr *) &servaddr, sizeof(servaddr) ) < 0 ) {
+        if(errno == EINPROGRESS) {
+            to.tv_sec  = CONN_TIMEOUT_SEC;
+            to.tv_usec = CONN_TIMEOUT_MSEC;
+            
+            FD_ZERO(&wset);
+            FD_SET(conn_s, &wset);
+	    
+            r = select(1 + conn_s, NULL, &wset, NULL, &to);
+            
+            if(r < 0) {
+	        exit(EXIT_FAILURE);
+            } else if(r == 0) {
+                errno = ECONNREFUSED;
+                exit(EXIT_FAILURE);
+            }
+        } else {
+            exit(EXIT_FAILURE);
+        }
+    }    
 
-    while ( n < argc ) {
-	if ( !strncmp(argv[n], "-a", 2) ) {
-	    *szAddress = argv[++n];
-	}
-	else if ( !strncmp(argv[n], "-p", 2) ) {
-	    *szPort = argv[++n];
-	}
-	else if ( !strncmp(argv[n], "-h", 2) ) {
-            print_usage();
-	}
-	++n;
+    if(FD_ISSET(conn_s, &wset)) {
+         
+       if(getsockopt(conn_s, SOL_SOCKET, SO_ERROR, (void *) &opt, &optlen) < 0) {
+	    fprintf(stderr, "%s: Error in getsockopt for socket.\n",progname);
+            exit(EXIT_FAILURE);
+       }
+       
+       if(opt) {
+            errno = opt;
+            exit(EXIT_FAILURE);
+       }    
+       
+       if((r = fcntl(conn_s, F_GETFL, NULL)) < 0) {
+	     fprintf(stderr, "%s: Error in getfl for socket.\n",progname);
+	     exit(EXIT_FAILURE);
+       }
+    
+       r &= (~O_NONBLOCK);
+
+       if(fcntl(conn_s, F_SETFL, r) < 0) {
+	   fprintf(stderr, "%s: Error in setfl for socket.\n",progname);
+           exit(EXIT_FAILURE);
+       }
+    
+       fgets(buffer, MAX_LINE, stdin);
+
+       Writeline(conn_s, buffer, strlen(buffer));
+       Readline(conn_s, buffer, MAX_LINE-1);
+
+       printf("%s", buffer);
+    } else {
+        exit(EXIT_FAILURE);
     }
-    
-    return 0;
-}
 
+    /*  Close the connected socket  */
+
+    if ( close(conn_s) < 0 ) {
+       fprintf(stderr, "%s: Error calling close()\n",progname);
+       exit(EXIT_FAILURE);
+    }
+
+    exit(EXIT_SUCCESS);
+}
