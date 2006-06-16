@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#define __USE_XOPEN
 #include <time.h>
 #include <sys/socket.h>
 #include <sys/types.h> 
@@ -15,6 +16,9 @@
 #include <assert.h>
 #include <sys/select.h>
 #include <sys/poll.h>
+#include <popt.h>
+#include <dirent.h>
+
 
 #define LISTENQ            1024
 #define DEFAULT_PORT       33333 
@@ -28,8 +32,9 @@
 #define TBUFSIZE           400 
 #define WRETRIES           10
 
-#define VERSION            "1.8.0-1"
-
+#ifndef VERSION
+#define VERSION            "1.8.0"
+#endif
 
 /*  Function declarations  */
 
@@ -57,9 +62,6 @@ char *epoch2str(char *epoch);
 char *iepoch2str(int epoch);
 int str2epoch(char *str, char *f);
 void daemonize();
-void print_usage();
-void print_version();
-int ParseCmdLine(int argc, char *argv[], char **szPort, char **szBinPath, char **szConfPath, char **szCreamPort, char **szDebugLogName, char **szDebugLevel);
 void eprint(int err, char *fmt, va_list args);
 char *chopfmt(char *fmt);
 void syserror(char *fmt, ...);
@@ -117,7 +119,6 @@ struct sockaddr_in cservaddr;
 int  list_c;
 int  conn_c=-1;
 int  c_sock;
-char *szCreamPort;
 
 /* 
 to know if cream is connected:

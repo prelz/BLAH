@@ -3,30 +3,40 @@
 int main(int argc, char *argv[]) {
 
     struct    sockaddr_in servaddr;
-    char      *endptr;
     int       i,j;
     int       set = 1;
     int       status;
     int       list_s;
     int       list_c;
-    char     *Cendptr;
     
     char      *eventsfile;
     
     time_t now;
     struct tm *tptr;
    
-    char *szPort;
-    char *szSpoolDir;
-    char *szDebugLogName;
-    char *szDebugLevel;
-    
-    char *espooldir;
-    FILE      *fpt;
+    int version=0;
+    const char *nport;
 
     pthread_t ReadThd[NUMTHRDS];
     pthread_t UpdateThd;
     pthread_t CreamThd;
+
+    poptContext poptcon;		     // popt's stuff	     
+    int rc;			     
+    struct poptOption poptopt[] = { 	
+        { "port",      'p', POPT_ARG_INT,    &port,         0, "port",            "<port number>"  },
+        { "creamport", 'm', POPT_ARG_INT,    &creamport,    0, "creamport",   "<creamport number>" },
+        { "spooldir",  's', POPT_ARG_STRING, &spooldir,     0, "PBS spooldir",     "<PBSspooldir>" },
+        { "logfile ",  'l', POPT_ARG_STRING, &debuglogname, 0, "DebugLogFile",    "<DebugLogFile>" },
+        { "debug",     'd', POPT_ARG_INT,    &debug,        0, "enable debugging",            NULL },
+        { "daemon",    'D', POPT_ARG_NONE,   &dmn,          0, "run as daemon",               NULL },
+        { "version",   'v', POPT_ARG_NONE,   &version,      0, "print version and exit",      NULL },
+        POPT_AUTOHELP
+        POPT_TABLEEND
+    };
+    
+    char *espooldir;
+    FILE      *fpt;
 
     argv0 = argv[0];
 
@@ -34,46 +44,53 @@ int main(int argc, char *argv[]) {
     
     signal(SIGPIPE, SIG_IGN);             
         
-    ParseCmdLine(argc, argv, &szPort, &szSpoolDir, &szCreamPort, &szDebugLogName, &szDebugLevel);
+    poptcon = poptGetContext(NULL, argc, (const char **) argv, poptopt, 0);
+ 
+    if((rc = poptGetNextOpt(poptcon)) != -1){
+        fprintf(stderr,"%s: Invalid flag supplied.\n",progname);
+        exit(EXIT_FAILURE);
+    }
+    nport=poptGetArg(poptcon);
     
+    if(version) {
+       printf("%s Version: %s\n",progname,VERSION);
+       exit(EXIT_SUCCESS);
+    }   
     if(dmn){    
-     daemonize();
+       daemonize();
     }
-    if((argc > 1) && (szDebugLevel!=NULL)){
-     debug = strtol(szDebugLevel, &endptr, 0);
-     if (debug <=0){
-      debug=0;
-     }
+    if(debug <=0){
+       debug=0;
     }
     
-    if((argc > 1) && (szPort!=NULL)){
-     port = strtol(szPort, &endptr, 0);
-     if ( *endptr || port < 1 || port > 65535) {
-       fprintf(stderr,"%s: Invalid port supplied.\n",progname);
-       exit(EXIT_FAILURE);
-     }
+    if(port) {
+    	if ( port < 1 || port > 65535) {
+   	   fprintf(stderr,"%s: Invalid port supplied.\n",progname);
+   	   exit(EXIT_FAILURE);
+    	}
+    }else if(nport){
+    	port=nport;
+    	if ( port < 1 || port > 65535) {
+   	   fprintf(stderr,"%s: Invalid port supplied.\n",progname);
+    	   exit(EXIT_FAILURE);
+    	}
     }else{
-     port=DEFAULT_PORT;
-    }
-        
+    	port=DEFAULT_PORT;
+    }	
+    	 
     /* Get log dir name */
   
     if((ldir=malloc(STR_CHARS)) == 0){
      sysfatal("can't malloc line: %r");
     }
     
-    if(szDebugLogName!=NULL){
-     debuglogname=szDebugLogName;
-    }
     if(debug){
      if((debuglogfile = fopen(debuglogname, "a+"))==0){
       debuglogfile =  fopen("/dev/null", "a+");
      }
     }
     
-    if(szSpoolDir!=NULL){
-     spooldir=szSpoolDir;
-    }else if((espooldir=getenv("PBS_SPOOL_DIR"))!=NULL){
+    if(!spooldir && (espooldir=getenv("PBS_SPOOL_DIR"))!=NULL){
      spooldir=espooldir;
     }
         
@@ -138,9 +155,8 @@ int main(int argc, char *argv[]) {
     /* create listening socket for Cream */
 
     if(usecream>0){
-      creamport = strtol(szCreamPort, &Cendptr, 0);
       
-      if ( *Cendptr ) {
+      if ( !creamport ) {
      	 fprintf(stderr, "%s: Invalid port supplied for Cream\n",progname);
      	 exit(EXIT_FAILURE);
       }
@@ -999,6 +1015,7 @@ int GetEventsInOldLogs(char *logdate){
  char *loglist=NULL;
  
  loglist=GetLogList(logdate);
+ 
  if(loglist!=NULL){
   GetAllEvents(loglist);
  }
@@ -1008,161 +1025,68 @@ int GetEventsInOldLogs(char *logdate){
 }
 
 char *GetLogList(char *logdate){
- 
- char *datefile;
- char *touch_out;
- char *rm_out;
- char *logs;
- char *slogs;
- char *tlogs;
- char *command_string;
- FILE *mktemp_output;
- FILE *touch_output;
- FILE *find_output;
- FILE *rm_output;
- FILE *ls_output;
- int len;
- int last_tag;
- int maxtok;
- int i=0;
- char **oplogs;
+         DIR             *dirh;
+         struct dirent   *direntry;
+         int             rc;
+         struct stat     sbuf;
+         time_t          tage;
+         char            *s,*p,*dir;
+         struct tm       tmthr;
+         char            *slogs;
 
- if((logs=malloc(MAX_CHARS)) == 0){
-  sysfatal("can't malloc logs: %r");
- }
- if((slogs=malloc(MAX_CHARS)) == 0){
-  sysfatal("can't malloc slogs: %r");
- }
- if((tlogs=malloc(MAX_CHARS)) == 0){
-  sysfatal("can't malloc tlogs: %r");
- }
- if((command_string=malloc(MAX_CHARS)) == 0){
-  sysfatal("can't malloc command_string: %r");
- }
- if((datefile=malloc(STR_CHARS)) == 0){
-  sysfatal("can't malloc datefile: %r");
- }
- if((touch_out=malloc(STR_CHARS)) == 0){
-  sysfatal("can't malloc touch_out: %r");
- }
- if((rm_out=malloc(STR_CHARS)) == 0){
-  sysfatal("can't malloc rm_out: %r");
- }
- 
- sprintf(command_string,"mktemp -q /tmp/blahdate_XXXXXX");
- mktemp_output = popen(command_string,"r");
- if (mktemp_output != NULL){
-  len = fread(datefile, sizeof(char), STR_CHARS - 1 , mktemp_output);
-  if (len>0){
-   datefile[len-1]='\000';
-  }
- }
- pclose(mktemp_output);
+         if((slogs=malloc(MAX_CHARS)) == 0){
+                 sysfatal("can't malloc slogs: %r");
+         }
+	 
+         /* parse timestamp and convert to seconds-from-epoch */
+         tmthr.tm_sec=tmthr.tm_min=tmthr.tm_hour=tmthr.tm_isdst=0;
+         p=strptime(logdate,"%Y%m%d",&tmthr);
+         if( (p-logdate) != 8) {
+                 fprintf(stderr,"Timestring \"%s\" is invalid (YYYYmmdd)\n",logdate );
+                 return NULL;
+         }
+         tage=mktime(&tmthr);
 
-/* We deal with both date format (20050513 and 200505130000.00) even if it is not needed */
 
- if(strlen(logdate) > 9){
-  sprintf(command_string,"touch -t %s %s 2>/dev/null",logdate,datefile);
- } else {
-  sprintf(command_string,"touch -d %s %s 2>/dev/null",logdate,datefile);
- }
+         /* **** code for the opendir/stat conventional pattern start here */
 
- touch_output = popen(command_string,"r");
- if (touch_output != NULL){
-  len = fread(touch_out, sizeof(char), STR_CHARS - 1 , touch_output);
-  if (len>0){
-   touch_out[len-1]='\000';
-  }
- }
- pclose(touch_output);
- 
- sprintf(command_string,"find %s/* -type f -newer %s -printf \"%%p \" 2>/dev/null", ldir, datefile);
- find_output = popen(command_string,"r");
- if (find_output != NULL){
-  len = fread(logs, sizeof(char), MAX_CHARS - 1 , find_output);
-  if (len>0){
-   logs[len-1]='\000';
-  }
- }
- pclose(find_output);
-  
- sprintf(command_string,"rm %s", datefile);
- rm_output = popen(command_string,"r");
- if (rm_output != NULL){
-  len = fread(rm_out, sizeof(char), STR_CHARS - 1 , rm_output);
-  if (len>0){
-   rm_out[len-1]='\000';
-  }
- }
- pclose(rm_output);
- 
-/* this is done to avoid ls -tr to run without args so that local dir is listed */
+         if( !(dirh=opendir(ldir)) ) {
+                 fprintf(stderr,"Cannot open directory %s: %s\n",
+                                 ldir,strerror(errno));
+                 return NULL;
+         }
 
- if((logs == NULL) || (strlen(logs) < 2)){
-  free(command_string);
-  free(datefile);
-  free(touch_out);
-  free(rm_out);
-  free(logs);
-  free(tlogs);
-  free(slogs);
-  return NULL;
- }
- 
- sprintf(command_string,"ls -tr %s", logs);
- ls_output = popen(command_string,"r");
- if (ls_output != NULL){
-  len = fread(tlogs, sizeof(char), MAX_CHARS - 1 , ls_output);
-  if (len>0){
-   tlogs[len-1]='\000';
-  }
-  pclose(ls_output);
- 
-  free(command_string);
-  free(datefile);
-  free(touch_out);
-  free(rm_out);
-  free(logs);
-  
-  slogs[0]='\0';
-  
-  if((oplogs=malloc(10*STR_CHARS * sizeof *oplogs)) == 0){
-     sysfatal("can't malloc oplogs: %r");
-  }
-  
-  maxtok = strtoken(tlogs, '\n', oplogs);
-  last_tag=maxtok;
-  free(tlogs);
-  
-  for(i=0; i<maxtok; i++){
-   strcat(slogs,oplogs[i]);
-   strcat(slogs," ");
-   free(oplogs[i]);
-  }
-  free(oplogs);
+         while ( (direntry=readdir(dirh)) ) {
+                 if( *(direntry->d_name) == '.' ) continue;
+                 if(!(s=(char*)malloc(strlen(direntry->d_name)+strlen(ldir)+2))) {
+                         fprintf(stderr,"Cannot alloc string space\n");
+                         return NULL;
+                 }
+                 sprintf(s,"%s/%s",ldir,direntry->d_name);
+                 rc=stat(s,&sbuf);
+                 if(rc) {
+                         fprintf(stderr,"Cannot stat file %s: %s\n",
+                                         s,strerror(errno));
+                         return NULL;
+                 }
+                 if ( sbuf.st_mtime > tage ) {
+			/* file is newer than timestamp, <s> contains full path
+			   and <direntry->d_name> contains basename */
+			   
+		         strcat(slogs,s);
+                         strcat(slogs," ");
+                 }  
 
-/* last_tag is used to see if there is only one log file and to avoid to rescan it*/
+                 free(s);
+         }
 
-  if(last_tag==0){
-   free(slogs);
-   return NULL;
-  }
-  
-  return slogs;
-  
- } else {
- 
-  pclose(ls_output);
-  free(command_string);
-  free(datefile);
-  free(touch_out);
-  free(rm_out);
-  free(logs);
-  free(tlogs);
-  free(slogs);
-  return NULL;
-  
- }
+         closedir(dirh);
+	 
+	 return(slogs);
+
+         /* **** code for the opendir/stat conventional pattern ends here */
+
+
 }
 
 void CreamConnection(int c_sock){ 
@@ -1657,73 +1581,6 @@ void daemonize(){
     freopen ("/dev/null", "w", stdout);
     freopen ("/dev/null", "w", stderr);
 
-}
-
-void print_usage(){
-
- fprintf(stderr,"Usage:\n");
- fprintf(stderr,"%s [-p] [<remote_port [%d]>] [-s <PBS_spooldir [%s]>] [-m  <CreamPort>] [-d <loglevel>] [-l <DebugLogFile> [%s]] [-D] [-v]\n",progname, DEFAULT_PORT, spooldir, debuglogname);
- fprintf(stderr,"-d\t\t enable debugging (1|2|3)\n");
- fprintf(stderr,"-l\t\t to specify a logfile (works only with -d)\n");
- fprintf(stderr,"-D\t\t to run as daemon.\n");
- fprintf(stderr,"-v\t\t print version\n");
- fprintf(stderr,"-h\t\t print this help\n");
- exit(EXIT_SUCCESS);
- 
-}
-
-void print_version(){
-
- fprintf(stderr,"%s Version: %s\n",progname,VERSION);
- exit(EXIT_SUCCESS);
- 
-}
-
-int ParseCmdLine(int argc, char *argv[], char **szPort, char **szSpoolDir, char **szCreamPort, char **szDebugLogName, char **szDebugLevel) {
-    
-    int n = 1;
-     
-    if(argc==2){
-       if(!strncmp(argv[n], "-D", 2)){
-          dmn=1;
-          *szPort=NULL;
-          return 0;
-       }else if ( !strncmp(argv[n], "-h", 2)){
-          print_usage();
-       }else if ( !strncmp(argv[n], "-v", 2) ) {
-          print_version();
-       }else{
-          *szPort= argv[n];
-          return 0;
-       }
-    }
-
-    while ( n < argc ) {
-        if ( !strncmp(argv[n], "-p", 2) ) {
-            *szPort= argv[++n];
-        }else if ( !strncmp(argv[n], "-s", 2) ) {
-            *szSpoolDir = argv[++n];
-        }else if ( !strncmp(argv[n], "-m", 2) ) {
-            *szCreamPort = argv[++n];
-	    usecream++;
-        }else if ( !strncmp(argv[n], "-l", 2) ) {
-            *szDebugLogName = argv[++n];
-        }else if ( !strncmp(argv[n], "-d", 2) ) {
-	    *szDebugLevel = argv[++n];
-        }else if ( !strncmp(argv[n], "-D", 2) ) {
-	    dmn=1;
-        }else if ( !strncmp(argv[n], "-v", 2) ) {
-            print_version();
-        }else if ( !strncmp(argv[n], "-h", 2) ) {
-            print_usage(); 
-	}else {
-	    fprintf(stderr,"Wrong argument.\n");
-            print_usage(); 
-        }
-        ++n;
-    }
-    
-    return 0;
 }
 
 void eprint(int err, char *fmt, va_list args){
