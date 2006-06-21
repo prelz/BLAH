@@ -9,7 +9,7 @@
 #  Revision history:
 #    20-Mar-2004: Original release
 #    04-Jan-2005: Totally rewritten, qstat command not used anymore
-#    03-May-2005: Added support for Blah Log Parser daemon (using the BLParser flag)
+#    03-May-2005: Added support for Blah Log Parser daemon (using the pbs_BLParser flag)
 #
 #  Description:
 #    Return a classad describing the status of a PBS job
@@ -20,17 +20,11 @@
 #  See http://grid.infn.it/grid/license.html for license details.
 #
 
-blahconffile="${GLITE_LOCATION:-/opt/glite}/etc/blah.config"
-pbsbinpath=`grep pbs_binpath $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`/
-spoolpath=`grep pbs_spoolpath $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`/
-fallback=`grep pbs_fallback $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
-BLParser=`grep pbs_BLParser $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
-BLPserver=`grep pbs_BLPserver $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
-BLPport=`grep pbs_BLPport $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
+[ -f $GLITE_LOCATION/etc/blah.config ] && . $GLITE_LOCATION/etc/blah.config
 
 usage_string="Usage: $0 [-w] [-n]"
 
-logpath=${spoolpath}server_logs
+logpath=${pbs_spoolpath}/server_logs
 
 #get worker node info
 getwn=""
@@ -64,13 +58,13 @@ shift `expr $OPTIND - 1`
 #get creamport and exit
 
 if [ "x$getcreamport" == "xyes" ] ; then
- result=`echo "CREAMPORT/"|$BLClient -a $BLPserver -p $BLPport`
+ result=`echo "CREAMPORT/"|$BLClient -a $pbs_BLPserver -p $pbs_BLPport`
  reqretcode=$?
  if [ "$reqretcode" == "1" ] ; then
   exit 1
  fi
  retcode=0
- echo $BLPserver:$result
+ echo $pbs_BLPserver:$result
  exit $retcode
 fi
 
@@ -84,7 +78,7 @@ for  reqfull in $pars ; do
 	reqjob=`echo $requested | sed -e 's/^.*\///'`
 	logfile=`echo $requested | sed 's/\/.*//'`
 	if [ "x$getwn" == "xyes" ] ; then
-		workernode=`${pbsbinpath}/qstat -f $reqjob 2> /dev/null | grep exec_host| sed "s/exec_host = //" | awk -F"/" '{ print $1 }'`
+		workernode=`${pbs_binpath}/qstat -f $reqjob 2> /dev/null | grep exec_host| sed "s/exec_host = //" | awk -F"/" '{ print $1 }'`
 	fi
 
 	cliretcode=0
@@ -92,9 +86,9 @@ for  reqfull in $pars ; do
 	logs=""
 	result=""
 	logfile=`echo $requested | sed 's/\/.*//'`
-	if [ "x$BLParser" == "xyes" ] ; then
+	if [ "x$pbs_BLParser" == "xyes" ] ; then
     		usedBLParser="yes"
-		result=`echo $requested | $BLClient -a $BLPserver -p $BLPport`
+		result=`echo $requested | $BLClient -a $pbs_BLPserver -p $pbs_BLPport`
 		cliretcode=$?
 		response=${result:0:1}
 		if [ "$response" != "[" -o "$cliretcode" != "0" ] ; then
@@ -103,11 +97,11 @@ for  reqfull in $pars ; do
 			cliretcode=0
 		fi
 	fi
-	if [ "$cliretcode" == "1" -a "x$fallback" == "xno" ] ; then
-	 echo "1ERROR: not able to talk with logparser on ${BLPserver}:${BLPport}"
+	if [ "$cliretcode" == "1" -a "x$pbs_fallback" == "xno" ] ; then
+	 echo "1ERROR: not able to talk with logparser on ${pbs_BLPserver}:${pbs_BLPport}"
 	 exit 0
 	fi
-	if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
+	if [ "$cliretcode" == "1" -o "x$pbs_BLParser" != "xyes" ] ; then
 		result=""
 		usedBLParser="no"
 		logs="$logpath/$logfile `find $logpath -type f -newer $logpath/$logfile`"
@@ -171,7 +165,7 @@ END {
 			echo "1ERROR: Job not found"
 			retcode=1
   		fi
-	fi #close if on BLParser
+	fi #close if on pbs_BLParser
 	if [ "x$usedBLParser" == "xyes" ] ; then
 		pr_removal=`echo $result | sed -e 's/^.*\///'`
     		result=`echo $result | sed 's/\/.*//'`

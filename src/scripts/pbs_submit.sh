@@ -16,7 +16,7 @@
 #    29-Sep-2004: -g option added (gianduiotto selection) and job_ID=job_ID_log
 #    13-Jan-2005: -n option added (MPI job selection)
 #     9-Mar-2005: Dgas(gianduia) removed. Proxy renewal stuff added (-r -p -l flags)
-#     3-May-2005: Added support for Blah Log Parser daemon (using the BLParser flag)
+#     3-May-2005: Added support for Blah Log Parser daemon (using the pbs_BLParser flag)
 # 
 #
 # Description:
@@ -31,17 +31,11 @@
 #
 #
 
-blahconffile="${GLITE_LOCATION:-/opt/glite}/etc/blah.config"
-binpath=`grep pbs_binpath $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`/
-spoolpath=`grep pbs_spoolpath $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`/
-fallback=`grep pbs_fallback $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
-BLParser=`grep pbs_BLParser $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
-BLPserver=`grep pbs_BLPserver $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
-BLPport=`grep pbs_BLPport $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
+[ -f $GLITE_LOCATION/etc/blah.config ] && . $GLITE_LOCATION/etc/blah.config
 
 usage_string="Usage: $0 -c <command> [-i <stdin>] [-o <stdout>] [-e <stderr>] [-x <x509userproxy>] [-v <environment>] [-s <yes | no>] [-- command_arguments]"
 
-logpath=${spoolpath}server_logs
+logpath=${pbs_spoolpath}/server_logs
 
 stgcmd="yes"
 stgproxy="yes"
@@ -312,7 +306,7 @@ if [ $? -ne 0 ]; then
 fi
 
 datenow=`date +%Y%m%d`
-jobIDtmp=`${binpath}qsub $curdir/$tmp_file 2> /dev/null` # actual submission
+jobIDtmp=`${pbs_binpath}/qsub $curdir/$tmp_file 2> /dev/null` # actual submission
 retcode=$?
 if [ "$retcode" != "0" ] ; then
 	rm -f $curdir/$tmp_file
@@ -343,23 +337,23 @@ log_check_retry_count=0
 while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
 
  cliretcode=0
- if [ "x$BLParser" == "xyes" ] ; then
-     jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $BLPserver -p $BLPport`
+ if [ "x$pbs_BLParser" == "xyes" ] ; then
+     jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $pbs_BLPserver -p $pbs_BLPport`
      cliretcode=$?
      if [ "x$jobID_log" != "x" ] ; then
         logfile=$datenow
      fi
  fi
  
- if [ "$cliretcode" == "1" -a "x$fallback" == "xno" ] ; then
-  ${binpath}qdel $jobID
-  echo "Error: not able to talk with logparser on ${BLPserver}:${BLPport}" >&2
+ if [ "$cliretcode" == "1" -a "x$pbs_fallback" == "xno" ] ; then
+  ${pbs_binpath}/qdel $jobID
+  echo "Error: not able to talk with logparser on ${pbs_BLPserver}:${pbs_BLPport}" >&2
   echo Error # for the sake of waiting fgets in blahpd
   rm -f $curdir/$tmp_file
   exit 1
  fi
 
- if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
+ if [ "$cliretcode" == "1" -o "x$pbs_BLParser" != "xyes" ] ; then
 
      logfile=`find $logpath -type f -newer $curdir/$tmp_file -exec grep -l "job name = $tmp_file" {} \;`
      if [ "x$logfile" != "x" ] ; then
@@ -369,7 +363,7 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
  fi
 
  if (( log_check_retry_count++ >= 12 )); then
-     ${binpath}qdel $jobID
+     ${pbs_binpath}/qdel $jobID
      echo "Error: job not found in logs" >&2
      echo Error # for the sake of waiting fgets in blahpd
      rm -f $curdir/$tmp_file

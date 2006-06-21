@@ -9,7 +9,7 @@
 #  Revision history:
 #    20-Mar-2004: Original release
 #    22-Feb-2005: Totally rewritten, bhist command not used anymore
-#     3-May-2005: Added support for Blah Log Parser daemon (using the BLParser flag)
+#     3-May-2005: Added support for Blah Log Parser daemon (using the lsf_BLParser flag)
 #
 #  Description:
 #    Return a classad describing the status of a LSF job
@@ -20,12 +20,7 @@
 #  See http://grid.infn.it/grid/license.html for license details.
 #
 
-blahconffile="${GLITE_LOCATION:-/opt/glite}/etc/blah.config"
-binpath=`grep lsf_binpath $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`/
-fallback=`grep lsf_fallback $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
-BLParser=`grep lsf_BLParser $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
-BLPserver=`grep lsf_BLPserver $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
-BLPport=`grep lsf_BLPport $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
+[ -f $GLITE_LOCATION/etc/blah.config ] && . $GLITE_LOCATION/etc/blah.config
 
 usage_string="Usage: $0 [-w] [-n]"
 
@@ -61,13 +56,13 @@ shift `expr $OPTIND - 1`
 #get creamport and exit
 
 if [ "x$getcreamport" == "xyes" ] ; then
- result=`echo "CREAMPORT/"|$BLClient -a $BLPserver -p $BLPport`
+ result=`echo "CREAMPORT/"|$BLClient -a $lsf_BLPserver -p $lsf_BLPport`
  reqretcode=$?
  if [ "$reqretcode" == "1" ] ; then
   exit 1
  fi
  retcode=0
- echo $BLPserver:$result
+ echo $lsf_BLPserver:$result
  exit $retcode
 fi
 
@@ -81,10 +76,10 @@ for  reqfull in $pars ; do
 		
 	result=""
 	cliretcode=0
-	if [ "x$BLParser" == "xyes" ] ; then
+	if [ "x$lsf_BLParser" == "xyes" ] ; then
     
 		usedBLParser="yes"
-		result=`echo $reqfull| $BLClient -a $BLPserver -p $BLPport`
+		result=`echo $reqfull| $BLClient -a $lsf_BLPserver -p $lsf_BLPport`
     		cliretcode=$?
                 response=${result:0:1}
 		if [ "$response" != "[" -o "$cliretcode" != "0" ] ; then
@@ -94,12 +89,12 @@ for  reqfull in $pars ; do
                 fi
 	fi
 	
-        if [ "$cliretcode" == "1" -a "x$fallback" == "xno" ] ; then
-         echo "1ERROR: not able to talk with logparser on ${BLPserver}:${BLPport}"
+        if [ "$cliretcode" == "1" -a "x$lsf_fallback" == "xno" ] ; then
+         echo "1ERROR: not able to talk with logparser on ${lsf_BLPserver}:${lsf_BLPport}"
          exit 0
         fi
 
-	if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
+	if [ "$cliretcode" == "1" -o "x$lsf_BLParser" != "xyes" ] ; then
 		result=""
 		usedBLParser="no"
 		datefile=`mktemp -q blahjob_XXXXXX`
@@ -111,10 +106,9 @@ for  reqfull in $pars ; do
 			break
 		fi
 
-		confpath=${LSF_CONF_PATH:-/etc}
-		conffile=$confpath/lsf.conf
+		conffile=$lsf_confpath/lsf.conf
 		lsf_base_path=`cat $conffile|grep LSB_SHAREDIR| awk -F"=" '{ print $2 }'`
-		lsf_clustername=`${binpath}lsid | grep 'My cluster name is'|awk -F" " '{ print $5 }'`
+		lsf_clustername=`${lsf_binpath}/lsid | grep 'My cluster name is'|awk -F" " '{ print $5 }'`
 		logpath=$lsf_base_path/$lsf_clustername/logdir
 		logeventfile=lsb.events
 		touch -t $datenow $datefile

@@ -17,7 +17,7 @@
 #    13-Jan-2005: -n option added (MPI job selection) and changed prelz@mi.infn.it with
 #                    blahp_sink@mi.infn.it
 #     4-Mar-2005: Dgas(gianduia) removed. Proxy renewal stuff added (-r -p -l flags)
-#     3-May-2005: Added support for Blah Log Parser daemon (using the BLParser flag)
+#     3-May-2005: Added support for Blah Log Parser daemon (using the lsf_BLParser flag)
 #    31-May-2005: Separated job's standard streams from wrapper's ones
 # 
 #
@@ -33,19 +33,13 @@
 #
 #
 
-blahconffile="${GLITE_LOCATION:-/opt/glite}/etc/blah.config"
-binpath=`grep lsf_binpath $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`/
-confpath=`grep lsf_confpath $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`/
-fallback=`grep lsf_fallback $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
-BLParser=`grep lsf_BLParser $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
-BLPserver=`grep lsf_BLPserver $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
-BLPport=`grep lsf_BLPport $blahconffile|grep -v \#|awk -F"=" '{ print $2}'|sed -e 's/ //g'|sed -e 's/\"//g'`
+[ -f $GLITE_LOCATION/etc/blah.config ] && . $GLITE_LOCATION/etc/blah.config
 
-conffile=$confpath/lsf.conf
+conffile=$lsf_confpath/lsf.conf
 
 lsf_base_path=`cat $conffile|grep LSB_SHAREDIR| awk -F"=" '{ print $2 }'`
 
-lsf_clustername=`${binpath}lsid | grep 'My cluster name is'|awk -F" " '{ print $5 }'`
+lsf_clustername=`${lsf_binpath}/lsid | grep 'My cluster name is'|awk -F" " '{ print $5 }'`
 logpath=$lsf_base_path/$lsf_clustername/logdir
 
 logfilename=lsb.events
@@ -299,10 +293,10 @@ if [ $? -ne 0 ]; then
 fi
 
 if [ ! -z "$HOME" ]; then
-    jobID=`cd && ${binpath}bsub -o /dev/null -e /dev/null -i /dev/null < $curdir/$tmp_file | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"`
+    jobID=`cd && ${lsf_binpath}/bsub -o /dev/null -e /dev/null -i /dev/null < $curdir/$tmp_file | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"`
 else
-    jobID=`${binpath}bsub -o /dev/null -e /dev/null -i /dev/null < $curdir/$tmp_file | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"`
-fi  
+    jobID=`${lsf_binpath}/bsub -o /dev/null -e /dev/null -i /dev/null < $curdir/$tmp_file | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"`
+fi
 
 
 retcode=$?
@@ -330,20 +324,20 @@ log_check_retry_count=0
 while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
 
  cliretcode=0
- if [ "x$BLParser" == "xyes" ] ; then
-     jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $BLPserver -p $BLPport`
+ if [ "x$lsf_BLParser" == "xyes" ] ; then
+     jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $lsf_BLPserver -p $lsf_BLPport`
      cliretcode=$?
  fi
  
- if [ "$cliretcode" == "1" -a "x$fallback" == "xno" ] ; then
-   ${binpath}bkill $jobID
-   echo "Error: not able to talk with logparser on ${BLPserver}:${BLPport}" >&2
+ if [ "$cliretcode" == "1" -a "x$lsf_fallback" == "xno" ] ; then
+   ${lsf_binpath}/bkill $jobID
+   echo "Error: not able to talk with logparser on ${lsf_BLPserver}:${lsf_BLPport}" >&2
    echo Error # for the sake of waiting fgets in blahpd
    rm -f $curdir/$tmp_file
    exit 1
  fi
 
- if [ "$cliretcode" == "1" -o "x$BLParser" != "xyes" ] ; then
+ if [ "$cliretcode" == "1" -o "x$lsf_BLParser" != "xyes" ] ; then
 
    logfile=`find $logpath/$logfilename* -type f -newer $curdir/$tmp_file -exec grep -lP "\"JOB_NEW\" \"[0-9\.]+\" [0-9]+ $jobID " {} \;`
 
@@ -354,7 +348,7 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
  fi
  
  if (( log_check_retry_count++ >= 12 )); then
-     ${binpath}bkill $jobID
+     ${lsf_binpath}/bkill $jobID
      echo "Error: job not found in logs" >&2
      echo Error # for the sake of waiting fgets in blahpd
      rm -f $curdir/$tmp_file
