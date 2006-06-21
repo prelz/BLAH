@@ -9,10 +9,12 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <popt.h>
+#include <netdb.h>
 
 #include "BLhelper.h"
 
 #define MAX_LINE            100000
+#define STR_CHARS           1000
 #define CONN_TIMEOUT_SEC    0
 #define CONN_TIMEOUT_MSEC   100000
 
@@ -34,10 +36,13 @@ int main(int argc, char *argv[]) {
 
     fd_set   wset;
     struct   timeval to;
-    int      r;
+    int      r,i;
     int opt;
     size_t optlen = sizeof(opt);
 
+    struct hostent *hp;
+    char *ipaddr;
+     
     /*  Get command line arguments  */
 
     poptContext poptcon;	
@@ -75,8 +80,22 @@ int main(int argc, char *argv[]) {
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family      = AF_INET;
     servaddr.sin_port        = htons(port);
+    
+    if ( !address || (hp = gethostbyname(address)) == NULL ){
+	fprintf(stderr, "%s: Invalid hostname.\n",progname);
+	exit(EXIT_FAILURE);
+    }
+    
+    if((ipaddr=malloc(STR_CHARS)) == 0){
+        fprintf(stderr, "%s: Can't malloc ipaddr.\n",progname);
+	exit(EXIT_FAILURE);
+    }
+    while ( hp -> h_addr_list[i] != NULL) {
+        strcat(ipaddr,inet_ntoa( *( struct in_addr*)( hp -> h_addr_list[i])));
+        i++;
+    }
 
-    if ( !address || inet_aton(address, &servaddr.sin_addr) <= 0 ) {
+    if ( inet_aton(ipaddr, &servaddr.sin_addr) <= 0 ) {
 	fprintf(stderr, "%s: Invalid remote IP address.\n",progname);
 	exit(EXIT_FAILURE);
     }
