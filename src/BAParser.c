@@ -20,6 +20,7 @@ int main(int argc, char *argv[]) {
         { "spooldir",  's', POPT_ARG_STRING, &spooldir, 0, "DGAS spooldir",    "<spooldir>"    },
         { "debug",     'd', POPT_ARG_NONE,   &debug,    0, "enable debugging", NULL            },
         { "daemon",    'D', POPT_ARG_NONE,   &dmn,      0, "run as daemon",    NULL            },
+        { "version",   'v', POPT_ARG_NONE,   &version,  0, "print version and exit",      NULL },
         POPT_AUTOHELP
         POPT_TABLEEND
     };
