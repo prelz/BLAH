@@ -18,6 +18,10 @@
 #define CONN_TIMEOUT_SEC    0
 #define CONN_TIMEOUT_MSEC   100000
 
+#ifndef EOL      /* End of Line */
+#define EOL '\0' /* 000   0  00 */
+#endif
+
 #ifndef VERSION
 #define VERSION            "1.8.0"
 #endif
@@ -47,7 +51,7 @@ int main(int argc, char *argv[]) {
 
     poptContext poptcon;	
     int rc;				
-    struct poptOption poptopt[] = { 	
+    struct poptOption poptopt[] = {
         { "server",    'a', POPT_ARG_STRING, &address,  0, "server address", "<dotted-quad ip address>" },
         { "port",      'p', POPT_ARG_INT,    &port,    0, "port",               "<port number>" },
         { "version",   'v', POPT_ARG_NONE,   &version, 0, "print version and exit",            NULL },
@@ -60,6 +64,11 @@ int main(int argc, char *argv[]) {
     if((rc = poptGetNextOpt(poptcon)) != -1){
         fprintf(stderr,"%s: Invalid flag supplied.\n",progname);
 	exit(EXIT_FAILURE);
+    }
+
+    if ( !port && !address && !version ) {
+        poptPrintHelp(poptcon, stdout, 0);
+        exit(EXIT_SUCCESS);
     }
 
     if ( version ) {
