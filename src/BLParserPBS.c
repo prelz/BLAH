@@ -434,7 +434,7 @@ int InfoAdd(int id, char *value, const char * flag){
   j2bl[id] = strdup(value);
   
   h_blahjob=hash(value);
-  sprintf(jobid,"%d",id);
+  sprintf(jobid,"%d",rptr[id]);
   bjl[h_blahjob]=strdup(jobid);
   free(jobid);
   
@@ -734,7 +734,7 @@ char *GetAllEvents(char *file){
  
  FILE *fp;
  char *line;
- char **opfile;
+ char **opfile=NULL;
  int i=0;
  int maxtok;
 
@@ -853,16 +853,27 @@ void *LookupAndSend(int m_sock){
         }
         free(tbuf);
 	
-	if((strlen(logdate)==0) || (strcmp(logdate,"\n")==0) || ((strcmp(logdate,"CREAMPORT")!=0) && ((strlen(jobid)==0) || (strcmp(jobid,"\n")==0)))){
+	
+/* TEST reply */
+       
+        if(strcmp(logdate,"TEST")==0){
          if((out_buf=malloc(STR_CHARS)) == 0){
           sysfatal("can't malloc out_buf in LookupAndSend: %r");
          }
-         sprintf(out_buf,"\n");
-
+         sprintf(out_buf,"Y\n");
          goto close;
-
         }
-	
+
+/* VERSION reply */
+       
+        if(strcmp(logdate,"VERSION")==0){
+         if((out_buf=malloc(STR_CHARS)) == 0){
+          sysfatal("can't malloc out_buf in LookupAndSend: %r");
+         }
+         sprintf(out_buf,"%s\n",VERSION);
+         goto close;
+        }
+
 /* get port where the parser is waiting for a connection from cream and send it to cream */
        
 	if(strcmp(logdate,"CREAMPORT")==0){
@@ -899,6 +910,16 @@ void *LookupAndSend(int m_sock){
 	  goto close;
 	 }
 	}
+	
+	if((strlen(logdate)==0) || (strcmp(logdate,"\n")==0)){
+         if((out_buf=malloc(STR_CHARS)) == 0){
+          sysfatal("can't malloc out_buf in LookupAndSend: %r");
+         }
+         sprintf(out_buf,"\n");
+
+         goto close;
+
+        }
 	
 /* get all info from jobid */
 
@@ -1034,7 +1055,7 @@ char *GetLogList(char *logdate){
          struct tm       tmthr;
          char            *slogs;
 
-         if((slogs=malloc(MAX_CHARS)) == 0){
+         if((slogs=calloc(MAX_CHARS,1)) == 0){
                  sysfatal("can't malloc slogs: %r");
          }
 	 
@@ -1072,6 +1093,7 @@ char *GetLogList(char *logdate){
                  if ( sbuf.st_mtime > tage ) {
 			/* file is newer than timestamp, <s> contains full path
 			   and <direntry->d_name> contains basename */
+			   
 			   
 		         strcat(slogs,s);
                          strcat(slogs," ");

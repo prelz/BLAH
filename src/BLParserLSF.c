@@ -681,15 +681,27 @@ void *LookupAndSend(int m_sock){
         }
         free(tbuf);
 		
-	if((strlen(logdate)==0) || (strcmp(logdate,"\n")==0) || ((strcmp(logdate,"CREAMPORT")!=0) && ((strlen(jobid)==0) || (strcmp(jobid,"\n")==0)))){
+
+/* TEST reply */
+       
+        if(strcmp(logdate,"TEST")==0){
          if((out_buf=malloc(STR_CHARS)) == 0){
           sysfatal("can't malloc out_buf in LookupAndSend: %r");
          }
-         sprintf(out_buf,"\n");
-
+         sprintf(out_buf,"Y\n");
          goto close;
-
         }
+
+/* VERSION reply */
+       
+        if(strcmp(logdate,"VERSION")==0){
+         if((out_buf=malloc(STR_CHARS)) == 0){
+          sysfatal("can't malloc out_buf in LookupAndSend: %r");
+         }
+         sprintf(out_buf,"%s\n",VERSION);
+         goto close;
+        }
+
 /* get port where the parser is waiting for a connection from cream and send it to cream */
        
 	if(strcmp(logdate,"CREAMPORT")==0){
@@ -731,7 +743,16 @@ void *LookupAndSend(int m_sock){
 	  goto close;
 	 }
 	}
-	
+
+        if((strlen(logdate)==0) || (strcmp(logdate,"\n")==0)){
+         if((out_buf=malloc(STR_CHARS)) == 0){
+          sysfatal("can't malloc out_buf in LookupAndSend: %r");
+         }
+         sprintf(out_buf,"\n");
+
+         goto close;
+
+        }
 	
 /* get all info from jobid */
      
@@ -1050,7 +1071,7 @@ char *GetLogList(char *logdate){
          struct tm       tmthr;
          char            *slogs;
 
-         if((slogs=malloc(MAX_CHARS)) == 0){
+         if((slogs=calloc(MAX_CHARS,1)) == 0){
                  sysfatal("can't malloc slogs: %r");
          }
 	 
