@@ -16,6 +16,15 @@ GLITE_CE_BLPARSERLSF=${GLITE_LOCATION}/bin/BLParserLSF
 
 start()
 {
+
+        exe=""
+        daemon=""
+        debuglevel=""
+        debuglogfile=""
+        binpath=""
+        confpath=""
+        spooldir=""
+        parsernum=""
 	
         for lrms in $LRMS1 $LRMS2;do
 	
@@ -29,6 +38,7 @@ start()
 	      eval debuglogfile=\$`echo GLITE_CE_BLPARSER${lrms}_DEBUGLOGFILE`
 	      eval binpath=\$`echo GLITE_CE_BLPARSER${lrms}_BINPATH`
 	      eval confpath=\$`echo GLITE_CE_BLPARSER${lrms}_CONFPATH`
+	      eval spooldir=\$`echo GLITE_CE_BLPARSER${lrms}_SPOOLDIR`
 	      eval parsernum=\$`echo GLITE_CE_BLPARSER${lrms}_NUM`
 	      
               [ "x$daemon" == "xyes" ] && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -D`
@@ -36,6 +46,7 @@ start()
               [ -n "$debuglogfile" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -l $debuglogfile`
               [ -n "$binpath" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -b $binpath`
               [ -n "$confpath" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -c $confpath`
+              [ -n "$spooldir" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -s $spooldir`
               [ ! -n "$parsernum" ] && parsernum=1
 	      
               i=1
@@ -76,9 +87,11 @@ stop()
 	     eval exe=\$`echo GLITE_CE_BLPARSER${lrms}`
              if [ -f $pidfile ]; then
              	     pid=`cat $pidfile`
-             	     kill $pid
-             	     [ "$?" -eq 0 ] && success $"${exe} shutdown" || failure $"${exe} shutdown" 
-            	     echo ""
+		     if [ ! -z "$pid" ]; then
+		     	     kill $pid
+             	             [ "$?" -eq 0 ] && success $"${exe} shutdown" || failure $"${exe} shutdown" 
+            	             echo ""
+		     fi
              	     rm -f $pidfile
              else
              	     echo $pidfile does not exist - ${exe} not running? >&2
@@ -94,10 +107,12 @@ status()
 	     eval exe=\$`echo GLITE_CE_BLPARSER${lrms}`
      	     if [ -f $pidfile ]; then
      	     	     pid=`cat $pidfile`
-     	     	     if ps p $pid >/dev/null 2>&1; then
-     	     		     echo ${exe} running as $pid 
-     	     		     return 0
-     	     	     fi
+		     if [ ! -z "$pid" ]; then
+     	     	     	     if ps p $pid >/dev/null 2>&1; then
+     	     			          echo ${exe} running as $pid 
+     	     			          continue
+     	     	     	     fi
+		     fi
      	     fi
 
 	     echo ${exe} not running
