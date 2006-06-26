@@ -1059,42 +1059,32 @@ char *GetLogList(char *logdate){
                  sysfatal("can't malloc slogs: %r");
          }
 	 
-         /* parse timestamp and convert to seconds-from-epoch */
          tmthr.tm_sec=tmthr.tm_min=tmthr.tm_hour=tmthr.tm_isdst=0;
          p=strptime(logdate,"%Y%m%d",&tmthr);
          if( (p-logdate) != 8) {
-                 fprintf(stderr,"Timestring \"%s\" is invalid (YYYYmmdd)\n",logdate );
+                 fprintf(stderr,"%s: Timestring \"%s\" is invalid (YYYYmmdd)\n",progname,logdate);
                  return NULL;
          }
          tage=mktime(&tmthr);
 
-
-         /* **** code for the opendir/stat conventional pattern start here */
-
          if( !(dirh=opendir(ldir)) ) {
-                 fprintf(stderr,"Cannot open directory %s: %s\n",
-                                 ldir,strerror(errno));
+                 syserror("Cannot open directory %s: %r", ldir);
                  return NULL;
          }
 
          while ( (direntry=readdir(dirh)) ) {
                  if( *(direntry->d_name) == '.' ) continue;
                  if(!(s=(char*)malloc(strlen(direntry->d_name)+strlen(ldir)+2))) {
-                         fprintf(stderr,"Cannot alloc string space\n");
+                         fprintf(stderr,"%s: Cannot alloc string space\n",progname);
                          return NULL;
                  }
                  sprintf(s,"%s/%s",ldir,direntry->d_name);
                  rc=stat(s,&sbuf);
                  if(rc) {
-                         fprintf(stderr,"Cannot stat file %s: %s\n",
-                                         s,strerror(errno));
+                         syserror("Cannot stat file %s: %r", s);
                          return NULL;
                  }
                  if ( sbuf.st_mtime > tage ) {
-			/* file is newer than timestamp, <s> contains full path
-			   and <direntry->d_name> contains basename */
-			   
-			   
 		         strcat(slogs,s);
                          strcat(slogs," ");
                  }  
@@ -1105,10 +1095,6 @@ char *GetLogList(char *logdate){
          closedir(dirh);
 	 
 	 return(slogs);
-
-         /* **** code for the opendir/stat conventional pattern ends here */
-
-
 }
 
 void CreamConnection(int c_sock){ 
