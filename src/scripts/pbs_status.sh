@@ -20,7 +20,7 @@
 #  See http://grid.infn.it/grid/license.html for license details.
 #
 
-[ -f $GLITE_LOCATION/etc/blah.config ] && . $GLITE_LOCATION/etc/blah.config
+[ -f ${GLITE_LOCATION:-/opt/glite}/etc/blah.config ] && . ${GLITE_LOCATION:-/opt/glite}/etc/blah.config
 
 usage_string="Usage: $0 [-w] [-n]"
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-[ -f $GLITE_LOCATION/etc/blah.config ] && . $GLITE_LOCATION/etc/blah.config
+[ -f ${GLITE_LOCATION:-/opt/glite}/etc/blah.config ] && . ${GLITE_LOCATION:-/opt/glite}/etc/blah.config
 
 requested=`echo $1 | sed 's/^.*\///'`
 requestedshort=`expr match "$requested" '\([0-9]*\)'`
