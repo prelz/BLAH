@@ -688,7 +688,7 @@ void *LookupAndSend(int m_sock){
          if((out_buf=malloc(STR_CHARS)) == 0){
           sysfatal("can't malloc out_buf in LookupAndSend: %r");
          }
-         sprintf(out_buf,"Y\n");
+         sprintf(out_buf,"YLSF\n");
          goto close;
         }
 

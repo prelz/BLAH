@@ -54,6 +54,8 @@ proxy_dir=~/.blah_jobproxy_dir
 
 workdir=$PWD
 
+srvfound=""
+
 #default values for polling interval and min proxy lifetime
 prnpoll=30
 prnlifetime=0
@@ -98,6 +100,27 @@ fi
 
 shift `expr $OPTIND - 1`
 arguments=$*
+
+#Try different logparser
+if [ ! -z $pbs_num_BLParser ] ; then
+ for i in `seq 1 $pbs_num_BLParser` ; do
+  s=`echo pbs_BLPserver${i}`
+  p=`echo pbs_BLPport${i}`
+  eval tsrv=\$$s
+  eval tport=\$$p
+  testres=`echo "TEST/"|$BLClient -a $tsrv -p $tport`
+  if [ "x$testres" == "xYPBS" ] ; then
+   pbs_BLPserver=$tsrv
+   pbs_BLPport=$tport
+   srvfound=1
+   break
+  fi
+ done
+ if [ -z $srvfound ] ; then
+  echo "1ERROR: not able to talk with no logparser listed"
+  exit 0
+ fi
+fi
 
 ###############################################################
 # Create wrapper script

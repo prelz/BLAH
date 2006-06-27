@@ -34,6 +34,8 @@ getcreamport=""
 
 usedBLParser="no"
 
+srvfound=""
+
 BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 
 ###############################################################
@@ -53,6 +55,27 @@ do
 done
 
 shift `expr $OPTIND - 1`
+
+#Try different logparser
+if [ ! -z $pbs_num_BLParser ] ; then
+ for i in `seq 1 $pbs_num_BLParser` ; do
+  s=`echo pbs_BLPserver${i}`
+  p=`echo pbs_BLPport${i}`
+  eval tsrv=\$$s
+  eval tport=\$$p
+  testres=`echo "TEST/"|$BLClient -a $tsrv -p $tport`
+  if [ "x$testres" == "xYPBS" ] ; then
+   pbs_BLPserver=$tsrv
+   pbs_BLPport=$tport
+   srvfound=1
+   break
+  fi
+ done
+ if [ -z $srvfound ] ; then
+  echo "1ERROR: not able to talk with no logparser listed"
+  exit 0
+ fi
+fi
 
 ###################################################################
 #get creamport and exit

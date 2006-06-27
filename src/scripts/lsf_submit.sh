@@ -65,6 +65,8 @@ fi
 prnpoll=30
 prnlifetime=0
 
+srvfound=""
+
 BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 
 ###############################################################
@@ -105,6 +107,27 @@ fi
 
 shift `expr $OPTIND - 1`
 arguments=$*
+
+#Try different log parser
+if [ ! -z $lsf_num_BLParser ] ; then
+ for i in `seq 1 $lsf_num_BLParser` ; do
+  s=`echo lsf_BLPserver${i}`
+  p=`echo lsf_BLPport${i}`
+  eval tsrv=\$$s
+  eval tport=\$$p
+  testres=`echo "TEST/"|$BLClient -a $tsrv -p $tport`
+  if [ "x$testres" == "xYLSF" ] ; then
+   lsf_BLPserver=$tsrv
+   lsf_BLPport=$tport
+   srvfound=1
+   break
+  fi
+ done
+ if [ -z $srvfound ] ; then
+  echo "1ERROR: not able to talk with no logparser listed"
+  exit 0
+ fi
+fi
 
 ###############################################################
 # Create wrapper script
