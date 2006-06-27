@@ -24,10 +24,6 @@ int main(int argc, char *argv[]) {
 
     ldir=GetLogDir(argc,argv);
     
-    if(dmn){
-     daemonize();
-    }
-    
     if(debug){
      if((debuglogfile = fopen(debuglogname, "a+"))==0){
       debuglogfile =  fopen("/dev/null", "a+");
@@ -121,6 +117,11 @@ int main(int argc, char *argv[]) {
      	  exit(EXIT_FAILURE);
       }
     }
+    
+     if(dmn){
+     daemonize();
+    }
+   
     
     for(i=0;i<NUMTHRDS;i++){
      pthread_create(&ReadThd[i], NULL, LookupAndSend, (void *)list_s);
@@ -627,10 +628,9 @@ void *LookupAndSend(int m_sock){
 	}
         buffer[0]='\0';
 
-	if((h_jobid=malloc(NUM_CHARS)) == 0){
+	if((h_jobid=calloc(NUM_CHARS,1)) == 0){
 	  sysfatal("can't malloc h_jobid in LookupAndSend: %r");
 	}
-        h_jobid[0]='\0';
 	
 	Readline(conn_s, buffer, STR_CHARS-1);	
 	if(debug){
@@ -717,6 +717,7 @@ void *LookupAndSend(int m_sock){
 	if(strcmp(logdate,"BLAHJOB")==0){
          for(i=0;i<WRETRIES;i++){
 	  if(wlock==0){
+           h_jobid[0]='\0';
 	   strcat(h_jobid,"\"");
 	   strcat(h_jobid,jobid);
 	   strcat(h_jobid,"\"");

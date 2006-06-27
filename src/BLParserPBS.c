@@ -56,9 +56,6 @@ int main(int argc, char *argv[]) {
        printf("%s Version: %s\n",progname,VERSION);
        exit(EXIT_SUCCESS);
     }   
-    if(dmn){    
-       daemonize();
-    }
     if(debug <=0){
        debug=0;
     }
@@ -186,6 +183,10 @@ int main(int argc, char *argv[]) {
       }
     }
    
+    if(dmn){    
+       daemonize();
+    }
+    
     for(i=0;i<NUMTHRDS;i++){
      pthread_create(&ReadThd[i], NULL, LookupAndSend, (void *)list_s);
     }
