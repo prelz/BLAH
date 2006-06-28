@@ -18,12 +18,8 @@
 #define CONN_TIMEOUT_SEC    0
 #define CONN_TIMEOUT_MSEC   100000
 
-#ifndef EOL      /* End of Line */
-#define EOL '\0' /* 000   0  00 */
-#endif
-
 #ifndef VERSION
-#define VERSION            "1.8.0"
+#define VERSION            "1.8"
 #endif
 
 char     *progname = "BLClient";
