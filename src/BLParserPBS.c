@@ -74,7 +74,11 @@ int main(int argc, char *argv[]) {
     }else{
     	port=DEFAULT_PORT;
     }	
-    	 
+
+    if(creamport){
+     usecream=1;
+    }
+ 
     /* Get log dir name */
   
     if((ldir=malloc(STR_CHARS)) == 0){

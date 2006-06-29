@@ -979,6 +979,10 @@ char *GetLogDir(int largc, char *largv[]){
   port=DEFAULT_PORT;
  }   
 
+ if(creamport){
+  usecream=1;
+ }
+
  if(debug <=0){
     debug=0;
  }
