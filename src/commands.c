@@ -42,7 +42,7 @@ command_t commands_array[] = {
 	{ "BLAH_JOB_RESUME",              2, 1, cmd_resume_job },
 	{ "BLAH_JOB_STATUS",              2, 1, cmd_status_job },
 	{ "BLAH_JOB_SUBMIT",              2, 1, cmd_submit_job },
-	{ "BLAH_SET_GLEXEC_DN",           2, 0, cmd_set_glexec_dn },
+	{ "BLAH_SET_GLEXEC_DN",           3, 0, cmd_set_glexec_dn },
         { "BLAH_SET_GLEXEC_OFF",          0, 0, cmd_unset_glexec_dn },	
 	{ "COMMANDS",                     0, 0, cmd_commands },
 	{ "QUIT",                         0, 0, cmd_quit },

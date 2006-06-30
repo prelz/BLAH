@@ -64,7 +64,6 @@
 #define MAX_CERT_SIZE		100000
 #define MAX_TEMP_ARRAY_SIZE              1000
 #define MAX_FILE_LIST_BUFFER_SIZE        10000
-#define MAX_CONF_FILE_SIZE               100000
  
 t_resline *first_job = NULL;
 t_resline *last_job = NULL;
@@ -426,24 +425,29 @@ cmd_set_glexec_dn(void *args)
 			/* save blah_save_source_proxy */
 			res = setenv("SSL_CLIENT_CERT",certbuffer,1);
 			/* proxt4 must be limited for subsequent submission */		
-               		proxynameNew=make_message("%s.lmt",proxt4);
-               		cmdstr=make_message("cp %s %s",proxt4, proxynameNew);
-               		result=system(cmdstr);
-                        if(result)
-                        {
-                        	result = make_message("Error\\ reading\\ proxy\\ %s", proxt4);
-                        	free(proxynameNew);
-                        	free(cmdstr);
-                        	unsetenv("SSL_CLIENT_CERT");
-				return(result);
-                        }               		
-
-
-			limit_proxy(proxynameNew);
-               		if(bssp) free(bssp);
-			bssp = strdup(proxynameNew);
-			free(cmdstr);
-			free(proxynameNew);
+               		if(argv[3][0]=='0')
+			{
+				proxynameNew=make_message("%s.lmt",proxt4);
+               			cmdstr=make_message("cp %s %s",proxt4, proxynameNew);
+               			result=system(cmdstr);
+                        	if(result)
+                        	{
+                        		result = make_message("Error\\ reading\\ proxy\\ %s", proxt4);
+                        		free(proxynameNew);
+                        		free(cmdstr);
+                        		unsetenv("SSL_CLIENT_CERT");
+					return(result);
+                       		}               		
+				limit_proxy(proxynameNew);
+               			if(bssp) free(bssp);
+				bssp = strdup(proxynameNew);
+				free(cmdstr);
+				free(proxynameNew);
+			}else
+			{
+                                if(bssp) free(bssp);
+                                bssp = strdup(proxt4);
+			}
 		}
 		else
                 {
@@ -971,7 +975,7 @@ cmd_renew_proxy(void *args)
 						}else
 						{
 						                /* proxy must be copied and (if we are not in glexec_mode) limited */
-                                                                command = make_message("%s cp -f %s %s &>2 /dev/null", gloc, proxyFileName, old_proxy);
+                                                                command = make_message("%s /bin/cp -f %s %s &>2 /dev/null", gloc, proxyFileName, old_proxy);
                                                                 if((dummy = mtsafe_popen(command, "r")) == NULL)
                                                                 {
                                                                         resultLine = make_message("%s 1 Error\\ reading\\ proxy\\ %s", reqId, proxyFileName);
@@ -1002,17 +1006,11 @@ cmd_renew_proxy(void *args)
                                                 	}else
                                                         mtsafe_pclose(dummy);
 							limit_proxy(proxyFileNameNew);
-						}else
-						{
-							setenv("GLEXEC_SOURCE_PROXY",bssp,1);
-							setenv("GLEXEC_TARGET_PROXY",proxyFileNameNew,1);
 						}
 						
-						
 						if(command) free(command);
-						command = make_message("export LD_LIBRARY_PATH=%s/lib; %s %s/BPRclient %s %s %s &>2 /dev/null;sleep 5",
-				                        getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus", glexec_mode ? gloc : " ",
-				                        blah_script_location, proxyFileNameNew, jobDescr, workernode);
+						command = make_message("export LD_LIBRARY_PATH=%s/lib; %s/BPRclient %s %s %s &>2 /dev/null",
+                                                        getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus", blah_script_location, bssp, jobDescr, workernode); 
 						free(workernode);
 						/* Execute the command */
 						/* fprintf(stderr, "DEBUG: executing %s\n", command); */
@@ -1684,7 +1682,7 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
         struct tm *t_m=NULL;
         char *glite_loc=NULL;
         char *blah_conf=NULL;
-        char host_name[MAX_CONF_FILE_SIZE];
+        char host_name[MAX_TEMP_ARRAY_SIZE];
         char *jobid=NULL;
         char *lrms_jobid=NULL;
         int id;
@@ -1731,7 +1729,8 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
         classad_get_dstring_attribute(cad, "CeID", &ce_id);
         if(!ce_id) 
 	{
-		
+	
+		gethostname(host_name, MAX_TEMP_ARRAY_SIZE);	
 		classad_get_dstring_attribute(cad, "Queue", &queue);
 		if(queue)
 		{
@@ -1764,7 +1763,7 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
         /* log line with in addiction unixuser */
 	// call to suided tool
 	esc_userDN=escape_spaces(userDN);
-	log_line=make_message("/opt/glite/bin/BDlogger %s \\\"timestamp=%s\\\"\\\ \\\"userDN=%s\\\"\\\ %s\\\"ceID=%s\\\"\\\ \\\"jobID=%s\\\"\\\ \\\"lrmsID=%s\\\"\\\ \\\"localUser=%s\\\"",blah_conf, date_str, esc_userDN, fqan, ce_id, gridjobid, lrms_jobid, uid);
+	log_line=make_message("%s/BDlogger %s \\\"timestamp=%s\\\"\\\ \\\"userDN=%s\\\"\\\ %s\\\"ceID=%s\\\"\\\ \\\"jobID=%s\\\"\\\ \\\"lrmsID=%s\\\"\\\ \\\"localUser=%s\\\"", blah_script_location, blah_conf, date_str, esc_userDN, fqan, ce_id, gridjobid, lrms_jobid, uid);
 	system(log_line);
 	
         if(gridjobid) free(gridjobid);

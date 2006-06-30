@@ -18,7 +18,8 @@
 #include "tokens.h"
 #include "BPRcomm.h"
 
-
+char* chop(char* long_id);
+char* pre_chop(char* long_id);
 
 int
 main(int argc, char **argv)
@@ -120,7 +121,12 @@ main(int argc, char **argv)
 		recv(fd_socket, buffer, sizeof(buffer), 0);
 		fprintf(stderr, "Received jobId: %s\n", buffer);
 	
-		if (strcmp(buffer, jobId) != 0)
+		/* 
+		   Additional part of the requested and received jobids are removed before strcmp:
+		   it is assumed that the ramaining part is unique for every batch system.    
+		   old version : if (strcmp(buffer, jobId) != 0)
+		*/
+		if (strcmp(pre_chop(chop(buffer)), pre_chop(chop(jobId))) != 0)
 		{
 			close(fd_socket);
 			fprintf(stderr, "Wrong job on port %d: expected %s, received %s\n", server_port, jobId , buffer);
@@ -169,5 +175,45 @@ main(int argc, char **argv)
 	fprintf(stderr, "File sent.\n");
 	
 	exit(0);
+}
+
+/* Elimination of server from jobid */
+char*
+chop(char* long_id)
+{
+        char* tmpchop=0;
+        char* startstring=long_id;
+        int chop_count =0;
+        while((*(long_id))!= '.')
+        {
+                if((*(long_id)) == 0)
+                return strdup(startstring);
+                else
+                {
+                        chop_count++;
+                        long_id++;
+                }
+        }
+        tmpchop=(char*)malloc(chop_count+1);
+        memcpy(tmpchop,startstring,chop_count);
+        tmpchop[chop_count]=0;
+        return
+                tmpchop;
+}
+
+/* Elimination of gridtype and logfile from jobid */
+char*
+pre_chop(char* long_id)
+{
+        char* startstring=long_id;
+        int len=strlen(long_id);
+        int count=len-1;
+        while(long_id[count]!= '/')
+        {
+                if(count == 0)
+                return startstring;
+                else count--;
+        }
+        return &long_id[++count];
 }
 
