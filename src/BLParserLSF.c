@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
       }
     }
     
-     if(dmn){
+    if(dmn){
      daemonize();
     }
    
@@ -613,6 +613,9 @@ void *LookupAndSend(int m_sock){
     int       conn_s;
     char      **tbuf;
     char      *cp;
+    char      *irptr;
+    int       listcnt=0;
+    int       listbeg=0;
     
     while ( 1 ) {
 	
@@ -679,8 +682,17 @@ void *LookupAndSend(int m_sock){
         for(ii=0;ii<maxtok;ii++){
          free(tbuf[ii]);
         }
-        free(tbuf);
-		
+        free(tbuf);		
+
+/* HELP reply */
+       
+        if(strcmp(logdate,"HELP")==0){
+         if((out_buf=malloc(MAX_CHARS)) == 0){
+          sysfatal("can't malloc out_buf in LookupAndSend: %r");
+         }
+         sprintf(out_buf,"Commands: BLAHJOB/<blahjob-id> <date-YYYYmmdd>/<jobid> HELP TEST VERSION CREAMPORT TOTAL LISTALL LISTF[/<first-n-jobid>] LISTL[/<last-n-jobid>]\n");
+         goto close;
+        }
 
 /* TEST reply */
        
@@ -699,6 +711,120 @@ void *LookupAndSend(int m_sock){
           sysfatal("can't malloc out_buf in LookupAndSend: %r");
          }
          sprintf(out_buf,"%s\n",VERSION);
+         goto close;
+        }
+	
+/* TOTAL reply */
+       
+        if(strcmp(logdate,"TOTAL")==0){
+         if((out_buf=malloc(MAX_CHARS)) == 0){
+          sysfatal("can't malloc out_buf in LookupAndSend: %r");
+         }
+	 if(recycled){
+          sprintf(out_buf,"Total number of jobs:%d\n",RDXHASHSIZE);
+	 }else{
+          sprintf(out_buf,"Total number of jobs:%d\n",ptrcnt-1);
+	 }
+         goto close;
+        }
+	
+/* LISTALL reply */
+       
+        if(strcmp(logdate,"LISTALL")==0){
+         if((out_buf=calloc(MAX_CHARS*3,1)) == 0){
+          sysfatal("can't malloc out_buf in LookupAndSend: %r");
+         }
+         if((irptr=calloc(STR_CHARS,1)) == 0){
+          sysfatal("can't malloc irptr in LookupAndSend: %r");
+         }
+	 if(recycled){
+	  for(i=ptrcnt;i<RDXHASHSIZE;i++){
+           sprintf(irptr,"%d",rptr[i]);
+	   strcat(out_buf,irptr);
+	   strcat(out_buf," ");
+	  }
+	 }
+	 for(i=1;i<ptrcnt;i++){
+          sprintf(irptr,"%d",rptr[i]);
+	  strcat(out_buf,irptr);
+	  strcat(out_buf," ");
+         }
+	 free(irptr);
+	 strcat(out_buf,"\n");
+         goto close;
+        }
+
+/* LISTF reply */
+       
+        if(strcmp(logdate,"LISTF")==0){
+         if((out_buf=calloc(MAX_CHARS*3,1)) == 0){
+          sysfatal("can't malloc out_buf in LookupAndSend: %r");
+         }
+	 
+	 if((listcnt=atoi(jobid))<=0){
+	  listcnt=10;
+	 }
+	 if(listcnt>ptrcnt-1){
+	  listcnt=ptrcnt-1;
+	 }
+         if((irptr=malloc(STR_CHARS)) == 0){
+          sysfatal("can't malloc irptr in LookupAndSend: %r");
+         }
+	 sprintf(out_buf,"List of first %d jobid:",listcnt);
+	 if(recycled){
+	  for(i=ptrcnt;i<ptrcnt+listcnt;i++){
+           sprintf(irptr,"%d",rptr[i]);
+	   strcat(out_buf,irptr);
+	   strcat(out_buf," ");
+	  }
+	 }else{
+	  for(i=1;i<=listcnt;i++){
+           sprintf(irptr,"%d",rptr[i]);
+	   strcat(out_buf,irptr);
+	   strcat(out_buf," ");
+          }
+	 }
+	 free(irptr);
+	 strcat(out_buf,"\n");
+         goto close;
+        }
+
+/* LISTL reply */
+       
+        if(strcmp(logdate,"LISTL")==0){
+         if((out_buf=calloc(MAX_CHARS*3,1)) == 0){
+          sysfatal("can't malloc out_buf in LookupAndSend: %r");
+         }
+	 
+	 if((listcnt=atoi(jobid))<=0){
+	  listcnt=10;
+	 }
+	 if(ptrcnt-listcnt>0){
+	  listbeg=ptrcnt-listcnt;
+	 }else{
+	  listbeg=1;
+	  listcnt=ptrcnt-1;
+	 }
+	 
+         if((irptr=malloc(STR_CHARS)) == 0){
+          sysfatal("can't malloc irptr in LookupAndSend: %r");
+         }
+	 sprintf(out_buf,"List of latest %d jobid:",listcnt);
+	 
+	 if(recycled){
+	  for(i=RDXHASHSIZE+(ptrcnt-listcnt);i<RDXHASHSIZE;i++){
+           sprintf(irptr,"%d",rptr[i]);
+	   strcat(out_buf,irptr);
+	   strcat(out_buf," ");
+	  }
+	 }
+	 for(i=listbeg;i<ptrcnt;i++){
+          sprintf(irptr,"%d",rptr[i]);
+	  strcat(out_buf,irptr);
+	  strcat(out_buf," ");
+         }
+	 free(irptr);
+	 strcat(out_buf,"\n");
          goto close;
         }
 
@@ -979,7 +1105,7 @@ char *GetLogDir(int largc, char *largv[]){
   port=DEFAULT_PORT;
  }   
 
- if(creamport){
+ if ( creamport > 0 && port <= 65535 ) {
   usecream=1;
  }
 

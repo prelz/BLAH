@@ -42,6 +42,8 @@ int main(int argc, char *argv[]) {
 
     struct hostent *hp;
     char *ipaddr;
+
+    char      *cp;
      
     /*  Get command line arguments  */
 
@@ -162,8 +164,15 @@ int main(int argc, char *argv[]) {
            exit(EXIT_FAILURE);
        }
     
-       fgets(buffer, MAX_LINE, stdin);
+       fgets(buffer, MAX_LINE-1, stdin);
 
+       if(strstr(buffer,"/")==NULL){
+        if ((cp = strrchr (buffer, '\n')) != NULL){
+         *cp = '\0';
+        }
+        strcat(buffer,"/\n");
+       }
+       
        Writeline(conn_s, buffer, strlen(buffer));
        Readline(conn_s, buffer, MAX_LINE-1);
 
