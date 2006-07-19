@@ -194,7 +194,7 @@ END {
     		result=`echo $result | sed 's/\/.*//'`
 		echo "0"$result "Workernode=\"$workernode\";]"
 		if [ "x$pr_removal" == "xYes" ] ; then
-        		rm ${proxy_dir}/${requested}.proxy 2>/dev/null
+        		rm ${proxy_dir}/${reqjob}.proxy 2>/dev/null
     		fi
 		usedBLParser="no"	
 	fi
