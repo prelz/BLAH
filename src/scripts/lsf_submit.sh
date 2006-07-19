@@ -172,7 +172,8 @@ end_of_preamble
 
 #set the queue name first, so that the local script is allowed to change it
 #(as per request by CERN LSF admins).
-[ -z "$queue" ]          || echo "#BSUB -q $queue" >> $tmp_file
+# handle queue overriding
+[ -z "$queue" ] || grep -q "^#BSUB -q" $tmp_file || echo "#BSUB -q $queue" >> $tmp_file
 
 #local batch system-specific file output must be added to the submit file
 if [ ! -z $req_file ] ; then

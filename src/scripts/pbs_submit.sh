@@ -234,7 +234,8 @@ if [ ! -z $req_file ] ; then
 fi
 
 # Write PBS directives according to command line options
-[ -z "$queue" ]                || echo "#PBS -q $queue" >> $tmp_file
+# handle queue overriding
+[ -z "$queue" ] || grep -q "^#PBS -q" $tmp_file || echo "#PBS -q $queue" >> $tmp_file
 [ -z "$mpinodes" ]             || echo "#PBS -l nodes=$mpinodes" >> $tmp_file
 [ -z "$blahpd_inputsandbox" ]  || echo "#PBS -W stagein=$blahpd_inputsandbox" >> $tmp_file
 [ -z "$blahpd_outputsandbox" ] || echo "#PBS -W stageout=$blahpd_outputsandbox" >> $tmp_file
