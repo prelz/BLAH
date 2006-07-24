@@ -1448,7 +1448,7 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
        sysfatal("can't malloc sjobid %r");
     }
     
-    sprintf(sjobid, "%d",jobid);
+    sprintf(sjobid, "%d",rptr[jobid]);
     
     buffer[0]='\0';
     outreason[0]='\0';
