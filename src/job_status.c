@@ -44,7 +44,7 @@ int get_status(const char *jobDesc, classad_context *cad, char error_str[][ERROR
         int   i, lc;
         classad_context tmpcad;
         char **tmperrstr = NULL;
-
+        int slash_counter=0;
 	if (strlen(jobDesc) < 4)
         {
 		strcpy(*error_str,"Malformed jobId");
@@ -56,9 +56,12 @@ int get_status(const char *jobDesc, classad_context *cad, char error_str[][ERROR
                 fprintf(stderr, "Out of memory\n");
                 exit(MALLOC_ERROR);
         }
-
-        server_lrms[3] = '\0';
-	if(!glexec_mode)
+        /* batch system name must not be limited to 3 chars */
+        while (server_lrms[slash_counter] != '/') slash_counter++;
+        server_lrms[slash_counter]= '\0';
+        jobDesc = server_lrms + slash_counter + 1;
+	
+        if(!glexec_mode)
 	{
 		command = make_message("%s/%s_status.sh %s %s", blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobDesc);
         }else

@@ -730,6 +730,7 @@ cmd_cancel_job(void* args)
 	char error_message[1024];
 	char *error_string;
 	char answer[1024];
+        int slash_counter=0;
 
 	/* The job Id needs at least 4 chars for the "<lrms>/" prefix */
 	if (strlen(argv[2]) < 4)
@@ -746,8 +747,10 @@ cmd_cancel_job(void* args)
 		resultLine = make_message("%s 1 Cannot\\ allocate\\ memory\\ for\\ the\\ lrms\\ string", reqId);
 		goto cleanup_argv;
 	}
-	server_lrms[3] = '\0';
-	jobId = server_lrms + 4;
+        /* batch system name must not be limited to 3 chars */
+        while (server_lrms[slash_counter] != '/') slash_counter++;
+        server_lrms[slash_counter]= '\0';
+        jobId = server_lrms + slash_counter + 1;
 
 	/* Prepare the cancellation command */
 	if(glexec_mode )
@@ -1083,6 +1086,7 @@ hold_res_exec(char* jobdescr, char* reqId,char* action,int status )
         char *jobId;
         char error_message[1024];
         char *error_string;
+        int slash_counter=0;
 
         /* The job Id needs at least 4 chars for the "<lrms>/" prefix */
         if (strlen(jobdescr) < 4)
@@ -1099,8 +1103,10 @@ hold_res_exec(char* jobdescr, char* reqId,char* action,int status )
                 resultLine = make_message("%s 1 Cannot\\ allocate\\ memory\\ for\\ the\\ lrms\\ string", reqId);
                 goto cleanup_argv;
         }
-        server_lrms[3] = '\0';
-        jobId = server_lrms + 4;
+        /* batch system name must not be limited to 3 chars */
+        while (server_lrms[slash_counter] != '/') slash_counter++;
+        server_lrms[slash_counter]= '\0';
+        jobId = server_lrms + slash_counter + 1;
 
         if(glexec_mode )
         {
