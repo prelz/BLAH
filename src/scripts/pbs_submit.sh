@@ -150,7 +150,11 @@ uni_time=`date +%s`
 uni_ext=$uni_uid.$uni_pid.$uni_time
 
 # Put executable into inputsandbox
-[ "x$stgcmd" != "xyes" ] || blahpd_inputsandbox="`basename $the_command`@`hostname -f`:$the_command"
+
+if [ "x$stgcmd" == "xyes" ] ; then
+    blahpd_inputsandbox="`basename $the_command`@`hostname -f`:$the_command"
+    to_be_moved="$to_be_moved `basename $the_command`"
+fi
 
 # Put BPRserver into sandbox
 if [ "x$proxyrenew" == "xyes" ] ; then
@@ -158,6 +162,7 @@ if [ "x$proxyrenew" == "xyes" ] ; then
         remote_BPRserver=`basename $proxyrenewald`.$uni_ext
         if [ ! -z $blahpd_inputsandbox ]; then blahpd_inputsandbox="${blahpd_inputsandbox},"; fi
         blahpd_inputsandbox="${blahpd_inputsandbox}${remote_BPRserver}@`hostname -f`:$proxyrenewald"
+        to_be_moved="$to_be_moved $remote_BPRserver"
     else
         unset proxyrenew
     fi
@@ -174,6 +179,7 @@ if [ "x$stgproxy" == "xyes" ] ; then
         if [ ! -z $blahpd_inputsandbox ]; then blahpd_inputsandbox="${blahpd_inputsandbox},"; fi
         proxy_remote_file=${tmp_file}.proxy
         blahpd_inputsandbox="${blahpd_inputsandbox}${proxy_remote_file}@`hostname -f`:${proxy_local_file}"
+        to_be_moved="$to_be_moved ${proxy_remote_file}"
         need_to_reset_proxy=yes
     fi
 fi
@@ -184,7 +190,8 @@ if [ ! -z "$stdin" ] ; then
     if [ -f "$stdin" ] ; then
         stdin_unique=`basename $stdin`.$uni_ext
         if [ ! -z $blahpd_inputsandbox ]; then blahpd_inputsandbox="${blahpd_inputsandbox},"; fi
-        blahpd_inputsandbox="${blahpd_inputsandbox}${$stdin}@`hostname -f`:${stdin_unique}"
+        blahpd_inputsandbox="${blahpd_inputsandbox}${stdin_unique}@`hostname -f`:${stdin}"
+        to_be_moved="$to_be_moved $stdin_unique"
         arguments="$arguments <\"$stdin_unique\""
     else
         arguments="$arguments <$stdin"
@@ -194,7 +201,7 @@ if [ ! -z "$stdout" ] ; then
     if [ "${stdout:0:1}" != "/" ] ; then stdout=${workdir}/${stdout} ; fi
     arguments="$arguments >`basename $stdout`"
     if [ ! -z $blahpd_outputsandbox ]; then blahpd_outputsandbox="${blahpd_outputsandbox},"; fi
-    blahpd_outputsandbox="${blahpd_outputsandbox}`basename $stdout`@`hostname -f`:$stdout"
+    blahpd_outputsandbox="${blahpd_outputsandbox}home_${tmp_file}/`basename $stdout`@`hostname -f`:$stdout"
 fi
 if [ ! -z "$stderr" ] ; then
     if [ "${stderr:0:1}" != "/" ] ; then stderr=${workdir}/${stderr} ; fi
@@ -203,7 +210,7 @@ if [ ! -z "$stderr" ] ; then
     else
         arguments="$arguments 2>`basename $stderr`"
         if [ ! -z $blahpd_outputsandbox ]; then blahpd_outputsandbox="${blahpd_outputsandbox},"; fi
-        blahpd_outputsandbox="${blahpd_outputsandbox}`basename $stderr`@`hostname -f`:$stderr"
+        blahpd_outputsandbox="${blahpd_outputsandbox}home_${tmp_file}/`basename $stderr`@`hostname -f`:$stderr"
     fi
 fi
 
@@ -250,6 +257,12 @@ then
 fi
 #'#
 
+# Set the temporary home (including cd'ing into it)
+echo "mkdir ~/home_$tmp_file">>$tmp_file
+[ -z "$to_be_moved" ] || echo "mv $to_be_moved ~/home_$tmp_file &>/dev/null">>$tmp_file
+echo "export HOME=~/home_$tmp_file">>$tmp_file
+echo "cd">>$tmp_file
+
 # Set the path to the user proxy
 if [ "x$need_to_reset_proxy" == "xyes" ] ; then
     echo "# Resetting proxy to local position" >> $tmp_file
@@ -284,20 +297,21 @@ echo "user_retcode=\$?" >> $tmp_file
 
 if [ ! -z $proxyrenew ]
 then
-    echo "# Prepare to clean up the watchdog when done" >> $tmp_file
+    echo "# Kill the watchdog when done" >> $tmp_file
     echo "sleep 1" >> $tmp_file
     echo "kill \$server_pid 2> /dev/null" >> $tmp_file
-    echo "if [ -e \"$remote_BPRserver\" ]" >> $tmp_file
-    echo "then" >> $tmp_file
-    echo "    rm $remote_BPRserver" >> $tmp_file
-    echo "fi" >> $tmp_file
 fi
 
-echo "# Clean up the proxy" >> $tmp_file
-echo "if [ -e \"\$X509_USER_PROXY\" ]" >> $tmp_file
-echo "then" >> $tmp_file
-echo "    rm \$X509_USER_PROXY" >> $tmp_file
-echo "fi" >> $tmp_file
+if [ ! -z "$to_be_moved" ] ; then
+    echo ""  >> $tmp_file
+    echo "# Remove the staged files" >> $tmp_file
+    echo "rm $to_be_moved" >> $tmp_file
+fi
+
+# We cannot remove the output files, as they have to be transferred back to the CE
+# echo "cd .." >> $tmp_file
+# echo "rm -rf \$HOME" >> $tmp_file
+
 echo "" >> $tmp_file
 
 echo "exit \$user_retcode" >> $tmp_file
@@ -336,8 +350,6 @@ if [ "$retcode" != "0" ] ; then
 	rm -f $curdir/$tmp_file
 	exit 1
 fi
-
-
 
 jobID=`echo $jobIDtmp|awk -F"." '{ print $1 }'`
 
@@ -413,6 +425,7 @@ echo "BLAHP_JOBID_PREFIXpbs/`basename $logfile`/$jobID"
 
 # Clean temporary files
 cd $curdir
+# DEBUG: cp $tmp_file /tmp
 rm -f $tmp_file
 
 # Create a softlink to proxy file for proxy renewal

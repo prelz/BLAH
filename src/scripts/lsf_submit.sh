@@ -194,6 +194,7 @@ if [ ! -z "$stdin" ] ; then
         stdin_unique=`basename $stdin`.$uni_ext
         echo "#BSUB -f \"$stdin > $stdin_unique\"" >> $tmp_file
         arguments="$arguments <\"$stdin_unique\""
+        to_be_moved="$to_be_moved $stdin_unique"
     else
         arguments="$arguments <$stdin"
     fi
@@ -201,7 +202,7 @@ fi
 if [ ! -z "$stdout" ] ; then
     stdout_unique=`basename $stdout`.$uni_ext
     arguments="$arguments >\"$stdout_unique\""
-    echo "#BSUB -f \"$stdout < $stdout_unique\"" >> $tmp_file
+    echo "#BSUB -f \"$stdout < home_${tmp_file}/${stdout_unique}\"" >> $tmp_file
 fi
 if [ ! -z "$stderr" ] ; then
     if [ "$stderr" == "$stdout" ]; then
@@ -209,13 +210,23 @@ if [ ! -z "$stderr" ] ; then
     else
         stderr_unique=`basename $stderr`.$uni_ext
         arguments="$arguments 2>\"$stderr_unique\""
-        echo "#BSUB -f \"$stderr < $stderr_unique\"" >> $tmp_file
+        echo "#BSUB -f \"$stderr < home_${tmp_file}/$stderr_unique\"" >> $tmp_file
     fi
 fi
 
 # Set the remaining parameters
-[ -z "$proxyrenew" ]     || echo "#BSUB -f \"$proxyrenewald > `basename $proxyrenewald`.$uni_ext\"" >> $tmp_file
-[ "x$stgcmd" != "xyes" ] || echo "#BSUB -f \"$the_command > `basename $the_command`\"" >> $tmp_file
+if [ "x$proxyrenew" == "xyes" ]
+then
+    echo "#BSUB -f \"$proxyrenewald > `basename $proxyrenewald`.$uni_ext\"" >> $tmp_file
+    to_be_moved="$to_be_moved `basename $proxyrenewald`.$uni_ext"
+fi
+
+if [ "x$stgcmd" == "xyes" ] 
+then
+    echo "#BSUB -f \"$the_command > `basename $the_command`\"" >> $tmp_file
+    to_be_moved="$to_be_moved `basename $the_command`"
+fi
+
 [ -z "$mpinodes" ]       || echo "#BSUB -n $mpinodes" >> $tmp_file
 
 # Setup proxy transfer
@@ -226,6 +237,7 @@ if [ "x$stgproxy" == "xyes" ] ; then
     if [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] ; then
         proxy_unique=${tmp_file}.${uni_ext}.proxy
         echo "#BSUB -f \"$proxy_local_file > $proxy_unique\"" >> $tmp_file
+        to_be_moved="$to_be_moved $proxy_unique"
     fi
 fi
 
@@ -243,6 +255,12 @@ if [ "x$envir" != "x" ] ; then
     echo "export `echo ';'$envir |sed -e 's/;[^=]*;/;/g' -e 's/;[^=]*$//g' | sed -e 's/;\([^=]*\)=\([^;]*\)/ \1=\"\2\"/g'`" >> $tmp_file
 #'#
 fi
+
+# Set the temporary home (including cd'ing into it)
+echo "mkdir ~/home_$tmp_file">>$tmp_file
+[ -z "$to_be_moved" ] || echo "mv $to_be_moved ~/home_$tmp_file &>/dev/null">>$tmp_file
+echo "export HOME=~/home_$tmp_file">>$tmp_file
+echo "cd">>$tmp_file
 
 # Set the path to the user proxy
 if [ ! -z $proxy_unique ] ; then 
@@ -272,24 +290,23 @@ fi
 echo "wait \$job_pid" >> $tmp_file
 echo "user_retcode=\$?" >> $tmp_file
 
-if [ ! -z $proxyrenew ] ; then
+if [ ! -z "$proxyrenew" ] ; then
     echo ""  >> $tmp_file
     echo "# Wait for the proxy renewal daemon to exit" >> $tmp_file
-    echo "# (or kill it), then delete it" >> $tmp_file
     echo "sleep 1" >> $tmp_file
     echo "kill \$server_pid 2> /dev/null" >> $tmp_file
-    echo "if [ -e \"`basename $proxyrenewald`.$uni_ext\" ]" >> $tmp_file
-    echo "then" >> $tmp_file
-    echo "    rm `basename $proxyrenewald`.$uni_ext" >> $tmp_file
-    echo "fi" >> $tmp_file
 fi
 
-echo ""  >> $tmp_file
-echo "# Remove the proxy file" >> $tmp_file
-echo "if [ -e \"$proxy_unique\" ]" >> $tmp_file
-echo "then" >> $tmp_file
-echo "    rm $proxy_unique" >> $tmp_file
-echo "fi" >> $tmp_file
+if [ ! -z "$to_be_moved" ] ; then
+    echo ""  >> $tmp_file
+    echo "# Remove the staged files" >> $tmp_file
+    echo "rm $to_be_moved" >> $tmp_file
+fi
+
+# We cannot remove the output files, as they have to be transferred back to the CE
+# echo "cd .." >> $tmp_file
+# echo "rm -rf \$HOME" >> $tmp_file
+
 echo ""  >> $tmp_file
 echo "exit \$user_retcode" >> $tmp_file
 
@@ -316,12 +333,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-if [ ! -z "$HOME" ]; then
-    jobID=`cd && ${lsf_binpath}/bsub -o /dev/null -e /dev/null -i /dev/null < $curdir/$tmp_file | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"`
-else
-    jobID=`${lsf_binpath}/bsub -o /dev/null -e /dev/null -i /dev/null < $curdir/$tmp_file | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"`
-fi
-
+jobID=`cd && ${lsf_binpath}/bsub -o /dev/null -e /dev/null -i /dev/null < $curdir/$tmp_file | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"`
 
 retcode=$?
 if [ "$retcode" != "0" ] ; then
