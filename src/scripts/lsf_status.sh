@@ -1,37 +1,70 @@
 #!/bin/bash
-
-#  File:     lsf_status.sh
 #
-#  Author:   David Rebatto, Massimo Mezzadri
-#  e-mail:   David.Rebatto@mi.infn.it, Massimo.Mezzadri@mi.infn.it
+# File:     lsf_submit.sh
+# Author:   David Rebatto (david.rebatto@mi.infn.it)
 #
-#
-#  Revision history:
-#    20-Mar-2004: Original release
-#    22-Feb-2005: Totally rewritten, bhist command not used anymore
+# Revision history:
+#     8-Apr-2004: Original release
+#    28-Apr-2004: Patched to handle arguments with spaces within (F. Prelz)
+#                 -d debug option added (print the wrapper to stderr without submitting)
+#    10-May-2004: Patched to handle environment with spaces, commas and equals
+#    13-May-2004: Added cleanup of temporary file when successfully submitted
+#    18-May-2004: Search job by name in log file (instead of searching by jobid)
+#     8-Jul-2004: Try a chmod u+x on the file shipped as executable
+#                 -w option added (cd into submission directory)
+#    21-Sep-2004: -q option added (queue selection)
+#    29-Sep-2004: -g option added (gianduiotto selection) and job_ID=job_ID_log
+#    13-Jan-2005: -n option added (MPI job selection) and changed prelz@mi.infn.it with
+#                    blahp_sink@mi.infn.it
+#     4-Mar-2005: Dgas(gianduia) removed. Proxy renewal stuff added (-r -p -l flags)
 #     3-May-2005: Added support for Blah Log Parser daemon (using the lsf_BLParser flag)
+#    31-May-2005: Separated job's standard streams from wrapper's ones
+# 
 #
-#  Description:
-#    Return a classad describing the status of a LSF job
+# Description:
+#   Submission script for LSF, to be invoked by blahpd server.
+#   Usage:
+#     lsf_submit.sh -c <command> [-i <stdin>] [-o <stdout>] [-e <stderr>] [-w working dir] [-- command's arguments]
 #
 #
 #  Copyright (c) 2004 Istituto Nazionale di Fisica Nucleare (INFN).
 #  All rights reserved.
 #  See http://grid.infn.it/grid/license.html for license details.
 #
+#
 
 [ -f ${GLITE_LOCATION:-/opt/glite}/etc/blah.config ] && . ${GLITE_LOCATION:-/opt/glite}/etc/blah.config
 
-usage_string="Usage: $0 [-w] [-n]"
+conffile=$lsf_confpath/lsf.conf
 
-#get worker node info (dummy for LSF)
-getwn=""
+lsf_base_path=`cat $conffile|grep LSB_SHAREDIR| awk -F"=" '{ print $2 }'`
 
-#get creamport
-getcreamport=""
+lsf_clustername=`${lsf_binpath}/lsid | grep 'My cluster name is'|awk -F" " '{ print $5 }'`
+logpath=$lsf_base_path/$lsf_clustername/logdir
 
-usedBLParser="no"
-   
+logfilename=lsb.events
+
+stgcmd="yes"
+workdir="."
+
+proxyrenewald="${GLITE_LOCATION:-/opt/glite}/bin/BPRserver"
+
+proxy_dir=~/.blah_jobproxy_dir
+
+stgproxy="yes"
+
+#default is to stage proxy renewal daemon 
+proxyrenew="yes"
+
+if [ ! -r $proxyrenewald ]
+then
+  unset proxyrenew
+fi
+
+#default values for polling interval and min proxy lifetime
+prnpoll=30
+prnlifetime=0
+
 srvfound=""
 
 BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
@@ -40,19 +73,40 @@ BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 # Parse parameters
 ###############################################################
 
-while getopts "wn" arg 
+while getopts "i:o:e:c:s:v:dw:q:n:rp:l:x:j:C:" arg 
 do
     case "$arg" in
-    w) getwn="yes" ;;
-    n) getcreamport="yes" ;;
-
+    i) stdin="$OPTARG" ;;
+    o) stdout="$OPTARG" ;;
+    e) stderr="$OPTARG" ;;
+    v) envir="$OPTARG";;
+    c) the_command="$OPTARG" ;;
+    s) stgcmd="$OPTARG" ;;
+    d) debug="yes" ;;
+    w) workdir="$OPTARG";;
+    q) queue="$OPTARG";;
+    n) mpinodes="$OPTARG";;
+    r) proxyrenew="yes" ;;
+    p) prnpoll="$OPTARG" ;;
+    l) prnlifetime="$OPTARG" ;;
+    x) proxy_string="$OPTARG" ;;
+    j) creamjobid="$OPTARG" ;;
+    C) req_file="$OPTARG";;
     -) break ;;
     ?) echo $usage_string
        exit 1 ;;
     esac
 done
 
+# Command is mandatory
+if [ "x$the_command" == "x" ]
+then
+    echo $usage_string
+    exit 1
+fi
+
 shift `expr $OPTIND - 1`
+arguments=$*
 
 #Try different log parser
 if [ ! -z $lsf_num_BLParser ] ; then
@@ -75,177 +129,293 @@ if [ ! -z $lsf_num_BLParser ] ; then
  fi
 fi
 
-###################################################################
-#get creamport and exit
+###############################################################
+# Create wrapper script
+###############################################################
 
-if [ "x$getcreamport" == "xyes" ] ; then
- result=`echo "CREAMPORT/"|$BLClient -a $lsf_BLPserver -p $lsf_BLPport`
- reqretcode=$?
- if [ "$reqretcode" == "1" ] ; then
-  exit 1
- fi
- retcode=0
- echo $lsf_BLPserver:$result
- exit $retcode
+# Get a suitable name for temp file
+if [ "x$debug" != "xyes" ]
+then
+    if [ ! -z "$creamjobid"  ] ; then
+        tmp_file=cream_${creamjobid}
+    else
+        tmp_file=`mktemp -q blahjob_XXXXXX`
+    fi
+    if [ $? -ne 0 ]; then
+        echo Error
+        exit 1
+    fi
+else
+    # Just print to stderr if in debug
+    tmp_file="/proc/$$/fd/2"
 fi
 
-proxy_dir=~/.blah_jobproxy_dir
-pars=$*
+# Create unique extension for filename
+uni_uid=`id -u`
+uni_pid=$$
+uni_time=`date +%s`
+uni_ext=$uni_uid.$uni_pid.$uni_time
 
-for  reqfull in $pars ; do
-	reqfull=${reqfull:4}	
-	requested=`echo $reqfull | sed -e 's/^.*\///'`
-	datenow=`echo $reqfull | sed 's/\/.*//'`
-		
-	result=""
-	cliretcode=0
-	if [ "x$lsf_BLParser" == "xyes" ] ; then
-    
-		usedBLParser="yes"
-		result=`echo $reqfull| $BLClient -a $lsf_BLPserver -p $lsf_BLPport`
-    		cliretcode=$?
-                response=${result:0:1}
-		if [ "$response" != "[" -o "$cliretcode" != "0" ] ; then
-                        cliretcode=1
-                else
-                        cliretcode=0
-                fi
-	fi
-	
-        if [ "$cliretcode" == "1" -a "x$lsf_fallback" == "xno" ] ; then
-         echo "1ERROR: not able to talk with logparser on ${lsf_BLPserver}:${lsf_BLPport}"
-         exit 0
-        fi
+# Create date for output string
+datenow=`date +%Y%m%d%H%M.%S`
 
-	if [ "$cliretcode" == "1" -o "x$lsf_BLParser" != "xyes" ] ; then
-		result=""
-		usedBLParser="no"
-		datefile=`mktemp -q blahjob_XXXXXX`
+# Write wrapper preamble
+cat > $tmp_file << end_of_preamble
+#!/bin/bash
+# LSF job wrapper generated by `basename $0`
+# on `/bin/date`
+#
+# LSF directives:
+#BSUB -L /bin/bash
+#BSUB -J $tmp_file
+end_of_preamble
 
-		if [ $? -ne 0 ]; then
-   			echo 'Error creating temporary file'
-   			datefile=""
-			echo "1ERROR: Job not found"
-			break
-		fi
+#set the queue name first, so that the local script is allowed to change it
+#(as per request by CERN LSF admins).
+# handle queue overriding
+[ -z "$queue" ] || grep -q "^#BSUB -q" $tmp_file || echo "#BSUB -q $queue" >> $tmp_file
 
-		conffile=$lsf_confpath/lsf.conf
-		lsf_base_path=`cat $conffile|grep LSB_SHAREDIR| awk -F"=" '{ print $2 }'`
-		lsf_clustername=`${lsf_binpath}/lsid | grep 'My cluster name is'|awk -F" " '{ print $5 }'`
-		logpath=$lsf_base_path/$lsf_clustername/logdir
-		logeventfile=lsb.events
-		touch -t $datenow $datefile
-		ulogs=`find $logpath -name $logeventfile.[0-9]* -maxdepth 1 -type f -newer $datefile -print 2>/dev/null`
-		rm $datefile
-		for i in `echo $ulogs | sed "s|${logpath}/${logeventfile}\.||g" | sort -nr`; do
- 			logs="$logs$logpath/$logeventfile.$i "
-		done
-		logs="$logs$logpath/$logeventfile"
+#local batch system-specific file output must be added to the submit file
+if [ ! -z $req_file ] ; then
+    echo \#\!/bin/sh >> temp_req_script_$req_file 
+    cat $req_file >> temp_req_script_$req_file 
+    echo "source ${GLITE_LOCATION:-/opt/glite}/bin/lsf_local_submit_attributes.sh" >> temp_req_script_$req_file 
+    chmod +x temp_req_script_$req_file 
+    ./temp_req_script_$req_file  >> $tmp_file 2> /dev/null
+    rm -f temp_req_script_$req_file 
+    rm -f $req_file
+fi
 
-#/* job states */
-#define JOB_STAT_NULL         0x00
-#define JOB_STAT_PEND         0x01
-#define JOB_STAT_PSUSP        0x02
-#define JOB_STAT_RUN          0x04
-#define JOB_STAT_SSUSP        0x08
-#define JOB_STAT_USUSP        0x10
-#define JOB_STAT_EXIT         0x20
-#define JOB_STAT_DONE         0x40
-#define JOB_STAT_PDONE        (0x80)  /* Post job process done successfully */
-#define JOB_STAT_PERR         (0x100) /* Post job process has error */
-#define JOB_STAT_WAIT         (0x200) /* Chunk job waiting its turn to exec */
-#define JOB_STAT_UNKWN        0x10000
+# Write LSF directives according to command line options
 
-result=`awk -v jobId=$requested -v proxyDir=$proxy_dir '
-BEGIN {
-	rex_queued   = "\"JOB_NEW\" \"[0-9\.]+\" [0-9]+ " jobId
-	rex_running  = "\"JOB_START\" \"[0-9\.]+\" [0-9]+ " jobId
-	rex_deleted  = "\"JOB_SIGNAL\" \"[0-9\.]+\" [0-9]+ " jobId " [0-9]+ [0-9]+ \"KILL\""
-	rex_done     = "\"JOB_STATUS\" \"[0-9\.]+\" [0-9]+ " jobId " 192 "
-	rex_finished = "\"JOB_STATUS\" \"[0-9\.]+\" [0-9]+ " jobId " 32 "
-	rex_phold    = "\"JOB_STATUS\" \"[0-9\.]+\" [0-9]+ " jobId " 2 "
-        rex_shold    = "\"JOB_STATUS\" \"[0-9\.]+\" [0-9]+ " jobId " 8 "
- 	rex_uhold    = "\"JOB_STATUS\" \"[0-9\.]+\" [0-9]+ " jobId " 16 "
- 	rex_pend     = "\"JOB_STATUS\" \"[0-9\.]+\" [0-9]+ " jobId " 1 "
-	jobstatus = 0
-	
-	print "["
-	print "BatchjobId = \"" jobId "\";"
-}
+# Setup the standard streams
+if [ ! -z "$stdin" ] ; then
+    if [ -f "$stdin" ] ; then
+        stdin_unique=`basename $stdin`.$uni_ext
+        echo "#BSUB -f \"$stdin > $stdin_unique\"" >> $tmp_file
+        arguments="$arguments <\"$stdin_unique\""
+        to_be_moved="$to_be_moved $stdin_unique"
+    else
+        arguments="$arguments <$stdin"
+    fi
+fi
+if [ ! -z "$stdout" ] ; then
+    stdout_unique=`basename $stdout`.$uni_ext
+    arguments="$arguments >\"$stdout_unique\""
+    echo "#BSUB -f \"$stdout < home_${tmp_file}/${stdout_unique}\"" >> $tmp_file
+fi
+if [ ! -z "$stderr" ] ; then
+    if [ "$stderr" == "$stdout" ]; then
+        arguments="$arguments 2>&1"
+    else
+        stderr_unique=`basename $stderr`.$uni_ext
+        arguments="$arguments 2>\"$stderr_unique\""
+        echo "#BSUB -f \"$stderr < home_${tmp_file}/$stderr_unique\"" >> $tmp_file
+    fi
+fi
 
-$0 ~ rex_queued {
-	jobstatus = 1
-}
+# Set the remaining parameters
+if [ "x$proxyrenew" == "xyes" ]
+then
+    echo "#BSUB -f \"$proxyrenewald > `basename $proxyrenewald`.$uni_ext\"" >> $tmp_file
+    to_be_moved="$to_be_moved `basename $proxyrenewald`.$uni_ext"
+fi
 
-$0 ~ rex_pend {
-	jobstatus = 1
-}
+if [ "x$stgcmd" == "xyes" ] 
+then
+    echo "#BSUB -f \"$the_command > `basename $the_command`\"" >> $tmp_file
+    to_be_moved="$to_be_moved `basename $the_command`"
+fi
 
-$0 ~ rex_running {
-	jobstatus = 2
-        print "WorkerNode = " $10 ";"
-}
+[ -z "$mpinodes" ]       || echo "#BSUB -n $mpinodes" >> $tmp_file
 
-$0 ~ rex_deleted {
-	jobstatus = 3
-	exit
-}
+# Setup proxy transfer
+if [ "x$stgproxy" == "xyes" ] ; then
+    proxy_local_file=${workdir}"/"`basename "$proxy_string"`
+    [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] || proxy_local_file=$proxy_string
+    [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] || proxy_local_file=/tmp/x509up_u`id -u`
+    if [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] ; then
+        proxy_unique=${tmp_file}.${uni_ext}.proxy
+        echo "#BSUB -f \"$proxy_local_file > $proxy_unique\"" >> $tmp_file
+        to_be_moved="$to_be_moved $proxy_unique"
+    fi
+fi
 
-$0 ~ rex_done {
-	jobstatus = 4
-	exitcode = 0
-	exit
-}
+# Accommodate for CERN-specific job subdirectory creation.
+echo "" >> $tmp_file
+echo "# Check whether we need to move to the LSF original CWD:" >> $tmp_file
+echo "if [ -d \"\$CERN_STARTER_ORIGINAL_CWD\" ]; then" >> $tmp_file
+echo "    cd \$CERN_STARTER_ORIGINAL_CWD" >> $tmp_file
+echo "fi" >> $tmp_file
 
-$0 ~ rex_finished {
-	jobstatus = 4
-	exitcode = $(NF-2)
-	exit
-}
+# Set the required environment variables (escape values with double quotes)
+if [ "x$envir" != "x" ] ; then
+    echo "" >> $tmp_file
+    echo "# Setting the environment:" >> $tmp_file
+    echo "export `echo ';'$envir |sed -e 's/;[^=]*;/;/g' -e 's/;[^=]*$//g' | sed -e 's/;\([^=]*\)=\([^;]*\)/ \1=\"\2\"/g'`" >> $tmp_file
+#'#
+fi
 
-$0 ~ rex_uhold {
-	jobstatus = 5
-}
+# Set the temporary home (including cd'ing into it)
+echo "mkdir ~/home_$tmp_file">>$tmp_file
+[ -z "$to_be_moved" ] || echo "mv $to_be_moved ~/home_$tmp_file &>/dev/null">>$tmp_file
+echo "export HOME=~/home_$tmp_file">>$tmp_file
+echo "cd">>$tmp_file
 
-$0 ~ rex_phold {
-	jobstatus = 5
-}
+# Set the path to the user proxy
+if [ ! -z $proxy_unique ] ; then 
+    echo "export X509_USER_PROXY=\`pwd\`/$proxy_unique" >> $tmp_file
+fi
 
-$0 ~ rex_shold {
-	jobstatus = 5
-}
+# Add the command (with full path if not staged)
+echo "" >> $tmp_file
+echo "# Command to execute:" >> $tmp_file
+if [ "x$stgcmd" == "xyes" ] ; then
+    the_command="./`basename $the_command`"
+    echo "if [ ! -x $the_command ]; then chmod u+x $the_command; fi" >> $tmp_file
+    # God *really* knows why LSF doesn't like a 'dot' in here
+    # To be investigated further. prelz@mi.infn.it 20040911
+    echo "\`pwd\`/`basename $the_command` $arguments &" >> $tmp_file
+else
+    echo "$the_command $arguments &" >> $tmp_file
+fi
 
-END {
-	if (jobstatus == 0) { exit 1 }
-	print "JobStatus = " jobstatus ";"
-	if (jobstatus == 4) {
-		print "ExitCode = " exitcode ";"
-	}
-	print "]"
-	if (jobstatus == 3 || jobstatus == 4) {
-		system("rm " proxyDir "/" jobId ".proxy 2>/dev/null")
-	}
-}
-' $logs`
+echo "job_pid=\$!" >> $tmp_file
 
-   		if [ "$?" == "0" ] ; then
-        		echo "0"$result
-   		else
-        		echo "1ERROR: Job not found"
-   		fi
-	fi #close if on BLParser
+if [ ! -z $proxyrenew ] ; then
+    echo "if [ ! -x `basename $proxyrenewald`.$uni_ext ]; then chmod u+x `basename $proxyrenewald`.$uni_ext; fi" >> $tmp_file
+    echo "\`pwd\`/`basename $proxyrenewald`.$uni_ext \$job_pid $prnpoll $prnlifetime \${LSB_JOBID} &" >> $tmp_file
+    echo "server_pid=\$!" >> $tmp_file
+fi
+echo "wait \$job_pid" >> $tmp_file
+echo "user_retcode=\$?" >> $tmp_file
 
-	if [ "x$usedBLParser" == "xyes" ] ; then
+if [ ! -z "$proxyrenew" ] ; then
+    echo ""  >> $tmp_file
+    echo "# Wait for the proxy renewal daemon to exit" >> $tmp_file
+    echo "sleep 1" >> $tmp_file
+    echo "kill \$server_pid 2> /dev/null" >> $tmp_file
+fi
 
-    		pr_removal=`echo $result | sed -e 's/^.*\///'`
-		result=`echo $result | sed 's/\/.*//'`
-    		echo "0"$result
-		if [ "x$pr_removal" == "xYes" ] ; then
-        		rm ${proxy_dir}/${requested}.proxy 2>/dev/null
-    		fi
-		usedBLParser="no"	
-	fi
-	logs=""
+if [ ! -z "$to_be_moved" ] ; then
+    echo ""  >> $tmp_file
+    echo "# Remove the staged files" >> $tmp_file
+    echo "rm $to_be_moved" >> $tmp_file
+fi
+
+# We cannot remove the output files, as they have to be transferred back to the CE
+# echo "cd .." >> $tmp_file
+# echo "rm -rf \$HOME" >> $tmp_file
+
+echo ""  >> $tmp_file
+echo "exit \$user_retcode" >> $tmp_file
+
+# Exit if it was just a test
+if [ "x$debug" == "xyes" ]
+then
+    exit 255
+fi
+
+# Let the wrap script be at least 1 second older than logfile
+# for subsequent "find -newer" command to work
+sleep 1
+
+
+###############################################################
+# Submit the script
+###############################################################
+curdir=`pwd`
+
+cd $workdir
+if [ $? -ne 0 ]; then
+    echo "Failed to CD to Initial Working Directory." >&2
+    echo Error # for the sake of waiting fgets in blahpd
+    exit 1
+fi
+
+jobID=`cd && ${lsf_binpath}/bsub -o /dev/null -e /dev/null -i /dev/null < $curdir/$tmp_file | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"`
+
+retcode=$?
+if [ "$retcode" != "0" ] ; then
+        rm -f $tmp_file
+        exit 1
+fi
+
+# Don't trust bsub retcode, it could have crashed
+# between submission and id output, and we would
+# loose track of the job
+
+# Search for the job in the logfile using job name
+
+# Sleep for a while to allow job enter the queue
+sleep 5
+
+# find the correct logfile (it must have been modified
+# *more* recently than the wrapper script)
+
+logfile=""
+jobID_log=""
+log_check_retry_count=0
+
+while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
+
+ cliretcode=0
+ if [ "x$lsf_BLParser" == "xyes" ] ; then
+     jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $lsf_BLPserver -p $lsf_BLPport`
+     cliretcode=$?
+ fi
+ 
+ if [ "$cliretcode" == "1" -a "x$lsf_fallback" == "xno" ] ; then
+   ${lsf_binpath}/bkill $jobID
+   echo "Error: not able to talk with logparser on ${lsf_BLPserver}:${lsf_BLPport}" >&2
+   echo Error # for the sake of waiting fgets in blahpd
+   rm -f $curdir/$tmp_file
+   exit 1
+ fi
+
+ if [ "$cliretcode" == "1" -o "x$lsf_BLParser" != "xyes" ] ; then
+
+   logfile=`find $logpath/$logfilename* -type f -newer $curdir/$tmp_file -exec grep -lP "\"JOB_NEW\" \"[0-9\.]+\" [0-9]+ $jobID " {} \;`
+
+   if [ "x$logfile" != "x" ] ; then
+
+     jobID_log=`grep \"JOB_NEW\" $logfile | awk -F" " '{ print $4" " $42 }' | grep $tmp_file|awk -F" " '{ print $1 }'`
+   fi
+ fi
+ 
+ if (( log_check_retry_count++ >= 12 )); then
+     ${lsf_binpath}/bkill $jobID
+     echo "Error: job not found in logs" >&2
+     echo Error # for the sake of waiting fgets in blahpd
+     rm -f $curdir/$tmp_file
+     exit 1
+ fi
+
+ sleep 2 
+
 done
-exit 0
 
+jobID_check=`echo $jobID_log|egrep -e "^[0-9]+$"`
+
+if [ "$jobID_log" != "$jobID" -a "x$jobID_log" != "x" -a "x$jobID_check" != "x" ]; then
+    echo "WARNING: JobID in log file is different from the one returned by bsub!" >&2
+    echo "($jobID_log != $jobID)" >&2
+    echo "I'll be using the one in the log ($jobID_log)..." >&2
+    jobID=$jobID_log
+fi
+
+# Compose the blahp jobID (date + lsf jobid)
+echo ""
+echo "BLAHP_JOBID_PREFIXlsf/${datenow}/$jobID"
+
+# Clean temporary files
+cd $curdir
+rm -f $tmp_file
+
+# Create a softlink to proxy file for proxy renewal
+if [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] ; then
+    [ -d "$proxy_dir" ] || mkdir $proxy_dir
+    ln -s $proxy_local_file $proxy_dir/$jobID.proxy
+fi
+
+exit $retcode
