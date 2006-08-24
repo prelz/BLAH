@@ -54,24 +54,27 @@ done
 
 shift `expr $OPTIND - 1`
 
+if [ "x$lsf_nologaccess" == "xyes" ]; then
+
 #Try different log parser
-if [ ! -z $lsf_num_BLParser ] ; then
- for i in `seq 1 $lsf_num_BLParser` ; do
-  s=`echo lsf_BLPserver${i}`
-  p=`echo lsf_BLPport${i}`
-  eval tsrv=\$$s
-  eval tport=\$$p
-  testres=`echo "TEST/"|$BLClient -a $tsrv -p $tport`
-  if [ "x$testres" == "xYLSF" ] ; then
-   lsf_BLPserver=$tsrv
-   lsf_BLPport=$tport
-   srvfound=1
-   break
+ if [ ! -z $lsf_num_BLParser ] ; then
+  for i in `seq 1 $lsf_num_BLParser` ; do
+   s=`echo lsf_BLPserver${i}`
+   p=`echo lsf_BLPport${i}`
+   eval tsrv=\$$s
+   eval tport=\$$p
+   testres=`echo "TEST/"|$BLClient -a $tsrv -p $tport`
+   if [ "x$testres" == "xYLSF" ] ; then
+    lsf_BLPserver=$tsrv
+    lsf_BLPport=$tport
+    srvfound=1
+    break
+   fi
+  done
+  if [ -z $srvfound ] ; then
+   echo "1ERROR: not able to talk with no logparser listed"
+   exit 0
   fi
- done
- if [ -z $srvfound ] ; then
-  echo "1ERROR: not able to talk with no logparser listed"
-  exit 0
  fi
 fi
 
@@ -93,9 +96,90 @@ proxy_dir=~/.blah_jobproxy_dir
 pars=$*
 
 for  reqfull in $pars ; do
-	reqfull=${reqfull:4}	
-	requested=`echo $reqfull | sed -e 's/^.*\///'`
-	datenow=`echo $reqfull | sed 's/\/.*//'`
+     reqfull=${reqfull:4}
+     requested=`echo $reqfull | sed -e 's/^.*\///'`
+     datenow=`echo $reqfull | sed 's/\/.*//'`
+		     
+     if [ "x$lsf_nologaccess" == "xyes" ]; then
+
+        staterr=/tmp/${requested}_staterr
+
+result=`${lsf_binpath}/bhist -l $requested 2>/dev/null | awk -v jobId=$requested '
+BEGIN {
+    current_job = ""
+    current_wn = ""
+    jobstatus = 0
+}
+
+/Job </ {
+    current_job = substr($0, index($0, "<")+1)
+    current_job = substr(current_job, 1, index(current_job, ">") -1)
+    
+    print "[BatchJobId=\"" current_job "\";"
+}
+
+/Dispatched to/ {
+    current_wn = substr($0, index($0, "<")+1)
+    current_wn = substr(current_wn, 1, index(current_wn, ">") -1)
+}
+
+/Submitted from/ { jobstatus = 1 }
+
+/Starting / { jobstatus = 2 }
+
+/Signal <KILL>/ { 
+                 jobstatus = 3 
+		 exit
+		 }
+
+/Done successfully/ { 
+                    jobstatus = 4
+		    exitcode = 0
+		    exit
+		    }
+
+/Exited with exit code/ { 
+                         jobstatus = 4
+		         exitcode = substr($0, index($0, ".")-4) 
+		         exitcode = substr(exitcode, index(exitcode, ".")-1, index(exitcode, " ")-2)
+			 exit 
+		        }
+/Suspended/ { suspended = 1 }
+
+/resumed/ { suspended = 0 }
+
+
+END {        
+	if (jobstatus == 0) { exit 1 }
+	if (suspended == 1) {jobstatus=5} 
+	if (jobstatus == 2 || jobstatus == 4) {
+		print "WorkerNode=\"" current_wn "\";"
+	}
+	print "JobStatus=" jobstatus ";"
+	if (jobstatus == 4) {
+		print "ExitCode=" exitcode ";"
+	}
+	print "]"
+	if (jobstatus == 3 || jobstatus == 4) {
+		system("rm " proxyDir "/" jobId ".proxy 2>/dev/null")
+	}
+
+}
+'
+`
+        errout=`cat $staterr`
+	rm -f $staterr 2>/dev/null
+	
+        if [ -z "$errout" ] ; then
+                echo "0"$result
+                retcode=0
+        else
+                echo "1ERROR: Job not found"
+                retcode=1
+        fi
+
+
+     else
 		
 	result=""
 	cliretcode=0
@@ -136,7 +220,7 @@ for  reqfull in $pars ; do
 		logeventfile=lsb.events
 		touch -t $datenow $datefile
 		ulogs=`find $logpath -name $logeventfile.[0-9]* -maxdepth 1 -type f -newer $datefile -print 2>/dev/null`
-		rm $datefile
+		rm -f $datefile 2>/dev/null
 		for i in `echo $ulogs | sed "s|${logpath}/${logeventfile}\.||g" | sort -nr`; do
  			logs="$logs$logpath/$logeventfile.$i "
 		done
@@ -220,6 +304,21 @@ END {
 	print "JobStatus = " jobstatus ";"
 	if (jobstatus == 4) {
 		print "ExitCode = " exitcode ";"
+		if (exitcode == 130) {
+			print "ExitReason = " Memory limit reached ";"
+		}else if(exitcode == 137){
+			print "ExitReason = " Memory limit reached ";"
+		}else if(exitcode == 140){
+			print "ExitReason = " RUNtime limit reached ";"
+		}else if(exitcode == 143){
+			print "ExitReason = " Memory limit reached ";"
+		}else if(exitcode == 152){
+			print "ExitReason = " CPUtime limit reached ";"
+		}else if(exitcode == 153){
+			print "ExitReason = " FILEsize limit reached ";"
+		}else if(exitcode == 157){
+			print "ExitReason = " Directory Access Error (No AFS token, dir does not exist) ";"
+		}
 	}
 	print "]"
 	if (jobstatus == 3 || jobstatus == 4) {
@@ -241,11 +340,13 @@ END {
 		result=`echo $result | sed 's/\/.*//'`
     		echo "0"$result
 		if [ "x$pr_removal" == "xYes" ] ; then
-        		rm ${proxy_dir}/${requested}.proxy 2>/dev/null
+        		rm -f ${proxy_dir}/${requested}.proxy 2>/dev/null
     		fi
 		usedBLParser="no"	
 	fi
 	logs=""
+	
+     fi #close of if-else on $lsf_nologaccess
 done
 exit 0
 

@@ -607,6 +607,7 @@ void *LookupAndSend(int m_sock){
     char      *jobid;
     char      *h_jobid;
     char      *t_wnode;
+    char      *exitreason;
     char      *pr_removal="Not";
     int       i,maxtok,ii;
     int       id;
@@ -898,6 +899,9 @@ void *LookupAndSend(int m_sock){
 	   if((t_wnode=malloc(STR_CHARS)) == 0){
 	    sysfatal("can't malloc t_wnode in LookupAndSend: %r");
 	   }
+	   if((exitreason=calloc(STR_CHARS,1)) == 0){
+	    sysfatal("can't malloc exitreason in LookupAndSend: %r");
+	   }
 	   	   
            if(strcmp(j2wn[id],"\0")==0){
             t_wnode[0]='\0';
@@ -910,13 +914,25 @@ void *LookupAndSend(int m_sock){
             pr_removal="Not";
            }
            if(strcmp(j2js[id],"4")==0){
-            sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\"; ExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], j2ct[id], j2ec[id], pr_removal);
+            if((strcmp(j2ec[id],"130")==0) || (strcmp(j2ec[id],"137")==0) || (strcmp(j2ec[id],"143")==0)){
+             sprintf(exitreason," ExitReason=\"Memory limit reached\";");
+            }else if(strcmp(j2ec[id],"140")==0){
+             sprintf(exitreason," ExitReason=\"RUNtime limit reached\";");
+            }else if(strcmp(j2ec[id],"152")==0){
+             sprintf(exitreason," ExitReason=\"CPUtime limit reached\";");
+            }else if(strcmp(j2ec[id],"153")==0){
+             sprintf(exitreason," ExitReason=\"FILEsize limit reached\";");
+            }else if(strcmp(j2ec[id],"157")==0){
+             sprintf(exitreason," ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
+            }
+            sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\";%s ExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], j2ct[id], exitreason, j2ec[id], pr_removal);
            }else if(strcmp(j2rt[id],"\0")!=0){
             sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], pr_removal);
            }else{
             sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], pr_removal);
            }
 	   free(t_wnode);
+	   free(exitreason);
 	  } else {
 	  
      	   GetEventsInOldLogs(logdate);
@@ -932,6 +948,9 @@ void *LookupAndSend(int m_sock){
 	    if((t_wnode=malloc(STR_CHARS)) == 0){
 	     sysfatal("can't malloc t_wnode in LookupAndSend: %r");
 	    }
+	    if((exitreason=calloc(STR_CHARS,1)) == 0){
+	     sysfatal("can't malloc exitreason in LookupAndSend: %r");
+	    }
 	   	   
             if(strcmp(j2wn[id],"\0")==0){
              t_wnode[0]='\0';
@@ -944,13 +963,25 @@ void *LookupAndSend(int m_sock){
              pr_removal="Not";
             }
             if(strcmp(j2js[id],"4")==0){
-             sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\"; ExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], j2ct[id], j2ec[id], pr_removal);
+             if((strcmp(j2ec[id],"130")==0) || (strcmp(j2ec[id],"137")==0) || (strcmp(j2ec[id],"143")==0)){
+              sprintf(exitreason," ExitReason=\"Memory limit reached\";");
+             }else if(strcmp(j2ec[id],"140")==0){
+              sprintf(exitreason," ExitReason=\"RUNtime limit reached\";");
+             }else if(strcmp(j2ec[id],"152")==0){
+              sprintf(exitreason," ExitReason=\"CPUtime limit reached\";");
+             }else if(strcmp(j2ec[id],"153")==0){
+              sprintf(exitreason," ExitReason=\"FILEsize limit reached\";");
+             }else if(strcmp(j2ec[id],"157")==0){
+              sprintf(exitreason," ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
+             }
+             sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\";%s ExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], j2ct[id], exitreason, j2ec[id], pr_removal);
             }else if(strcmp(j2rt[id],"\0")!=0){
              sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], pr_removal);
             }else{
              sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], pr_removal);
             }
 	    free(t_wnode);
+	    free(exitreason);
 	     
 	   } else {
             if((out_buf=malloc(STR_CHARS)) == 0){
@@ -1113,28 +1144,36 @@ char *GetLogDir(int largc, char *largv[]){
     debug=0;
  }
   
- if(!binpath && (ebinpath=getenv("LSF_BIN_PATH"))!=NULL){
-     binpath=ebinpath;
- }
- 
- if(!confpath && (econfpath=getenv("LSF_CONF_PATH"))!=NULL){
-     confpath=econfpath;
- } 
- 
- sprintf(conffile,"%s/lsf.conf",confpath);
- 
+if((econfpath=getenv("LSF_ENVDIR"))!=NULL){
+ sprintf(conffile,"%s/lsf.conf",econfpath);
  if((fp=fopen(conffile, "r")) != 0){
   while(fgets(line, STR_CHARS, fp)){
    if(strstr(line,"LSB_SHAREDIR")!=0){
-    break;
+    goto cdone;
    }
   }
- } else {
-  fprintf(stderr,"%s: Cannot open %s file.\n",progname,conffile);
-  exit(EXIT_FAILURE);
  }
- fclose(fp);
+}
+sprintf(conffile,"%s/lsf.conf",confpath);
+if((fp=fopen(conffile, "r")) != 0){
+ while(fgets(line, STR_CHARS, fp)){
+  if(strstr(line,"LSB_SHAREDIR")!=0){
+   goto cdone;
+  }
+ }
+}
+if((econfpath=getenv("LSF_CONF_PATH"))!=NULL){
+ sprintf(conffile,"%s/lsf.conf",econfpath);
+ if((fp=fopen(conffile, "r")) != 0){
+  while(fgets(line, STR_CHARS, fp)){
+   if(strstr(line,"LSB_SHAREDIR")!=0){
+    goto cdone;
+   }
+  }
+ }
+}
 
+cdone:
  maxtok=strtoken(line,'=',tbuf);
  if(tbuf[1]){
   lsf_base_pathtmp=strdup(tbuf[1]);
@@ -1150,12 +1189,31 @@ char *GetLogDir(int largc, char *largv[]){
  lsf_base_path=strdel(lsf_base_pathtmp, "\" ");
  free(lsf_base_pathtmp);
  
+ if((ebinpath=getenv("LSF_BINDIR"))!=NULL){
+ 
+  s=(char*)malloc(strlen(ebinpath)+strlen("lsid")+2);
+  sprintf(s,"%s/lsid",ebinpath);
+  rc=stat(s,&sbuf);
+  if(rc) {
+    fprintf(stderr,"%s not found\n",s);
+    exit(EXIT_FAILURE);
+  }
+  if( ! (sbuf.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH)) ) {
+    /* lsid is not executable for anybody, and is thus useless */
+    fprintf(stderr,"%s: %s is not executable, but mode %05o\n",progname,s,(int)sbuf.st_mode);
+    exit(EXIT_FAILURE);
+  }
+  free(s);
+  sprintf(command_string,"%s/lsid | grep 'My cluster name is'|awk -F\" \" '{ print $5 }'",ebinpath);  
+  goto bdone;
+ }
+ 
  s=(char*)malloc(strlen(binpath)+strlen("lsid")+2);
  sprintf(s,"%s/lsid",binpath);
  rc=stat(s,&sbuf);
  if(rc) {
-   fprintf(stderr,"%s not found\n",s);
-   exit(EXIT_FAILURE);
+  fprintf(stderr,"%s not found\n",s);
+  exit(EXIT_FAILURE);
  }
  if( ! (sbuf.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH)) ) {
    /* lsid is not executable for anybody, and is thus useless */
@@ -1163,8 +1221,29 @@ char *GetLogDir(int largc, char *largv[]){
    exit(EXIT_FAILURE);
  }
  free(s);
+ sprintf(command_string,"%s/lsid | grep 'My cluster name is'|awk -F\" \" '{ print $5 }'",binpath);  
+ goto bdone;
+ 
+ if((ebinpath=getenv("LSF_BIN_PATH"))!=NULL){
 
- sprintf(command_string,"%s/lsid | grep 'My cluster name is'|awk -F\" \" '{ print $5 }'",binpath);
+  s=(char*)malloc(strlen(ebinpath)+strlen("lsid")+2);
+  sprintf(s,"%s/lsid",ebinpath);
+  rc=stat(s,&sbuf);
+  if(rc) {
+    fprintf(stderr,"%s not found\n",s);
+    exit(EXIT_FAILURE);
+  }
+  if( ! (sbuf.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH)) ) {
+    /* lsid is not executable for anybody, and is thus useless */
+    fprintf(stderr,"%s: %s is not executable, but mode %05o\n",progname,s,(int)sbuf.st_mode);
+    exit(EXIT_FAILURE);
+  }
+  free(s);
+  sprintf(command_string,"%s/lsid | grep 'My cluster name is'|awk -F\" \" '{ print $5 }'",ebinpath);  
+  goto bdone;
+ }
+ 
+bdone:
  file_output = popen(command_string,"r");
  
  if (file_output != NULL){
@@ -1417,6 +1496,7 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
    
     char     *buffer;
     char     *outreason;
+    char     *exitreason;
     char     *sjobid;
   
     int      retcod;
@@ -1441,6 +1521,9 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
     if((outreason=malloc(STR_CHARS)) == 0){
      sysfatal("can't malloc outreason: %r");
     }
+    if((exitreason=calloc(STR_CHARS,1)) == 0){
+     sysfatal("can't malloc exitreason: %r");
+    }
     if((clientjobid=malloc(10 * sizeof *clientjobid)) == 0){
        sysfatal("can't malloc clientjobid %r");
     }
@@ -1452,17 +1535,29 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
     
     buffer[0]='\0';
     outreason[0]='\0';
+    exitreason[0]='\0';
 
     if(strcmp(reason,"NA")!=0){
       sprintf(outreason," Reason=\"lsf_reason=%s\";" ,reason);
+      if((strcmp(reason,"130")==0) || (strcmp(reason,"137")==0) || (strcmp(reason,"143")==0)){
+       sprintf(exitreason," ExitReason=\"Memory limit reached\";");
+      }else if(strcmp(reason,"140")==0){
+       sprintf(exitreason," ExitReason=\"RUNtime limit reached\";");
+      }else if(strcmp(reason,"152")==0){
+       sprintf(exitreason," ExitReason=\"CPUtime limit reached\";");
+      }else if(strcmp(reason,"153")==0){
+       sprintf(exitreason," ExitReason=\"FILEsize limit reached\";");
+      }else if(strcmp(reason,"157")==0){
+       sprintf(exitreason," ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
+      }
     }
     
     maxtok = strtoken(blahjobid, '_', clientjobid);    
     
     if(strcmp(wn,"NA")!=0){
-      sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=%s; ClientJobId=\"%s; WorkerNode=%s;%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], wn, outreason, timestamp);
+      sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=%s; ClientJobId=\"%s; WorkerNode=%s;%s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], wn, outreason, exitreason, timestamp);
     }else{
-      sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=%s; ClientJobId=\"%s;%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], outreason, timestamp);
+      sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=%s; ClientJobId=\"%s;%s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], outreason, exitreason, timestamp);
     }
     
     for(i=0;i<maxtok;i++){
@@ -1493,6 +1588,7 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
     if((creamisconn==0) || (flag==0)){
      free(buffer);
      free(outreason);
+     free(exitreason);
      return -1;
     }
     
@@ -1529,6 +1625,7 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
 			
     free(buffer);
     free(outreason);
+    free(exitreason);
     
     return 0;
     

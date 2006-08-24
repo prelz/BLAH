@@ -56,24 +56,27 @@ done
 
 shift `expr $OPTIND - 1`
 
+if [ "x$pbs_nologaccess" == "xyes" ]; then
+
 #Try different logparser
-if [ ! -z $pbs_num_BLParser ] ; then
- for i in `seq 1 $pbs_num_BLParser` ; do
-  s=`echo pbs_BLPserver${i}`
-  p=`echo pbs_BLPport${i}`
-  eval tsrv=\$$s
-  eval tport=\$$p
-  testres=`echo "TEST/"|$BLClient -a $tsrv -p $tport`
-  if [ "x$testres" == "xYPBS" ] ; then
-   pbs_BLPserver=$tsrv
-   pbs_BLPport=$tport
-   srvfound=1
-   break
+ if [ ! -z $pbs_num_BLParser ] ; then
+  for i in `seq 1 $pbs_num_BLParser` ; do
+   s=`echo pbs_BLPserver${i}`
+   p=`echo pbs_BLPport${i}`
+   eval tsrv=\$$s
+   eval tport=\$$p
+   testres=`echo "TEST/"|$BLClient -a $tsrv -p $tport`
+   if [ "x$testres" == "xYPBS" ] ; then
+    pbs_BLPserver=$tsrv
+    pbs_BLPport=$tport
+    srvfound=1
+    break
+   fi
+  done
+  if [ -z $srvfound ] ; then
+   echo "1ERROR: not able to talk with no logparser listed"
+   exit 0
   fi
- done
- if [ -z $srvfound ] ; then
-  echo "1ERROR: not able to talk with no logparser listed"
-  exit 0
  fi
 fi
 
@@ -100,6 +103,71 @@ for  reqfull in $pars ; do
 	requested=${reqfull:4}
 	reqjob=`echo $requested | sed -e 's/^.*\///'`
 	logfile=`echo $requested | sed 's/\/.*//'`
+	
+     if [ "x$pbs_nologaccess" == "xyes" ]; then
+
+        staterr=/tmp/${reqjob}_staterr
+	
+result=`${pbs_binpath}/qstat -f $reqjob 2>$staterr | awk -v jobId=$reqjob '
+BEGIN {
+    current_job = ""
+    current_wn = ""
+    current_js = ""
+}
+
+/Job Id:/ {
+    current_job = substr($0, index($0, ":") + 2)
+    current_job = substr(current_job, 1, index(current_job, ".")-1)
+    print "[BatchJobId=\"" current_job "\";"
+}
+/exec_host =/ {
+    current_wn = substr($0, index($0, "=")+2)
+    current_wn = substr(current_wn, 1, index(current_wn, "/")-1)
+}
+
+/job_state =/ {
+    current_js = substr($0, index($0, "=")+1)
+}
+
+/exit_status =/ {
+    exitcode = substr($0, index($0, "=")+1)
+}
+
+END {
+        if (current_js ~ "Q")  {jobstatus = 1}
+        if (current_js ~ "R")  {jobstatus = 2}
+        if (current_js ~ "E")  {jobstatus = 2}
+        if (current_js ~ "C")  {jobstatus = 4}
+        if (current_js ~ "H")  {jobstatus = 5}
+	if (exitcode ~ "271")  {jobstatus = 3}
+	
+	if (jobstatus == 2 || jobstatus == 4) {
+		print "WorkerNode=\"" current_wn "\";"
+	}
+	print "JobStatus=" jobstatus ";"
+	if (jobstatus == 4) {
+		print "ExitCode=" exitcode ";"
+	}
+	print "]"
+	if (jobstatus == 3 || jobstatus == 4) {
+		system("rm " proxyDir "/" jobId ".proxy 2>/dev/null")
+	}
+
+}
+'
+`
+        errout=`cat $staterr`
+	rm -f $staterr 2>/dev/null
+	
+        if [ -z "$errout" ] ; then
+                echo "0"$result
+                retcode=0
+        else
+                echo "1ERROR: Job not found"
+                retcode=1
+        fi
+
+     else
 	if [ "x$getwn" == "xyes" ] ; then
 		workernode=`${pbs_binpath}/qstat -f $reqjob 2> /dev/null | grep exec_host| sed "s/exec_host = //" | awk -F"/" '{ print $1 }'`
 	fi
@@ -189,15 +257,26 @@ END {
 			retcode=1
   		fi
 	fi #close if on pbs_BLParser
-	if [ "x$usedBLParser" == "xyes" ] ; then
-		pr_removal=`echo $result | sed -e 's/^.*\///'`
-    		result=`echo $result | sed 's/\/.*//'`
-		echo "0"$result "Workernode=\"$workernode\";]"
-		if [ "x$pr_removal" == "xYes" ] ; then
-        		rm ${proxy_dir}/${reqjob}.proxy 2>/dev/null
-    		fi
-		usedBLParser="no"	
-	fi
+        if [ "x$usedBLParser" == "xyes" ] ; then
+                pr_removal=`echo $result | sed -e 's/^.*\///'`
+                result=`echo $result | sed 's/\/.*//'`
+                res=`echo $result|awk -F"\; ExitCode=" '{ print $2 }'|awk -F"\;" '{ print $1 }'`;
+                if [ "$res" == "271" ] ; then
+                        out=`sed -n 's/^=>> PBS: //p' *.e$reqjob 2>/dev/null`
+                        if [ ! -z $out ] ; then
+                                echo "0"$result "Workernode=\"$workernode\"; ExitReason=\"$out\";]"
+                        else
+                                echo "0"$result "Workernode=\"$workernode\"; ExitReason=\"Killed by Resource Management System\";]"
+                        fi
+                else
+                        echo "0"$result "Workernode=\"$workernode\";]"
+                fi
+
+                if [ "x$pr_removal" == "xYes" ] ; then
+                        rm -f ${proxy_dir}/${reqjob}.proxy 2>/dev/null
+                fi
+                usedBLParser="no"
+        fi
+     fi #close of if-else on $pbs_nologaccess
 done 
 exit 0
-

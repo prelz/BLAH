@@ -338,8 +338,8 @@ void follow(char *infile, char *line){
 
          if((fp=fopen((char *)actualfile, "r")) == 0){
           syserror("error opening %s: %r", actualfile);
+          sleep(1);
           continue;
-	  sleep(1);
          }
 
         }
@@ -822,7 +822,7 @@ void *LookupAndSend(int m_sock){
 	
 	/* printf("thread/0x%08lx\n",pthread_self()); */
 	
-	if((strlen(buffer)==0) || (strcmp(buffer,"\n")==0) || (strstr(buffer,"/")==0)){
+	if((strlen(buffer)==0) || (strcmp(buffer,"\n")==0) || (strstr(buffer,"/")==0) || (strcmp(buffer,"/")==0)){
          if((out_buf=malloc(STR_CHARS)) == 0){
           sysfatal("can't malloc out_buf in LookupAndSend: %r");
          }
@@ -1402,6 +1402,7 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
    
     char     *buffer;
     char     *outreason;
+    char     *exitreason;
     char     *sjobid;
   
     int      retcod;
@@ -1426,6 +1427,9 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
     if((outreason=malloc(STR_CHARS)) == 0){
      sysfatal("can't malloc outreason: %r");
     }
+    if((exitreason=calloc(STR_CHARS,1)) == 0){
+     sysfatal("can't malloc exitreason: %r");
+    }
     if((clientjobid=malloc(10 * sizeof *clientjobid)) == 0){
        sysfatal("can't malloc clientjobid %r");
     }
@@ -1437,17 +1441,21 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
     
     buffer[0]='\0';
     outreason[0]='\0';
+    exitreason[0]='\0';
 
     if(strcmp(reason,"NA")!=0){
       sprintf(outreason," Reason=\"pbs_reason=%s\";" ,reason);
+      if(strcmp(reason,"271")==0){
+       sprintf(exitreason," ExitReason=\"Killed by Resource Management System\";");
+      }
     }
     
     maxtok = strtoken(blahjobid, '_', clientjobid);    
     
     if(strcmp(wn,"NA")!=0){
-      sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\"; WorkerNode=%s;%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], wn, outreason, timestamp);
+      sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\"; WorkerNode=%s;%s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], wn, outreason, exitreason, timestamp);
     }else{
-      sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\";%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], outreason, timestamp);
+      sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\";%s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], outreason, exitreason, timestamp);
     }
     
     for(i=0;i<maxtok;i++){
@@ -1478,6 +1486,7 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
     if((creamisconn==0) || (flag==0)){
      free(buffer);
      free(outreason);
+     free(exitreason);
      return -1;
     }
         
@@ -1513,6 +1522,7 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
 			
     free(buffer);
     free(outreason);
+    free(exitreason);
     
     return 0;
     

@@ -108,24 +108,27 @@ fi
 shift `expr $OPTIND - 1`
 arguments=$*
 
+if [ "x$lsf_nologaccess" != "xyes" ]; then
+
 #Try different log parser
-if [ ! -z $lsf_num_BLParser ] ; then
- for i in `seq 1 $lsf_num_BLParser` ; do
-  s=`echo lsf_BLPserver${i}`
-  p=`echo lsf_BLPport${i}`
-  eval tsrv=\$$s
-  eval tport=\$$p
-  testres=`echo "TEST/"|$BLClient -a $tsrv -p $tport`
-  if [ "x$testres" == "xYLSF" ] ; then
-   lsf_BLPserver=$tsrv
-   lsf_BLPport=$tport
-   srvfound=1
-   break
+ if [ ! -z $lsf_num_BLParser ] ; then
+  for i in `seq 1 $lsf_num_BLParser` ; do
+   s=`echo lsf_BLPserver${i}`
+   p=`echo lsf_BLPport${i}`
+   eval tsrv=\$$s
+   eval tport=\$$p
+   testres=`echo "TEST/"|$BLClient -a $tsrv -p $tport`
+   if [ "x$testres" == "xYLSF" ] ; then
+    lsf_BLPserver=$tsrv
+    lsf_BLPport=$tport
+    srvfound=1
+    break
+   fi
+  done
+  if [ -z $srvfound ] ; then
+   echo "1ERROR: not able to talk with no logparser listed"
+   exit 0
   fi
- done
- if [ -z $srvfound ] ; then
-  echo "1ERROR: not able to talk with no logparser listed"
-  exit 0
  fi
 fi
 
@@ -341,6 +344,8 @@ if [ "$retcode" != "0" ] ; then
         exit 1
 fi
 
+if [ "x$lsf_nologaccess" != "xyes" ]; then
+
 # Don't trust bsub retcode, it could have crashed
 # between submission and id output, and we would
 # loose track of the job
@@ -403,6 +408,8 @@ if [ "$jobID_log" != "$jobID" -a "x$jobID_log" != "x" -a "x$jobID_check" != "x" 
     echo "I'll be using the one in the log ($jobID_log)..." >&2
     jobID=$jobID_log
 fi
+
+fi #end if on $lsf_nologaccess
 
 # Compose the blahp jobID (date + lsf jobid)
 echo ""

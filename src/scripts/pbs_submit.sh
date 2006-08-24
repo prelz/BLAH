@@ -101,24 +101,27 @@ fi
 shift `expr $OPTIND - 1`
 arguments=$*
 
+if [ "x$pbs_nologaccess" != "xyes" ]; then
+
 #Try different logparser
-if [ ! -z $pbs_num_BLParser ] ; then
- for i in `seq 1 $pbs_num_BLParser` ; do
-  s=`echo pbs_BLPserver${i}`
-  p=`echo pbs_BLPport${i}`
-  eval tsrv=\$$s
-  eval tport=\$$p
-  testres=`echo "TEST/"|$BLClient -a $tsrv -p $tport`
-  if [ "x$testres" == "xYPBS" ] ; then
-   pbs_BLPserver=$tsrv
-   pbs_BLPport=$tport
-   srvfound=1
-   break
+ if [ ! -z $pbs_num_BLParser ] ; then
+  for i in `seq 1 $pbs_num_BLParser` ; do
+   s=`echo pbs_BLPserver${i}`
+   p=`echo pbs_BLPport${i}`
+   eval tsrv=\$$s
+   eval tport=\$$p
+   testres=`echo "TEST/"|$BLClient -a $tsrv -p $tport`
+   if [ "x$testres" == "xYPBS" ] ; then
+    pbs_BLPserver=$tsrv
+    pbs_BLPport=$tport
+    srvfound=1
+    break
+   fi
+  done
+  if [ -z $srvfound ] ; then
+   echo "1ERROR: not able to talk with no logparser listed"
+   exit 0
   fi
- done
- if [ -z $srvfound ] ; then
-  echo "1ERROR: not able to talk with no logparser listed"
-  exit 0
  fi
 fi
 
@@ -353,6 +356,8 @@ fi
 
 jobID=`echo $jobIDtmp|awk -F"." '{ print $1 }'`
 
+if [ "x$pbs_nologaccess" != "xyes" ]; then
+
 # Don't trust qsub retcode, it could have crashed
 # between submission and id output, and we would
 # loose track of the job
@@ -419,6 +424,11 @@ if [ "$jobID_log" != "$jobID"  -a "x$jobID_log" != "x" -a "x$jobID_check" != "x"
     jobID=$jobID_log
 fi
 
+fi #end of if on $pbs_nologaccess
+
+if [ "x$pbs_nologaccess" == "xyes" ]; then
+ logfile=$datenow
+fi
 
 # Compose the blahp jobID ("pbs/" + logfile + pbs jobid)
 echo "BLAHP_JOBID_PREFIXpbs/`basename $logfile`/$jobID"
