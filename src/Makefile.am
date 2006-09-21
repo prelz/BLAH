@@ -2,11 +2,11 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.11 2006/06/16 13:02:40 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.12 2006/09/21 09:37:21 gfiorent Exp $ 
 #
 # File:           Makefile.am
 #
-# Author(s):      Francesco Prelz ($Author: mezzadri $)
+# Author(s):      Francesco Prelz ($Author: gfiorent $)
 #        e-mail: "Francesco.Prelz@mi.infn.it"
 #
 # Revision history:
@@ -18,7 +18,7 @@ INCLUDES = -I. $(CLASSAD_CFLAGS) $(GLOBUS_NOTHR_CFLAGS)
 
 SUBDIRS = scripts
 
-bin_PROGRAMS = blahpd blahpd_daemon BPRclient BPRserver BLClient BLParserLSF BLParserPBS BAParser BAClient BDlogger
+bin_PROGRAMS = blahpd blahpd_daemon BPRclient BPRserver BLClient BLParserLSF BLParserPBS BAParser BAClient BDlogger test_condor_logger
 
 common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C mtsafe_popen.c
 
@@ -65,6 +65,14 @@ $(GLOBUS_GSS_NOTHR_LIBS) $(GLOBUS_SSL_NOTHR_LIBS)
 BDlogger_SOURCES = BDlogger.c
 
 BDlogger_LDADD =
+
+test_condor_logger_SOURCES = test_condor_create_log.c condor_create_log.c
+
+test_condor_logger_LDADD =
+
+lib_LTLIBRARIES = libglite_ce_condor_logger.la 
+
+libglite_ce_condor_logger_la_SOURCES = condor_create_log.c 
 
 
 noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h mtsafe_popen.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h BAParser.h
