@@ -11,6 +11,10 @@
   edg_jobid,ceid,Queue (can be missing)
   argname value is case-insensitive (ceid same as CeID)
 
+  Return values :
+	0 success 
+	1 failure
+
   Copyright (c) 2006 Istituto Nazionale di Fisica Nucleare (INFN).
   All rights reserved.
   See http://grid.infn.it/grid/license.html for license details.
