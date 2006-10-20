@@ -1726,17 +1726,28 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
         strncpy(jobid_trunc, &jobId[JOBID_PREFIX_LEN], strlen(jobId) - JOBID_PREFIX_LEN);
         jobid_trunc[strlen(jobId) - JOBID_PREFIX_LEN]=0;
 
-        /* lrmsID */
+        /* lrmsID : if hostname.domain is missing it must be added  !!!!! */
+	gethostname(host_name, MAX_TEMP_ARRAY_SIZE);
 	jobid=basename(jobid_trunc);
-	lrms_jobid=strdup(jobid);
-        /* Ce ID */
+	if(strlen(jobid) <= strlen(host_name))
+	{
+		/*add hostname*/
+		lrms_jobid=make_message("%s.%s",jobid,host_name);	
+
+	}else
+        if(strcmp(host_name,&jobid[strlen(jobid) - strlen(host_name)]))
+        {
+                /*add hostname*/
+                lrms_jobid=make_message("%s.%s",jobid,host_name);
+
+        }else lrms_jobid=strdup(jobid);
+
+	/* Ce ID */
 	memcpy(bs,jobid_trunc,3);
 	bs[3]=0;
         classad_get_dstring_attribute(cad, "CeID", &ce_id);
         if(!ce_id) 
 	{
-	
-		gethostname(host_name, MAX_TEMP_ARRAY_SIZE);	
 		classad_get_dstring_attribute(cad, "Queue", &queue);
 		if(queue)
 		{
