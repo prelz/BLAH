@@ -283,7 +283,6 @@ int InfoAdd(int id, char *value, const char * flag){
  } 
  /* set write lock */
  pthread_mutex_lock( &write_mutex );
- wlock=1;
  
  if((strcmp(flag,"JOBID")==0) && j2js[id] == NULL){
   
@@ -352,14 +351,12 @@ int InfoAdd(int id, char *value, const char * flag){
  
  /* release write lock */
    pthread_mutex_unlock( &write_mutex );
-   wlock=0;
 
    return -1;
  
  }
    /* release write lock */
   pthread_mutex_unlock( &write_mutex );
-  wlock=0;
 
   return 0;
 }
@@ -438,13 +435,6 @@ int AddToStruct(char *line, int flag){
  }
  free(tbuf);
 
- while (1){
-  if(rcounter==0){
-   break;
-  }
-  sleep(1);
- }
- 
  id=UpdatePtr(realid);
  
  if(rex && (strcmp(rex,rex_queued)==0) && (has_blah)){
@@ -843,23 +833,22 @@ void *LookupAndSend(int m_sock){
 	
 	if(strcmp(logdate,"BLAHJOB")==0){
          for(i=0;i<WRETRIES;i++){
-	  if(wlock==0){
-           h_jobid[0]='\0';
-	   strcat(h_jobid,"\"");
-	   strcat(h_jobid,jobid);
-	   strcat(h_jobid,"\"");
-	   if(bjl[hash(h_jobid)]==NULL){
-	    sleep(1);
-	    continue;
-	   }
-           if((out_buf=malloc(STR_CHARS)) == 0){
-            sysfatal("can't malloc out_buf in LookupAndSend: %r");
-           }
-     	   sprintf(out_buf,"%s\n",bjl[hash(h_jobid)]);
-	   goto close;
-	  }else{
+          h_jobid[0]='\0';
+	  strcat(h_jobid,"\"");
+	  strcat(h_jobid,jobid);
+	  strcat(h_jobid,"\"");
+	  pthread_mutex_lock(&write_mutex);
+	  if(bjl[hash(h_jobid)]==NULL){
+	   pthread_mutex_unlock(&write_mutex);
 	   sleep(1);
-	  } 
+	   continue;
+	  }
+          if((out_buf=malloc(STR_CHARS)) == 0){
+           sysfatal("can't malloc out_buf in LookupAndSend: %r");
+          }
+     	  sprintf(out_buf,"%s\n",bjl[hash(h_jobid)]);
+	  pthread_mutex_unlock(&write_mutex);
+	  goto close;
 	 }
 	 if(i==WRETRIES){
 
@@ -884,127 +873,118 @@ void *LookupAndSend(int m_sock){
 	
 /* get all info from jobid */
      
-        for(i=0;i<WRETRIES;i++){
+        id=GetRdxId(atoi(jobid));
+
+	pthread_mutex_lock(&write_mutex);
 	
-	 if(wlock==0){
-	 
-          id=GetRdxId(atoi(jobid));
-
-    	  if(id>0 && j2js[id]!=NULL){
-	   
-           if((out_buf=malloc(STR_CHARS)) == 0){
-            sysfatal("can't malloc out_buf in LookupAndSend: %r");
-           }
-	   
-	   if((t_wnode=malloc(STR_CHARS)) == 0){
-	    sysfatal("can't malloc t_wnode in LookupAndSend: %r");
-	   }
-	   if((exitreason=calloc(STR_CHARS,1)) == 0){
-	    sysfatal("can't malloc exitreason in LookupAndSend: %r");
-	   }
-	   	   
-           if(strcmp(j2wn[id],"\0")==0){
-            t_wnode[0]='\0';
-           }else{
-            sprintf(t_wnode,"WorkerNode=%s;",j2wn[id]);
-           }
-           if((strcmp(j2js[id],"3")==0) || (strcmp(j2js[id],"4")==0)){
-            pr_removal="Yes";
-           } else {
-            pr_removal="Not";
-           }
-           if(strcmp(j2js[id],"4")==0){
-            if((strcmp(j2ec[id],"130")==0) || (strcmp(j2ec[id],"137")==0) || (strcmp(j2ec[id],"143")==0)){
-             sprintf(exitreason," ExitReason=\"Memory limit reached\";");
-            }else if(strcmp(j2ec[id],"140")==0){
-             sprintf(exitreason," ExitReason=\"RUNtime limit reached\";");
-            }else if(strcmp(j2ec[id],"152")==0){
-             sprintf(exitreason," ExitReason=\"CPUtime limit reached\";");
-            }else if(strcmp(j2ec[id],"153")==0){
-             sprintf(exitreason," ExitReason=\"FILEsize limit reached\";");
-            }else if(strcmp(j2ec[id],"157")==0){
-             sprintf(exitreason," ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
-            }
-            sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\";%s ExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], j2ct[id], exitreason, j2ec[id], pr_removal);
-           }else if(strcmp(j2rt[id],"\0")!=0){
-            sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], pr_removal);
-           }else{
-            sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], pr_removal);
-           }
-	   free(t_wnode);
-	   free(exitreason);
-	  } else {
-	  
-     	   GetEventsInOldLogs(logdate);
-	   
-           id=GetRdxId(atoi(jobid));
-
-     	   if(id>0 && j2js[id]!=NULL){
-
-            if((out_buf=malloc(STR_CHARS)) == 0){
-             sysfatal("can't malloc out_buf in LookupAndSend: %r");
-            }
-	    
-	    if((t_wnode=malloc(STR_CHARS)) == 0){
-	     sysfatal("can't malloc t_wnode in LookupAndSend: %r");
-	    }
-	    if((exitreason=calloc(STR_CHARS,1)) == 0){
-	     sysfatal("can't malloc exitreason in LookupAndSend: %r");
-	    }
-	   	   
-            if(strcmp(j2wn[id],"\0")==0){
-             t_wnode[0]='\0';
-            }else{
-             sprintf(t_wnode,"WorkerNode=%s;",j2wn[id]);
-            }
-            if((strcmp(j2js[id],"3")==0) || (strcmp(j2js[id],"4")==0)){
-             pr_removal="Yes";
-            } else {
-             pr_removal="Not";
-            }
-            if(strcmp(j2js[id],"4")==0){
-             if((strcmp(j2ec[id],"130")==0) || (strcmp(j2ec[id],"137")==0) || (strcmp(j2ec[id],"143")==0)){
-              sprintf(exitreason," ExitReason=\"Memory limit reached\";");
-             }else if(strcmp(j2ec[id],"140")==0){
-              sprintf(exitreason," ExitReason=\"RUNtime limit reached\";");
-             }else if(strcmp(j2ec[id],"152")==0){
-              sprintf(exitreason," ExitReason=\"CPUtime limit reached\";");
-             }else if(strcmp(j2ec[id],"153")==0){
-              sprintf(exitreason," ExitReason=\"FILEsize limit reached\";");
-             }else if(strcmp(j2ec[id],"157")==0){
-              sprintf(exitreason," ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
-             }
-             sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\";%s ExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], j2ct[id], exitreason, j2ec[id], pr_removal);
-            }else if(strcmp(j2rt[id],"\0")!=0){
-             sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], pr_removal);
-            }else{
-             sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], pr_removal);
-            }
-	    free(t_wnode);
-	    free(exitreason);
-	     
-	   } else {
-            if((out_buf=malloc(STR_CHARS)) == 0){
-             sysfatal("can't malloc out_buf in LookupAndSend: %r");
-            }
-     	    sprintf(out_buf,"JobId %s not found/Not\n",jobid);
-    	   }
-	   
-     	  }
-     	  break;
-	 } 
-	 else {
-	  sleep(1);
-	 }
-	   
-        }
-	
-	if(i==WRETRIES){
+        if(id>0 && j2js[id]!=NULL){
+         
          if((out_buf=malloc(STR_CHARS)) == 0){
           sysfatal("can't malloc out_buf in LookupAndSend: %r");
          }
-	 sprintf(out_buf,"Cache locked/Not\n");
-	}
+         
+         if((t_wnode=malloc(STR_CHARS)) == 0){
+          sysfatal("can't malloc t_wnode in LookupAndSend: %r");
+         }
+         if((exitreason=calloc(STR_CHARS,1)) == 0){
+          sysfatal("can't malloc exitreason in LookupAndSend: %r");
+         }
+        	 
+         if(strcmp(j2wn[id],"\0")==0){
+          t_wnode[0]='\0';
+         }else{
+          sprintf(t_wnode,"WorkerNode=%s;",j2wn[id]);
+         }
+         if((strcmp(j2js[id],"3")==0) || (strcmp(j2js[id],"4")==0)){
+          pr_removal="Yes";
+         } else {
+          pr_removal="Not";
+         }
+         if(strcmp(j2js[id],"4")==0){
+          if((strcmp(j2ec[id],"130")==0) || (strcmp(j2ec[id],"137")==0) || (strcmp(j2ec[id],"143")==0)){
+           sprintf(exitreason," ExitReason=\"Memory limit reached\";");
+          }else if(strcmp(j2ec[id],"140")==0){
+           sprintf(exitreason," ExitReason=\"RUNtime limit reached\";");
+          }else if(strcmp(j2ec[id],"152")==0){
+           sprintf(exitreason," ExitReason=\"CPUtime limit reached\";");
+          }else if(strcmp(j2ec[id],"153")==0){
+           sprintf(exitreason," ExitReason=\"FILEsize limit reached\";");
+          }else if(strcmp(j2ec[id],"157")==0){
+           sprintf(exitreason," ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
+          }
+          sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\";%s ExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], j2ct[id], exitreason, j2ec[id], pr_removal);
+         }else if(strcmp(j2rt[id],"\0")!=0){
+          sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], pr_removal);
+         }else{
+          sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], pr_removal);
+         }
+         pthread_mutex_unlock(&write_mutex);
+
+         free(t_wnode);
+         free(exitreason);
+        } else {
+        
+	 pthread_mutex_unlock(&write_mutex);
+         GetEventsInOldLogs(logdate);
+         
+         id=GetRdxId(atoi(jobid));
+
+	 pthread_mutex_lock(&write_mutex);
+         if(id>0 && j2js[id]!=NULL){
+
+          if((out_buf=malloc(STR_CHARS)) == 0){
+           sysfatal("can't malloc out_buf in LookupAndSend: %r");
+          }
+          
+          if((t_wnode=malloc(STR_CHARS)) == 0){
+           sysfatal("can't malloc t_wnode in LookupAndSend: %r");
+          }
+          if((exitreason=calloc(STR_CHARS,1)) == 0){
+           sysfatal("can't malloc exitreason in LookupAndSend: %r");
+          }
+        	 
+          if(strcmp(j2wn[id],"\0")==0){
+           t_wnode[0]='\0';
+          }else{
+           sprintf(t_wnode,"WorkerNode=%s;",j2wn[id]);
+          }
+          if((strcmp(j2js[id],"3")==0) || (strcmp(j2js[id],"4")==0)){
+           pr_removal="Yes";
+          } else {
+           pr_removal="Not";
+          }
+          if(strcmp(j2js[id],"4")==0){
+           if((strcmp(j2ec[id],"130")==0) || (strcmp(j2ec[id],"137")==0) || (strcmp(j2ec[id],"143")==0)){
+            sprintf(exitreason," ExitReason=\"Memory limit reached\";");
+           }else if(strcmp(j2ec[id],"140")==0){
+            sprintf(exitreason," ExitReason=\"RUNtime limit reached\";");
+           }else if(strcmp(j2ec[id],"152")==0){
+            sprintf(exitreason," ExitReason=\"CPUtime limit reached\";");
+           }else if(strcmp(j2ec[id],"153")==0){
+            sprintf(exitreason," ExitReason=\"FILEsize limit reached\";");
+           }else if(strcmp(j2ec[id],"157")==0){
+            sprintf(exitreason," ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
+           }
+           sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\";%s ExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], j2ct[id], exitreason, j2ec[id], pr_removal);
+          }else if(strcmp(j2rt[id],"\0")!=0){
+           sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], pr_removal);
+          }else{
+           sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], pr_removal);
+          }
+          free(t_wnode);
+          free(exitreason);
+	  pthread_mutex_unlock(&write_mutex);
+           
+         } else {
+	  pthread_mutex_unlock(&write_mutex);
+          if((out_buf=malloc(STR_CHARS)) == 0){
+           sysfatal("can't malloc out_buf in LookupAndSend: %r");
+          }
+          sprintf(out_buf,"JobId %s not found/Not\n",jobid);
+         }
+         
+        }
+	
 close:	
  	Writeline(conn_s, out_buf, strlen(out_buf));
 	if(debug){

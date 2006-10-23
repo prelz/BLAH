@@ -89,10 +89,6 @@ char *argv0;
 char *blahjob_string="blahjob_";
 char *cream_string="cream_";
 
-int wlock=0;
-int cwlock=0;
-int rcounter=0;
-
 int jcount=0;
 int ptrcnt=1;
 
