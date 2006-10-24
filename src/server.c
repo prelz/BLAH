@@ -390,7 +390,6 @@ cmd_set_glexec_dn(void *args)
 	char *proxt4= argv[1];
         char *ssl_client_cert = argv[2];
 	FILE *dummy;
-        char certbuffer[MAX_CERT_SIZE];
 	int res = 0;
 	char *cmdstr = NULL;
 	char *proxynameNew = NULL;
@@ -409,52 +408,41 @@ cmd_set_glexec_dn(void *args)
 			result=strdup("Unable\\ to\\ set\\ GLEXEC\\ MODE");
                         return(result);
                 }
+		
 		dummy = fopen(ssl_client_cert, "r");
 		if (dummy == NULL)
 		{ 
 			unsetenv("BLAHP_SAVE_SOURCE_PROXY");
-			result=strdup("Unable\\ to\\ read\\ SSL\\ CLIENT\\ CERT");
+			result=strdup("Unable\\ to\\ read\\ GLEXEC\\ CLIENT\\ CERT");
 			return(result);
 		}
+		fclose(dummy);//new glexec usage
 
-		/* reads from cert file and stores in certbuffer */
-		fread(certbuffer, MAX_CERT_SIZE, 1, dummy);
-		fclose(dummy);
-		if(strlen(certbuffer) > 0)
+		res = setenv("GLEXEC_CLIENT_CERT",ssl_client_cert,1);
+		/* proxt4 must be limited for subsequent submission */		
+		if(argv[3][0]=='0')
 		{
-			/* save blah_save_source_proxy */
-			res = setenv("SSL_CLIENT_CERT",certbuffer,1);
-			/* proxt4 must be limited for subsequent submission */		
-               		if(argv[3][0]=='0')
-			{
-				proxynameNew=make_message("%s.lmt",proxt4);
-               			cmdstr=make_message("cp %s %s",proxt4, proxynameNew);
-               			result=system(cmdstr);
-                        	if(result)
-                        	{
-                        		result = make_message("Error\\ reading\\ proxy\\ %s", proxt4);
-                        		free(proxynameNew);
-                        		free(cmdstr);
-                        		unsetenv("SSL_CLIENT_CERT");
-					return(result);
-                       		}               		
-				limit_proxy(proxynameNew);
-               			if(bssp) free(bssp);
-				bssp = strdup(proxynameNew);
-				free(cmdstr);
-				free(proxynameNew);
-			}else
-			{
-                                if(bssp) free(bssp);
-                                bssp = strdup(proxt4);
-			}
+			proxynameNew=make_message("%s.lmt",proxt4);
+               		cmdstr=make_message("cp %s %s",proxt4, proxynameNew);
+               		result=system(cmdstr);
+                        if(result)
+                        {
+                        	result = make_message("Error\\ reading\\ proxy\\ %s", proxt4);
+                        	free(proxynameNew);
+                        	free(cmdstr);
+				unsetenv("GLEXEC_CLIENT_CERT");
+				return(result);
+                       	}               		
+			limit_proxy(proxynameNew);
+               		if(bssp) free(bssp);
+			bssp = strdup(proxynameNew);
+			free(cmdstr);
+			free(proxynameNew);
+		}else
+		{
+                	if(bssp) free(bssp);
+                        bssp = strdup(proxt4);
 		}
-		else
-                {
-                        result=strdup("Unable\\ to\\ read\\ SSL\\ CLIENT\\ CERT");
-                	glexec_mode = 0;                        
-			return(result);
-                }
 		glexec_mode = 1;
                 result = strdup("Glexec\\ mode\\ on");
 	}else
@@ -470,7 +458,8 @@ cmd_unset_glexec_dn(void *args)
 
         unsetenv("GLEXEC_MODE");
         unsetenv("BLAHP_SAVE_SOURCE_PROXY");
-        unsetenv("SSL_CLIENT_CERT");
+	unsetenv("GLEXEC_CLIENT_CERT");
+
 	glexec_mode = 0;
         if(bssp!=NULL)
 	{
