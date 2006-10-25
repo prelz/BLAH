@@ -380,7 +380,7 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
 
  if [ "$cliretcode" == "1" -o "x$lsf_BLParser" != "xyes" ] ; then
 
-   logfile=`find $logpath/$logfilename* -type f -newer $curdir/$tmp_file -exec grep -lP "\"JOB_NEW\" \"[0-9\.]+\" [0-9]+ $jobID " {} \;`
+   logfile=`find $logpath -name "$logfilename.*" -type f -newer $curdir/$tmp_file -exec grep -lP "\"JOB_NEW\" \"[0-9\.]+\" [0-9]+ $jobID " {} \;`
 
    if [ "x$logfile" != "x" ] ; then
 
