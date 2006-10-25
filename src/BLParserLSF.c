@@ -277,6 +277,10 @@ long tail(FILE *fp, char *line){
 
 int InfoAdd(int id, char *value, const char * flag){
 
+ if(!value){
+  return -1;
+ }
+
  if(debug){
   fprintf(debuglogfile, "Adding: ID:%d Type:%s Value:%s\n",rptr[id],flag,value);
   fflush(debuglogfile);
