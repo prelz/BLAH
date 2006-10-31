@@ -816,10 +816,17 @@ void *LookupAndSend(int m_sock){
 	/* printf("thread/0x%08lx\n",pthread_self()); */
 	
 	if((strlen(buffer)==0) || (strcmp(buffer,"\n")==0) || (strstr(buffer,"/")==0) || (strcmp(buffer,"/")==0)){
+
+         if((logdate=malloc(STR_CHARS)) == 0){
+          sysfatal("can't malloc logdate in LookupAndSend: %r");
+         }
+         if((jobid=malloc(STR_CHARS)) == 0){
+          sysfatal("can't malloc jobid in LookupAndSend: %r");
+         }
          if((out_buf=malloc(STR_CHARS)) == 0){
           sysfatal("can't malloc out_buf in LookupAndSend: %r");
          }
-     	 sprintf(out_buf,"Wrong string format/Not\n");
+     	 sprintf(out_buf,"\n");
 	 goto close;
 	}
     
@@ -836,7 +843,7 @@ void *LookupAndSend(int m_sock){
          logdate=strdup(tbuf[0]);
         }else{
          if((logdate=malloc(STR_CHARS)) == 0){
-          sysfatal("can't malloc buffer in LookupAndSend: %r");
+          sysfatal("can't malloc logdate in LookupAndSend: %r");
          }
          logdate[0]='\0';
         }
@@ -844,7 +851,7 @@ void *LookupAndSend(int m_sock){
          jobid=strdup(tbuf[1]);
         }else{
          if((jobid=malloc(STR_CHARS)) == 0){
-          sysfatal("can't malloc buffer in LookupAndSend: %r");
+          sysfatal("can't malloc jobid in LookupAndSend: %r");
          }
          jobid=strdup("\0");
         }
