@@ -5,6 +5,7 @@
 #include <netdb.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <libgen.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/select.h>
@@ -46,17 +47,17 @@ main(int argc, char **argv)
 	gss_ctx_id_t	context_handle = GSS_C_NO_CONTEXT;
 	OM_uint32       major_status = 0, minor_status = 0;
 
-	char **proxy_file_name;
+	char *proxy_file_name;
 	char *proxy_tmp_name = NULL;
         char *proxy_dir;
         char *proxy_file_name_copy;
 	       
-	if (globus_gsi_sysconfig_get_proxy_filename_unix(proxy_file_name, GLOBUS_PROXY_FILE_INPUT) != 0)
+	if (globus_gsi_sysconfig_get_proxy_filename_unix(&proxy_file_name, GLOBUS_PROXY_FILE_INPUT) != 0)
 	{
 		fprintf(stderr, "Cannot find proxy filename\n");
 		exit(1);
 	}
-	fprintf(stderr, "Proxy file: %s\n", *proxy_file_name);
+	fprintf(stderr, "Proxy file: %s\n", proxy_file_name);
 	
 	/* Get the arguments
 	 * ----------------- */
@@ -176,7 +177,7 @@ main(int argc, char **argv)
 					fprintf(stderr, "Client name: %s\n", client_name);
 					fprintf(stderr, "Receiving new proxy...\n");
 					receive_string(&message, context_handle, read_socket);
-					proxy_file_name_copy = strdup(*proxy_file_name);
+					proxy_file_name_copy = strdup(proxy_file_name);
 					proxy_dir = dirname(proxy_file_name_copy); /* Use a copy as dirname can change the argument */
 					if ((proxy_tmp_name = (char *)malloc(strlen(proxy_dir) + strlen(PROXYTMP) + 2)) == NULL)
 					{
@@ -192,8 +193,8 @@ main(int argc, char **argv)
 					}
 					write(proxy_file, message, strlen(message));
 					close(proxy_file);
-					fprintf(stderr, "Renaming %s to %s\n", proxy_tmp_name, *proxy_file_name);
-					if (rename(proxy_tmp_name, *proxy_file_name))
+					fprintf(stderr, "Renaming %s to %s\n", proxy_tmp_name, proxy_file_name);
+					if (rename(proxy_tmp_name, proxy_file_name))
 					{
 						perror("Error while renaming");
 						unlink(proxy_tmp_name);
