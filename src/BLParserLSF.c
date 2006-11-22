@@ -30,10 +30,9 @@ int main(int argc, char *argv[]) {
      }
     }
     
-    if((eventsfile=malloc(STR_CHARS)) == 0){
+    if((eventsfile=calloc(STR_CHARS,1)) == 0){
      sysfatal("can't malloc eventsfile: %r");
     }
-    eventsfile[0]='\0';
     
     strcat(eventsfile,ldir);
     strcat(eventsfile,"/");
@@ -208,7 +207,7 @@ void *mytail (void *infile){
         
     char *linebuffer;
     
-    if((linebuffer=malloc(STR_CHARS)) == 0){
+    if((linebuffer=calloc(STR_CHARS,1)) == 0){
      sysfatal("can't malloc linebuffer: %r");
     }
     
@@ -391,7 +390,7 @@ int AddToStruct(char *line, int flag){
  char *	j_blahjob=NULL;
  char *	wnode=NULL;
  
- if((tbuf=malloc(TBUFSIZE * sizeof *tbuf)) == 0){
+ if((tbuf=calloc(TBUFSIZE * sizeof *tbuf,1)) == 0){
      sysfatal("can't malloc tbuf: %r");
  }
 
@@ -558,13 +557,13 @@ char *GetAllEvents(char *file){
  char **opfile;
  int maxtok,i;
 
- if((opfile=malloc(STR_CHARS * sizeof *opfile)) == 0){
-     sysfatal("can't malloc tbuf: %r");
+ if((opfile=calloc(STR_CHARS * sizeof *opfile,1)) == 0){
+     sysfatal("can't malloc opfile: %r");
  }
  
  maxtok = strtoken(file, ' ', opfile);
 
- if((line=malloc(STR_CHARS)) == 0){
+ if((line=calloc(STR_CHARS,1)) == 0){
   sysfatal("can't malloc line: %r");
  }
   
@@ -621,10 +620,9 @@ void *LookupAndSend(int m_sock){
 	    exit(EXIT_FAILURE);
 	}
 
-	if((buffer=malloc(STR_CHARS)) == 0){
+	if((buffer=calloc(STR_CHARS,1)) == 0){
 	  sysfatal("can't malloc buffer in LookupAndSend: %r");
 	}
-        buffer[0]='\0';
 
 	if((h_jobid=calloc(NUM_CHARS,1)) == 0){
 	  sysfatal("can't malloc h_jobid in LookupAndSend: %r");
@@ -640,13 +638,13 @@ void *LookupAndSend(int m_sock){
 	
 	if((strlen(buffer)==0) || (strcmp(buffer,"\n")==0) || (strstr(buffer,"/")==0) || (strcmp(buffer,"/")==0)){
          
-         if((logdate=malloc(STR_CHARS)) == 0){
+         if((logdate=calloc(STR_CHARS,1)) == 0){
           sysfatal("can't malloc logdate in LookupAndSend: %r");
          }
-         if((jobid=malloc(STR_CHARS)) == 0){
+         if((jobid=calloc(STR_CHARS,1)) == 0){
           sysfatal("can't malloc jobid in LookupAndSend: %r");
          }
-         if((out_buf=malloc(STR_CHARS)) == 0){
+         if((out_buf=calloc(STR_CHARS,1)) == 0){
           sysfatal("can't malloc out_buf in LookupAndSend: %r");
          }
 	 sprintf(out_buf,"\n");
@@ -658,7 +656,7 @@ void *LookupAndSend(int m_sock){
          *cp = '\0';
         }
 
-        if((tbuf=malloc(10 * sizeof *tbuf)) == 0){
+        if((tbuf=calloc(10 * sizeof *tbuf,1)) == 0){
           sysfatal("can't malloc tbuf: %r");
         }
 	
@@ -666,18 +664,16 @@ void *LookupAndSend(int m_sock){
         if(tbuf[0]){
          logdate=strdup(tbuf[0]);
         }else{
-         if((logdate=malloc(STR_CHARS)) == 0){
+         if((logdate=calloc(STR_CHARS,1)) == 0){
           sysfatal("can't malloc logdate in LookupAndSend: %r");
          }
-         logdate[0]='\0';
         }
         if(tbuf[1]){
          jobid=strdup(tbuf[1]);
         }else{
-         if((jobid=malloc(STR_CHARS)) == 0){
+         if((jobid=calloc(STR_CHARS,1)) == 0){
           sysfatal("can't malloc jobid in LookupAndSend: %r");
          }
-         jobid=strdup("\0");
         }
 
         for(ii=0;ii<maxtok;ii++){
@@ -688,7 +684,7 @@ void *LookupAndSend(int m_sock){
 /* HELP reply */
        
         if(strcmp(logdate,"HELP")==0){
-         if((out_buf=malloc(MAX_CHARS)) == 0){
+         if((out_buf=calloc(MAX_CHARS,1)) == 0){
           sysfatal("can't malloc out_buf in LookupAndSend: %r");
          }
          sprintf(out_buf,"Commands: BLAHJOB/<blahjob-id> <date-YYYYmmdd>/<jobid> HELP TEST VERSION CREAMPORT TOTAL LISTALL LISTF[/<first-n-jobid>] LISTL[/<last-n-jobid>]\n");
@@ -698,7 +694,7 @@ void *LookupAndSend(int m_sock){
 /* TEST reply */
        
         if(strcmp(logdate,"TEST")==0){
-         if((out_buf=malloc(STR_CHARS)) == 0){
+         if((out_buf=calloc(STR_CHARS,1)) == 0){
           sysfatal("can't malloc out_buf in LookupAndSend: %r");
          }
          sprintf(out_buf,"YLSF\n");
@@ -708,7 +704,7 @@ void *LookupAndSend(int m_sock){
 /* VERSION reply */
        
         if(strcmp(logdate,"VERSION")==0){
-         if((out_buf=malloc(STR_CHARS)) == 0){
+         if((out_buf=calloc(STR_CHARS,1)) == 0){
           sysfatal("can't malloc out_buf in LookupAndSend: %r");
          }
          sprintf(out_buf,"%s\n",VERSION);
@@ -718,7 +714,7 @@ void *LookupAndSend(int m_sock){
 /* TOTAL reply */
        
         if(strcmp(logdate,"TOTAL")==0){
-         if((out_buf=malloc(MAX_CHARS)) == 0){
+         if((out_buf=calloc(MAX_CHARS,1)) == 0){
           sysfatal("can't malloc out_buf in LookupAndSend: %r");
          }
 	 if(recycled){
@@ -768,7 +764,7 @@ void *LookupAndSend(int m_sock){
 	 if(listcnt>ptrcnt-1){
 	  listcnt=ptrcnt-1;
 	 }
-         if((irptr=malloc(STR_CHARS)) == 0){
+         if((irptr=calloc(STR_CHARS,1)) == 0){
           sysfatal("can't malloc irptr in LookupAndSend: %r");
          }
 	 sprintf(out_buf,"List of first %d jobid:",listcnt);
@@ -807,7 +803,7 @@ void *LookupAndSend(int m_sock){
 	  listcnt=ptrcnt-1;
 	 }
 	 
-         if((irptr=malloc(STR_CHARS)) == 0){
+         if((irptr=calloc(STR_CHARS,1)) == 0){
           sysfatal("can't malloc irptr in LookupAndSend: %r");
          }
 	 sprintf(out_buf,"List of latest %d jobid:",listcnt);
@@ -832,7 +828,7 @@ void *LookupAndSend(int m_sock){
 /* get port where the parser is waiting for a connection from cream and send it to cream */
        
 	if(strcmp(logdate,"CREAMPORT")==0){
-         if((out_buf=malloc(STR_CHARS)) == 0){
+         if((out_buf=calloc(STR_CHARS,1)) == 0){
           sysfatal("can't malloc out_buf in LookupAndSend: %r");
          }
 	 sprintf(out_buf,"%d\n",creamport);
@@ -853,7 +849,7 @@ void *LookupAndSend(int m_sock){
 	   sleep(1);
 	   continue;
 	  }
-          if((out_buf=malloc(STR_CHARS)) == 0){
+          if((out_buf=calloc(STR_CHARS,1)) == 0){
            sysfatal("can't malloc out_buf in LookupAndSend: %r");
           }
      	  sprintf(out_buf,"%s\n",bjl[hash(h_jobid)]);
@@ -862,7 +858,7 @@ void *LookupAndSend(int m_sock){
 	 }
 	 if(i==WRETRIES){
 
-          if((out_buf=malloc(STR_CHARS)) == 0){
+          if((out_buf=calloc(STR_CHARS,1)) == 0){
            sysfatal("can't malloc out_buf in LookupAndSend: %r");
           }
 	  sprintf(out_buf,"\n");
@@ -872,7 +868,7 @@ void *LookupAndSend(int m_sock){
 	}
 
         if((strlen(logdate)==0) || (strcmp(logdate,"\n")==0)){
-         if((out_buf=malloc(STR_CHARS)) == 0){
+         if((out_buf=calloc(STR_CHARS,1)) == 0){
           sysfatal("can't malloc out_buf in LookupAndSend: %r");
          }
          sprintf(out_buf,"\n");
@@ -889,11 +885,11 @@ void *LookupAndSend(int m_sock){
 	
         if(id>0 && j2js[id]!=NULL){
          
-         if((out_buf=malloc(STR_CHARS)) == 0){
+         if((out_buf=calloc(STR_CHARS,1)) == 0){
           sysfatal("can't malloc out_buf in LookupAndSend: %r");
          }
          
-         if((t_wnode=malloc(STR_CHARS)) == 0){
+         if((t_wnode=calloc(STR_CHARS,1)) == 0){
           sysfatal("can't malloc t_wnode in LookupAndSend: %r");
          }
          if((exitreason=calloc(STR_CHARS,1)) == 0){
@@ -942,11 +938,11 @@ void *LookupAndSend(int m_sock){
 	 pthread_mutex_lock(&write_mutex);
          if(id>0 && j2js[id]!=NULL){
 
-          if((out_buf=malloc(STR_CHARS)) == 0){
+          if((out_buf=calloc(STR_CHARS,1)) == 0){
            sysfatal("can't malloc out_buf in LookupAndSend: %r");
           }
           
-          if((t_wnode=malloc(STR_CHARS)) == 0){
+          if((t_wnode=calloc(STR_CHARS,1)) == 0){
            sysfatal("can't malloc t_wnode in LookupAndSend: %r");
           }
           if((exitreason=calloc(STR_CHARS,1)) == 0){
@@ -987,7 +983,7 @@ void *LookupAndSend(int m_sock){
            
          } else {
 	  pthread_mutex_unlock(&write_mutex);
-          if((out_buf=malloc(STR_CHARS)) == 0){
+          if((out_buf=calloc(STR_CHARS,1)) == 0){
            sysfatal("can't malloc out_buf in LookupAndSend: %r");
           }
           sprintf(out_buf,"JobId %s not found/Not\n",jobid);
@@ -1076,26 +1072,26 @@ char *GetLogDir(int largc, char *largv[]){
      POPT_TABLEEND
  };
 
- if((line=malloc(STR_CHARS)) == 0){
+ if((line=calloc(STR_CHARS,1)) == 0){
     sysfatal("can't malloc line: %r");
  }
- if((logpath=malloc(STR_CHARS)) == 0){
-    sysfatal("can't malloc line: %r");
+ if((logpath=calloc(STR_CHARS,1)) == 0){
+    sysfatal("can't malloc logpath: %r");
  }
- if((lsf_clustername=malloc(STR_CHARS)) == 0){
+ if((lsf_clustername=calloc(STR_CHARS,1)) == 0){
     sysfatal("can't malloc lsf_clustername: %r");
  }
- if((command_string=malloc(STR_CHARS)) == 0){
+ if((command_string=calloc(STR_CHARS,1)) == 0){
     sysfatal("can't malloc command_string: %r");
  }
- if((ls_out=malloc(STR_CHARS)) == 0){
+ if((ls_out=calloc(STR_CHARS,1)) == 0){
     sysfatal("can't malloc ls_out: %r");
  }
- if((conffile=malloc(STR_CHARS)) == 0){
+ if((conffile=calloc(STR_CHARS,1)) == 0){
     sysfatal("can't malloc conffile: %r");
  }
 
- if((tbuf=malloc(10 * sizeof *tbuf)) == 0){
+ if((tbuf=calloc(10 * sizeof *tbuf,1)) == 0){
      sysfatal("can't malloc tbuf: %r");
  }
 	
@@ -1181,7 +1177,9 @@ cdone:
  
  if((ebinpath=getenv("LSF_BINDIR"))!=NULL){
  
-  s=(char*)malloc(strlen(ebinpath)+strlen("lsid")+2);
+  if((s=calloc(strlen(ebinpath)+strlen("lsid")+2,1)) == 0){
+    sysfatal("can't malloc s: %r");
+  }
   sprintf(s,"%s/lsid",ebinpath);
   rc=stat(s,&sbuf);
   if(rc) {
@@ -1198,7 +1196,9 @@ cdone:
   goto bdone;
  }
  
- s=(char*)malloc(strlen(binpath)+strlen("lsid")+2);
+ if((s=calloc(strlen(binpath)+strlen("lsid")+2,1)) == 0){
+   sysfatal("can't malloc s: %r");
+ }
  sprintf(s,"%s/lsid",binpath);
  rc=stat(s,&sbuf);
  if(rc) {
@@ -1216,7 +1216,9 @@ cdone:
  
  if((ebinpath=getenv("LSF_BIN_PATH"))!=NULL){
 
-  s=(char*)malloc(strlen(ebinpath)+strlen("lsid")+2);
+  if((s=calloc(strlen(ebinpath)+strlen("lsid")+2,1)) == 0){
+    sysfatal("can't malloc s: %r");
+  }
   sprintf(s,"%s/lsid",ebinpath);
   rc=stat(s,&sbuf);
   if(rc) {
@@ -1290,9 +1292,8 @@ char *GetLogList(char *logdate){
 
          while ( (direntry=readdir(dirh)) ) {
                  if( *(direntry->d_name) == '.' ) continue;
-                 if(!(s=(char*)malloc(strlen(direntry->d_name)+strlen(ldir)+2))) {
-                         fprintf(stderr,"%s: Cannot alloc string space\n",progname);
-                         return NULL;
+                 if((s=calloc(strlen(direntry->d_name)+strlen(ldir)+2,1)) == 0){
+                        sysfatal("can't malloc s: %r");
                  }
                  sprintf(s,"%s/%s",ldir,direntry->d_name);
                  rc=stat(s,&sbuf);
@@ -1330,7 +1331,7 @@ void CreamConnection(int c_sock){
     fds[0].events = ( POLLIN | POLLOUT | POLLPRI | POLLERR | POLLHUP | POLLNVAL ) ;
     pfds = fds;
 
-   if((buffer=malloc(STR_CHARS)) == 0){
+   if((buffer=calloc(STR_CHARS,1)) == 0){
     sysfatal("can't malloc buffer in CreamConnection: %r");
    }
 
@@ -1396,11 +1397,11 @@ int NotifyFromDate(char *in_buf){
 
     /* printf("thread/0x%08lx\n",pthread_self()); */
 
-    if((out_buf=malloc(STR_CHARS)) == 0){
+    if((out_buf=calloc(STR_CHARS,1)) == 0){
      sysfatal("can't malloc out_buf: %r");
     }
     
-    if((tbuf=malloc(10 * sizeof *tbuf)) == 0){
+    if((tbuf=calloc(10 * sizeof *tbuf,1)) == 0){
       sysfatal("can't malloc tbuf: %r");
     }
        
@@ -1505,28 +1506,24 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
     pfds = fds;
     
     
-    if((buffer=malloc(STR_CHARS)) == 0){
+    if((buffer=calloc(STR_CHARS,1)) == 0){
      sysfatal("can't malloc buffer: %r");
     }
-    if((outreason=malloc(STR_CHARS)) == 0){
+    if((outreason=calloc(STR_CHARS,1)) == 0){
      sysfatal("can't malloc outreason: %r");
     }
     if((exitreason=calloc(STR_CHARS,1)) == 0){
      sysfatal("can't malloc exitreason: %r");
     }
-    if((clientjobid=malloc(10 * sizeof *clientjobid)) == 0){
+    if((clientjobid=calloc(10 * sizeof *clientjobid,1)) == 0){
        sysfatal("can't malloc clientjobid %r");
     }
-    if((sjobid=malloc(10 * sizeof *sjobid)) == 0){
+    if((sjobid=calloc(10 * sizeof *sjobid,1)) == 0){
        sysfatal("can't malloc sjobid %r");
     }
     
     sprintf(sjobid, "%d",rptr[jobid]);
     
-    buffer[0]='\0';
-    outreason[0]='\0';
-    exitreason[0]='\0';
-
     if(strcmp(reason,"NA")!=0){
       sprintf(outreason," Reason=\"lsf_reason=%s\";" ,reason);
       if((strcmp(reason,"130")==0) || (strcmp(reason,"137")==0) || (strcmp(reason,"143")==0)){
@@ -1672,14 +1669,18 @@ int strtoken(const char *s, char delim, char **token){
     char *ptr, *dptr;
     int i = 0;
     
-    tmp = (char *) malloc(1 + strlen(s));
+    if((tmp = calloc(1 + strlen(s),1)) == 0){
+       sysfatal("can't malloc tmp: %r");
+    }
     assert(tmp);
     strcpy(tmp, s);
     ptr = tmp;
     while(1) {
         if((dptr = strchr(ptr, delim)) != NULL) {
             *dptr = '\0';
-	    token[i] = (char *) malloc(1 + strlen(ptr));
+            if((token[i] = calloc(1 + strlen(ptr),1)) == 0){
+                sysfatal("can't malloc token[i]: %r");
+            }
 	    assert(token[i]);
             strcpy(token[i], ptr);
             ptr = dptr + 1;
@@ -1688,7 +1689,9 @@ int strtoken(const char *s, char delim, char **token){
 	    }
         } else {
             if(strlen(ptr)) {
-		token[i] = (char *) malloc(1 + strlen(ptr));
+                if((token[i] = calloc(1 + strlen(ptr),1)) == 0){
+                    sysfatal("can't malloc token[i]: %r");
+                }
 		assert(token[i]);
                 strcpy(token[i], ptr);
                 i++;
@@ -1731,13 +1734,15 @@ char *epoch2str(char *epoch){
  size_t max=100;
 
  struct tm *tm;
- if((tm=malloc(max)) == 0){
+ if((tm=calloc(max,1)) == 0){
   sysfatal("can't malloc tm in epoch2str: %r");
  }
 
  strptime(epoch,"%s",tm);
  
- dateout=malloc(max);
+ if((dateout=calloc(max,1)) == 0){
+  sysfatal("can't malloc dateout in epoch2str: %r");
+ }
  
  strftime(dateout,max,"%Y-%m-%d %T",tm);
  free(tm);
@@ -1753,10 +1758,10 @@ char *iepoch2str(int epoch){
  size_t max=100;
 
  struct tm *tm;
- if((tm=malloc(max)) == 0){
+ if((tm=calloc(max,1)) == 0){
   sysfatal("can't malloc tm in iepoch2str: %r");
  }
- if((lepoch=malloc(STR_CHARS)) == 0){
+ if((lepoch=calloc(STR_CHARS,1)) == 0){
   sysfatal("can't malloc lepoch in iepoch2str: %r");
  }
  
@@ -1764,7 +1769,9 @@ char *iepoch2str(int epoch){
  
  strptime(lepoch,"%s",tm);
  
- dateout=malloc(max);
+ if((dateout=calloc(max,1)) == 0){
+  sysfatal("can't malloc dateout in iepoch2str: %r");
+ }
  
  strftime(dateout,max,"%Y%m%d%H%M.%S",tm);
  free(tm);
@@ -1781,7 +1788,7 @@ int str2epoch(char *str, char * f){
  size_t max=100;
 
  struct tm *tm;
- if((tm=malloc(max)) == 0){
+ if((tm=calloc(max,1)) == 0){
   sysfatal("can't malloc tm in str2epoch: %r");
  }
  if(strcmp(f,"S")==0){
@@ -1790,7 +1797,9 @@ int str2epoch(char *str, char * f){
   strptime(str,"%a %b %d %T %Y",tm);
  }
  
- dateout=malloc(max);
+ if((dateout=calloc(max,1)) == 0){
+  sysfatal("can't malloc dateout in str2epoch: %r");
+ }
  
  strftime(dateout,max,"%s",tm);
  
