@@ -101,7 +101,7 @@ fi
 shift `expr $OPTIND - 1`
 arguments=$*
 
-if [ "x$pbs_nologaccess" != "xyes" ]; then
+if [ "x$pbs_nologaccess" != "xyes" -a "x$pbs_nochecksubmission" != "xyes" ]; then
 
 #Try different logparser
  if [ ! -z $pbs_num_BLParser ] ; then
@@ -356,7 +356,7 @@ fi
 
 jobID=`echo $jobIDtmp|awk -F"." '{ print $1 }'`
 
-if [ "x$pbs_nologaccess" != "xyes" ]; then
+if [ "x$pbs_nologaccess" != "xyes" -a "x$pbs_nochecksubmission" != "xyes" ]; then
 
 # Don't trust qsub retcode, it could have crashed
 # between submission and id output, and we would
@@ -426,7 +426,7 @@ fi
 
 fi #end of if on $pbs_nologaccess
 
-if [ "x$pbs_nologaccess" == "xyes" ]; then
+if [ "x$pbs_nologaccess" == "xyes" -o "x$pbs_nochecksubmission" == "xyes" ]; then
  logfile=$datenow
 fi
 

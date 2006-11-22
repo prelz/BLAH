@@ -108,7 +108,7 @@ fi
 shift `expr $OPTIND - 1`
 arguments=$*
 
-if [ "x$lsf_nologaccess" != "xyes" ]; then
+if [ "x$lsf_nologaccess" != "xyes" -a "x$lsf_nochecksubmission" != "xyes" ]; then
 
 #Try different log parser
  if [ ! -z $lsf_num_BLParser ] ; then
@@ -344,7 +344,7 @@ if [ "$retcode" != "0" ] ; then
         exit 1
 fi
 
-if [ "x$lsf_nologaccess" != "xyes" ]; then
+if [ "x$lsf_nologaccess" != "xyes" -a "x$lsf_nochecksubmission" != "xyes" ]; then
 
 # Don't trust bsub retcode, it could have crashed
 # between submission and id output, and we would
