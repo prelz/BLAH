@@ -27,71 +27,73 @@
 #include "classad_c_helper.h"
 #include "blahpd.h"
 #include "mtsafe_popen.h"
+#define MAX_TEMP_ARRAY_SIZE              1000
+#define CAD_LEN                          1024
 
 extern char *blah_script_location;
 extern int  glexec_mode;
 extern char *gloc;
+#define TSF_DEBUG
 
-int get_status(const char *jobDesc, classad_context *cad, char error_str[][ERROR_MAX_LEN], int get_workernode, int *job_nr)
+int get_status(const char *jobDesc, classad_context *cad, char **environment, char error_str[][ERROR_MAX_LEN], int get_workernode, int *job_nr)
 {
-        FILE *cmd_out;
-        char buffer[1024];
-        char *command;
-        char cad_str[100][1024];
-        int  retcode = 0;
-        char *server_lrms;
-        char *jobId;
-        int   i, lc;
-        classad_context tmpcad;
-        char **tmperrstr = NULL;
-        int slash_counter=0;
-	if (strlen(jobDesc) < 4)
-        {
-		strcpy(*error_str,"Malformed jobId");
-		return(255);
-        }
+	char *cmd_out;
+	char *command;
+	char cad_str[100][CAD_LEN];
+	int  retcode = 0;
+	char *server_lrms;
+	char *separator;
+	char *jobId;
+	int  i, lc;
+	classad_context tmpcad;
+	int res_length;
+	char *begin_res;
+	char *end_res;
 
-        if((server_lrms = strdup(jobDesc)) == NULL)
-        {
-                fprintf(stderr, "Out of memory\n");
-                exit(MALLOC_ERROR);
-        }
-        /* batch system name must not be limited to 3 chars */
-        while (server_lrms[slash_counter] != '/') slash_counter++;
-        server_lrms[slash_counter]= '\0';
-        jobDesc = server_lrms + slash_counter + 1;
-	
-        if(!glexec_mode)
+	if((server_lrms = strdup(jobDesc)) == NULL)
 	{
-		command = make_message("%s/%s_status.sh %s %s", blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobDesc);
-        }else
-		command = make_message("%s %s/%s_status.sh %s %s", gloc, blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobDesc);
-	if ((cmd_out=mtsafe_popen(command, "r")) == NULL)
-        {
-                fprintf(stderr, "Unable to execute '%s': ", command);
-                perror("");
-		strcpy(*error_str,"Unable to open pipe for status command");
+		fprintf(stderr, "Out of memory\n");
+		exit(MALLOC_ERROR);
+	}
+
+	/* batch system name must not be limited to 3 chars */
+	if ((separator = strchr(server_lrms, '/')) == NULL)
+	{
+		/* PUSH A FAILURE */
+		strcpy(*error_str, "Malformed jobId");
 		free(server_lrms);
+		return(255);
+	}
+	*separator = '\0';
+	jobId = separator + 1;
+
+	command = make_message("%s %s/%s_status.sh %s %s", *environment ? gloc : "", 
+	                         blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobId);
+
+	if ((retcode = exe_getout(command, environment, &cmd_out)) != 0)
+        {
+		sprintf(*error_str, "status command failed (exit code %d)", retcode);
+		free(server_lrms);
+		free(command);
+		if (cmd_out) free (cmd_out);
                 return(255);
         }
 	free(command);
 	free(server_lrms);
-	command = server_lrms = NULL;
-        lc = 0;
-        while (fgets(buffer, sizeof(buffer), cmd_out))
-        {
-                if (buffer[strlen(buffer) - 1] == '\n') buffer[strlen(buffer) - 1] = ' ';
-                //retcode  from scripts != 0
+
+	lc = 0;
+	res_length = strlen(cmd_out);
+	for (begin_res = cmd_out; end_res = memchr(cmd_out, '\n', res_length); begin_res = end_res + 1)
+	{
+		*end_res = 0;
+		if (begin_res[0] != '1')
+			strncpy(cad_str[lc], begin_res + 1, CAD_LEN - 1);
+		else
+			cad_str[lc][0] = '\0';
 		lc++;
-		if(buffer[0] != '1')
-		{
-			strncpy(cad_str[lc - 1],buffer + 1,strlen(buffer) - 1);
-		}else
-			cad_str[lc - 1][0] = '\0';
-		memset(buffer,0,strlen(buffer));
-        }
-        retcode = mtsafe_pclose(cmd_out);
-	
+	}
+	free(cmd_out);
+
 	for(i = 0; i < lc; i++)
         {
 			if (cad_str[i][0] == '\0')

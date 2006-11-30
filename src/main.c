@@ -36,6 +36,8 @@
 #include "server.h"
 #include "console.h"
 
+/* #define MTRACE_ON */
+
 int
 main(int argc, char *argv[])
 {

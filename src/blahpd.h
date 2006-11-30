@@ -5,7 +5,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
-#define RCSID_VERSION		"$GahpVersion: %s Sep 08 2005 INFN\\ blahpd\\ (%s) $"
+#define RCSID_VERSION		"$GahpVersion: %s Nov 30 2006 INFN\\ blahpd\\ (%s) $"
 #define BUFFER_FILE		"/tmp/blahp_result_buffer"
 #define FLUSHED_BUFFER		"/tmp/blahp_result_buffer.flushed"
 
@@ -27,6 +27,12 @@
 #define ERROR_MAX_LEN	256
 #define RESLN_MAX_LEN	2048
 #define MAX_JOB_NUMBER  10
+
+#ifdef DEBUG
+#define BLAHDBG(format, message) fprintf(stderr, format, message)
+#else
+#define BLAHDBG(format, message)
+#endif
 
 /* Job states
  * */

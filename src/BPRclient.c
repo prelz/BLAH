@@ -33,7 +33,6 @@ main(int argc, char **argv)
 	char client_ip[16];
 	struct hostent *resolved_client;
 	int retcod, status;
-	int exit_program = 0;
 	int proxy_file;
 	char *proxy_filename;
 	char *jobId;
@@ -52,21 +51,21 @@ main(int argc, char **argv)
 
 	if (argc < 2)
 	{
-		fprintf(stderr, "Missing proxy filename.\n");
+		printf("%s: missing proxy filename", argv[0]);
 		exit(1);
 	}
 	proxy_filename = argv[1];
 
 	if (argc < 3)
 	{
-		fprintf(stderr, "Missing job name.\n");
+		printf("%s: missing job name", argv[0]);
 		exit(1);
 	}
 	jobId = argv[2];
 
 	if (argc < 4)
 	{
-		fprintf(stderr, "Missing worker node.\n");
+		printf("%s: missing worker node", argv[0]);
 		exit(1);
 	}
 	workernode = argv[3];
@@ -76,13 +75,13 @@ main(int argc, char **argv)
 	/* Acquire GSS credential */
 	if ((credential_handle = acquire_cred(GSS_C_INITIATE)) == GSS_C_NO_CREDENTIAL)
 	{
-		fprintf(stderr, "Unable to acquire credentials, exiting...\n");
+		printf("%s: unable to acquire credentials", argv[0]);
 		exit(2);
 	}
 
 	resolved_client = gethostbyname(workernode);
 	if (resolved_client == NULL) {
-		fprintf(stderr, "%s: unknown host %s\n", argv[0], workernode);
+		printf("%s: unknown host %s", argv[0], workernode);
 		exit(4);
 	}
 
@@ -95,7 +94,7 @@ main(int argc, char **argv)
 		/* Create the socket everytime (cannot be reused once closed) */
 		if ((fd_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1)
 		{
-			fprintf(stderr, "Cannot create socket: %s\n", strerror(errno));
+			printf("%s: cannot create socket: %s", argv[0], strerror(errno));
 			exit(1);
 		}
 
@@ -106,7 +105,7 @@ main(int argc, char **argv)
 
 		if (bind(fd_socket, (struct sockaddr *)&localAddr, sizeof(localAddr)) == -1)
 		{
-			fprintf(stderr, "Cannot bind socket: %s\n", strerror(errno));
+			printf("%s: cannot bind socket: %s", argv[0], strerror(errno));
 			exit(1);
 		}
 
@@ -137,33 +136,33 @@ main(int argc, char **argv)
 	}
 	if (server_port > PORT_RANGE_TO)
 	{
-		fprintf(stderr, "Job %s not found on node %s\n", jobId, workernode);
+		printf("%s: job %s not found on node %s", argv[0], jobId, workernode);
 		exit(1);
 	}
 	
 	fprintf(stderr, "Initiating security context...\n");
 	if ((context_handle = initiate_context(credential_handle, "GSI-NO-TARGET", fd_socket)) == GSS_C_NO_CONTEXT)
 	{
-		fprintf(stderr, "Cannot initiate security context...\n");
+		printf("%s: cannot initiate security context", argv[0]);
 		exit(1);
 	}
 
 	if (verify_context(context_handle))
 	{
-		fprintf(stderr, "Error: wrong server certificate.\n");
+		printf("%s: server certificate mismatch", argv[0]);
 		exit(1);
 	}
 
 	fprintf(stderr, "Sending proxy file...");
 	if ((proxy_file = open(proxy_filename, O_RDONLY)) == -1)
 	{
-		fprintf(stderr, "Unable to open file %s\n", proxy_filename);
+		printf("%s: unable to open proxy file %s", argv[0], proxy_filename);
 		exit(1);
 	}
 	fstat(proxy_file, &proxy_stat); /* Get the proxy size */
 	if ((message = (char *)malloc(proxy_stat.st_size + 1)) == NULL)
 	{
-		fprintf(stderr, "Unable to allocate buffer\n");
+		printf("%s: unable to allocate read buffer (%d bytes)", argv[0], proxy_stat.st_size + 1);
 		exit(1);
 	}
 	read(proxy_file, message, proxy_stat.st_size);
@@ -172,8 +171,8 @@ main(int argc, char **argv)
 	fprintf(stderr, "File length: %d\n", proxy_stat.st_size);
 	send_string(message, context_handle, fd_socket);
 	close(fd_socket);
-	fprintf(stderr, "File sent.\n");
-	
+
+	printf("%s: proxy file successfully sent", argv[0]);	
 	exit(0);
 }
 

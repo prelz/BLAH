@@ -32,16 +32,16 @@
  * handler functions prototypes are in commands.h
  * */    
 command_t commands_array[] = {
-	/* cmd string, # of pars, threaded, handler */
+	/* cmd string, # of pars, threaded (0=not threaded, 1=threaded, 2=treaded+proxy), handler */
 	{ "ASYNC_MODE_OFF",               0, 0, cmd_async_off },
 	{ "ASYNC_MODE_ON",                0, 0, cmd_async_on },
 	{ "BLAH_GET_HOSTPORT",            1, 1, cmd_get_hostport },
 	{ "BLAH_JOB_CANCEL",              2, 1, cmd_cancel_job },
 	{ "BLAH_JOB_HOLD",                2, 1, cmd_hold_job },
-	{ "BLAH_JOB_REFRESH_PROXY",       3, 1, cmd_renew_proxy },
+	{ "BLAH_JOB_REFRESH_PROXY",       3, 2, cmd_renew_proxy },
 	{ "BLAH_JOB_RESUME",              2, 1, cmd_resume_job },
 	{ "BLAH_JOB_STATUS",              2, 1, cmd_status_job },
-	{ "BLAH_JOB_SUBMIT",              2, 1, cmd_submit_job },
+	{ "BLAH_JOB_SUBMIT",              2, 2, cmd_submit_job },
 	{ "BLAH_SET_GLEXEC_DN",           3, 0, cmd_set_glexec_dn },
         { "BLAH_SET_GLEXEC_OFF",          0, 0, cmd_unset_glexec_dn },	
 	{ "COMMANDS",                     0, 0, cmd_commands },
