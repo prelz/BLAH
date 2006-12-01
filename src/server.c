@@ -803,10 +803,11 @@ cmd_status_job(void *args)
 				classad_get_int_attribute(status_ad[i], "JobStatus", &jobStatus);
 				str_cad = classad_unparse(status_ad[i]);
 				esc_str_cad = escape_spaces(str_cad);
+				esc_errstr = escape_spaces(errstr[i]);
 				if (job_number > 1)
-					resultLine = make_message("%s.%d %d %d %s", reqId, i,retcode, jobStatus, esc_str_cad);
+					resultLine = make_message("%s.%d %d %s %d %s", reqId, i, retcode, esc_errstr, jobStatus, esc_str_cad);
 				else
-					resultLine = make_message("%s %d %d %s", reqId, retcode, jobStatus, esc_str_cad);
+					resultLine = make_message("%s %d %s %d %s", reqId, retcode, esc_errstr, jobStatus, esc_str_cad);
 				classad_free(status_ad[i]);
 				free(str_cad);
 				free(esc_str_cad);
@@ -815,20 +816,22 @@ cmd_status_job(void *args)
 			{
 				esc_errstr = escape_spaces(errstr[i]);
 				if(job_number > 1)
-					resultLine = make_message("%s.%d 1 %s", reqId, i, esc_errstr);
+					resultLine = make_message("%s.%d 1 %s 0 N/A", reqId, i, esc_errstr);
 				else
-					resultLine = make_message("%s 1 %s", reqId, esc_errstr);
-				free(esc_errstr);
+					resultLine = make_message("%s 1 %s 0 N/A", reqId, esc_errstr);
 			}
+			free(esc_errstr);
 			enqueue_result(resultLine);
 			free(resultLine);
 		}
 	}
 	else
 	{
-		resultLine = make_message("%s %d %s N/A", reqId, retcode, errstr[0]);
+		esc_errstr = escape_spaces(errstr[0]);
+		resultLine = make_message("%s %d %s 0 N/A", reqId, retcode, esc_errstr);
 		enqueue_result(resultLine);
 		free(resultLine);
+		free(esc_errstr);
 	}
 
 	/* Free up all arguments */

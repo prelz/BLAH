@@ -67,8 +67,11 @@ int get_status(const char *jobDesc, classad_context *cad, char **environment, ch
 	*separator = '\0';
 	jobId = separator + 1;
 
-	command = make_message("%s %s/%s_status.sh %s %s", *environment ? gloc : "", 
-	                         blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobId);
+		/* command = make_message("%s %s/%s_status.sh %s %s", *environment ? gloc : "", 
+	                         blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobId); */
+
+		command = make_message("%s %s/%s_status.sh %s %s", *environment ? gloc : "", 
+	                         blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobDesc);
 
 	if ((retcode = exe_getout(command, environment, &cmd_out)) != 0)
         {
