@@ -24,169 +24,171 @@
 
 char     *progname = "BLClient";
 
-int main(int argc, char *argv[]) {
+int
+main(int argc, char *argv[])
+{
 
-    int       conn_s;
-    struct    sockaddr_in servaddr;
-    char      buffer[MAX_LINE];
+	int       conn_s;
+	struct    sockaddr_in servaddr;
+	char      buffer[MAX_LINE];
     
-    char      *address=NULL;
-    int       port = 0;
-    int       version=0;
+	char      *address=NULL;
+	int       port = 0;
+	int       version=0;
 
-    fd_set   wset;
-    struct   timeval to;
-    int      r,i;
-    int opt;
-    size_t optlen = sizeof(opt);
+	fd_set   wset;
+	struct   timeval to;
+	int      r,i;
+	int opt;
+	size_t optlen = sizeof(opt);
 
-    struct hostent *hp;
-    char *ipaddr;
+	struct hostent *hp;
+	char *ipaddr;
 
-    char      *cp;
+	char      *cp;
      
-    /*  Get command line arguments  */
+	/*  Get command line arguments  */
 
-    poptContext poptcon;	
-    int rc;				
-    struct poptOption poptopt[] = {
-        { "server",    'a', POPT_ARG_STRING, &address,  0, "server address", "<dotted-quad ip address>" },
-        { "port",      'p', POPT_ARG_INT,    &port,    0, "port",               "<port number>" },
-        { "version",   'v', POPT_ARG_NONE,   &version, 0, "print version and exit",            NULL },
-        POPT_AUTOHELP
-        POPT_TABLEEND
-    };
+	poptContext poptcon;	
+	int rc;				
+	struct poptOption poptopt[] = {
+		{ "server",    'a', POPT_ARG_STRING, &address,  0, "server address", "<dotted-quad ip address>" },
+		{ "port",      'p', POPT_ARG_INT,    &port,    0, "port",               "<port number>" },
+		{ "version",   'v', POPT_ARG_NONE,   &version, 0, "print version and exit",            NULL },
+		POPT_AUTOHELP
+		POPT_TABLEEND
+	};
     
-    poptcon = poptGetContext(NULL, argc, (const char **) argv, poptopt, 0);
+	poptcon = poptGetContext(NULL, argc, (const char **) argv, poptopt, 0);
        
-    if((rc = poptGetNextOpt(poptcon)) != -1){
-        fprintf(stderr,"%s: Invalid flag supplied.\n",progname);
-	exit(EXIT_FAILURE);
-    }
+	if((rc = poptGetNextOpt(poptcon)) != -1){
+		fprintf(stderr,"%s: Invalid flag supplied.\n",progname);
+		exit(EXIT_FAILURE);
+	}
 
-    if ( !port && !address && !version ) {
-        poptPrintHelp(poptcon, stdout, 0);
-        exit(EXIT_SUCCESS);
-    }
+	if ( !port && !address && !version ) {
+		poptPrintHelp(poptcon, stdout, 0);
+		exit(EXIT_SUCCESS);
+	}
 
-    if ( version ) {
-        printf("%s Version: %s\n",progname,VERSION);
-        exit(EXIT_SUCCESS);
-    } 
+	if ( version ) {
+		printf("%s Version: %s\n",progname,VERSION);
+		exit(EXIT_SUCCESS);
+	} 
 
-    if ( !port ) {
-        fprintf(stderr,"%s: Invalid port supplied.\n",progname);
-	exit(EXIT_FAILURE);
-    }
+	if ( !port ) {
+		fprintf(stderr,"%s: Invalid port supplied.\n",progname);
+		exit(EXIT_FAILURE);
+	}
      
-    if ( (conn_s = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
-	fprintf(stderr, "%s: Error creating listening socket.\n",progname);
-	exit(EXIT_FAILURE);
-    }
+	if ( (conn_s = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
+		fprintf(stderr, "%s: Error creating listening socket.\n",progname);
+		exit(EXIT_FAILURE);
+	}
 
-    memset(&servaddr, 0, sizeof(servaddr));
-    servaddr.sin_family      = AF_INET;
-    servaddr.sin_port        = htons(port);
+	memset(&servaddr, 0, sizeof(servaddr));
+	servaddr.sin_family      = AF_INET;
+	servaddr.sin_port        = htons(port);
     
-    if ( !address || (hp = gethostbyname(address)) == NULL ){
-	fprintf(stderr, "%s: Invalid hostname.\n",progname);
-	exit(EXIT_FAILURE);
-    }
+	if ( !address || (hp = gethostbyname(address)) == NULL ){
+		fprintf(stderr, "%s: Invalid hostname.\n",progname);
+		exit(EXIT_FAILURE);
+	}
     
-    if((ipaddr=malloc(STR_CHARS)) == 0){
-        fprintf(stderr, "%s: Can't malloc ipaddr.\n",progname);
-	exit(EXIT_FAILURE);
-    }
-    while ( hp -> h_addr_list[i] != NULL) {
-        strcat(ipaddr,inet_ntoa( *( struct in_addr*)( hp -> h_addr_list[i])));
-        i++;
-    }
+	if((ipaddr=calloc(STR_CHARS,1)) == 0){
+		fprintf(stderr, "%s: Can't malloc ipaddr.\n",progname);
+		exit(EXIT_FAILURE);
+	}
+	while ( hp -> h_addr_list[i] != NULL) {
+		strcat(ipaddr,inet_ntoa( *( struct in_addr*)( hp -> h_addr_list[i])));
+		i++;
+	}
 
-    if ( inet_aton(ipaddr, &servaddr.sin_addr) <= 0 ) {
-	fprintf(stderr, "%s: Invalid remote IP address.\n",progname);
-	exit(EXIT_FAILURE);
-    }
+	if ( inet_aton(ipaddr, &servaddr.sin_addr) <= 0 ) {
+		fprintf(stderr, "%s: Invalid remote IP address.\n",progname);
+		exit(EXIT_FAILURE);
+	}
    
-    if((r = fcntl(conn_s, F_GETFL, NULL)) < 0) {
-	fprintf(stderr, "%s: Error in getfl for socket.\n",progname);
-	exit(EXIT_FAILURE);
-    }
+	if((r = fcntl(conn_s, F_GETFL, NULL)) < 0) {
+		fprintf(stderr, "%s: Error in getfl for socket.\n",progname);
+		exit(EXIT_FAILURE);
+	}
  
-    r |= O_NONBLOCK;
+	r |= O_NONBLOCK;
  
-    if(fcntl(conn_s, F_SETFL, r) < 0) {
-	fprintf(stderr, "%s: Error in setfl for socket.\n",progname);
-	exit(EXIT_FAILURE);
-    }
+	if(fcntl(conn_s, F_SETFL, r) < 0) {
+		fprintf(stderr, "%s: Error in setfl for socket.\n",progname);
+		exit(EXIT_FAILURE);
+	}
         
-    if ( connect(conn_s, (struct sockaddr *) &servaddr, sizeof(servaddr) ) < 0 ) {
-        if(errno == EINPROGRESS) {
-            to.tv_sec  = CONN_TIMEOUT_SEC;
-            to.tv_usec = CONN_TIMEOUT_MSEC;
+	if ( connect(conn_s, (struct sockaddr *) &servaddr, sizeof(servaddr) ) < 0 ) {
+		if(errno == EINPROGRESS) {
+			to.tv_sec  = CONN_TIMEOUT_SEC;
+			to.tv_usec = CONN_TIMEOUT_MSEC;
             
-            FD_ZERO(&wset);
-            FD_SET(conn_s, &wset);
+			FD_ZERO(&wset);
+			FD_SET(conn_s, &wset);
 	    
-            r = select(1 + conn_s, NULL, &wset, NULL, &to);
+			r = select(1 + conn_s, NULL, &wset, NULL, &to);
             
-            if(r < 0) {
-	        exit(EXIT_FAILURE);
-            } else if(r == 0) {
-                errno = ECONNREFUSED;
-                exit(EXIT_FAILURE);
-            }
-        } else {
-            exit(EXIT_FAILURE);
-        }
-    }    
+			if(r < 0) {
+				exit(EXIT_FAILURE);
+			} else if(r == 0) {
+				errno = ECONNREFUSED;
+				exit(EXIT_FAILURE);
+			}
+		} else {
+			exit(EXIT_FAILURE);
+		}
+	}    
 
-    if(FD_ISSET(conn_s, &wset)) {
+	if(FD_ISSET(conn_s, &wset)) {
          
-       if(getsockopt(conn_s, SOL_SOCKET, SO_ERROR, (void *) &opt, &optlen) < 0) {
-	    fprintf(stderr, "%s: Error in getsockopt for socket.\n",progname);
-            exit(EXIT_FAILURE);
-       }
+		if(getsockopt(conn_s, SOL_SOCKET, SO_ERROR, (void *) &opt, &optlen) < 0) {
+			fprintf(stderr, "%s: Error in getsockopt for socket.\n",progname);
+			exit(EXIT_FAILURE);
+		}
        
-       if(opt) {
-            errno = opt;
-            exit(EXIT_FAILURE);
-       }    
+		if(opt) {
+			errno = opt;
+			exit(EXIT_FAILURE);
+		}    
        
-       if((r = fcntl(conn_s, F_GETFL, NULL)) < 0) {
-	     fprintf(stderr, "%s: Error in getfl for socket.\n",progname);
-	     exit(EXIT_FAILURE);
-       }
+		if((r = fcntl(conn_s, F_GETFL, NULL)) < 0) {
+			fprintf(stderr, "%s: Error in getfl for socket.\n",progname);
+			exit(EXIT_FAILURE);
+		}
     
-       r &= (~O_NONBLOCK);
+		r &= (~O_NONBLOCK);
 
-       if(fcntl(conn_s, F_SETFL, r) < 0) {
-	   fprintf(stderr, "%s: Error in setfl for socket.\n",progname);
-           exit(EXIT_FAILURE);
-       }
+		if(fcntl(conn_s, F_SETFL, r) < 0) {
+			fprintf(stderr, "%s: Error in setfl for socket.\n",progname);
+			exit(EXIT_FAILURE);
+		}
     
-       fgets(buffer, MAX_LINE-1, stdin);
+		fgets(buffer, MAX_LINE-1, stdin);
 
-       if(strstr(buffer,"/")==NULL){
-        if ((cp = strrchr (buffer, '\n')) != NULL){
-         *cp = '\0';
-        }
-        strcat(buffer,"/\n");
-       }
+		if(strstr(buffer,"/")==NULL){
+			if ((cp = strrchr (buffer, '\n')) != NULL){
+				*cp = '\0';
+			}
+			strcat(buffer,"/\n");
+		}
        
-       Writeline(conn_s, buffer, strlen(buffer));
-       Readline(conn_s, buffer, MAX_LINE-1);
+		Writeline(conn_s, buffer, strlen(buffer));
+		Readline(conn_s, buffer, MAX_LINE-1);
 
-       printf("%s", buffer);
-    } else {
-        exit(EXIT_FAILURE);
-    }
+		printf("%s", buffer);
+	} else {
+		exit(EXIT_FAILURE);
+	}
 
-    /*  Close the connected socket  */
+	/*  Close the connected socket  */
 
-    if ( close(conn_s) < 0 ) {
-       fprintf(stderr, "%s: Error calling close()\n",progname);
-       exit(EXIT_FAILURE);
-    }
+	if ( close(conn_s) < 0 ) {
+		fprintf(stderr, "%s: Error calling close()\n",progname);
+		exit(EXIT_FAILURE);
+	}
 
-    exit(EXIT_SUCCESS);
+	exit(EXIT_SUCCESS);
 }
