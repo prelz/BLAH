@@ -19,7 +19,7 @@
 #define CONN_TIMEOUT_MSEC   100000
 
 #ifndef VERSION
-#define VERSION            "1.8"
+#define VERSION            "1.8.0"
 #endif
 
 char     *progname = "BLClient";
