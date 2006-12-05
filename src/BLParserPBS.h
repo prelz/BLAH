@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-#define __USE_XOPEN
+#define _XOPEN_SOURCE
 #include <time.h>
 #include <sys/socket.h>
 #include <sys/types.h> 

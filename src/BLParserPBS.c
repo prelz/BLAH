@@ -56,9 +56,16 @@ main(int argc, char *argv[])
 	if(version) {
 		printf("%s Version: %s\n",progname,VERSION);
 		exit(EXIT_SUCCESS);
-	}   
+	}
+	
 	if(debug <=0){
 		debug=0;
+	}
+	
+	if(debug){
+		if((debuglogfile = fopen(debuglogname, "a+"))==0){
+			debuglogfile =  fopen("/dev/null", "a+");
+		}
 	}
     
 	if(port) {
@@ -84,11 +91,6 @@ main(int argc, char *argv[])
 		sysfatal("can't malloc ldir: %r");
 	}
     
-	if(debug){
-		if((debuglogfile = fopen(debuglogname, "a+"))==0){
-			debuglogfile =  fopen("/dev/null", "a+");
-		}
-	}
     
 	if(!spooldir && (espooldir=getenv("PBS_SPOOL_DIR"))!=NULL){
 		spooldir=espooldir;
@@ -121,9 +123,6 @@ main(int argc, char *argv[])
     
 	for(j=0;j<RDXHASHSIZE;j++){
 		rptr[j]=0;
-	}
-	for(j=0;j<RDXHASHSIZE;j++){
-		rfullptr[j]=0;
 	}
 	for(j=0;j<CRMHASHSIZE;j++){
 		nti[j]=0;
@@ -329,13 +328,13 @@ follow(char *infile, char *line)
      
 		lnow=time(NULL);
 		timeptr=localtime(&lnow);
-		strftime(tnow,sizeof(tnow),"%Y%m%d",timeptr);
+		strftime(tnow,NUM_CHARS,"%Y%m%d",timeptr);
 	
 		evfile[0]='\0';
 		strcat(evfile,tdir);
 		strcat(evfile,"/");
 		strcat(evfile,tnow);
-	
+		
 		if(strcmp(evfile,actualfile) != 0){
 
 			off = 0;
@@ -1241,8 +1240,8 @@ CreamConnection(int c_sock)
 	char      *buffer;
 	int       retcod;
     
-	struct   pollfd fds[2];   /*      poll file descp. struct	       */
-	struct   pollfd *pfds;    /*      pointer to fds		       */
+	struct   pollfd fds[2];
+	struct   pollfd *pfds;
 	int      nfds = 1;
 	int      timeout= 5;
     
@@ -1259,7 +1258,7 @@ CreamConnection(int c_sock)
 	  
 		retcod = poll(pfds, nfds, timeout); 
         
-		if(retcod <0){
+		if(retcod < 0){
 			close(conn_c);
 			sysfatal("Poll error for Cream: %r");
 		}
@@ -1499,10 +1498,9 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
         
 	retcod = poll(pfds, nfds, timeout); 
         
-	if(retcod <0){
-		fprintf(stderr, "%s: Poll error for Cream\n",progname);
+	if(retcod <=0){
 		close(conn_c);
-		exit(EXIT_FAILURE);
+		sysfatal("Poll error for Cream: %r");
 	}
     
 	if ( retcod > 0 ){

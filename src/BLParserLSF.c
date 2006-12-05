@@ -1597,7 +1597,7 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
     
 	retcod = poll(pfds, nfds, timeout); 
         
-	if(retcod <0){
+	if(retcod <=0){
 		close(conn_c);
 		sysfatal("Poll error for Cream: %r");
 	}
