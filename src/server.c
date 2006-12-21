@@ -637,7 +637,7 @@ cmd_submit_job(void *args)
 	if (retcod != 0)
 	{
 		/* PUSH A FAILURE */
-		resultLine = make_message("%s %d submission\\ command\\ failed\\ (exit\\ code\\ =\\ %d)", reqId, retcod, retcod);
+		resultLine = make_message("%s %d submission\\ command\\ failed\\ (exit\\ code\\ =\\ %d) N/A", reqId, retcod, retcod);
 		if (cmd_out) free(cmd_out);
 		goto cleanup_command;
 	}
@@ -652,7 +652,7 @@ cmd_submit_job(void *args)
 	if (regexec(&regbuf, cmd_out, 3, pmatch, 0) != 0)
 	{
 		/* PUSH A FAILURE */
-		resultLine = make_message("%s 8 no\\ jobId\\ in\\ submission\\ script's\\ output", reqId);
+		resultLine = make_message("%s 8 no\\ jobId\\ in\\ submission\\ script's\\ output N/A", reqId);
 		BLAHDBG("DEBUG: cmd_job_submit: cannot find jobId in this string: <%s>\n", cmd_out);
 		goto cleanup_cmd_out;
 	}
