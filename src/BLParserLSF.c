@@ -40,8 +40,6 @@ main(int argc, char *argv[])
 	strcat(eventsfile,"/");
 	strcat(eventsfile,lsbevents);
     
-	free(ldir);
-
 	/* test if logfile exists and is readable */
     
 	if((fpt=fopen((char *)eventsfile, "r")) == 0){
@@ -1351,10 +1349,9 @@ CreamConnection(int c_sock)
 	while ( 1 ) {
 	  
 		retcod = poll(pfds, nfds, timeout); 
-        
 		if(retcod <0){
 			close(conn_c);
-			sysfatal("Poll error for Cream: %r");
+			sysfatal("Poll error in CreamConnection: %r");
 		}
     
 		if ( retcod > 0 ){
@@ -1597,9 +1594,9 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
     
 	retcod = poll(pfds, nfds, timeout); 
         
-	if(retcod <=0){
+	if(retcod <0){
 		close(conn_c);
-		sysfatal("Poll error for Cream: %r");
+		sysfatal("Poll error in NotifyCream: %r");
 	}
     
 	if ( retcod > 0 ){

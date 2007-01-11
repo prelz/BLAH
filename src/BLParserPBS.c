@@ -113,11 +113,11 @@ main(int argc, char *argv[])
 
 	/* test if logfile exists and is readable */
     
-	if((fpt=fopen((char *)eventsfile, "r")) == 0){
-		sysfatal("error opening %s: %r", eventsfile);
-	}else{
-		fclose(fpt);
-	}
+	//if((fpt=fopen((char *)eventsfile, "r")) == 0){
+	//	sysfatal("error opening %s: %r", eventsfile);
+	//}else{
+	//	fclose(fpt);
+	//}
     
 	/* Set to zero all the cache */
     
@@ -1260,7 +1260,7 @@ CreamConnection(int c_sock)
         
 		if(retcod < 0){
 			close(conn_c);
-			sysfatal("Poll error for Cream: %r");
+			sysfatal("Poll error in CreamConnection: %r");
 		}
     
 		if ( retcod > 0 ){
@@ -1498,9 +1498,9 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
         
 	retcod = poll(pfds, nfds, timeout); 
         
-	if(retcod <=0){
+	if(retcod <0){
 		close(conn_c);
-		sysfatal("Poll error for Cream: %r");
+		sysfatal("Poll error in NotifyCream: %r");
 	}
     
 	if ( retcod > 0 ){
