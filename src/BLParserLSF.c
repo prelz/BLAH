@@ -32,13 +32,11 @@ main(int argc, char *argv[])
 		}
 	}
     
-	if((eventsfile=calloc(STR_CHARS,1)) == 0){
+	if((eventsfile=calloc(strlen(ldir)+strlen(lsbevents)+2,1)) == 0){
 		sysfatal("can't malloc eventsfile: %r");
 	}
     
-	strcat(eventsfile,ldir);
-	strcat(eventsfile,"/");
-	strcat(eventsfile,lsbevents);
+	sprintf(eventsfile,"%s/%s",ldir,lsbevents);
     
 	/* test if logfile exists and is readable */
     
@@ -1104,9 +1102,6 @@ GetLogDir(int largc, char *largv[])
 	if((ls_out=calloc(STR_CHARS,1)) == 0){
 		sysfatal("can't malloc ls_out: %r");
 	}
-	if((conffile=calloc(STR_CHARS,1)) == 0){
-		sysfatal("can't malloc conffile: %r");
-	}
 
 	if((tbuf=calloc(10 * sizeof *tbuf,1)) == 0){
 		sysfatal("can't malloc tbuf: %r");
@@ -1145,6 +1140,9 @@ GetLogDir(int largc, char *largv[])
 	}
   
 	if((econfpath=getenv("LSF_ENVDIR"))!=NULL){
+		if((conffile=calloc(strlen(econfpath)+strlen("lsf.conf")+2,1)) == 0){
+			sysfatal("can't malloc conffile: %r");
+		}
 		sprintf(conffile,"%s/lsf.conf",econfpath);
 		if((fp=fopen(conffile, "r")) != 0){
 			while(fgets(line, STR_CHARS, fp)){
@@ -1155,6 +1153,9 @@ GetLogDir(int largc, char *largv[])
 		}
 	}
 	
+	if((conffile=calloc(strlen(confpath)+strlen("lsf.conf")+2,1)) == 0){
+		sysfatal("can't malloc conffile: %r");
+	}
 	sprintf(conffile,"%s/lsf.conf",confpath);
 	
 	if((fp=fopen(conffile, "r")) != 0){
@@ -1166,6 +1167,9 @@ GetLogDir(int largc, char *largv[])
 	}
 	
 	if((econfpath=getenv("LSF_CONF_PATH"))!=NULL){
+		if((conffile=calloc(strlen(econfpath)+strlen("lsf.conf")+2,1)) == 0){
+			sysfatal("can't malloc conffile: %r");
+		}
 		sprintf(conffile,"%s/lsf.conf",econfpath);
 		if((fp=fopen(conffile, "r")) != 0){
 			while(fgets(line, STR_CHARS, fp)){

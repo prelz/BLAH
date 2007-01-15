@@ -86,38 +86,28 @@ main(int argc, char *argv[])
 	}
  
 	/* Get log dir name */
-  
-	if((ldir=calloc(STR_CHARS,1)) == 0){
-		sysfatal("can't malloc ldir: %r");
+
+	if((espooldir=getenv("PBS_SPOOL_DIR"))!=NULL){
+		if((ldir=calloc(strlen(espooldir)+strlen("server_logs")+2,1)) == 0){
+			sysfatal("can't malloc ldir: %r");
+		}
+		sprintf(ldir,"%s/server_logs",espooldir);
+	
+	} else{
+		if((ldir=calloc(strlen(spooldir)+strlen("server_logs")+2,1)) == 0){
+			sysfatal("can't malloc ldir: %r");
+		}
+		sprintf(ldir,"%s/server_logs",spooldir);
 	}
-    
-    
-	if(!spooldir && (espooldir=getenv("PBS_SPOOL_DIR"))!=NULL){
-		spooldir=espooldir;
-	}
-        
-	strcat(ldir,spooldir);
-	strcat(ldir,"/server_logs");
 
 	now=time(NULL);
 	tptr=localtime(&now);
 	strftime(cnow,sizeof(cnow),"%Y%m%d",tptr);
 
-	if((eventsfile=calloc(STR_CHARS,1)) == 0){
+	if((eventsfile=calloc(strlen(ldir)+strlen(cnow)+2,1)) == 0){
 		sysfatal("can't malloc eventsfile: %r");
 	}
-    
-	strcat(eventsfile,ldir);
-	strcat(eventsfile,"/");
-	strcat(eventsfile,cnow);
-
-	/* test if logfile exists and is readable */
-    
-	//if((fpt=fopen((char *)eventsfile, "r")) == 0){
-	//	sysfatal("error opening %s: %r", eventsfile);
-	//}else{
-	//	fclose(fpt);
-	//}
+	sprintf(eventsfile,"%s/%s",ldir,cnow);
     
 	/* Set to zero all the cache */
     
