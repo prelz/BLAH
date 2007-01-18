@@ -347,14 +347,12 @@ if [ $? -ne 0 ]; then
 fi
 
 datenow=`date +%Y%m%d`
-jobIDtmp=`${pbs_binpath}/qsub $curdir/$tmp_file 2> /dev/null` # actual submission
+jobID=`${pbs_binpath}/qsub $curdir/$tmp_file 2> /dev/null` # actual submission
 retcode=$?
 if [ "$retcode" != "0" ] ; then
 	rm -f $curdir/$tmp_file
 	exit 1
 fi
-
-jobID=`echo $jobIDtmp|awk -F"." '{ print $1 }'`
 
 if [ "x$pbs_nologaccess" != "xyes" -a "x$pbs_nochecksubmission" != "xyes" ]; then
 
