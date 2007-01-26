@@ -1,0 +1,1 @@
+chmod u+s ${RPM_INSTALL_PREFIX}/bin/BDlogger
