@@ -413,9 +413,7 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
 
 done
 
-jobID_check=`echo $jobID_log|egrep -e "^[0-9]+$"`
-
-if [ "$jobID_log" != "$jobID"  -a "x$jobID_log" != "x" -a "x$jobID_check" != "x" ]; then
+if [ "$jobID_log" != "$jobID"  -a "x$jobID_log" != "x" ]; then
     echo "WARNING: JobID in log file is different from the one returned by qsub!" >&2
     echo "($jobID_log != $jobID)" >&2
     echo "I'll be using the one in the log ($jobID_log)..." >&2
