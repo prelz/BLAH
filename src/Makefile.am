@@ -2,11 +2,11 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.12 2006/09/21 09:37:21 gfiorent Exp $ 
+# $Id: Makefile.am,v 1.13 2007/02/08 08:48:29 pandreet Exp $ 
 #
 # File:           Makefile.am
 #
-# Author(s):      Francesco Prelz ($Author: gfiorent $)
+# Author(s):      Francesco Prelz ($Author: pandreet $)
 #        e-mail: "Francesco.Prelz@mi.infn.it"
 #
 # Revision history:
@@ -69,6 +69,8 @@ BDlogger_LDADD =
 test_condor_logger_SOURCES = test_condor_create_log.c condor_create_log.c
 
 test_condor_logger_LDADD =
+
+test_condor_logger_CFLAGS = $(AM_CFLAGS)
 
 lib_LTLIBRARIES = libglite_ce_condor_logger.la 
 
