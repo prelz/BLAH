@@ -408,8 +408,9 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
      rm -f $curdir/$tmp_file
      exit 1
  fi
- 
- sleep 2
+
+ let "bsleep = 2**log_check_retry_count"
+ sleep $bsleep
 
 done
 

@@ -283,7 +283,6 @@ follow(char *infile, char *line)
 {
 	FILE *fp;
 	long off = 0;
-	long old_off = 0;
 	long real_off = 0;
 
 	char   *tdir;
@@ -347,20 +346,13 @@ follow(char *infile, char *line)
 
 		}
 
-		if(fseek(fp, off, SEEK_SET) < 0){
-			sysfatal("couldn't seek in follow: %r");
-		}
-
-		old_off=ftell(fp);
 		if(fseek(fp, 0L, SEEK_END) < 0){
 			sysfatal("couldn't seek in follow: %r");
 		}
 		real_off=ftell(fp);
 	
-		if(real_off < old_off){
+		if(real_off < off){
 			off=real_off;
-		}else{
-			off=old_off;
 		}
    
 		if(fseek(fp, off, SEEK_SET) < 0){
@@ -1039,7 +1031,7 @@ LookupAndSend(int m_sock)
 				if((out_buf=calloc(STR_CHARS,1)) == 0){
 					sysfatal("can't malloc out_buf in LookupAndSend: %r");
 				}
-				sprintf(out_buf,"Blahjob id %s not found\n",jobid);
+				sprintf(out_buf,"\n",jobid);
 				goto close;
 			}
 		}

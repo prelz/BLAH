@@ -222,7 +222,6 @@ follow(char *infile, char *line)
 {
 	FILE *fp;
 	long off = 0;
-	long old_off = 0;
 	long real_off = 0;
 
 	for(;;){
@@ -231,20 +230,13 @@ follow(char *infile, char *line)
 			sleep(1);
 			continue;
 		}
-		if(fseek(fp, off, SEEK_SET) < 0){
-			sysfatal("couldn't seek: %r");
-		}
-
-		old_off=ftell(fp);
 		if(fseek(fp, 0L, SEEK_END) < 0){
 			sysfatal("couldn't seek: %r");
 		}
 		real_off=ftell(fp);
 
-		if(real_off < old_off){
+		if(real_off < off){
 			off=0;
-		}else{
-			off=old_off;
 		}
    
 		if(fseek(fp, off, SEEK_SET) < 0){
