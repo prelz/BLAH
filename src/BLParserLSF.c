@@ -275,7 +275,7 @@ int
 InfoAdd(int id, char *value, const char * flag)
 {
 
-	if(!value){
+        if(!value || (strlen(value)==0) || (strcmp(value,"\n")==0)){
 		return -1;
 	}
 
