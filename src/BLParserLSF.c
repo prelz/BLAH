@@ -38,14 +38,6 @@ main(int argc, char *argv[])
     
 	sprintf(eventsfile,"%s/%s",ldir,lsbevents);
     
-	/* test if logfile exists and is readable */
-    
-	if((fpt=fopen((char *)eventsfile, "r")) == 0){
-		sysfatal("error opening %s: %r", eventsfile);
-	}else{
-		fclose(fpt);
-	}
-    
 	/* Set to zero all the cache */
     
 	for(j=0;j<RDXHASHSIZE;j++){
@@ -275,7 +267,7 @@ int
 InfoAdd(int id, char *value, const char * flag)
 {
 
-        if(!value || (strlen(value)==0) || (strcmp(value,"\n")==0)){
+	if(!value || (strlen(value)==0) || (strcmp(value,"\n")==0)){
 		return -1;
 	}
 
@@ -581,7 +573,7 @@ GetAllEvents(char *file)
 				}
 			}
 		} else {
-			sysfatal("Cannot open %s file: %r",opfile[i]);
+			syserror("Cannot open %s file: %r",opfile[i]);
 		}
   
 		fclose(fp);

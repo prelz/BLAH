@@ -395,7 +395,7 @@ InfoAdd(int id, char *value, const char * flag)
 	char *jobid;
 	unsigned h_blahjob;
 
-        if(!value || (strlen(value)==0) || (strcmp(value,"\n")==0)){
+	if(!value || (strlen(value)==0) || (strcmp(value,"\n")==0)){
 		return -1;
 	}
   
@@ -756,7 +756,7 @@ GetAllEvents(char *file)
 				}
 			}
 		} else {
-			sysfatal("Cannot open %s file: %r",opfile[i]);
+			syserror("Cannot open %s file: %r",opfile[i]);
 		}
 		fclose(fp);
 		free(opfile[i]);
