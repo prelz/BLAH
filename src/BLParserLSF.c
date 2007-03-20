@@ -572,11 +572,11 @@ GetAllEvents(char *file)
 					AddToStruct(line,0);
 				}
 			}
+			fclose(fp);
 		} else {
 			syserror("Cannot open %s file: %r",opfile[i]);
 		}
   
-		fclose(fp);
 		free(opfile[i]);
 
 	} /* close for*/
