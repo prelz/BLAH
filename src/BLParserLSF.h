@@ -137,4 +137,3 @@ char * rex_queued   = "\"JOB_NEW\"";
 char * rex_running  = "\"JOB_START\"";
 char * rex_status   = "\"JOB_STATUS\"";
 char * rex_signal   = "\"JOB_SIGNAL\"";
-char * rex_switch   = "\"LOG_SWITCH\"";
