@@ -215,7 +215,9 @@ follow(char *infile, char *line)
 	FILE *fp;
 	long off = 0;
 	long real_off = 0;
-
+	char *s;
+	char *ts;
+	
 	for(;;){
 		if((fp=fopen((char *)infile, "r")) == 0){
 			syserror("error opening %s: %r", infile);
@@ -228,7 +230,19 @@ follow(char *infile, char *line)
 		real_off=ftell(fp);
 
 		if(real_off < off){
-			off=0;
+			if(fseek(fp, 0L, SEEK_SET) < 0){
+				sysfatal("couldn't seek: %r");
+			}
+			if((s=calloc(STR_CHARS,1)) == 0){
+				sysfatal("can't malloc s: %r");
+			}
+			if(fgets(s, STR_CHARS, fp)!=NULL){
+				ts=strdel(s,"#");
+				off=strtol(ts,NULL,10);
+			}
+			free(s);
+			free(ts);
+
 		}
    
 		if(fseek(fp, off, SEEK_SET) < 0){
