@@ -204,7 +204,8 @@ END {
 	if [ "$cliretcode" == "1" -o "x$lsf_BLParser" != "xyes" ] ; then
 		result=""
 		usedBLParser="no"
-		datefile=`mktemp -q blahjob_XXXXXX`
+		datefile=blahdate_$RANDOM$RANDOM$RANDOM
+		`touch $tmp_file;chmod 600 $tmp_file`
 
 		if [ $? -ne 0 ]; then
    			echo 'Error creating temporary file'

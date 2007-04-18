@@ -142,7 +142,8 @@ then
     if [ ! -z "$creamjobid"  ] ; then
         tmp_file=cream_${creamjobid}
     else
-        tmp_file=`mktemp -q blahjob_XXXXXX`
+	tmp_file=blahjob_$RANDOM$RANDOM$RANDOM
+	`touch $tmp_file;chmod 600 $tmp_file`
     fi
     if [ $? -ne 0 ]; then
         echo Error

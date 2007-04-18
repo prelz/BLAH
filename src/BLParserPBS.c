@@ -510,7 +510,7 @@ AddToStruct(char *line, int flag)
 	char *tj_blahjob=NULL;
 	char *j_blahjob=NULL;
  
-	if((strstr(line,blahjob_string)!=NULL) || (strstr(line,cream_string)!=NULL)){
+	if((strstr(line,blahjob_string)!=NULL) || (strstr(line,bl_string)!=NULL) || (strstr(line,cream_string)!=NULL)){
 		has_blah=1;
 	}
  
@@ -657,7 +657,7 @@ AddToStruct(char *line, int flag)
 			NotifyCream(id, "1", j2bl[id], "NA", "NA", j2st[id], flag);
 		}
   
-	} else if(j2bl[id] && ((strstr(j2bl[id],blahjob_string)!=NULL) || (strstr(j2bl[id],cream_string)!=NULL))){ 
+	} else if(j2bl[id] && ((strstr(j2bl[id],blahjob_string)!=NULL)  || (strstr(j2bl[id],bl_string)!=NULL) || (strstr(j2bl[id],cream_string)!=NULL))){ 
  
 		if(rex && strstr(rex,rex_running)!=NULL){
 
