@@ -438,7 +438,6 @@ InfoAdd(int id, char *value, const char * flag)
 		}
 		free(j2bl[id]);
 		j2bl[id] = strdup(value);
-  
 		h_blahjob=hash(value);
 		bjl[h_blahjob]=strdup(rfullptr[id]);
 		free(jobid);
@@ -509,7 +508,7 @@ AddToStruct(char *line, int flag)
 	char *tb_job=NULL;
 	char *tj_blahjob=NULL;
 	char *j_blahjob=NULL;
- 
+
 	if((strstr(line,blahjob_string)!=NULL) || (strstr(line,bl_string)!=NULL) || (strstr(line,cream_string)!=NULL)){
 		has_blah=1;
 	}
@@ -655,8 +654,8 @@ AddToStruct(char *line, int flag)
 
 		if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
 			NotifyCream(id, "1", j2bl[id], "NA", "NA", j2st[id], flag);
-		}
-  
+		}  
+
 	} else if(j2bl[id] && ((strstr(j2bl[id],blahjob_string)!=NULL)  || (strstr(j2bl[id],bl_string)!=NULL) || (strstr(j2bl[id],cream_string)!=NULL))){ 
  
 		if(rex && strstr(rex,rex_running)!=NULL){
@@ -1521,7 +1520,7 @@ UpdatePtr(int jid,char *fulljobid)
 
 	int rid;
 
-	if((jid <= 0)){
+	if((jid < 0)){
 		return -1;
 	}
 
@@ -1536,7 +1535,8 @@ UpdatePtr(int jid,char *fulljobid)
 		}  
 	}
 
-	if((rid=GetRdxId(jid))==-1){
+        if((rid=GetRdxId(jid))==-1){
+	
 		if(debug>=3){
 			fprintf(debuglogfile, "JobidNew Counter:%d jobid:%d\n",ptrcnt,jid);
 			fflush(debuglogfile);
@@ -1561,6 +1561,11 @@ int
 GetRdxId(int cnt)
 {
 	int i;
+	
+	if(cnt == 0){
+		return -1;
+	}
+	
 	for(i=0;i<RDXHASHSIZE;i++){
 		if(rptr[i] == cnt){
 			return i;

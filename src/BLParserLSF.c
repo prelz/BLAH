@@ -1637,7 +1637,7 @@ UpdatePtr(int jid)
 
 	int rid;
  
-	if((jid <= 0)){
+	if((jid < 0)){
 		return -1;
 	}
  
@@ -1673,6 +1673,11 @@ int
 GetRdxId(int cnt)
 {
 	int i;
+
+	if(cnt == 0){
+		return -1;
+	}
+
 	for(i=0;i<RDXHASHSIZE;i++){
 		if(rptr[i] == cnt){
 			return i;
