@@ -116,9 +116,7 @@ main(int argc, char **argv)
 			continue;
 		}
 	
-		fprintf(stderr, "Connected to server, waiting for jobId...\n");
 		recv(fd_socket, buffer, sizeof(buffer), 0);
-		fprintf(stderr, "Received jobId: %s\n", buffer);
 	
 		/* 
 		   Additional part of the requested and received jobids are removed before strcmp:
@@ -140,7 +138,6 @@ main(int argc, char **argv)
 		exit(1);
 	}
 	
-	fprintf(stderr, "Initiating security context...\n");
 	if ((context_handle = initiate_context(credential_handle, "GSI-NO-TARGET", fd_socket)) == GSS_C_NO_CONTEXT)
 	{
 		printf("%s: cannot initiate security context", argv[0]);
@@ -153,7 +150,6 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
-	fprintf(stderr, "Sending proxy file...");
 	if ((proxy_file = open(proxy_filename, O_RDONLY)) == -1)
 	{
 		printf("%s: unable to open proxy file %s", argv[0], proxy_filename);
@@ -168,11 +164,9 @@ main(int argc, char **argv)
 	read(proxy_file, message, proxy_stat.st_size);
 	close(proxy_file);
 	message[proxy_stat.st_size] = 0;
-	fprintf(stderr, "File length: %d\n", proxy_stat.st_size);
 	send_string(message, context_handle, fd_socket);
 	close(fd_socket);
 
-	printf("%s: proxy file successfully sent", argv[0]);	
 	exit(0);
 }
 

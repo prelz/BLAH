@@ -311,6 +311,5 @@ int verify_context(gss_ctx_id_t context_handle)
 	}
 
 
-	fprintf(stderr, "DEBUG Client: %s\nDEBUG Server: %s\n", src_name_str, target_name_str);
 	return (strcmp(src_name_str, target_name_str));
 }
