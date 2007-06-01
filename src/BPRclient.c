@@ -112,7 +112,6 @@ main(int argc, char **argv)
 		servAddr.sin_port = htons(server_port);
 		if (connect(fd_socket, (struct sockaddr *) &servAddr, sizeof(servAddr)) == -1)
 		{
-			fprintf(stderr, "Cannot connect to port %d\n", server_port);
 			continue;
 		}
 	
@@ -126,7 +125,6 @@ main(int argc, char **argv)
 		if (strcmp(pre_chop(chop(buffer)), pre_chop(chop(jobId))) != 0)
 		{
 			close(fd_socket);
-			fprintf(stderr, "Wrong job on port %d: expected %s, received %s\n", server_port, jobId , buffer);
 			continue;
 		}
 		else
