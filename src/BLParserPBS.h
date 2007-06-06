@@ -40,7 +40,6 @@
 
 ssize_t Readline(int fd, void *vptr, size_t maxlen);
 ssize_t Writeline(int fc, const void *vptr, size_t maxlen);
-unsigned hash(char *s);
 void *mytail (void *infile);    
 void follow(char *infile, char *line);
 long tail(FILE *fp, char *line);
@@ -55,6 +54,7 @@ int NotifyFromDate(char *in_buf);
 int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason, char *timestamp, int flag);
 int UpdatePtr(int jid, char *fulljobid);
 int GetRdxId(int cnt);
+int GetBlahNameId(char *blahstr);
 int strtoken(const char *s, char delim, char **token);
 char *convdate(char *date);
 char *iepoch2str(int epoch, char *f);
@@ -76,7 +76,6 @@ char *j2st[RDXHASHSIZE];
 char *j2rt[RDXHASHSIZE];
 char *j2ct[RDXHASHSIZE];
 
-char *bjl[RDXHASHSIZE];
 char *j2bl[RDXHASHSIZE];
 
 int   nti[CRMHASHSIZE];

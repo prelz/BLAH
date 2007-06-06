@@ -181,19 +181,6 @@ Writeline(int sockd, const void *vptr, size_t n)
 	return n;
 }
 
-unsigned
-hash(char *s)
-{
-
-	unsigned hashval;
-
-	for(hashval = 0; *s!='\0';s++){
-		hashval = *s + 31 *hashval;
-	}
-	return hashval % RDXHASHSIZE;
-}
-
-
 void *
 mytail (void *infile)
 {    
@@ -281,6 +268,8 @@ int
 InfoAdd(int id, char *value, const char * flag)
 {
 
+        char *s;
+
 	if(!value || (strlen(value)==0) || (strcmp(value,"\n")==0)){
 		return -1;
 	}
@@ -323,7 +312,9 @@ InfoAdd(int id, char *value, const char * flag)
 	} else if(strcmp(flag,"BLAHPNAME")==0){
  
 		free(j2bl[id]);
-		j2bl[id] = strdup(value);
+		s=strdel(value,"\"");
+		j2bl[id] = strdup(s);
+		free(s);
   
 	} else if(strcmp(flag,"WN")==0){
  
@@ -375,7 +366,6 @@ int AddToStruct(char *line, int flag){
 	if flag ==1 AddToStruct is called elsewhere*/
 
 	int has_blah=0;
-	unsigned h_blahjob;
 	char *	rex;
  
 	int id,realid;
@@ -455,9 +445,6 @@ int AddToStruct(char *line, int flag){
 		InfoAdd(id,j_time,"STARTTIME");
 		InfoAdd(id,j_blahjob,"BLAHPNAME");
  
-		h_blahjob=hash(j_blahjob);
-		bjl[h_blahjob]=strdup(jobid);
-  
 		if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
 			NotifyCream(id, "1", j2bl[id], "NA", "NA", j2st[id], flag);
 		}
@@ -610,12 +597,12 @@ LookupAndSend(int m_sock)
 	char      *out_buf;
 	char      *logdate;
 	char      *jobid;
-	char      *h_jobid;
 	char      *t_wnode;
 	char      *exitreason;
 	char      *pr_removal="Not";
 	int       i,maxtok,ii;
 	int       id;
+	int       bid;
 	int       conn_s;
 	char      **tbuf;
 	char      *cp;
@@ -633,10 +620,6 @@ LookupAndSend(int m_sock)
 
 		if((buffer=calloc(STR_CHARS,1)) == 0){
 			sysfatal("can't malloc buffer in LookupAndSend: %r");
-		}
-
-		if((h_jobid=calloc(NUM_CHARS,1)) == 0){
-			sysfatal("can't malloc h_jobid in LookupAndSend: %r");
 		}
 	
 		Readline(conn_s, buffer, STR_CHARS-1);	
@@ -846,16 +829,13 @@ LookupAndSend(int m_sock)
 			goto close;
 		}
 	
-/* get jobid from blahjob id (needed by lsf_submit.sh) */
+/* get jobid from blahjob id (needed by *_submit.sh) */
 	
 		if(strcmp(logdate,"BLAHJOB")==0){
 			for(i=0;i<WRETRIES;i++){
-				h_jobid[0]='\0';
-				strcat(h_jobid,"\"");
-				strcat(h_jobid,jobid);
-				strcat(h_jobid,"\"");
 				pthread_mutex_lock(&write_mutex);
-				if(bjl[hash(h_jobid)]==NULL){
+				bid=GetBlahNameId(jobid);
+				if(bid==-1){
 					pthread_mutex_unlock(&write_mutex);
 					sleep(1);
 					continue;
@@ -863,7 +843,7 @@ LookupAndSend(int m_sock)
 				if((out_buf=calloc(STR_CHARS,1)) == 0){
 					sysfatal("can't malloc out_buf in LookupAndSend: %r");
 				}
-				sprintf(out_buf,"%s\n",bjl[hash(h_jobid)]);
+				sprintf(out_buf,"%d\n",rptr[bid]);
 				pthread_mutex_unlock(&write_mutex);
 				goto close;
 			}
@@ -1011,7 +991,6 @@ close:
 		free(buffer);
 		free(logdate);
 		free(jobid);
-		free(h_jobid);
 		/*  Close the connected socket  */
 
 		if ( close(conn_s) < 0 ) {
@@ -1406,6 +1385,8 @@ NotifyFromDate(char *in_buf)
 	int  maxtok,j; 
 	char **tbuf;
 	char *cp;
+	char *nowtm;
+	time_t now;
 
 	/* printf("thread/0x%08lx\n",pthread_self()); */
 
@@ -1455,10 +1436,15 @@ NotifyFromDate(char *in_buf)
 
 			for(ii=jcount+1;ii<CRMHASHSIZE;ii++){
 				if(notepoch<=nti[ii]){
+					now=time(NULL);
+					nowtm=ctime(&now);
+					if ((cp = strrchr (nowtm, '\n')) != NULL){
+						*cp = '\0';
+					}
 					sprintf(out_buf,"NTFDATE/%s",ntf[ii]);
 					Writeline(conn_c, out_buf, strlen(out_buf));
 					if(debug){
-						fprintf(debuglogfile, "Sent for Cream_nftdate:%s",out_buf);
+						fprintf(debuglogfile, "%s Sent for Cream_nftdate:%s",nowtm,out_buf);
 						fflush(debuglogfile); 
 					}
 				}
@@ -1468,10 +1454,15 @@ NotifyFromDate(char *in_buf)
             
 		for(ii=0;ii<=jcount;ii++){
 			if(notepoch<=nti[ii]){
+				now=time(NULL);
+				nowtm=ctime(&now);
+				if ((cp = strrchr (nowtm, '\n')) != NULL){
+					*cp = '\0';
+				}
 				sprintf(out_buf,"NTFDATE/%s",ntf[ii]);  
 				Writeline(conn_c, out_buf, strlen(out_buf));
 				if(debug){
-					fprintf(debuglogfile, "Sent for Cream_nftdate:%s",out_buf);
+					fprintf(debuglogfile, "%s Sent for Cream_nftdate:%s",nowtm,out_buf);
 					fflush(debuglogfile);
 				}
 			}
@@ -1513,6 +1504,10 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
     
 	char    **clientjobid;
 	int      maxtok,i;
+
+	time_t   now;
+	char     *nowtm;
+	char     *cp;
     
 	fds[0].fd = conn_c;
 	fds[0].events = 0;
@@ -1615,9 +1610,14 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
 				break;
 			}
 		} else {
+			now=time(NULL);
+			nowtm=ctime(&now);
+			if ((cp = strrchr (nowtm, '\n')) != NULL){
+				*cp = '\0';
+			}
 			Writeline(conn_c, buffer, strlen(buffer));
 			if(debug){
-				fprintf(debuglogfile, "Sent for Cream:%s",buffer);
+				fprintf(debuglogfile, "%s Sent for Cream:%s",nowtm,buffer);
 				fflush(debuglogfile);
 			}
 		} 
@@ -1684,6 +1684,24 @@ GetRdxId(int cnt)
 		}
 	}
 	return -1;
+}
+
+int
+GetBlahNameId(char *blahstr){
+	
+	int i;
+	
+	if(blahstr == NULL){
+		return -1;
+	}
+	
+	for(i=0;i<RDXHASHSIZE;i++){
+		if(j2bl[i]!=NULL && strcmp(j2bl[i],blahstr)==0){
+			return i;
+		}
+	}
+	return -1;
+
 }
 
 int
