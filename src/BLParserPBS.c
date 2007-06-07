@@ -400,8 +400,10 @@ InfoAdd(int id, char *value, const char * flag)
 		j2st[id] = strdup("\0");
 		j2rt[id] = strdup("\0");
 		j2ct[id] = strdup("\0");
+		
+		reccnt[id] = recycled;
   
-	} else if((strcmp(flag,"JOBID")==0) && recycled==1){
+	} else if((strcmp(flag,"JOBID")==0) && recycled>0){
  
 		free(j2js[id]);
 		free(j2bl[id]);
@@ -416,6 +418,8 @@ InfoAdd(int id, char *value, const char * flag)
 		j2st[id] = strdup("\0");
 		j2rt[id] = strdup("\0");
 		j2ct[id] = strdup("\0");
+		
+		reccnt[id] = recycled;
     
 	} else if(strcmp(flag,"BLAHPNAME")==0){
  
@@ -541,7 +545,6 @@ AddToStruct(char *line, int flag)
 
 	} /* close tjobid if */
 
-	id=UpdatePtr(atoi(jobid),tjobid);
   
 	/* get j_blahjob */
 
@@ -630,7 +633,9 @@ AddToStruct(char *line, int flag)
   
 	} /* close rex_finished if */
  
-	if((is_queued==1) && (has_blah)){
+	id=UpdatePtr(atoi(jobid),tjobid,is_queued,has_blah);
+	
+	if((id >= 0) && (is_queued==1) && (has_blah)){
 
 		InfoAdd(id,jobid,"JOBID");
 		InfoAdd(id,j_time,"STARTTIME");
@@ -640,7 +645,7 @@ AddToStruct(char *line, int flag)
 			NotifyCream(id, "1", j2bl[id], "NA", "NA", j2st[id], flag);
 		}  
 
-	} else if(j2bl[id] && ((strstr(j2bl[id],blahjob_string)!=NULL)  || (strstr(j2bl[id],bl_string)!=NULL) || (strstr(j2bl[id],cream_string)!=NULL))){ 
+	} else if((id >= 0) && j2bl[id] && ((strstr(j2bl[id],blahjob_string)!=NULL)  || (strstr(j2bl[id],bl_string)!=NULL) || (strstr(j2bl[id],cream_string)!=NULL))){ 
  
 		if(rex && strstr(rex,rex_running)!=NULL){
 
@@ -1522,7 +1527,7 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
 }
 
 int
-UpdatePtr(int jid,char *fulljobid)
+UpdatePtr(int jid,char *fulljobid,int is_que,int has_bl)
 {
 
 	int rid;
@@ -1535,7 +1540,7 @@ UpdatePtr(int jid,char *fulljobid)
  
 	if(ptrcnt>=RDXHASHSIZE){
 		ptrcnt=1;
-		recycled=1;
+		recycled++;
 		if(debug>=3){
 			fprintf(debuglogfile, "Counter Recycled\n");
 			fflush(debuglogfile);
@@ -1548,12 +1553,16 @@ UpdatePtr(int jid,char *fulljobid)
 			fprintf(debuglogfile, "JobidNew Counter:%d jobid:%d\n",ptrcnt,jid);
 			fflush(debuglogfile);
 		}
-		rptr[ptrcnt]=jid;
-		if(recycled){
-			free(rfullptr[ptrcnt]);
+		if((is_que) && (has_bl)){
+			rptr[ptrcnt]=jid;
+			if(recycled){
+				free(rfullptr[ptrcnt]);
+			}
+			rfullptr[ptrcnt++]=strdup(fulljobid);
+			return(ptrcnt-1);
+		}else{
+			return -1;		
 		}
-		rfullptr[ptrcnt++]=strdup(fulljobid);
-		return(ptrcnt-1);
 	}else{
 		if(debug>=3){
 			fprintf(debuglogfile, "JobidOld Counter:%d jobid:%d\n",rid,jid);

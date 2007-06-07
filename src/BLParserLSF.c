@@ -290,8 +290,10 @@ InfoAdd(int id, char *value, const char * flag)
 		j2st[id] = strdup("\0");
 		j2rt[id] = strdup("\0");
 		j2ct[id] = strdup("\0");
+		
+		reccnt[id] = recycled;
   
-	} else if((strcmp(flag,"JOBID")==0) && recycled==1){
+	} else if((strcmp(flag,"JOBID")==0) && recycled>0){
  
 		free(j2js[id]);
 		free(j2bl[id]);
@@ -308,6 +310,8 @@ InfoAdd(int id, char *value, const char * flag)
 		j2st[id] = strdup("\0");
 		j2rt[id] = strdup("\0");
 		j2ct[id] = strdup("\0");
+		
+		reccnt[id] = recycled;
     
 	} else if(strcmp(flag,"BLAHPNAME")==0){
  
@@ -437,9 +441,9 @@ int AddToStruct(char *line, int flag){
 	}
 	free(tbuf);
 
-	id=UpdatePtr(realid);
+	id=UpdatePtr(realid,rex,has_blah);
  
-	if(rex && (strcmp(rex,rex_queued)==0) && (has_blah)){
+	if((id >= 0) && rex && (strcmp(rex,rex_queued)==0) && (has_blah)){
 
 		InfoAdd(id,jobid,"JOBID");
 		InfoAdd(id,j_time,"STARTTIME");
@@ -449,7 +453,7 @@ int AddToStruct(char *line, int flag){
 			NotifyCream(id, "1", j2bl[id], "NA", "NA", j2st[id], flag);
 		}
   
-	} else if(j2bl[id] && ((strstr(j2bl[id],blahjob_string)!=NULL) || (strstr(j2bl[id],cream_string)!=NULL))){ 
+	} else if((id >= 0) && (reccnt[id]==recycled) && ((strstr(j2bl[id],blahjob_string)!=NULL) || (strstr(j2bl[id],cream_string)!=NULL))){ 
 
 		if(rex && strcmp(rex,rex_running)==0){
 
@@ -1632,7 +1636,7 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
 }
 
 int
-UpdatePtr(int jid)
+UpdatePtr(int jid, char *rx, int has_bl)
 {
 
 	int rid;
@@ -1644,21 +1648,24 @@ UpdatePtr(int jid)
 	/* if it is over RDXHASHSIZE the ptrcnt is recycled */
 	if(ptrcnt>=RDXHASHSIZE){
 		ptrcnt=1;
-		recycled=1;  
+		recycled++;  
 		if(debug>=3){
 			fprintf(debuglogfile, "Counter Recycled\n");
 			fflush(debuglogfile);
 		}  
 	}
  
- 
 	if((rid=GetRdxId(jid))==-1){
 		if(debug>=3){
 			fprintf(debuglogfile, "JobidNew Counter:%d jobid:%d\n",ptrcnt,jid);
 			fflush(debuglogfile);
 		}
-		rptr[ptrcnt++]=jid;
-		return(ptrcnt-1);
+		if(rx && (strcmp(rx,rex_queued)==0) && (has_bl)){
+			rptr[ptrcnt++]=jid;
+			return(ptrcnt-1);
+		}else{
+			return -1;
+		}
 	}else{
 		if(debug>=3){
 			fprintf(debuglogfile, "JobidOld Counter:%d jobid:%d\n",rid,jid);

@@ -52,7 +52,7 @@ char *GetLogList(char *logdate);
 void CreamConnection(int c_sock);
 int NotifyFromDate(char *in_buf);
 int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason, char *timestamp, int flag);
-int UpdatePtr(int jid, char *fulljobid);
+int UpdatePtr(int jid, char *fulljobid, int is_que, int has_bl);
 int GetRdxId(int cnt);
 int GetBlahNameId(char *blahstr);
 int strtoken(const char *s, char delim, char **token);
@@ -69,6 +69,8 @@ void sysfatal(char *fmt, ...);
 
 int rptr[RDXHASHSIZE];
 char *rfullptr[RDXHASHSIZE];
+
+int reccnt[RDXHASHSIZE];
 
 char *j2js[RDXHASHSIZE];
 char *j2ec[RDXHASHSIZE];
