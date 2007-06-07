@@ -645,7 +645,7 @@ AddToStruct(char *line, int flag)
 			NotifyCream(id, "1", j2bl[id], "NA", "NA", j2st[id], flag);
 		}  
 
-	} else if((id >= 0) && j2bl[id] && ((strstr(j2bl[id],blahjob_string)!=NULL)  || (strstr(j2bl[id],bl_string)!=NULL) || (strstr(j2bl[id],cream_string)!=NULL))){ 
+	} else if((id >= 0) && (reccnt[id]==recycled) && ((strstr(j2bl[id],blahjob_string)!=NULL)  || (strstr(j2bl[id],bl_string)!=NULL) || (strstr(j2bl[id],cream_string)!=NULL))){ 
  
 		if(rex && strstr(rex,rex_running)!=NULL){
 
