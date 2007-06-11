@@ -1555,9 +1555,9 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
 	maxtok = strtoken(blahjobid, '_', clientjobid);    
     
 	if(strcmp(wn,"NA")!=0){
-		sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=%s; ClientJobId=\"%s; WorkerNode=%s;%s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], wn, outreason, exitreason, timestamp);
+		sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\"; WorkerNode=%s;%s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], wn, outreason, exitreason, timestamp);
 	}else{
-		sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=%s; ClientJobId=\"%s;%s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], outreason, exitreason, timestamp);
+		sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\";%s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], outreason, exitreason, timestamp);
 	}
     
 	for(i=0;i<maxtok;i++){
