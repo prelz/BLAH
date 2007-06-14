@@ -115,6 +115,7 @@ static int async_mode = 0;
 static int async_notice = 0;
 static int exit_program = 0;
 static pthread_mutex_t send_lock  = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t async_lock  = PTHREAD_MUTEX_INITIALIZER;
 char *blah_script_location;
 char *blah_version;
 static char lrmslist[MAX_LRMS_NUMBER][MAX_LRMS_NAME_SIZE];
@@ -360,7 +361,9 @@ cmd_async_on(void *args)
 {
 	char *result;
 
+	pthread_mutex_lock(&async_lock);
 	async_mode = async_notice = 1;
+	pthread_mutex_unlock(&async_lock);
 	result = strdup("Async\\ mode\\ on");
 	return(result);
 }
@@ -370,7 +373,9 @@ cmd_async_off(void *args)
 {
 	char *result;
 
+	pthread_mutex_lock(&async_lock);
 	async_mode = async_notice = 0;
+	pthread_mutex_unlock(&async_lock);
 	result = strdup("Async\\ mode\\ off");
 	return(result);
 }
@@ -384,6 +389,7 @@ cmd_results(void *args)
 
 	if (result = (char *) malloc (13)) /* hope 10 digits suffice*/
 	{
+		pthread_mutex_lock(&async_lock);
 		snprintf(result, 10, "%d", num_results());
 		if(num_results())
 		{
@@ -402,6 +408,7 @@ cmd_results(void *args)
 
 		/* From now on, send 'R' when a new resline is enqueued */
 		async_notice = async_mode;
+		pthread_mutex_unlock(&async_lock);
 	}
 	
 	/* If malloc has failed, return NULL to notify error */
@@ -793,7 +800,7 @@ cmd_status_job(void *args)
 	int jobStatus, retcode;
 	int i, job_number;
 
-	retcode = get_status(jobDescr, status_ad, argv + CMD_STATUS_JOB_ARGS + 1, errstr, 1, &job_number);
+	retcode = get_status(jobDescr, status_ad, argv + CMD_STATUS_JOB_ARGS + 1, errstr, 0, &job_number);
 	if (!retcode)
 	{
 		for(i = 0; i < job_number; i++)
@@ -860,7 +867,7 @@ cmd_renew_proxy(void *args)
 	
 	int jobStatus, retcod, result, count;
 	char *cmd_out;
-	char error_message[ERROR_MAX_LEN];
+	char error_buffer[ERROR_MAX_LEN];
 	char *error_string;
 	char *proxyFileNameNew = NULL;
 	int  job_number;
@@ -877,15 +884,33 @@ cmd_renew_proxy(void *args)
 				/* FIXME: add all the controls */
 				if (argv[CMD_RENEW_PROXY_ARGS + 1] == NULL)
 				{
-					proxy_link = make_message("%s/.blah_jobproxy_dir/%s.proxy", getenv("HOME"), jobDescr);
-					old_proxy = (char *)malloc(FILENAME_MAX);
-					result = readlink(proxy_link, old_proxy, FILENAME_MAX - 1);
+					/* Not in GLEXEC mode */
+					if ((proxy_link = make_message("%s/.blah_jobproxy_dir/%s.proxy", getenv("HOME"), jobDescr)) == NULL)
+				 	{
+						fprintf(stderr, "Out of memory.\n");
+						exit(MALLOC_ERROR);
+					}
+					if ((old_proxy = (char *)malloc(FILENAME_MAX)) == NULL)
+					{
+						fprintf(stderr, "Out of memory.\n");
+						exit(MALLOC_ERROR);
+					}
+					if ((result = readlink(proxy_link, old_proxy, FILENAME_MAX - 2)) == -1)
+					{
+						error_string = escape_spaces(strerror_r(errno, error_buffer, sizeof(error_buffer)));
+						resultLine = make_message("%s 1 Cannot\\ find\\ old\\ proxy:\\ %s", reqId, error_string);
+						free(error_string);
+						free(proxy_link);
+						free(old_proxy);
+						break;
+					}
+					old_proxy[result] = '\000'; /* readline does not append final NULL */
 					limit_proxy(proxyFileName, old_proxy);
 					free(proxy_link);
 				}
 				else
 				{
-					/* Add the target proxy */
+					/* GLEXEC mode: add the target proxy */
 					for(count = CMD_RENEW_PROXY_ARGS + 2; argv[count]; count++);
 					argv = (char **)realloc(argv, sizeof(char *) * (count + 2));
 					argv[count] = make_message("GLEXEC_TARGET_PROXY=%s", proxyFileName);
@@ -1376,6 +1401,7 @@ get_command(int s)
 int
 enqueue_result(char *res)
 {
+	pthread_mutex_lock(&async_lock);
 	push_result(res, PERSISTENT_BUFFER);
 	if (async_notice)
 	{
@@ -1385,6 +1411,7 @@ enqueue_result(char *res)
 		/* Don't send it again until a RESULT command is received */
 		async_notice = 0;
 	}
+	pthread_mutex_unlock(&async_lock);
 }
 
 int
