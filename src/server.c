@@ -1580,7 +1580,7 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 	char* globuslocation;
 
 	globuslocation = (getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus");
-	limcommand = make_message("%s/bin/grid-proxy-init -limited -cert %s -key %s -out %s",
+	limcommand = make_message("%s/bin/grid-proxy-init -old -limited -cert %s -key %s -out %s",
 	                          globuslocation, proxy_name, proxy_name, limited_proxy_name);
 	res = exe_getout(limcommand, NULL, &cmd_out);
 	free(limcommand);
