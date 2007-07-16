@@ -140,7 +140,7 @@ then
 		`touch $tmp_file;chmod 600 $tmp_file`
         fi
         if [ $? -ne 0 ]; then
-                echo Error
+                echo "Cannot create submission file"
         exit 1
     fi
 else
@@ -342,16 +342,16 @@ if [ "x$workdir" != "x" ]; then
 fi
 
 if [ $? -ne 0 ]; then
-    echo "Failed to CD to Initial Working Directory." >&2
-    echo Error # for the sake of waiting fgets in blahpd
+    echo "Failed to CD to Initial Working Directory"
     rm -f $curdir/$tmp_file
     exit 1
 fi
 
 datenow=`date +%Y%m%d`
-jobID=`${pbs_binpath}/qsub $curdir/$tmp_file 2> /dev/null` # actual submission
+jobID=`${pbs_binpath}/qsub $curdir/$tmp_file 2>&1` # actual submission
 retcode=$?
 if [ "$retcode" != "0" ] ; then
+	echo $jobID
 	rm -f $curdir/$tmp_file
 	exit 1
 fi
@@ -388,8 +388,7 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
  
  if [ "$cliretcode" == "1" -a "x$pbs_fallback" == "xno" ] ; then
   ${pbs_binpath}/qdel $jobID
-  echo "Error: not able to talk with logparser on ${pbs_BLPserver}:${pbs_BLPport}" >&2
-  echo Error # for the sake of waiting fgets in blahpd
+  echo "Error: not able to talk with logparser on ${pbs_BLPserver}:${pbs_BLPport}"
   rm -f $curdir/$tmp_file
   exit 1
  fi
@@ -405,8 +404,7 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
 
  if (( log_check_retry_count++ >= 12 )); then
      ${pbs_binpath}/qdel $jobID
-     echo "Error: job not found in logs" >&2
-     echo Error # for the sake of waiting fgets in blahpd
+     echo "Error: job not found in logs"
      rm -f $curdir/$tmp_file
      exit 1
  fi

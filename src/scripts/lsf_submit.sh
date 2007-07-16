@@ -39,6 +39,9 @@ conffile=$lsf_confpath/lsf.conf
 
 lsf_base_path=`cat $conffile|grep LSB_SHAREDIR| awk -F"=" '{ print $2 }'`
 
+lsf_confdir=`cat $conffile|grep LSF_CONFDIR| awk -F"=" '{ print $2 }'`
+[ -f ${lsf_confdir}/profile.lsf ] && . ${lsf_confdir}/profile.lsf
+
 lsf_clustername=`${lsf_binpath}/lsid | grep 'My cluster name is'|awk -F" " '{ print $5 }'`
 logpath=$lsf_base_path/$lsf_clustername/logdir
 
@@ -337,13 +340,18 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-jobID=`cd && ${lsf_binpath}/bsub -o /dev/null -e /dev/null -i /dev/null < $curdir/$tmp_file | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"`
-
+cmdout=`cd && ${lsf_binpath}/bsub -o /dev/null -e /dev/null -i /dev/null 2>&1 <$curdir/$tmp_file`
 retcode=$?
+
 if [ "$retcode" != "0" ] ; then
         rm -f $tmp_file
+	echo $cmdout
         exit 1
 fi
+
+# Extract jobId from bsub output
+cmdout=${cmdout#*<}
+jobID=${cmdout%%>*}
 
 if [ "x$lsf_nologaccess" != "xyes" -a "x$lsf_nochecksubmission" != "xyes" ]; then
 
