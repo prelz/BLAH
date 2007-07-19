@@ -97,11 +97,12 @@ exe_getout(char *const command, char *const environment[], char **cmd_output)
 {
 	int fdpipe[2];
 	int pid;
-	int status;
+	int status, exitcode;
 	char **envcopy = NULL;
 	int envcopy_size;
 	int i = 0, char_count, res_len = 0;
 	char buffer[BUFFERSIZE];
+	char *killed_format = "killed by signal %02d";
 	wordexp_t args;
 
 	*cmd_output = NULL;
@@ -174,30 +175,51 @@ exe_getout(char *const command, char *const environment[], char **cmd_output)
 			/* Wait for the command to finish */
 			waitpid(pid, &status, 0);
 
-			/* Initialise empty result */
-			if ((*cmd_output = (char *)malloc(sizeof(char))) == NULL)
+			if (WIFEXITED(status))
 			{
-				fprintf(stderr, "out of memory!\n");
-				exit(1);
-			}
-			*cmd_output[0] = '\000';
-
-			/* Read the command's output */
-			while((char_count = read(fdpipe[0], buffer, sizeof(buffer) - 1)) > 0)
-			{
-				buffer[char_count] = '\000';
-				if ((*cmd_output = (char *)realloc(*cmd_output, res_len + char_count + 1)) == NULL)
+				/* Initialise empty result */
+				if ((*cmd_output = (char *)malloc(sizeof(char))) == NULL)
 				{
 					fprintf(stderr, "out of memory!\n");
 					exit(1);
 				}
-				strcpy(*cmd_output + res_len, buffer);
-				res_len += char_count;
-			}
+				*cmd_output[0] = '\000';
 
-			/* Close the pipe */
-			close(fdpipe[0]);
-			return(WEXITSTATUS(status));
+				/* Read the command's output */
+				while((char_count = read(fdpipe[0], buffer, sizeof(buffer) - 1)) > 0)
+				{
+					buffer[char_count] = '\000';
+					if ((*cmd_output = (char *)realloc(*cmd_output, res_len + char_count + 1)) == NULL)
+					{
+						fprintf(stderr, "out of memory!\n");
+						exit(1);
+					}
+					strcpy(*cmd_output + res_len, buffer);
+					res_len += char_count;
+				}
+
+				/* Close the pipe */
+				close(fdpipe[0]);
+				exitcode = WEXITSTATUS(status);
+			}
+			else if (WIFSIGNALED(status))
+			{
+				exitcode = WTERMSIG(status);
+#ifdef _GNU_SOURCE
+				*cmd_output = strdup(strsignal(exitcode));
+#else
+				/* FIXME: should import make_message here too */
+				*cmd_output = (char *)malloc(strlen(killed_format));
+				snprintf(cmd_output, strlen(killed_format), killed_format, exitcode);
+#endif
+				exitcode = -exitcode;
+			}
+			else
+			{
+				fprintf(stderr, "Child process terminated abnormally\n");
+				exit(1);
+			}
+			return(exitcode);	
 	}
 }
 
