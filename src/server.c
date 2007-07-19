@@ -751,7 +751,7 @@ cmd_cancel_job(void* args)
 	if (retcod = exe_getout(command, argv + CMD_CANCEL_JOB_ARGS + 1, &cmd_out))
 	{
 		/* PUSH A FAILURE */
-		resultLine = make_message("%s %d Cancellation\\ command\\ failed", reqId, retcod, error_string);
+		resultLine = make_message("%s %d Cancellation\\ command\\ failed", reqId, retcod);
 		goto cleanup_command;
 	}	
 
@@ -870,11 +870,11 @@ cmd_renew_proxy(void *args)
 	char error_buffer[ERROR_MAX_LEN];
 	char *error_string;
 	char *proxyFileNameNew = NULL;
-	int  job_number;
+	int  job_number=0;
 
 	retcod = get_status(jobDescr, status_ad, argv + CMD_RENEW_PROXY_ARGS + 1, errstr, 1, &job_number);
 
-	if (!strcmp(errstr[0], "No Error"))
+	if (job_number > 0 && (!strcmp(errstr[0], "No Error")))
 	{
 		classad_get_int_attribute(status_ad[0], "JobStatus", &jobStatus);
 		jobDescr = strrchr(jobDescr, '/') + 1;
@@ -1001,7 +1001,7 @@ cmd_renew_proxy(void *args)
 	}
 	
 	/* Free up all arguments */
-	if (status_ad[0]) classad_free(status_ad[0]);
+	if (job_number > 0 && status_ad[0]) classad_free(status_ad[0]);
 	free_args(argv);
 	return;
 }
