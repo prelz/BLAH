@@ -172,6 +172,9 @@ exe_getout(char *const command, char *const environment[], char **cmd_output)
 				free(envcopy[i]);
 			free(envcopy);
 
+			/* Free the wordexp'd args */
+			wordfree(&args);
+
 			/* Wait for the command to finish */
 			waitpid(pid, &status, 0);
 

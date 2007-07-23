@@ -935,7 +935,7 @@ cmd_renew_proxy(void *args)
 					}
 					else
 						proxyFileNameNew = strdup(argv[CMD_RENEW_PROXY_ARGS + GLEXEC_SOURCE_PROXY_IDX + 1] + 
-						                           strlen(glexec_env_name[GLEXEC_SOURCE_PROXY_IDX])) + 1;
+						                           strlen(glexec_env_name[GLEXEC_SOURCE_PROXY_IDX]) + 1);
 
 					/* Add the globus library path */
 					for(count = CMD_RENEW_PROXY_ARGS + 1; argv[count]; count++);
@@ -946,6 +946,7 @@ cmd_renew_proxy(void *args)
 
 					command = make_message("%s/BPRclient %s %s %s",
 					                       blah_script_location, proxyFileNameNew, jobDescr, workernode); 
+					free(proxyFileNameNew);
 
 					retcod = exe_getout(command, argv + CMD_RENEW_PROXY_ARGS + 1, &cmd_out);
 					if (cmd_out)
@@ -1698,6 +1699,7 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
 			free(ce_id);
 			ce_id=ce_idtmp;
 		}
+		if (queue) free(queue);
 	}
 	if(*environment)
 	{
@@ -1714,12 +1716,12 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
 	/* log_line=make_message("%s/BDlogger %s \\\"timestamp=%s\\\"\\\ \\\"userDN=%s\\\"\\\ %s\\\"ceID=%s\\\"\\\ \\\"jobID=%s\\\"\\\ \\\"lrmsID=%s\\\"\\\ \\\"localUser=%s\\\"", blah_script_location, blah_conf, date_str, esc_userDN, fqan, ce_id, gridjobid, lrms_jobid, uid); */
 	log_line=make_message("%s/BDlogger %s \\\"timestamp=%s\\\"\\ \\\"userDN=%s\\\"\\ %s\\\"ceID=%s\\\"\\ \\\"jobID=%s\\\"\\ \\\"lrmsID=%s\\\"\\ \\\"localUser=%s\\\"", blah_script_location, blah_conf, date_str, esc_userDN, fqan, ce_id, gridjobid, lrms_jobid, uid);
 	system(log_line);
-	
+	if(blah_conf) free(blah_conf);	
 	if(gridjobid) free(gridjobid);
 	free(uid);
 	free(log_line);
 	free(esc_userDN);
-	if (!strcmp(ce_id," ")) free(ce_id);
+	if (ce_id) free(ce_id);
 	memset(fqan,0,MAX_TEMP_ARRAY_SIZE);
 	free(lrms_jobid);
 	return 0;
