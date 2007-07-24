@@ -1575,14 +1575,34 @@ make_message(const char *fmt, ...)
 int
 limit_proxy(char* proxy_name, char *limited_proxy_name)
 {
+	char *timeleftcommand;
+	int seconds_left, hours_left, minutes_left;
 	char *limcommand;
 	char *cmd_out;
 	int res;
 	char* globuslocation;
 
 	globuslocation = (getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus");
-	limcommand = make_message("%s/bin/grid-proxy-init -old -limited -cert %s -key %s -out %s",
+	timeleftcommand = make_message("%s/bin/grid-proxy-info -timeleft -file %s",
+	                          globuslocation, proxy_name);
+	res = exe_getout(timeleftcommand, NULL, &cmd_out);
+	free(timeleftcommand);
+	if (!cmd_out) return -1;
+	else {
+		seconds_left = atoi(cmd_out);
+		free(cmd_out);
+	}
+
+	if (seconds_left <= 0) {
+		/* Something's wrong - use defaults */
+		limcommand = make_message("%s/bin/grid-proxy-init -old -limited -cert %s -key %s -out %s",
 	                          globuslocation, proxy_name, proxy_name, limited_proxy_name);
+	} else {
+		hours_left = (int)(seconds_left/3600);
+		minutes_left = (int)((seconds_left%3600)/60) + 1;
+		limcommand = make_message("%s/bin/grid-proxy-init -old -limited -valid %d:%d -cert %s -key %s -out %s",
+	                          globuslocation, hours_left, minutes_left, proxy_name, proxy_name, limited_proxy_name);
+	}
 	res = exe_getout(limcommand, NULL, &cmd_out);
 	free(limcommand);
 	if (!cmd_out) return -1;
