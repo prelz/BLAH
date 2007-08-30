@@ -17,320 +17,213 @@
 #  	See http://grid.infn.it/grid/license.html for license details.
 #
 
-usage_string="Usage: $0 -c <command> [-i <stdin>] [-o <stdout>] [-e <stderr>] [-x <x509userproxy>] [-v <environment>] [-s <yes | no>] [-- command_arguments]"
+condor_config=`grep con_config ${GLITE_LOCATION:-/opt/glite}/etc/batch_gahp.config | grep -v \# | awk -F"=" '{print $2}' | sed -e 's/ //g' | sed -e 's/\"//g'`/
+bin=`grep con_binpath ${GLITE_LOCATION:-/opt/glite}/etc/batch_gahp.config | grep -v \# | awk -F"=" '{print $2}' | sed -e 's/ //g' | sed -e 's/\"//g'`/
 
-
-stgcmd="no"
-stgproxy="yes"
-
-proxyrenewald="${GLITE_LOCATION:-/opt/glite}/bin/BPRserver"
-
-#default is to stage proxy renewal daemon 
-proxyrenew=""
-
-if [ ! -r "$proxyrenewald" ]
-then
-  unset proxyrenew
-fi
-
-proxy_dir=~/.blah_jobproxy_dir
+usage_string="Usage: $0 -c <command> [-i <stdin>] [-o <stdout>] [-e <stderr>] [-v <environment>] [-s <yes | no>] [-- command_arguments]"
 
 workdir=$PWD
 
-#default values for polling interval and min proxy lifetime
-prnpoll=30
-prnlifetime=0
-
-BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
+proxy_dir=~/.blah_jobproxy_dir
 
 ###############################################################
 # Parse parameters
 ###############################################################
 original_args=$@
-while getopts "i:o:e:c:s:v:dw:q:n:rp:l:x:j:C:" arg 
+while getopts "i:o:e:v:c:w:q:T:I:O:R:" arg 
 do
     case "$arg" in
     i) stdin="$OPTARG" ;;
     o) stdout="$OPTARG" ;;
     e) stderr="$OPTARG" ;;
-    v) envir="$OPTARG";;
-    c) the_command="$OPTARG" ;;
-    s) stgcmd="$OPTARG" ;;
-    d) debug="yes" ;;
+    v) env="$OPTARG";;
+    c) command="$OPTARG" ;;
     w) workdir="$OPTARG";;
+    x) proxy_file="$OPTARG" ;;
     q) queue="$OPTARG";;
-    n) mpinodes="$OPTARG";;
-    r) proxyrenew=yes"" ;;
-    p) prnpoll="$OPTARG" ;;
-    l) prnlifetime="$OPTARG" ;;
-    x) proxy_string="$OPTARG" ;;
-    j) creamjobid="$OPTARG" ;;
-    C) req_file="$OPTARG";;
+    T) temp_dir="$OPTARG" ;;
+    I) inputflstring="$OPTARG" ;;
+    O) outputflstring="$OPTARG" ;;
+    R) remaps="$OPTARG" ;;
     -) break ;;
     ?) echo $usage_string
        exit 1 ;;
     esac
 done
 
+shift `expr $OPTIND - 1`
+arguments=$*
+
+
 # Command is mandatory
-if [ "x$the_command" == "x" ]
+if [ "x$command" == "x" ]
 then
     echo $usage_string
     exit 1
 fi
 
-shift `expr $OPTIND - 1`
-arguments=$*
-##############################################################
-# Create wrapper script
-###############################################################
-
-# Get a suitable name for temp file
-if [ "x$debug" != "xyes" ]
-then
-    if [ ! -z "$creamjobid"  ] ; then
-                tmp_file=cream_${creamjobid}
-        else
-                tmp_file=`mktemp -q blahjob_XXXXXX`
-        fi
-        if [ $? -ne 0 ]; then
-                echo Error
-        exit 1
-    fi
-else
-    # Just print to stderr if in debug
-    tmp_file="/proc/$$/fd/2"
-fi
-tmp_file_2=${tmp_file}_2
-
-# Create unique extension for filenames
-# Not used yet!!!!  TBD
-uni_uid=`id -u`
-uni_pid=$$
-uni_time=`date +%s`
-uni_ext=$uni_uid.$uni_pid.$uni_time
-
-# The sandbox for Condor script is the string which will go in the transfer_input_file field of condor submit file
-# Fields of condor submit file tmp_file_2:
-
-# a)executable: the executable is transferred by default, no need to put it in the sandbox.But
-# the executable is not the command, is tmp_file!
-blahpd_inputsandbox=$the_command
-
-# b)BPRserver: BPRserver must be transferred and put into sandbox
-# we must make a copy with custom-suffix that will be transferred after
-if [ "x$proxyrenew" == "xyes" ] ; then
-    if [ -r "$proxyrenewald" ] ; then
-        remote_BPRserver=`basename $proxyrenewald`.$uni_ext
-	cp -f $proxyrenewald $workdir/$remote_BPRserver
-        blahpd_inputsandbox=$blahpd_inputsandbox,$workdir/${remote_BPRserver}
-    else
-        unset proxyrenew
-    fi
-fi
-# c) user proxy: user proxy must be transferred and put into the sandbox:TBD
-need_to_reset_proxy=no
-proxy_remote_file=
-if [ "x$stgproxy" == "xyes" ] ; then
-    proxy_local_file=${workdir}"/"`basename "$proxy_string"`;
-    [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] || proxy_local_file=$proxy_string
-    [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] || proxy_local_file=/tmp/x509up_u`id -u`
-    if [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] ; then
-        proxy_remote_file=${tmp_file}.proxy
-	if [ -z $blahpd_inputsandbox ] ; then
-		blahpd_inputsandbox="${proxy_local_file}"
-	else
-        	blahpd_inputsandbox="${blahpd_inputsandbox},${proxy_local_file}"
-        fi
-	need_to_reset_proxy=yes
-    fi
-fi
-
-
-# d)stdin: the stdin is transferred by default, no need to put it in the sandbox.Must be set
-# in the tmp_file_2 condor submit file input entry. Doesn't need to have a unique name (??)
-submit_stdin=$stdin
-
-# e) stdout : must be set in the tmp_file_2 condor submit file output entry
-# TBD if stdout ==stderr
-if [ ! -z "$stdout" ] ; then
-    if [ "${stdout:0:1}" != "/" ] ; then stdout=${workdir}/${stdout} ; fi
-    #submit_stdout="$stdout.$uni_ext"
-    submit_stdout=$stdout
-fi
-# f) stderr : must be set in the tmp_file_2 condor submit file error entry
-if [ ! -z "$stderr" ] ; then
-    if [ "${stderr:0:1}" != "/" ] ; then stderr=${workdir}/${stderr} ; fi
-    #submit_stderr="$stderr.$uni_ext"
-    submit_stderr=$stderr
-fi
-
-#  The tmp_file_2 is the condor submit file, the file actually submitted to Condor 
-#  We use vanilla universe 
-
-#  Remove any preexisting tmp_file_2
-if [ -f $tmp_file_2 ] ; then
-	rm -f $tmp_file_2
-fi
-echo "Executable = $tmp_file" >> $tmp_file_2
-echo "Universe = vanilla"  >> $tmp_file_2
-if [ ! -z $submit_stdin ] ; then
-	echo "Input = $submit_stdin" >> $tmp_file_2
-fi
-if [ ! -z $submit_stdout ] ; then
-	echo "Output = $submit_stdout" >> $tmp_file_2
-	blahpd_outputsandbox=$submit_stdout
-fi
-if [ ! -z $submit_stderr ] ; then
-	echo "error = $submit_stderr" >> $tmp_file_2
-	blahpd_outputsandbox=$blahpd_outputsandbox,$submit_stderr
-fi
-if [ ! -z $blahpd_inputsandbox ] ; then
-	echo "transfer_input_files = $blahpd_inputsandbox" >> $tmp_file_2
-fi
-if [ ! -z $blahpd_outputsandbox ] ; then
-        echo "transfer_output_files = $blahpd_outputsandbox" >> $tmp_file_2
-fi
-
-echo "when_to_transfer_output = ON_EXIT" >> $tmp_file_2
-echo "should_transfer_files = YES" >> $tmp_file_2
-echo "queue 1 " >> $tmp_file_2
-
-# The tmp_file is the wrapper around the executable, 
-# used in the executable entry of tmp_file_2
-
-# Write wrapper preamble
-cat > $tmp_file << end_of_preamble
-#!/bin/bash
-# PBS job wrapper generated by `basename $0`
-# on `/bin/date`
-#
-# stgcmd = $stgcmd
-# proxy_string = $proxy_string
-# proxy_local_file = $proxy_local_file
-#
-end_of_preamble
-
-#FORWARD REQS: NO NEED TO BE MODIFIED FOR CONDOR
-#local batch system-specific file output must be added to the submit file
-if [ ! -z $req_file ] ; then
-    echo \#\!/bin/sh >> temp_req_script_$req_file
-    cat $req_file >> temp_req_script_$req_file
-    echo "source ${GLITE_LOCATION:-/opt/glite}/bin/pbs_local_submit_attributes.sh" >> temp_req_script_$req_file
-    chmod +x temp_req_script_$req_file
-    ./temp_req_script_$req_file  >> $tmp_file 2> /dev/null
-    rm -f temp_req_script_$req_file
-    rm -f $req_file
-fi
-
-#NO NEED TO BEMODIFIED FOR CONDOR (also if CONDOR supports the
-# Environment attribute in condor submit file ...)
-# Set the required environment variables (escape values with double quotes)
-if [ "x$envir" != "x" ]  
-then
-    echo "" >> $tmp_file
-    echo "# Setting the environment:" >> $tmp_file
-    echo "`echo ';'$envir | sed -e 's/;[^=]*;/;/g' -e 's/;[^=]*$//g' | sed -e 's/;\([^=]*\)=\([^;]*\)/;export \1=\"\2\"/g' | awk 'BEGIN { RS = ";" } ; { print $0 }'`" >> $tmp_file
-fi
-#'#
-
-# Set the path to the user proxy
-if [ "x$need_to_reset_proxy" == "xyes" ] ; then
-    echo "# Resetting proxy to local position" >> $tmp_file
-    echo "export X509_USER_PROXY=\`pwd\`/${proxy_remote_file}" >> $tmp_file
-fi
-
-# Add the command (with full path if not staged)
-echo "" >> $tmp_file
-echo "# Command to execute:" >> $tmp_file
-if [ "x$stgcmd" == "xyes" ] 
-then
-    the_command="./`basename $the_command`"
-    echo "if [ ! -x $the_command ]; then chmod u+x $the_command; fi" >> $tmp_file
-fi
-echo "$the_command $arguments &" >> $tmp_file
-echo "job_pid=\$!" >> $tmp_file
-
-if [ ! -z $proxyrenew ]
-then
-    echo "" >> $tmp_file
-    echo "# Start the proxy renewal server" >> $tmp_file
-    echo "if [ ! -x $remote_BPRserver ]; then chmod u+x $remote_BPRserver; fi" >> $tmp_file
-    echo "\`pwd\`/$remote_BPRserver \$job_pid $prnpoll $prnlifetime \${PBS_JOBID} &" >> $tmp_file
-    echo "server_pid=\$!" >> $tmp_file
-fi
-
-echo "" >> $tmp_file
-echo "# Wait for the user job to finish" >> $tmp_file
-echo "wait \$job_pid" >> $tmp_file
-echo "user_retcode=\$?" >> $tmp_file
-
-if [ ! -z $proxyrenew ]
-then
-    echo "# Prepare to clean up the watchdog when done" >> $tmp_file
-    echo "sleep 1" >> $tmp_file
-    echo "kill \$server_pid 2> /dev/null" >> $tmp_file
-    echo "if [ -e \"$remote_BPRserver\" ]" >> $tmp_file
-    echo "then" >> $tmp_file
-    echo "    rm $remote_BPRserver" >> $tmp_file
-    echo "fi" >> $tmp_file
-fi
-
-echo "# Clean up the proxy" >> $tmp_file
-echo "if [ -e \"\$X509_USER_PROXY\" ]" >> $tmp_file
-echo "then" >> $tmp_file
-echo "    rm \$X509_USER_PROXY" >> $tmp_file
-echo "fi" >> $tmp_file
-echo "" >> $tmp_file
-
-echo "exit \$user_retcode" >> $tmp_file
-
-# Exit if it was just a test
-if [ "x$debug" == "xyes" ]
-then
-    exit 255
-fi
-
-###############################################################
-# Submit the script
-###############################################################
+# Move into the IWD so we don't clutter the current working directory.
 curdir=`pwd`
-
 if [ "x$workdir" != "x" ]; then
     cd $workdir
+    if [ $? -ne 0 ]; then
+	echo "Failed to CD to Initial Working Directory." >&2
+	echo Error # for the sake of waiting fgets in blahpd
+	exit 1
+    fi
 fi
 
+##############################################################
+# Create submit file
+###############################################################
+
+submit_file=`mktemp -q $GAHP_TEMP/blahXXXXXX`
 if [ $? -ne 0 ]; then
-    echo "Failed to CD to Initial Working Directory." >&2
-    echo Error # for the sake of waiting fgets in blahpd
-    rm -f $curdir/$tmp_file
+    echo "mktemp failed" >&2
+    echo Error
     exit 1
 fi
 
-# Actual submission to condor to allow job enter the queue
-chmod u+x $tmp_file;
-if [ -z $queue ] ; then
-	full_result=`condor_submit $tmp_file_2`
-else
-	full_result=`condor_submit $tmp_file_2 -r $queue`
-fi 
-
-if [ $? == "0" ] ; then
-	jobID=`echo $full_result | egrep -o "[0-9]+{2,}"`		
+#  Remove any preexisting submit file
+if [ -f $submit_file ] ; then
+	rm -f $submit_file
 fi
-echo $jobID
 
-# Compose the blahp jobID ("pbs/" + logfile + pbs jobid)
-echo "BLAHP_JOBID_PREFIXcondor/`date +%Y%m%d`/$jobID"
+if [ ! -z "$inputflstring" ] ; then
+    i=0
+    for file in `cat $inputflstring`; do
+	input_files[$i]=$file
+	i=$((i+1))
+    done
+fi
 
-# Clean temporary files
-cd $curdir
-rm -f $tmp_file
-rm -f $tmp_file_2
+if [ ! -z "$outputflstring" ] ; then
+    i=0
+    for file in `cat $outputflstring`; do
+	output_files[$i]=$file
+	i=$((i+1))
+    done
+fi
 
-# Create a softlink to proxy file for proxy renewal
-if [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] ; then
+if [ ! -z "$remaps" ] ; then
+    i=0
+    for file in `cat $remaps`; do
+	remap_files[$i]=$file
+	i=$((i+1))
+    done
+fi
+
+if [ ${#input_files[@]} -gt 0 ] ; then
+    transfer_input_files="transfer_input_files=${input_files[0]}"
+    for ((i=1; i < ${#input_files[@]}; i=$((i+1)))) ; do
+	transfer_input_files="$transfer_input_files,${input_files[$i]}"
+    done
+fi
+
+if [ ${#output_files[@]} -gt 0 ] ; then
+    transfer_output_files="transfer_output_files=${output_files[0]}"
+    for ((i=1; i < ${#output_files[@]}; i=$((i+1)))) ; do
+	transfer_output_files="$transfer_output_files,${output_files[$i]}"
+    done
+fi
+
+if [ ${#remap_files[@]} -gt 0 ] ; then
+    if [ ! -z "${remap_files[0]}" ] ; then
+	map=${remap_files[0]}
+    else
+	map=${output_files[0]}
+    fi
+    transfer_output_remaps="transfer_output_remaps=\"${output_files[0]}=$map"
+    for ((i=1; i < ${#remap_files[@]}; i=$((i+1)))) ; do
+	if [ ! -z "${remap_files[0]}" ] ; then
+	    map=${remap_files[$i]}
+	else
+	    map=${output_files$i]}
+	fi
+	transfer_output_remaps="$transfer_output_remaps;${output_files[$i]}=$map"
+    done
+    transfer_output_remaps="$transfer_output_remaps\""
+fi
+
+
+### This appears to only be necessary if Condor is passing arguments
+### with the "new_esc_format"
+# # NOTE: The arguments we are given are specially escaped for a shell,
+# # so to get them back into Condor format we need to remove all the
+# # extra quotes. We do this by replacing '" "' with ' ' and stripping
+# # the leading and trailing "s.
+# arguments="$(echo $arguments | sed -e 's/\" \"/ /g')"
+# arguments=${arguments:1:$((${#arguments}-2))}
+
+cat > $submit_file << EOF
+universe = vanilla
+executable = $command
+x509userproxy = $proxy_file
+# We insist on new style quoting in Condor
+arguments = $arguments
+input = $stdin
+output = $stdout
+error = $stderr
+$transfer_input_files
+$transfer_output_files
+$transfer_output_remaps
+when_to_transfer_output = on_exit
+should_transfer_files = yes
+notification = error
+# Hang around for 1 day (86400 seconds) ?
+# Hang around for 30 minutes (1800 seconds) ?
+leave_in_queue = JobStatus == 4 && (CompletionDate =?= UNDEFINED || CompletionDate == 0 || ((CurrentTime - CompletionDate) < 1800))
+
+queue 1
+EOF
+
+###############################################################
+# Perform submission
+###############################################################
+
+# Actual submission to condor to allow job enter the queue. The queue
+# variable may be two parameters, separated by a space. If it is the
+# first param is the name of the queue and the second is the name of
+# the pool where the queue exists, i.e. a Collector's name.
+
+echo $queue | grep "/" >&/dev/null
+# If there is a "/" we need to split out the pool and queue
+if [ "$?" == "0" ]; then
+    pool=${queue#*/}
+    queue=${queue%/*}
+fi
+
+if [ -z "$queue" ]; then
+    target=""
+else
+    if [ -z "$pool" ]; then
+	target="-name $queue"
+    else
+	target="-pool $pool -name $queue"
+    fi
+fi
+
+full_result=$($bin/condor_submit $target $submit_file)
+return_code=$?
+
+if [ "$return_code" == "0" ] ; then
+    jobID=`echo $full_result | awk '{print $8}' | tr -d '.'`
+
+    echo "BLAHP_JOBID_PREFIXcon/$jobID/$queue/$pool"
+else
+    echo "Failed to submit"
+    echo Error
+fi
+
+# Clean temporary files -- There only temp file is the one we submit
+#rm -f $submit_file
+
+# Create a softlink to proxy file for proxy renewal - local renewal 
+# of limited proxy only.
+
+if [ -r "$proxy_file" -a -f "$proxy_file" ] ; then
     [ -d "$proxy_dir" ] || mkdir $proxy_dir
-    ln -s $proxy_local_file $proxy_dir/$jobID.proxy
-fi                                                                                                                                                                                  
-exit 0
+    ln -s $proxy_file $proxy_dir/$jobID.proxy.norenew
+fi
+
+exit $return_code

@@ -1,43 +1,31 @@
 #!/bin/bash
-#
-# 	File:     condor_cancel.sh
-# 	Author:   Giuseppe Fiorentino (giuseppe.fiorentino@mi.infn.it)
-# 	Email:    giuseppe.fiorentino@mi.infn.it
-#
-# 	Revision history:
-# 	08-Aug-2006: Original release
-#
-# 	Description:
-#   	Cancellation script for Condor, to be invoked by blahpd server.
-#   	Usage:
-#     		condor_cancel.sh <jobid>
-#
-#  	Copyright (c) 2006 Istituto Nazionale di Fisica Nucleare (INFN).
-#  	All rights reserved.
-#  	See http://grid.infn.it/grid/license.html for license details.
-#
 
-jnr=0
-jc=0
-for job in  $@ ; do
-        jnr=$(($jnr+1))
-done
-for  job in  $@ ; do
-        requested=`echo $job | sed 's/^.*\///'`
-        condor_rm $requested >/dev/null 2>&1
-        if [ "$?" == "0" ] ; then
-                if [ "$jnr" == "1" ]; then
-                        echo " 0 No\\ error"
-                else
-                        echo .$jc" 0 No\\ error"
-                fi
-        else
-                if [ "$jnr" == "1" ]; then
-                        echo "1 Error"
-                else
-                        echo .$jc" 1 Error"
-                fi
-        fi
-        jc=$(($jc+1))
-done
+condor_config=`grep con_config ${GLITE_LOCATION:-/opt/glite}/etc/batch_gahp.config | grep -v \# | awk -F"=" '{print $2}' | sed -e 's/ //g' | sed -e 's/\"//g'`/
+bin=`grep con_binpath ${GLITE_LOCATION:-/opt/glite}/etc/batch_gahp.config | grep -v \# | awk -F"=" '{print $2}' | sed -e 's/ //g' | sed -e 's/\"//g'`/
 
+# The first and only argument is a JobId whose format is: Id/Queue/Pool
+
+id=${1%%/*} # Id, everything before the first / in Id/Queue/Pool
+queue_pool=${1#*/} # Queue/Pool, everything after the first /  in Id/Queue/Pool
+queue=${queue_pool%/*} # Queue, everything before the first / in Queue/Pool
+pool=${queue_pool#*/} # Pool, everything after the first / in Queue/Pool
+
+if [ -z "$queue" ]; then
+    target=""
+else
+    if [ -z "$pool" ]; then
+	target="-name $queue"
+    else
+	target="-pool $pool -name $queue"
+    fi
+fi
+
+$bin/condor_rm $target $id >&/dev/null
+
+if [ "$?" == "0" ]; then
+    echo " 0 No\\ error"
+    exit 0
+else
+    echo " 1 Error"
+    exit 1
+fi

@@ -76,13 +76,14 @@ BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 # Parse parameters
 ###############################################################
 
-while getopts "i:o:e:c:s:v:dw:q:n:rp:l:x:j:C:" arg 
+while getopts "i:o:e:c:s:v:V:dw:q:n:rp:l:x:j:T:I:O:R:C:" arg 
 do
     case "$arg" in
     i) stdin="$OPTARG" ;;
     o) stdout="$OPTARG" ;;
     e) stderr="$OPTARG" ;;
     v) envir="$OPTARG";;
+    V) environment="$OPTARG";;
     c) the_command="$OPTARG" ;;
     s) stgcmd="$OPTARG" ;;
     d) debug="yes" ;;
@@ -94,6 +95,10 @@ do
     l) prnlifetime="$OPTARG" ;;
     x) proxy_string="$OPTARG" ;;
     j) creamjobid="$OPTARG" ;;
+    T) temp_dir="$OPTARG" ;;
+    I) inputflstring="$OPTARG" ;;
+    O) outputflstring="$OPTARG" ;;
+    R) outputflstringremap="$OPTARG" ;;
     C) req_file="$OPTARG";;
     -) break ;;
     ?) echo $usage_string
@@ -139,14 +144,29 @@ fi
 # Create wrapper script
 ###############################################################
 
+curdir=`pwd`
+if [ -z "$temp_dir"  ] ; then
+    temp_dir="$curdir"
+else
+    if [ ! -e $temp_dir ] ; then
+        mkdir -p $temp_dir
+    fi
+    if [ ! -d $temp_dir -o ! -w $temp_dir ] ; then
+        echo "1ERROR: unable to create or write to $temp_dir"
+        exit 0
+    fi
+fi
+
 # Get a suitable name for temp file
 if [ "x$debug" != "xyes" ]
 then
     if [ ! -z "$creamjobid"  ] ; then
-        tmp_file=cream_${creamjobid}
+        tmp_name="cream_${creamjobid}"
+        tmp_file="$temp_dir/$tmp_name"
     else
-	tmp_file=blahjob_$RANDOM$RANDOM$RANDOM
-	`touch $tmp_file;chmod 600 $tmp_file`
+        tmp_name=blahjob_$RANDOM$RANDOM$RANDOM
+        tmp_file="$temp_dir/$tmp_name"
+        `touch $tmp_file;chmod 600 $tmp_file`
     fi
     if [ $? -ne 0 ]; then
         echo Error
@@ -174,7 +194,7 @@ cat > $tmp_file << end_of_preamble
 #
 # LSF directives:
 #BSUB -L /bin/bash
-#BSUB -J $tmp_file
+#BSUB -J $tmp_name
 end_of_preamble
 
 #set the queue name first, so that the local script is allowed to change it
@@ -184,12 +204,12 @@ end_of_preamble
 
 #local batch system-specific file output must be added to the submit file
 if [ ! -z $req_file ] ; then
-    echo \#\!/bin/sh >> temp_req_script_$req_file 
-    cat $req_file >> temp_req_script_$req_file 
-    echo "source ${GLITE_LOCATION:-/opt/glite}/bin/lsf_local_submit_attributes.sh" >> temp_req_script_$req_file 
-    chmod +x temp_req_script_$req_file 
-    ./temp_req_script_$req_file  >> $tmp_file 2> /dev/null
-    rm -f temp_req_script_$req_file 
+    echo \#\!/bin/sh >> ${req_file}-temp_req_script 
+    cat $req_file >> ${req_file}-temp_req_script
+    echo "source ${GLITE_LOCATION:-/opt/glite}/bin/lsf_local_submit_attributes.sh" >> ${req_file}-temp_req_script 
+    chmod +x ${req_file}-temp_req_script 
+    ${req_file}-temp_req_script  >> $tmp_file 2> /dev/null
+    rm -f ${req_file}-temp_req_script 
     rm -f $req_file
 fi
 
@@ -207,17 +227,27 @@ if [ ! -z "$stdin" ] ; then
     fi
 fi
 if [ ! -z "$stdout" ] ; then
+    if [ "${stdout:0:1}" != "/" ] ; then
+        local_stdout="${workdir}/${stdout}"
+    else
+        local_stdout=$stdout
+    fi
     stdout_unique=`basename $stdout`.$uni_ext
     arguments="$arguments >\"$stdout_unique\""
-    echo "#BSUB -f \"$stdout < home_${tmp_file}/${stdout_unique}\"" >> $tmp_file
+    echo "#BSUB -f \"$stdout < home_${tmp_name}/${stdout_unique}\"" >> $tmp_file
 fi
 if [ ! -z "$stderr" ] ; then
     if [ "$stderr" == "$stdout" ]; then
         arguments="$arguments 2>&1"
     else
+        if [ "${stderr:0:1}" != "/" ] ; then
+            local_stderr="${workdir}/${stderr}"
+        else
+            local_stderr=$stderr
+        fi
         stderr_unique=`basename $stderr`.$uni_ext
         arguments="$arguments 2>\"$stderr_unique\""
-        echo "#BSUB -f \"$stderr < home_${tmp_file}/$stderr_unique\"" >> $tmp_file
+        echo "#BSUB -f \"$stderr < home_${tmp_name}/$stderr_unique\"" >> $tmp_file
     fi
 fi
 
@@ -235,6 +265,55 @@ then
 fi
 
 [ -z "$mpinodes" ]       || echo "#BSUB -n $mpinodes" >> $tmp_file
+#CONVERTIRE PER LSF
+#absolute paths
+ if [ ! -z "$inputflstring" ] ; then
+         exec 4<> "$inputflstring"
+         while read xfile <&4 ; do
+               if [ ! -z $xfile  ] ; then
+		       echo "#BSUB -f \"$xfile > `basename $xfile`\"" >> $tmp_file
+               fi
+         done
+         exec 4<&-
+       rm -f $inputflstring
+ fi
+
+xfile=
+xfilesandbox=
+#Add files to transfer from execution node
+ if [ ! -z "$outputflstring" ] ; then
+        exec 5<> "$outputflstring"
+        if [ ! -z "$outputflstringremap" ] ; then
+                exec 6<> "$outputflstringremap"
+        fi
+        while read xfile <&5 ; do
+               if [ ! -z $xfile  ] ; then
+                       if [ ! -z "$outputflstringremap" ] ; then
+                                read xfileremap <&6
+                       fi
+                       if [ ! -z $xfileremap ] ; then
+                                if [ "${xfileremap:0:1}" != "/" ] ; then
+                                        xfilesandbox="${workdir}/${xfileremap}"
+                                else
+                                        xfilesandbox="${xfileremap}"
+                                fi
+                        else
+                                if [ "${xfile:0:1}" != "/" ] ; then
+                                        xfilesandbox="${workdir}/${xfile}"
+                                else
+                                        xfilesandbox="${xfile}"
+                                fi
+                        fi
+		        echo "#BSUB -f \"$xfilesandbox < $xfile\"" >> $tmp_file
+               fi
+         done
+         exec 5<&-
+         exec 6<&-
+         rm -f $outputflstring
+         if [ ! -z "$outputflstringremap" ] ; then
+                rm -f $outputflstringremap
+         fi
+ fi
 
 # Setup proxy transfer
 if [ "x$stgproxy" == "xyes" ] ; then
@@ -242,7 +321,7 @@ if [ "x$stgproxy" == "xyes" ] ; then
     [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] || proxy_local_file=$proxy_string
     [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] || proxy_local_file=/tmp/x509up_u`id -u`
     if [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] ; then
-        proxy_unique=${tmp_file}.${uni_ext}.proxy
+        proxy_unique=${tmp_name}.${uni_ext}.proxy
         echo "#BSUB -f \"$proxy_local_file > $proxy_unique\"" >> $tmp_file
         to_be_moved="$to_be_moved $proxy_unique"
     fi
@@ -256,17 +335,26 @@ echo "    cd \$CERN_STARTER_ORIGINAL_CWD" >> $tmp_file
 echo "fi" >> $tmp_file
 
 # Set the required environment variables (escape values with double quotes)
-if [ "x$envir" != "x" ] ; then
-    echo "" >> $tmp_file
-    echo "# Setting the environment:" >> $tmp_file
-    echo "export `echo ';'$envir |sed -e 's/;[^=]*;/;/g' -e 's/;[^=]*$//g' | sed -e 's/;\([^=]*\)=\([^;]*\)/ \1=\"\2\"/g'`" >> $tmp_file
-#'#
+if [ "x$environment" != "x" ] ; then
+        echo "" >> $tmp_file
+        echo "# Setting the environment:" >> $tmp_file
+        eval "env_array=($environment)"
+        for  env_var in "${env_array[@]}"; do
+                 echo export \"$env_var\" >> $tmp_file
+        done
+else
+	if [ "x$envir" != "x" ] ; then
+    		echo "" >> $tmp_file
+    		echo "# Setting the environment:" >> $tmp_file
+    		echo "export `echo ';'$envir |sed -e 's/;[^=]*;/;/g' -e 's/;[^=]*$//g' | sed -e 's/;\([^=]*\)=\([^;]*\)/ \1=\"\2\"/g'`" >> $tmp_file
+	#'#
+	fi
 fi
 
 # Set the temporary home (including cd'ing into it)
-echo "mkdir ~/home_$tmp_file">>$tmp_file
-[ -z "$to_be_moved" ] || echo "mv $to_be_moved ~/home_$tmp_file &>/dev/null">>$tmp_file
-echo "export HOME=~/home_$tmp_file">>$tmp_file
+echo "mkdir ~/home_$tmp_name">>$tmp_file
+[ -z "$to_be_moved" ] || echo "mv $to_be_moved ~/home_$tmp_name &>/dev/null">>$tmp_file
+echo "export HOME=~/home_$tmp_name">>$tmp_file
 echo "cd">>$tmp_file
 
 # Set the path to the user proxy
@@ -331,7 +419,6 @@ sleep 1
 ###############################################################
 # Submit the script
 ###############################################################
-curdir=`pwd`
 
 cd $workdir
 if [ $? -ne 0 ]; then
@@ -340,18 +427,13 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-cmdout=`cd && ${lsf_binpath}/bsub -o /dev/null -e /dev/null -i /dev/null 2>&1 <$curdir/$tmp_file`
-retcode=$?
+jobID=`cd && ${lsf_binpath}/bsub -o /dev/null -e /dev/null -i /dev/null < $tmp_file | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"`
 
+retcode=$?
 if [ "$retcode" != "0" ] ; then
         rm -f $tmp_file
-	echo $cmdout
         exit 1
 fi
-
-# Extract jobId from bsub output
-cmdout=${cmdout#*<}
-jobID=${cmdout%%>*}
 
 if [ "x$lsf_nologaccess" != "xyes" -a "x$lsf_nochecksubmission" != "xyes" ]; then
 
@@ -370,12 +452,13 @@ sleep 5
 logfile=""
 jobID_log=""
 log_check_retry_count=0
+tfbasename="`basename ${tmp_file}`"
 
 while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
 
  cliretcode=0
  if [ "x$lsf_BLParser" == "xyes" ] ; then
-     jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $lsf_BLPserver -p $lsf_BLPport`
+     jobID_log=`echo BLAHJOB/$tmp_name| $BLClient -a $lsf_BLPserver -p $lsf_BLPport`
      cliretcode=$?
  fi
  
@@ -383,13 +466,13 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
    ${lsf_binpath}/bkill $jobID
    echo "Error: not able to talk with logparser on ${lsf_BLPserver}:${lsf_BLPport}" >&2
    echo Error # for the sake of waiting fgets in blahpd
-   rm -f $curdir/$tmp_file
+   rm -f $tmp_file
    exit 1
  fi
 
  if [ "$cliretcode" == "1" -o "x$lsf_BLParser" != "xyes" ] ; then
 
-   logfile=`find $logpath -name "$logfilename.*" -type f -newer $curdir/$tmp_file -exec grep -lP "\"JOB_NEW\" \"[0-9\.]+\" [0-9]+ $jobID " {} \;`
+   logfile=`find $logpath -name "$logfilename.*" -type f -newer $tmp_file -exec grep -lP "\"JOB_NEW\" \"[0-9\.]+\" [0-9]+ $jobID " {} \;`
 
    if [ "x$logfile" != "x" ] ; then
 
@@ -401,7 +484,7 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
      ${lsf_binpath}/bkill $jobID
      echo "Error: job not found in logs" >&2
      echo Error # for the sake of waiting fgets in blahpd
-     rm -f $curdir/$tmp_file
+     rm -f $tmp_file
      exit 1
  fi
 
@@ -426,7 +509,7 @@ echo ""
 echo "BLAHP_JOBID_PREFIXlsf/${datenow}/$jobID"
 
 # Clean temporary files
-cd $curdir
+cd $temp_dir
 rm -f $tmp_file
 
 # Create a softlink to proxy file for proxy renewal

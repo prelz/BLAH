@@ -44,9 +44,12 @@ command_t commands_array[] = {
 	{ "BLAH_JOB_SUBMIT",              2, 2, cmd_submit_job },
 	{ "BLAH_SET_GLEXEC_DN",           3, 0, cmd_set_glexec_dn },
         { "BLAH_SET_GLEXEC_OFF",          0, 0, cmd_unset_glexec_dn },	
+	{ "CACHE_PROXY_FROM_FILE",        2, 0, cmd_unknown },
 	{ "COMMANDS",                     0, 0, cmd_commands },
 	{ "QUIT",                         0, 0, cmd_quit },
 	{ "RESULTS",                      0, 0, cmd_results },
+	{ "UNCACHE_PROXY",                1, 0, cmd_unknown },
+	{ "USE_CACHED_PROXY",             1, 0, cmd_unknown },
 	{ "VERSION",                      0, 0, cmd_version }
 };
 /* N.B.: KEEP STRICT ALPHABETICAL ORDER WHEN ADDING COMMANDS !!!*/
@@ -83,6 +86,8 @@ known_commands(void)
 	{
 		for (i=0; i<COMMANDS_NUM; i++)
 		{
+			/* Skip "unknown" commands */
+			if (commands_array[i].cmd_handler == cmd_unknown) continue;
 			reallocated = (char *) realloc (result, strlen(result) + strlen(commands_array[i].cmd_name) + 2);
 			if (reallocated == NULL)
 			{

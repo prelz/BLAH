@@ -1,83 +1,256 @@
 #!/bin/bash
 
-#  	File:     condor_status.sh
-#
-#  	Author:   Giuseppe Fiorentino
-#  	Email:   giuseppe.fiorentino@mi.infn.it
-#
-#  	Revision history:
-#    	08-Aug-2006: Original release
-#
-#  	Description:
-#    		Returns a classad describing the status of a Condor job
-#
-#	 Usage:
-#	     condor_status.sh <jobid>
-#
-#  	Copyright (c) 2006 Istituto Nazionale di Fisica Nucleare (INFN).
-#  	All rights reserved.
-#  	See http://grid.infn.it/grid/license.html for license details.
-#
+proxy_dir=~/.blah_jobproxy_dir
 
-usage_string="Usage: $0 [-w] [-n]"
+condor_config=`grep con_config ${GLITE_LOCATION:-/opt/glite}/etc/batch_gahp.config | grep -v \# | awk -F"=" '{print $2}' | sed -e 's/ //g' | sed -e 's/\"//g'`/
+bin=`grep con_binpath ${GLITE_LOCATION:-/opt/glite}/etc/batch_gahp.config | grep -v \# | awk -F"=" '{print $2}' | sed -e 's/ //g' | sed -e 's/\"//g'`/
 
-###############################################################
-# Parse parameters
-###############################################################
+FORMAT='-format "%d" ClusterId -format "," ALWAYS -format "%d" JobStatus -format "," ALWAYS -format "%f" RemoteSysCpu -format "," ALWAYS -format "%f" RemoteUserCpu -format "," ALWAYS -format "%f" BytesSent -format "," ALWAYS -format "%f" BytesRecvd -format "," ALWAYS -format "%f" RemoteWallClockTime -format "," ALWAYS -format "%d" ExitBySignal -format "," ALWAYS -format "%d" ExitCode -format "%d" ExitSignal -format "\n" ALWAYS'
 
-# Options not implemented yet
+# The "main" for this script is way at the bottom of the file.
+
+REFRESH_RATE=30 # seconds
+CACHE_PREFIX="cache"
+
+# Identify the current cache, if there is none an empty string is
+# returned.
+function identify_cache {
+    local queue=$1
+    local pool=$2
+
+    echo $GAHP_TEMP/$CACHE_PREFIX.$queue.$pool
+}
+
+# This function waits on the given queue's cache. It also returns the
+# name of the cache it believes to be the most recently update. Cache
+# readers should be aware that there is a race condition here if the
+# cache is being updated after this function returns and the caller
+# tries to read from the cache. There is no read lock on the
+# cache. This error is transient so a retry can be used.
+function wait_on_cache {
+    local queue=$1
+    local pool=$2
+
+    local cache=$(identify_cache $queue $pool)
+    while [ -f "$cache.barrier" ]; do
+	sleep 1
+    done
+
+    echo $cache
+}
+
+# Try and update the cache. If condor_q fails 2 is returned and likely
+# is not recoverable. Otherwise the status (0|1) from writing the new
+# cache is returned. 0 is of course success and 1 means that the cache
+# already exists, i.e. someone else wrote it already.
+function update_cache {
+    local queue=$1
+    local pool=$2
+
+    local cache=$(identify_cache $queue $pool)
+
+    # This line is critical for synchronization, it makes sure
+    # concurrently running scripts do not overwrite the same cache
+    # file.
+    set -o noclobber
+
+    echo "$(date +%s)" 2>>/dev/null > $cache.barrier
+    if [ "$?" == "1" ]; then
+	# Someone else is updating the cache. We want to wait for it
+	# to finish then return.
+	wait_on_cache $queue $pool >/dev/null # Throw away result, just wait
+
+	return 1
+    fi
+
+    if [ -z "$queue" ]; then
+	local target=""
+    else
+	if [ -z "$pool" ]; then
+	    local target="-name $queue"
+	else
+	    local target="-pool $pool -name $queue"
+	fi
+    fi
+
+    local data=$(echo $FORMAT | xargs $bin/condor_q $target)
+
+    if [ "$?" == "0" ]; then
+	set +o noclobber
+	printf "%s\n%s\n" $(date +%s) "$data" > $cache
+	rm -f $cache.barrier
+
+	return $code
+    else
+	rm -f $cache.barrier # Update not attempted
+
+	# 2 represents an error in condor_q
+	return 2
+    fi
+}
+
+# Search the cache with grep, if no line is found update the cache
+# and try again.
+function search {
+    local key=$1
+    local queue=$2
+    local pool=$3
+
+    if [ ! -s "$(identify_cache $queue $pool)" ]; then
+	# No cache found, make one
+	#echo "$$ No cache" >>log
+	update_cache $queue $pool
+	if [ "$?" == "2" ]; then
+	    # We can't recover from a condor_q failure, the other
+	    # error just means the cache has been updated by someone
+	    # else.
+	    return 1
+	fi
+    else
+	local seconds=$(date +%s)
+	local old_seconds=$(head -n 1 $(wait_on_cache $queue $pool) 2>/dev/null) # RACE CONDITION, no read lock, must validate old_seconds 
+	if [ ! -z "$old_seconds" -a $seconds -gt $((old_seconds + REFRESH_RATE)) ]; then
+	    # Cache is out of date, refresh it
+	    #echo "$$ Cache out of date" >>log
+	    update_cache $queue $pool
+	    if [ "$?" == "2" ]; then
+
+		# error just means the cache has been updated by someone
+		# else.
+		return 1
+	    fi
+	fi
+    fi
+
+    local line=`grep "^$key[^0-9]" $(wait_on_cache $queue $pool) 2>/dev/null` # RACE CONDITION, no read lock
+
+    if [ ! -z "$line" ]; then
+	echo $line
+	return 0
+    fi
+
+    # Line not found, update the cache and try again.
+    #echo "$$ No line, update cache" >>log
+    update_cache $queue $pool
+    if [ "$?" == "2" ]; then
+        # We can't recover from a condor_q failure, the other
+        # error just means the cache has been updated by someone
+        # else.
+	return 1
+    fi
+
+    local line=`grep "^$key[^0-9]" $(wait_on_cache $queue $pool)` # RACE CONDITION, no read lock
+
+    # NOTE: Doing the search twice helps to mitigate the race
+    # condition. It would have to occur twice for no result to be
+    # returned when one exists. The caller should do a condor_q to be
+    # sure no result exists.
+
+    if [ ! -z "$line" ]; then
+	echo $line
+	return 0
+    fi
+
+    echo ""
+    return 1
+}
+
+# Given a cache line generate an ad.
+function make_ad {
+    local job=$1
+    local line=$2
+
+    local cluster=$(echo $line | awk -F ',' '{print $1}')
+    local status=$(echo $line | awk -F ',' '{print $2}')
+    local remote_sys_cpu=$(echo $line | awk -F ',' '{print $3}')
+    local remote_user_cpu=$(echo $line | awk -F ',' '{print $4}')
+    local bytes_sent=$(echo $line | awk -F ',' '{print $5}')
+    local bytes_recvd=$(echo $line | awk -F ',' '{print $6}')
+    local remote_wall_clock_time=$(echo $line | awk -F ',' '{print $7}')
+    local exit_by_signal=$(echo $line | awk -F ',' '{print $8}')
+    local code_or_signal=$(echo $line | awk -F ',' '{print $9}')
+
+    # Clean up proxy renewal links if applicable
+    if [ "$status" == "3" -o "$status" == "4" ]; then
+        /bin/rm -f $proxy_dir/$job.proxy.norenew 2>/dev/null
+    fi
+
+    echo -n "[BatchjobId=\"$job\";JobStatus=$status;RemoteSysCpu=${remote_sys_cpu:-0};RemoteUserCpu=${remote_user_cpu:-0};BytesSent=${bytes_sent:-0};BytesRecvd=${bytes_recvd:-0};RemoteWallClockTime=${remote_wall_clock_time:-0};"
+    if [ "$status" == "4" ] ; then
+	if [ "$exit_by_signal" == "0" ] ; then
+	    echo -n "ExitBySignal=FALSE;ExitCode=${code_or_signal:-0}"
+	else
+	    echo -n "ExitBySignal=TRUE;ExitSignal=${code_of_signal:-0}"
+	fi
+    fi
+    echo "]"
+}
+
+### main
+
 while getopts "wn" arg 
 do
     case "$arg" in
-    w) getwn="yes" ;;
-    n) getcreamport="yes" ;;
-    
+    w) ;;
+    n) ;;
     -) break ;;
-    ?) echo $usage_string
+    ?) echo "Usage: $0 [-w] [-n]"
        exit 1 ;;
     esac
 done
 
 shift `expr $OPTIND - 1`
 
-###################################################################
-pars=$*
+for job in $* ; do
+# The job's format is: con/Id/Queue/Pool
+    job=${job:4} # Strip off the "con/"
+    id=${job%%/*} # Id, everything before the first / in Id/Queue/Pool
+    queue_pool=${job#*/} # Queue/Pool, everything after the first /  in Id/Queue/Pool
+    queue=${queue_pool%/*} # Queue, everything before the first / in Queue/Pool
+    pool=${queue_pool#*/} # Pool, everything after the first / in Queue/Pool
 
-#          States of the job.
-#          U = unexpanded (never been run), H = on hold, R = running, 
-#          I = idle (waiting for a  machine  to execute on), C = completed,
-#          and X = removed.
+    line=$(search $id $queue $pool)
+    if  [ ! -z "$line" ] ; then
+	echo "0$(make_ad $job "$line")"
+	exit 0
+    fi
 
-for  reqfull in $pars ; do
-        requested=${reqfull:7}
-	reqjob=`echo $requested | sed -e 's/^.*\///'`
-        result=`condor_q $reqjob | awk '{ print $6}'`
-        result=`echo $result | awk '{ print $3}'`
-        if [ "$?" == "0" ] ; then
-               case "x$result" in
-    			xI) status="1" ;;
-    			xR) status="2" ;;
-                       	xX) status="3" ;;
-                        xC) status="4" ;;
-			xH) status="5" ;;
-                        x)  status="undef" ;;
-    		esac
-		#May be necessary to seek in terminated jobs 
-                if [ "x$status" == "xundef" ] ; then
-		        result=`condor_history $reqjob | awk '{ print $6}'`
-  			result=`echo $result | awk '{ print $2}'`
-                        case "x$result" in
-                        	xC) status="4" ;;
-                        	xX) status="3" ;;
-                	esac
-                fi
-		if  [ "x$status" == "xundef" ] ; then
-			echo 1
-                else
-                	echo "0[BatchjobId=\"$reqjob\";JobStatus=\"$status\";]"
-		fi
+    if [ -z "$queue" ]; then
+	target=""
+    else
+	if [ -z "$pool" ]; then
+	    target="-name $queue"
 	else
-		echo 1
-	fi 
+	    target="-pool $pool -name $queue"
+	fi
+    fi
+
+    ### WARNING: This is troubling because the remote history file
+    ### might just happen to be in the same place as a local history
+    ### file, in which case condor_history is going to be looking at
+    ### the history of an unexpected queue.
+
+    # We can possibly get the location of the history file and check it.
+    history_file=$($bin/condor_config_val $target -schedd history)
+    if [ "$?" == "0" ]; then
+	line=$(echo $FORMAT | xargs $bin/condor_history -f $history_file -backwards $id)
+	if  [ ! -z "$line" ] ; then
+	    echo "0$(make_ad $job "$line")"
+	    exit 0
+	fi
+    fi
+
+    # If we still do not have a result it is possible that a race
+    # condition masked the status, in which case we want to directly
+    # query the Schedd to make absolutely sure there is no status to
+    # be found.
+    line=$(echo $FORMAT | xargs $bin/condor_q $target $id)
+    if  [ -z "$line" ] ; then
+	echo " 1 Status\\ not\\ found"
+	exit 1
+    else
+	echo "0$(make_ad $job "$line")"
+	exit 0
+    fi
+
 done
-exit 0

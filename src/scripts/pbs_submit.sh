@@ -66,13 +66,14 @@ BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 # Parse parameters
 ###############################################################
 original_args=$@
-while getopts "i:o:e:c:s:v:dw:q:n:rp:l:x:j:C:" arg 
+while getopts "i:o:e:c:s:v:V:dw:q:n:rp:l:x:j:T:I:O:R:C:" arg 
 do
     case "$arg" in
     i) stdin="$OPTARG" ;;
     o) stdout="$OPTARG" ;;
     e) stderr="$OPTARG" ;;
     v) envir="$OPTARG";;
+    V) environment="$OPTARG";;
     c) the_command="$OPTARG" ;;
     s) stgcmd="$OPTARG" ;;
     d) debug="yes" ;;
@@ -84,6 +85,10 @@ do
     l) prnlifetime="$OPTARG" ;;
     x) proxy_string="$OPTARG" ;;
     j) creamjobid="$OPTARG" ;;
+    T) temp_dir="$OPTARG" ;;
+    I) inputflstring="$OPTARG" ;;
+    O) outputflstring="$OPTARG" ;;
+    R) outputflstringremap="$OPTARG" ;;
     C) req_file="$OPTARG";;
     -) break ;;
     ?) echo $usage_string
@@ -129,18 +134,34 @@ fi
 # Create wrapper script
 ###############################################################
 
+curdir=`pwd`
+if [ -z "$temp_dir"  ] ; then
+    temp_dir="$curdir"
+else
+    if [ ! -e $temp_dir ] ; then
+        mkdir -p $temp_dir
+    fi
+    if [ ! -d $temp_dir -o ! -w $temp_dir ] ; then
+        echo "1ERROR: unable to create or write to $temp_dir"
+        exit 0
+    fi
+fi
+
+
 # Get a suitable name for temp file
 if [ "x$debug" != "xyes" ]
 then
     if [ ! -z "$creamjobid"  ] ; then
-                tmp_file=cream_${creamjobid}
-        else
-		rand=$RANDOM$RANDOM$RANDOM$RANDOM
-		tmp_file=bl_${rand:0:12}
-		`touch $tmp_file;chmod 600 $tmp_file`
-        fi
-        if [ $? -ne 0 ]; then
-                echo "Cannot create submission file"
+        tmp_name="cream_${creamjobid}"
+        tmp_file="$temp_dir/$tmp_name"
+    else
+        rand=$RANDOM$RANDOM$RANDOM$RANDOM
+        tmp_name=bl_${rand:0:12}
+        tmp_file="$temp_dir/$tmp_name"
+        `touch $tmp_file;chmod 600 $tmp_file`
+    fi
+    if [ $? -ne 0 ]; then
+        echo Error
         exit 1
     fi
 else
@@ -182,7 +203,7 @@ if [ "x$stgproxy" == "xyes" ] ; then
     [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] || proxy_local_file=/tmp/x509up_u`id -u`
     if [ -r "$proxy_local_file" -a -f "$proxy_local_file" ] ; then
         if [ ! -z $blahpd_inputsandbox ]; then blahpd_inputsandbox="${blahpd_inputsandbox},"; fi
-        proxy_remote_file=${tmp_file}.proxy
+        proxy_remote_file=${tmp_name}.proxy
         blahpd_inputsandbox="${blahpd_inputsandbox}${proxy_remote_file}@`hostname -f`:${proxy_local_file}"
         to_be_moved="$to_be_moved ${proxy_remote_file}"
         need_to_reset_proxy=yes
@@ -206,7 +227,7 @@ if [ ! -z "$stdout" ] ; then
     if [ "${stdout:0:1}" != "/" ] ; then stdout=${workdir}/${stdout} ; fi
     arguments="$arguments >`basename $stdout`"
     if [ ! -z $blahpd_outputsandbox ]; then blahpd_outputsandbox="${blahpd_outputsandbox},"; fi
-    blahpd_outputsandbox="${blahpd_outputsandbox}home_${tmp_file}/`basename $stdout`@`hostname -f`:$stdout"
+    blahpd_outputsandbox="${blahpd_outputsandbox}home_${tmp_name}/`basename $stdout`@`hostname -f`:$stdout"
 fi
 if [ ! -z "$stderr" ] ; then
     if [ "${stderr:0:1}" != "/" ] ; then stderr=${workdir}/${stderr} ; fi
@@ -215,7 +236,7 @@ if [ ! -z "$stderr" ] ; then
     else
         arguments="$arguments 2>`basename $stderr`"
         if [ ! -z $blahpd_outputsandbox ]; then blahpd_outputsandbox="${blahpd_outputsandbox},"; fi
-        blahpd_outputsandbox="${blahpd_outputsandbox}home_${tmp_file}/`basename $stderr`@`hostname -f`:$stderr"
+        blahpd_outputsandbox="${blahpd_outputsandbox}home_${tmp_name}/`basename $stderr`@`hostname -f`:$stderr"
     fi
 fi
 
@@ -236,12 +257,12 @@ end_of_preamble
 
 #local batch system-specific file output must be added to the submit file
 if [ ! -z $req_file ] ; then
-    echo \#\!/bin/sh >> temp_req_script_$req_file
-    cat $req_file >> temp_req_script_$req_file
-    echo "source ${GLITE_LOCATION:-/opt/glite}/bin/pbs_local_submit_attributes.sh" >> temp_req_script_$req_file
-    chmod +x temp_req_script_$req_file
-    ./temp_req_script_$req_file  >> $tmp_file 2> /dev/null
-    rm -f temp_req_script_$req_file
+    echo \#\!/bin/sh >> ${req_file}-temp_req_script
+    cat $req_file >> ${req_file}-temp_req_script
+    echo "source ${GLITE_LOCATION:-/opt/glite}/bin/pbs_local_submit_attributes.sh" >> ${req_file}-temp_req_script
+    chmod +x ${req_file}-temp_req_script
+    ${req_file}-temp_req_script  >> $tmp_file 2> /dev/null
+    rm -f ${req_file}-temp_req_script
     rm -f $req_file
 fi
 
@@ -252,20 +273,74 @@ fi
 [ -z "$blahpd_inputsandbox" ]  || echo "#PBS -W stagein=$blahpd_inputsandbox" >> $tmp_file
 [ -z "$blahpd_outputsandbox" ] || echo "#PBS -W stageout=$blahpd_outputsandbox" >> $tmp_file
 echo "#PBS -m n"  >> $tmp_file
+#Add files to transfer to execution node
+#absolute paths
+ if [ ! -z "$inputflstring" ] ; then
+         exec 4<> "$inputflstring"
+         while read xfile <&4 ; do
+               if [ ! -z $xfile  ] ; then
+                       xfilesandbox="./`basename ${xfile}`@`hostname -f`:${xfile}"
+                       echo "#PBS -W stagein=$xfilesandbox" >> $tmp_file
+               fi
+         done
+         exec 4<&-
+       rm -f $inputflstring
+ fi
+xfile=
+xfilesandbox=
+#Add files to transfer from execution node
+ if [ ! -z "$outputflstring" ] ; then
+        exec 5<> "$outputflstring"
+        if [ ! -z "$outputflstringremap" ] ; then
+                exec 6<> "$outputflstringremap"
+        fi
+        while read xfile <&5 ; do
+               if [ ! -z $xfile  ] ; then
+                       if [ ! -z "$outputflstringremap" ] ; then
+                                read xfileremap <&6
+                       fi
+
+                       xfilesandbox="${xfile}@`hostname -f`"
+                       if [ ! -z $xfileremap ] ; then
+                                if [ "${xfileremap:0:1}" != "/" ] ; then
+                                        xfilesandbox="${xfilesandbox}:${workdir}/${xfileremap}"
+                                else
+                                        xfilesandbox="${xfilesandbox}:${xfileremap}"
+                                fi
+                        else
+                                xfilesandbox="${xfilesandbox}:${workdir}/${xfile}"
+                        fi
+                       echo "#PBS -W stageout=$xfilesandbox" >> $tmp_file
+               fi
+         done
+         exec 5<&-
+         exec 6<&-
+         rm -f $outputflstring
+         if [ ! -z "$outputflstringremap" ] ; then
+                rm -f $outputflstringremap
+         fi
+ fi
 
 # Set the required environment variables (escape values with double quotes)
-if [ "x$envir" != "x" ]  
-then
-    echo "" >> $tmp_file
-    echo "# Setting the environment:" >> $tmp_file
-    echo "`echo ';'$envir | sed -e 's/;[^=]*;/;/g' -e 's/;[^=]*$//g' | sed -e 's/;\([^=]*\)=\([^;]*\)/;export \1=\"\2\"/g' | awk 'BEGIN { RS = ";" } ; { print $0 }'`" >> $tmp_file
+if [ "x$environment" != "x" ] ; then
+        echo "" >> $tmp_file
+        echo "# Setting the environment:" >> $tmp_file
+	eval "env_array=($environment)"
+        for  env_var in "${env_array[@]}"; do
+                 echo export \"$env_var\" >> $tmp_file
+        done
+else
+        if [ "x$envir" != "x" ] ; then
+                echo "" >> $tmp_file
+                echo "# Setting the environment:" >> $tmp_file
+                echo "`echo ';'$envir | sed -e 's/;[^=]*;/;/g' -e 's/;[^=]*$//g' | sed -e 's/;\([^=]*\)=\([^;]*\)/;export \1=\"\2\"/g' | awk 'BEGIN { RS = ";" } ; { print $0 }'`" >> $tmp_file
+        fi
 fi
-#'#
 
 # Set the temporary home (including cd'ing into it)
-echo "mkdir ~/home_$tmp_file">>$tmp_file
-[ -z "$to_be_moved" ] || echo "mv $to_be_moved ~/home_$tmp_file &>/dev/null">>$tmp_file
-echo "export HOME=~/home_$tmp_file">>$tmp_file
+echo "mkdir ~/home_$tmp_name">>$tmp_file
+[ -z "$to_be_moved" ] || echo "mv $to_be_moved ~/home_$tmp_name &>/dev/null">>$tmp_file
+echo "export HOME=~/home_$tmp_name">>$tmp_file
 echo "cd">>$tmp_file
 
 # Set the path to the user proxy
@@ -335,24 +410,23 @@ sleep 1
 ###############################################################
 # Submit the script
 ###############################################################
-curdir=`pwd`
 
 if [ "x$workdir" != "x" ]; then
     cd $workdir
 fi
 
 if [ $? -ne 0 ]; then
-    echo "Failed to CD to Initial Working Directory"
-    rm -f $curdir/$tmp_file
+    echo "Failed to CD to Initial Working Directory." >&2
+    echo Error # for the sake of waiting fgets in blahpd
+    rm -f $tmp_file
     exit 1
 fi
 
 datenow=`date +%Y%m%d`
-jobID=`${pbs_binpath}/qsub $curdir/$tmp_file 2>&1` # actual submission
+jobID=`${pbs_binpath}/qsub $tmp_file 2> /dev/null` # actual submission
 retcode=$?
 if [ "$retcode" != "0" ] ; then
-	echo $jobID
-	rm -f $curdir/$tmp_file
+	rm -f $tmp_file
 	exit 1
 fi
 
@@ -374,12 +448,12 @@ sleep 5
 logfile=""
 jobID_log=""
 log_check_retry_count=0
-
+tfbasename="`basename ${tmp_file}`"
 while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
 
  cliretcode=0
  if [ "x$pbs_BLParser" == "xyes" ] ; then
-     jobID_log=`echo BLAHJOB/$tmp_file| $BLClient -a $pbs_BLPserver -p $pbs_BLPport`
+     jobID_log=`echo BLAHJOB/$tmp_name| $BLClient -a $pbs_BLPserver -p $pbs_BLPport`
      cliretcode=$?
      if [ "x$jobID_log" != "x" ] ; then
         logfile=$datenow
@@ -388,24 +462,26 @@ while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
  
  if [ "$cliretcode" == "1" -a "x$pbs_fallback" == "xno" ] ; then
   ${pbs_binpath}/qdel $jobID
-  echo "Error: not able to talk with logparser on ${pbs_BLPserver}:${pbs_BLPport}"
-  rm -f $curdir/$tmp_file
+  echo "Error: not able to talk with logparser on ${pbs_BLPserver}:${pbs_BLPport}" >&2
+  echo Error # for the sake of waiting fgets in blahpd
+  rm -f $tmp_file
   exit 1
  fi
 
  if [ "$cliretcode" == "1" -o "x$pbs_BLParser" != "xyes" ] ; then
 
-     logfile=`find $logpath -type f -newer $curdir/$tmp_file -exec grep -l "job name = $tmp_file" {} \;`
+     logfile=`find $logpath -type f -newer $tmp_file -exec grep -l "job name = $tmp_name" {} \;`
      if [ "x$logfile" != "x" ] ; then
 
-       jobID_log=`grep "job name = $tmp_file" $logfile | awk -F";" '{ print $5 }'`
+       jobID_log=`grep "job name = $tmp_name" $logfile | awk -F";" '{ print $5 }'`
      fi
  fi
 
  if (( log_check_retry_count++ >= 12 )); then
      ${pbs_binpath}/qdel $jobID
-     echo "Error: job not found in logs"
-     rm -f $curdir/$tmp_file
+     echo "Error: job not found in logs" >&2
+     echo Error # for the sake of waiting fgets in blahpd
+     rm -f $tmp_file
      exit 1
  fi
 
@@ -431,7 +507,7 @@ fi
 echo "BLAHP_JOBID_PREFIXpbs/`basename $logfile`/$jobID"
 
 # Clean temporary files
-cd $curdir
+cd $temp_dir
 # DEBUG: cp $tmp_file /tmp
 rm -f $tmp_file
 

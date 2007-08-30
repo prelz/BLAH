@@ -18,6 +18,8 @@
 #   13 Jul 2004 - (prelz@mi.infn.it). Make sure an entire command is assembled 
 #                                     before forwarding it.
 #   20 Sep 2004 - Added support for Queue attribute.
+#   12 Dec 2006 - (prelz@mi.infn.it). Added commands to cache proxy
+#                 filenames.
 #
 #  Description:
 #   Serve a connection to a blahp client, performing appropriate
@@ -54,6 +56,7 @@
 #include "job_status.h"
 #include "resbuffer.h"
 #include "mtsafe_popen.h"
+#include "proxy_hashcontainer.h"
 
 #define COMMAND_PREFIX "-c"
 #define PERSISTENT_BUFFER BUFFER_DONT_SAVE
@@ -65,6 +68,7 @@
 #define MAX_CERT_SIZE		100000
 #define MAX_TEMP_ARRAY_SIZE              1000
 #define MAX_FILE_LIST_BUFFER_SIZE        10000
+#define DEFAULT_TEMP_DIR                 "/tmp"
  
 t_resline *first_job = NULL;
 t_resline *last_job = NULL;
@@ -108,6 +112,9 @@ int limit_proxy(char* proxy_name, char* limited_proxy_name);
 int getProxyInfo(char* proxname, char* fqan, char* userDN);
 int logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char* userDN, char** environment);
 int CEReq_parse(classad_context cad, char* filename);
+char* outputfileRemaps(char *sb,char *sbrmp);
+int check_TransferINOUT(classad_context cad, char **command, char *reqId);
+char *ConvertArgs(char* args, char sep);
 
 /* Global variables */
 static int server_socket;
@@ -121,8 +128,11 @@ char *blah_version;
 static char lrmslist[MAX_LRMS_NUMBER][MAX_LRMS_NAME_SIZE];
 static int  lrms_counter = 0;
 int  glexec_mode = 0; /* FIXME: need to become static */
+char *tmp_dir;
+struct stat tmp_stat;
 char *bssp = NULL;
 char *gloc = NULL;
+int enable_condor_glexec = FALSE;
 
 /* GLEXEC ENVIRONMENT VARIABLES */
 #define GLEXEC_MODE_IDX         0
@@ -171,6 +181,9 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	char *old_ld_lib=NULL;
 	char *new_ld_lib=NULL;
 	char **str_cad;
+	const char *enable_condor_glexec_attr="enable_glexec_from_condor";
+	int enable_condor_glexec_attr_size;
+	char *value_loc;
 
 	for (i = 0; i < GLEXEC_ENV_TOTAL; i++)
 		glexec_env_var[i] = NULL;
@@ -184,6 +197,10 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	{
 		result = DEFAULT_GLITE_LOCATION;
 	}
+        if ((tmp_dir = getenv("GAHP_TEMP")) == NULL)
+        {
+                tmp_dir  = DEFAULT_TEMP_DIR;
+        }
 
 	needed_libs = make_message("%s/lib:%s/externals/lib:%s/lib:/opt/lcg/lib", result, result, getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus");
 	old_ld_lib=getenv("LD_LIBRARY_PATH");
@@ -202,10 +219,57 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 		gloc = DEFAULT_GLEXEC_COMMAND;
 	}
 	conffilestr = make_message("%s/etc/blah.config",result);
+
+	enable_condor_glexec_attr_size = strlen(enable_condor_glexec_attr);
+
 	if((conffile = fopen(conffilestr,"r")) != NULL)
 	{
 		while(fgets(buffer, 128, conffile))
 		{
+			if (!strncmp(buffer,enable_condor_glexec_attr,
+			                    enable_condor_glexec_attr_size))
+			{
+				enable_condor_glexec = TRUE;
+				value_loc = strchr(buffer + enable_condor_glexec_attr_size, '=');
+				if (value_loc != NULL)
+				{
+				  	for(value_loc++;
+					    *value_loc == ' ' || 
+					    *value_loc == '\t';
+					    value_loc++) 
+						/*Empty - skip whitespace*/ ;
+				}
+
+				/* Attribute set to 'no' ? */
+				if ((value_loc[0] == 'n' || value_loc[0] == 'N')
+				  &&(value_loc[1] == 'o' || value_loc[1] == 'O'))
+					enable_condor_glexec = FALSE;
+				
+				if (enable_condor_glexec)
+				{
+					/* Enable condor/glexec commands */
+					/* FIXME: should check/assert for success */
+					command = find_command("CACHE_PROXY_FROM_FILE");
+					if (command) command->cmd_handler = cmd_cache_proxy_from_file;
+					command = find_command("USE_CACHED_PROXY");
+					if (command) command->cmd_handler = cmd_use_cached_proxy;
+					command = find_command("UNCACHE_PROXY");
+					if (command) command->cmd_handler = cmd_uncache_proxy;
+					/* Check that tmp_dir is group writable */
+					if (stat(tmp_dir, &tmp_stat) >= 0)
+					{
+						if ((tmp_stat.st_mode & S_IWGRP) == 0)
+						{
+							if (chmod(tmp_dir,tmp_stat.st_mode|S_IWGRP|S_IRGRP|S_IXGRP)<0)
+							{
+								fprintf(stderr,"WARNING: cannot make %s group writable: %s\n",
+								        tmp_dir, strerror(errno));
+							}
+						}
+					}
+				}
+			}
+
 			if (!strncmp (buffer,"supported_lrms=", strlen("supported_lrms=")))
 			{
 				bc+=strlen("supported_lrms=");
@@ -235,6 +299,9 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 			if (parse_command(input_buffer, &argc, &argv) == 0)
 				command = find_command(argv[0]);
 			else
+				command = NULL;
+
+			if (command && (command->cmd_handler == cmd_unknown))
 				command = NULL;
 
 			if (command)
@@ -344,6 +411,127 @@ cmd_commands(void *args)
 	char *result;
 
 	result = known_commands();
+	return(result);
+}
+
+void *
+cmd_unknown(void *args)
+{
+	/* Placeholder for commands that are not advertised via */
+        /* known_commands and should therefore never be executed */
+	return(NULL);
+}
+ 
+void *
+cmd_cache_proxy_from_file(void *args)
+{
+	char **argv = (char **)args;
+	char *proxyId = argv[1];
+	char *proxyPath = argv[2];
+	char *result;
+
+	if (proxy_hashcontainer_append(proxyId, proxyPath) == NULL)
+	{
+		/* Error in insertion */
+		return(NULL);
+	} else 
+	{
+		result = strdup("Proxy\\ cached");
+	}
+	return(result);
+}
+
+void *
+cmd_use_cached_proxy(void *args)
+{
+	char **argv = (char **)args;
+	char *glexec_argv[4];
+	proxy_hashcontainer_entry *entry;
+	char *proxyId = argv[1];
+	char *result = NULL;
+	char *junk;
+	char *proxy_name, *proxy_dir;
+	struct stat proxy_stat;
+
+	entry = proxy_hashcontainer_lookup(proxyId);
+	if (entry == NULL)
+	{
+		return(result);
+	} else
+	{
+		glexec_argv[0] = argv[0];
+		glexec_argv[1] = entry->proxy_file_name;
+		glexec_argv[2] = entry->proxy_file_name;
+		glexec_argv[3] = "0"; /* Limit the proxy */
+		if ((junk = (char *)cmd_set_glexec_dn((void *)glexec_argv)) != NULL)
+		{
+			free(junk);
+			/* Check that the proxy dir is group writable */
+			proxy_name = strdup(entry->proxy_file_name);
+			if (proxy_name != NULL)
+			{
+				proxy_dir = dirname(proxy_name);
+				if (stat(proxy_dir, &proxy_stat) >= 0)
+				{
+					if ((proxy_stat.st_mode & S_IWGRP) == 0)
+					{
+						if (chmod(proxy_dir,proxy_stat.st_mode|S_IWGRP|S_IRGRP|S_IXGRP)<0)
+						{
+							result = make_message("Glexec\\ proxy\\ set\\ to\\ %s\\ (could\\ not\\ set\\ dir\\ IWGRP\\ bit)",
+									entry->proxy_file_name);
+						} else {
+							result = make_message("Glexec\\ proxy\\ set\\ to\\ %s\\ (dir\\ IWGRP\\ bit\\ set)",
+									entry->proxy_file_name);
+						}
+					} else {
+						result = make_message("Glexec\\ proxy\\ set\\ to\\ %s\\ (dir\\ IWGRP\\ bit\\ already\\ on)",
+									entry->proxy_file_name);
+					}
+				} else {
+					result = make_message("Glexec\\ proxy\\ set\\ to\\ %s\\ (cannot\\ stat\\ %s)",
+								entry->proxy_file_name, proxy_dir);
+				}
+				free(proxy_name);
+			} else {
+				result = make_message("Glexec\\ proxy\\ set\\ to\\ %s\\ (Out\\ of\\ memory)",
+							entry->proxy_file_name);
+			}
+		}
+	}
+	return(result);
+}
+
+void *
+cmd_uncache_proxy(void *args)
+{
+	char **argv = (char **)args;
+	char *proxyId = argv[1];
+	char *junk;
+	char *result = NULL;
+
+	proxy_hashcontainer_entry *entry;
+
+	entry = proxy_hashcontainer_lookup(proxyId);
+	if (entry == NULL)
+	{
+		return(result);
+	} else
+	{
+                      /* Check for entry->proxy_file_name at the beginning */
+                      /* of glexec_env_var[GLEXEC_SOURCE_PROXY_IDX] to */
+                      /* allow for limited proxies */
+		if ( glexec_mode &&
+		    ( strncmp(glexec_env_var[GLEXEC_SOURCE_PROXY_IDX],
+		              entry->proxy_file_name,
+                              strlen(entry->proxy_file_name)) == 0) )
+		{
+			/* Need to unregister cached proxy from glexec */
+                	junk = (char *)cmd_unset_glexec_dn(NULL);
+                	if (junk != NULL) free(junk);
+		}
+		proxy_hashcontainer_unlink(proxyId);
+		result = strdup("Proxy\\ uncached");
+	}
 	return(result);
 }
 
@@ -494,7 +682,7 @@ cmd_submit_job(void *args)
 	int retcod;
 	char *command;
 	char jobId[JOBID_MAX_LEN];
-	char *resultLine;
+	char *resultLine=NULL;
 	char **argv = (char **)args;
 	classad_context cad;
 	char *reqId = argv[1];
@@ -519,6 +707,11 @@ cmd_submit_job(void *args)
 	regex_t regbuf;
 	size_t nmatch;
 	regmatch_t pmatch[3];
+        char *arguments=NULL;
+        char *conv_arguments=NULL;
+        char *environment=NULL;
+        char *conv_environment=NULL;
+	struct stat buf;
 
 
 	/* Parse the job description classad */
@@ -548,7 +741,12 @@ cmd_submit_job(void *args)
 	/* If there are additional arguments, we are in glexec mode */
 	if(argv[CMD_SUBMIT_JOB_ARGS + 1] != NULL)
 	{
-		/* Add the target proxy */
+		/* Add the target proxy - cause glexec to move it to another file */
+		proxynameNew = make_message("%s.glexec", proxyname);
+		free(proxyname);
+		proxyname = proxynameNew;
+                if (stat(proxynameNew, &buf) >= 0) unlink(proxynameNew);
+
 		for(count = CMD_SUBMIT_JOB_ARGS + 2; argv[count]; count++);
 		argv = (char **)realloc(argv, sizeof(char *) * (count + 2));
 		argv[count] = make_message("GLEXEC_TARGET_PROXY=%s", proxyname);
@@ -597,6 +795,20 @@ cmd_submit_job(void *args)
 		goto cleanup_command;
 	}
 
+        /* temporary directory path*/
+	command_ext = make_message("%s -T %s", command, tmp_dir);
+	if (command_ext == NULL)
+	{
+		/* PUSH A FAILURE */
+		resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
+		goto cleanup_command;
+	}
+	/* Swap new command in */
+	free(command);
+	command = command_ext;
+	if(check_TransferINOUT(cad,&command,reqId))
+		goto cleanup_cad;
+
 	/* Set the CE requirements */
 	if((result = classad_get_dstring_attribute(cad, "CERequirements", &ce_req)) == C_CLASSAD_NO_ERROR)
 	{
@@ -626,15 +838,80 @@ cmd_submit_job(void *args)
 	    (set_cmd_string_option(&command, cad, "Out",        "-o", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "Err",        "-e", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "Iwd",        "-w", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
-	    (set_cmd_string_option(&command, cad, "Env",        "-v", SINGLE_QUOTE)  == C_CLASSAD_OUT_OF_MEMORY) ||
+//	    (set_cmd_string_option(&command, cad, "Env",        "-v", SINGLE_QUOTE)  == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "Queue",      "-q", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_int_option   (&command, cad, "NodeNumber", "-n", INT_NOQUOTE)   == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_bool_option  (&command, cad, "StageCmd",   "-s", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
-	    (set_cmd_string_option(&command, cad, "ClientJobId","-j", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
-	    (set_cmd_string_option(&command, cad, "Args",      	"--", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY))
+	    (set_cmd_string_option(&command, cad, "ClientJobId","-j", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY))
+//	    (set_cmd_string_option(&command, cad, "Args",      	"--", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY))
 	{
 		/* PUSH A FAILURE */
 		resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
+		goto cleanup_command;
+	}
+
+        /*if present environment attribute must be used instead of env */
+        if ((result = classad_get_dstring_attribute(cad, "environment", &environment)) == C_CLASSAD_NO_ERROR)
+        {
+                conv_environment = ConvertArgs(environment,' ');
+		/* fprintf(stderr, "DEBUG: args conversion <%s> to <%s>\n", environment, conv_environment); */
+                if(conv_environment == NULL)
+                {
+                        free(environment);
+                }else
+                {
+                        command_ext = make_message("%s -V %s", command, conv_environment);
+                        if (command_ext == NULL)
+                        {
+                                /* PUSH A FAILURE */
+                                resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
+                                free(environment);
+                                free(conv_environment);
+                                goto cleanup_command;
+                        }
+                }
+		free(environment);
+		free(conv_environment);
+               /* Swap new command in */
+               free(command);
+               command = command_ext;
+        }else
+        if(set_cmd_string_option(&command, cad, "Env","-v", SINGLE_QUOTE) == C_CLASSAD_OUT_OF_MEMORY)
+        {
+                /* PUSH A FAILURE */
+                resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
+                goto cleanup_command;
+        }
+
+        /*if present arguments attribute must be used instead of args */
+        if ((result = classad_get_dstring_attribute(cad, "Arguments", &arguments)) == C_CLASSAD_NO_ERROR)
+        {
+		if (arguments[0] != '\000')
+		{
+                	conv_arguments = ConvertArgs(arguments, ' ');
+			free(arguments);
+			/* fprintf(stderr, "DEBUG: args conversion <%s> to <%s>\n", arguments, conv_arguments); */
+                	if (conv_arguments)
+                	{
+				command_ext = make_message("%s -- %s", command, conv_arguments);
+				free(conv_arguments);
+			}
+
+			if ((conv_arguments == NULL) || (command_ext == NULL))
+			{
+				/* PUSH A FAILURE */
+				resultLine = make_message("%s 1 Out\\ of\\ memory\\ creating\\ submission\\ command", reqId);
+				goto cleanup_command;
+			}
+			/* Swap new command in */
+			free(command);
+			command = command_ext;
+		}
+	}
+	else if (set_cmd_string_option(&command, cad, "Args","--", NO_QUOTE) == C_CLASSAD_OUT_OF_MEMORY)
+        {
+		/* PUSH A FAILURE */
+                resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
 		goto cleanup_command;
 	}
 
@@ -846,87 +1123,204 @@ cmd_status_job(void *args)
 	return;
 }
 
+int
+get_status_and_old_proxy(int use_glexec, char *jobDescr, 
+			char **status_argv, char **old_proxy,
+			char **workernode, char **error_string)
+{
+	char *proxy_link;
+	char *r_old_proxy=NULL;
+	int readlink_res, retcod;
+	classad_context status_ad[MAX_JOB_NUMBER];
+	char errstr[MAX_JOB_NUMBER][ERROR_MAX_LEN];
+	int jobNumber=0, jobStatus;
+	char *command, *escaped_command;
+	char error_buffer[ERROR_MAX_LEN];
+	char *jobDescr_tail;
+	int i;
+
+	if (old_proxy == NULL) return(-1);
+	*old_proxy = NULL;
+	if (workernode == NULL) return(-1);
+	*workernode = NULL;
+	if (error_string != NULL) *error_string = NULL;
+
+	jobDescr_tail = strrchr(jobDescr, '/');
+	if (jobDescr_tail == NULL) jobDescr_tail = jobDescr;
+	else jobDescr_tail++;
+
+	if (!use_glexec)
+	{
+		if ((r_old_proxy = (char *)malloc(FILENAME_MAX)) == NULL)
+		{
+			fprintf(stderr, "Out of memory.\n");
+			exit(MALLOC_ERROR);
+		}
+		if ((proxy_link = make_message("%s/.blah_jobproxy_dir/%s.proxy", getenv("HOME"), jobDescr_tail)) == NULL)
+	 	{
+			fprintf(stderr, "Out of memory.\n");
+			exit(MALLOC_ERROR);
+		}
+		if ((readlink_res = readlink(proxy_link, r_old_proxy, FILENAME_MAX - 2)) == -1)
+		{
+			if (error_string != NULL)
+			{
+				*error_string = escape_spaces(strerror_r(errno, error_buffer, sizeof(error_buffer)));
+			}
+			/* Proxy link for renewal is not accessible */
+			/* Try with .norenew */
+			free(proxy_link);
+			if ((proxy_link = make_message("%s/.blah_jobproxy_dir/%s.proxy.norenew", getenv("HOME"), jobDescr_tail)) == NULL)
+	 		{
+				fprintf(stderr, "Out of memory.\n");
+				exit(MALLOC_ERROR);
+			}
+			if ((readlink_res = readlink(proxy_link, r_old_proxy, FILENAME_MAX - 2)) >= 0)
+			{
+				/* No need to check for job status - */
+				/* Proxy has to be renewed locally */
+				r_old_proxy[readlink_res] = '\000'; /* readlink does not append final NULL */
+				*old_proxy = r_old_proxy;
+				free(proxy_link);
+				return 1; /* 'local' state */
+			}
+			free(proxy_link);
+			free(r_old_proxy);
+			return -1; /* Error */
+		}
+		r_old_proxy[readlink_res] = '\000'; /* readlink does not append final NULL */
+		*old_proxy = r_old_proxy;
+		free(proxy_link);
+
+	}
+	else
+	{
+		/* GLEXEC case */
+		command = make_message("%s /usr/bin/readlink -n .blah_jobproxy_dir/%s.proxy", gloc, jobDescr_tail);
+		if (command == NULL)
+	 	{
+			fprintf(stderr, "Out of memory.\n");
+			exit(MALLOC_ERROR);
+		}
+		retcod = exe_getout(command, status_argv, &r_old_proxy);
+		if (r_old_proxy == NULL || strlen(r_old_proxy) == 0 || retcod != 0)
+		{
+			if (r_old_proxy != NULL)
+			{
+				free(r_old_proxy);
+				r_old_proxy = NULL;
+			}
+
+			if (error_string != NULL)
+			{
+				escaped_command = escape_spaces(command);
+				*error_string = make_message("%s\\ returns\\ %d\\ and\\ no\\ proxy.", escaped_command, retcod);;
+				free(escaped_command);
+			}
+			/* Proxy link for renewal is not accessible */
+			/* Try with .norenew */
+			free(command);
+			command = make_message("%s /usr/bin/readlink -n .blah_jobproxy_dir/%s.proxy.norenew", gloc, jobDescr_tail);
+			retcod = exe_getout(command, status_argv, &r_old_proxy);
+			if (r_old_proxy != NULL && strlen(r_old_proxy) > 0 && retcod == 0)
+			{
+				/* No need to check for job status - */
+				/* Proxy has to be renewed locally */
+				*old_proxy = r_old_proxy;
+				free(command);
+				return 1; /* 'local' state */
+			}
+			if (r_old_proxy != NULL) free(r_old_proxy);
+			free(command);
+			return(-1);
+		}
+		*old_proxy = r_old_proxy;
+		free(command);
+	}
+
+	/* If we reach here we have a proxy *and* we have */
+	/* to check on the job status */
+	retcod = get_status(jobDescr, status_ad, status_argv, errstr, 1, &jobNumber);
+
+	if (jobNumber > 0 && (!strcmp(errstr[0], "No Error")))
+	{
+		classad_get_int_attribute(status_ad[0], "JobStatus", &jobStatus);
+		retcod = classad_get_dstring_attribute(status_ad[0], "WorkerNode", workernode);
+		for (i=0; i<jobNumber; i++) if (status_ad[i]) classad_free(status_ad[i]);
+		return jobStatus;
+	}
+	if (error_string != NULL)
+	{
+		*error_string = escape_spaces(errstr[0]);	
+	}
+	if (jobNumber > 0) 
+	{
+		for (i=0; i<jobNumber; i++) if (status_ad[i]) classad_free(status_ad[i]);
+	}
+	return -1;
+}
+
 #define CMD_RENEW_PROXY_ARGS 3
 void *
 cmd_renew_proxy(void *args)
 {
-	classad_context status_ad[MAX_JOB_NUMBER];
 	char *resultLine;
 	char **argv = (char **)args;
-	char **arg_ptr;
-	char errstr[MAX_JOB_NUMBER][ERROR_MAX_LEN];
 	char *reqId = argv[1];
 	char *jobDescr = argv[2];
 	char *proxyFileName = argv[3];
-	char *workernode;
+	char *workernode = NULL;
 	char *command = NULL;
-	char *proxy_link = NULL;
-	char *old_proxy;
-	char *temp_str = NULL;
-	char *res_str = NULL;
+	char *old_proxy = NULL;
+	char *dummy_cmd_out = NULL;
 	
-	int jobStatus, retcod, result, count;
+	int jobStatus, retcod, count;
 	char *cmd_out;
-	char error_buffer[ERROR_MAX_LEN];
-	char *error_string;
+	char *error_string = NULL;
 	char *proxyFileNameNew = NULL;
-	int  job_number=0;
+	int use_glexec;
 
-	retcod = get_status(jobDescr, status_ad, argv + CMD_RENEW_PROXY_ARGS + 1, errstr, 1, &job_number);
+	use_glexec = (argv[CMD_RENEW_PROXY_ARGS + 1] != NULL);
 
-	if (job_number > 0 && (!strcmp(errstr[0], "No Error")))
+	if ((jobStatus=get_status_and_old_proxy(use_glexec, jobDescr, argv + CMD_RENEW_PROXY_ARGS + 1, &old_proxy, &workernode, &error_string)) < 0)
 	{
-		classad_get_int_attribute(status_ad[0], "JobStatus", &jobStatus);
-		jobDescr = strrchr(jobDescr, '/') + 1;
+		resultLine = make_message("%s 1 Cannot\\ locate\\ old\\ proxy:\\ %s", reqId, error_string);
+		if (error_string != NULL) free(error_string);
+		if (old_proxy != NULL) free(old_proxy);
+		if (workernode != NULL) free(workernode);
+	}
+	else
+	{
+		if (error_string != NULL) free(error_string);
 		switch(jobStatus)
 		{
 			case 1: /* job queued: copy the proxy locally */
 				/* FIXME: add all the controls */
-				if (argv[CMD_RENEW_PROXY_ARGS + 1] == NULL)
+				if (!use_glexec)
 				{
 					/* Not in GLEXEC mode */
-					if ((proxy_link = make_message("%s/.blah_jobproxy_dir/%s.proxy", getenv("HOME"), jobDescr)) == NULL)
-				 	{
-						fprintf(stderr, "Out of memory.\n");
-						exit(MALLOC_ERROR);
-					}
-					if ((old_proxy = (char *)malloc(FILENAME_MAX)) == NULL)
-					{
-						fprintf(stderr, "Out of memory.\n");
-						exit(MALLOC_ERROR);
-					}
-					if ((result = readlink(proxy_link, old_proxy, FILENAME_MAX - 2)) == -1)
-					{
-						error_string = escape_spaces(strerror_r(errno, error_buffer, sizeof(error_buffer)));
-						resultLine = make_message("%s 1 Cannot\\ find\\ old\\ proxy:\\ %s", reqId, error_string);
-						free(error_string);
-						free(proxy_link);
-						free(old_proxy);
-						break;
-					}
-					old_proxy[result] = '\000'; /* readline does not append final NULL */
 					limit_proxy(proxyFileName, old_proxy);
-					free(proxy_link);
 				}
 				else
 				{
-					/* GLEXEC mode: add the target proxy */
+					/* GLEXEC mode */
+
+					/* add the target proxy */
 					for(count = CMD_RENEW_PROXY_ARGS + 2; argv[count]; count++);
 					argv = (char **)realloc(argv, sizeof(char *) * (count + 2));
-					argv[count] = make_message("GLEXEC_TARGET_PROXY=%s", proxyFileName);
+					argv[count] = make_message("GLEXEC_TARGET_PROXY=%s", old_proxy);
 					argv[count + 1] = NULL;
 					/* FIXME: should not execute anything, just create the new copy of the proxy (not yet supported by glexec) */
-					command = make_message("%s /usr/bin/readlink -n $HOME/.blah_jobproxy_dir/%s.proxy", gloc, proxyFileName);
-					retcod = exe_getout(command, argv + CMD_RENEW_PROXY_ARGS + 1, &old_proxy);
+					command = make_message("%s /bin/pwd", gloc);
+					retcod = exe_getout(command, argv + CMD_RENEW_PROXY_ARGS + 1, &dummy_cmd_out);
 					free(command);
 				}
 				resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
-				free(old_proxy);
+				if (dummy_cmd_out != NULL) free(dummy_cmd_out);
 				break;
 
 			case 2: /* job running: send the proxy to remote host */
-				result = classad_get_dstring_attribute(status_ad[0], "WorkerNode", &workernode);
-				if (result == C_CLASSAD_NO_ERROR && strcmp(workernode, ""))
+				if (workernode != NULL && strcmp(workernode, ""))
 				{
 					if(argv[CMD_RENEW_PROXY_ARGS + 1] == NULL)
 					{
@@ -965,7 +1359,6 @@ cmd_renew_proxy(void *args)
 				{
 					resultLine = make_message("%s 1 Cannot\\ retrieve\\ executing\\ host", reqId);
 				}
-				if (workernode) free(workernode);
 				break;
 			case 3: /* job deleted */
 				/* no need to refresh the proxy */
@@ -982,12 +1375,8 @@ cmd_renew_proxy(void *args)
 			default:
 				resultLine = make_message("%s 1 Job\\ is\\ in\\ an\\ unknown\\ status\\ (%d)", reqId, jobStatus);
 		}
-	}
-	else
-	{
-		error_string = escape_spaces(errstr[0]);
-		resultLine = make_message("%s 1 %s", reqId, error_string);
-		free(error_string);
+		if (old_proxy != NULL) free(old_proxy);
+		if (workernode != NULL) free(workernode);
 	}
 		
 	if (resultLine)
@@ -1002,7 +1391,6 @@ cmd_renew_proxy(void *args)
 	}
 	
 	/* Free up all arguments */
-	if (job_number > 0 && status_ad[0]) classad_free(status_ad[0]);
 	free_args(argv);
 	return;
 }
@@ -1838,5 +2226,412 @@ int CEReq_parse(classad_context cad, char* filename)
 	}
 	fclose(req_file);
 	return 0;
+}
+
+int check_TransferINOUT(classad_context cad, char **command, char *reqId)
+{
+        char *resultLine=NULL;
+        int result;
+        char *tmpIOfilestring = NULL;
+        FILE *tmpIOfile = NULL;
+        char *tmpstr = NULL;
+        char *superbuffer = NULL;
+        char *superbufferRemaps = NULL;
+        char *superbufferTMP = NULL;
+        char *iwd = NULL;
+        char  filebuffer[MAX_FILE_LIST_BUFFER_SIZE];
+        char  singlefbuffer[MAX_FILE_LIST_BUFFER_SIZE];
+        struct timeval ts;
+        int i,cs,fc,oc,iwdlen,fbc,slen;
+        i=cs=fc=oc=iwdlen=fbc=slen=0;
+        char *newptr=NULL;
+        char *newptr1=NULL;
+        char *newptr2=NULL;
+        struct stat tmp_stat;
+        /* timetag to have unique Input and Output file lists */
+        gettimeofday(&ts, NULL);
+
+        /* write files in InputFileList */
+        result = classad_get_dstring_attribute(cad, "TransferInput", &superbuffer);
+        if (result == C_CLASSAD_NO_ERROR)
+        {
+                result = classad_get_dstring_attribute(cad, "Iwd", &iwd);
+                if(iwd == NULL)
+                {
+                        /* PUSH A FAILURE */
+                        resultLine = make_message("%s 1 Iwd\\ not\\ found\\ N/A", reqId);
+                        enqueue_result(resultLine);
+	                free(resultLine);
+			return 1;
+                }
+		iwdlen=strlen(iwd);
+                tmpIOfilestring = make_message("%s/%s_%s_%d%d", tmp_dir, "InputFileList",reqId, ts.tv_sec, ts.tv_usec);
+                tmpIOfile = fopen(tmpIOfilestring, "w");
+                if(tmpIOfile == NULL)
+                {
+                        /* PUSH A FAILURE */
+                        resultLine = make_message("%s 1 Error\\ opening\\ %s\\ N/A", reqId,tmpIOfilestring);
+                        free(tmpIOfilestring);
+                        enqueue_result(resultLine);
+                        free(resultLine);
+			return 1;
+                }
+
+		if (enable_condor_glexec && fstat(fileno(tmpIOfile), &tmp_stat) >= 0)
+		{
+			if ((tmp_stat.st_mode & S_IWGRP) == 0)
+			{
+				if (fchmod(fileno(tmpIOfile),tmp_stat.st_mode|S_IWGRP|S_IRGRP|S_IXGRP)<0)
+				{
+					fprintf(stderr,"WARNING: cannot make %s group writable: %s\n",
+					        tmpIOfilestring, strerror(errno));
+				}
+			}	
+		}
+
+                memset(singlefbuffer,10000,0);
+                memset(filebuffer,10000,0);
+                slen=strlen(superbuffer);
+                for ( i = 0 ; i < slen; )
+                {
+                        if ((superbuffer[i] == ',')||(i == (slen - 1)))
+                        {
+                                if (i == (slen - 1))
+                                {
+                                        superbuffer[++i] ='\n';
+                                }
+                                /* if the path of the file is not absolute must be added the Iwd directory before it*/
+                                if(superbuffer[oc] != '/')
+                                {
+                                        if(iwd==NULL)
+                                        {
+                                                /* PUSH A FAILURE */
+                                                resultLine = make_message("%s 1 No\\ Iwd\\  avalaible\\ for\\ InputFile\\ N/A", reqId);
+                                                free(tmpIOfilestring);
+						enqueue_result(resultLine);
+                        			free(resultLine);
+                                                return 1;
+                                        }
+                                       memcpy(singlefbuffer,iwd,iwdlen);
+                                        singlefbuffer[iwdlen] ='/';
+                                        memcpy(&singlefbuffer[iwdlen+1],&superbuffer[oc],i - oc);
+                                        singlefbuffer[iwdlen + i - oc + 1] ='\n';
+                                }else
+                                {
+                                        memcpy(&singlefbuffer[iwdlen+1],&superbuffer[oc],i - oc);
+                                        singlefbuffer[i - oc + 1] ='\n';
+                                }
+                                memcpy(&filebuffer[fbc],singlefbuffer,strlen(singlefbuffer));
+                                fbc+=strlen(singlefbuffer);
+                                fc++;
+                                if (i == (slen))
+                                {
+                                        filebuffer[fbc]=0;
+                                        break;
+                                }
+                                oc=++i;
+                        }
+                                else i++;
+                }
+                cs = fwrite(filebuffer,1, strlen(filebuffer), tmpIOfile);
+                newptr = make_message("%s -I %s", *command, tmpIOfilestring);
+
+                fclose(tmpIOfile);
+                free(tmpIOfilestring);
+                free(superbuffer);
+        }
+
+        if(newptr==NULL) newptr = *command;
+        cs = 0;
+        result = classad_get_dstring_attribute(cad, "TransferOutput", &superbuffer);
+        if (result == C_CLASSAD_NO_ERROR)
+        {
+
+                if(classad_get_dstring_attribute(cad, "TransferOutputRemaps", &superbufferRemaps) == C_CLASSAD_NO_ERROR)
+                {
+                        superbufferTMP = (char*)malloc(strlen(superbuffer)+1);
+                        strcpy(superbufferTMP,superbuffer);
+                        superbufferTMP[strlen(superbuffer)]=0;
+                }
+                tmpIOfilestring = make_message("%s/%s_%s_%d%d", tmp_dir, "OutputFileList",reqId,ts.tv_sec, ts.tv_usec);
+                tmpIOfile = fopen(tmpIOfilestring, "w");
+                if(tmpIOfile == NULL)
+                {
+                        /* PUSH A FAILURE */
+                        resultLine = make_message("%s 1 Error\\ opening\\  %s\\ N/A", reqId,tmpIOfilestring);
+                        free(tmpIOfilestring);
+			enqueue_result(resultLine);
+                        free(resultLine);
+                        return 1;
+                }
+
+		if (enable_condor_glexec && fstat(fileno(tmpIOfile), &tmp_stat) >= 0)
+		{
+			if ((tmp_stat.st_mode & S_IWGRP) == 0)
+			{
+				if (fchmod(fileno(tmpIOfile),tmp_stat.st_mode|S_IWGRP|S_IRGRP|S_IXGRP)<0)
+				{
+					fprintf(stderr,"WARNING: cannot make %s group writable: %s\n",
+					        tmpIOfilestring, strerror(errno));
+				}
+			}	
+		}
+
+                for(i =0; i < strlen(superbuffer); i++){if (superbuffer[i] == ',')superbuffer[i] ='\n'; }
+                cs = fwrite(superbuffer,1 , strlen(superbuffer), tmpIOfile);
+                if(strlen(superbuffer) != cs)
+                {
+                        /* PUSH A FAILURE */
+                        resultLine = make_message("%s 1 Error\\ writing\\ in\\ %s\\ N/A", reqId,tmpIOfilestring);
+                        free(tmpIOfilestring);
+                        free(superbuffer);
+                        fclose(tmpIOfile);
+                        enqueue_result(resultLine);
+                        free(resultLine);
+			return 1;
+                }
+                fwrite("\n",1,1,tmpIOfile);
+                newptr1 = make_message("%s -O %s", newptr, tmpIOfilestring);
+                fclose(tmpIOfile);
+                free(tmpIOfilestring);
+                free(superbuffer);
+        }
+        if(superbufferTMP != NULL)
+        {
+                superbuffer = outputfileRemaps(superbufferTMP,superbufferRemaps);
+                tmpIOfilestring = make_message("%s/%s_%s_%d%d", tmp_dir, "OutputFileListRemaps",reqId,ts.tv_sec, ts.tv_usec);
+                tmpIOfile = fopen(tmpIOfilestring, "w");
+                if(tmpIOfile == NULL)
+                {
+                        /* PUSH A FAILURE */
+                        resultLine = make_message("%s 1 Error\\ opening\\  %s\\ N/A", reqId,tmpIOfilestring);
+                        free(tmpIOfilestring);
+			enqueue_result(resultLine);
+                        free(resultLine);
+                        return 1;
+                }
+
+		if (enable_condor_glexec && fstat(fileno(tmpIOfile), &tmp_stat) >= 0)
+		{
+			if ((tmp_stat.st_mode & S_IWGRP) == 0)
+			{
+				if (fchmod(fileno(tmpIOfile),tmp_stat.st_mode|S_IWGRP|S_IRGRP|S_IXGRP)<0)
+				{
+					fprintf(stderr,"WARNING: cannot make %s group writable: %s\n",
+					        tmpIOfilestring, strerror(errno));
+				}
+			}	
+		}
+
+                for(i =0; i < strlen(superbuffer); i++){if (superbuffer[i] == ',')superbuffer[i] ='\n'; }
+                cs = fwrite(superbuffer,1 , strlen(superbuffer), tmpIOfile);
+                if(strlen(superbuffer) != cs)
+                {
+                        /* PUSH A FAILURE */
+                        resultLine = make_message("%s 1 Error\\ writing\\ in\\ %s\\ N/A", reqId,tmpIOfilestring);
+                        free(tmpIOfilestring);
+                        free(superbuffer);
+                        fclose(tmpIOfile);
+			enqueue_result(resultLine);
+                        free(resultLine);
+                        return 1;
+                }
+                fwrite("\n",1,1,tmpIOfile);
+                newptr2 = make_message("%s -R %s", newptr1, tmpIOfilestring);
+                fclose(tmpIOfile);
+                free(tmpIOfilestring);
+                free(superbuffer);
+                free(superbufferTMP);
+                free(superbufferRemaps);
+
+	}
+        if(newptr2)
+        {
+                 free(newptr1);
+                 if(*command != newptr) free(newptr);
+                 free(*command);
+                 *command = newptr2;
+        }
+        else
+        if(newptr1)
+        {
+                 if(*command != newptr) free(newptr);
+                 free(*command);
+                 *command=newptr1;
+         }else
+         if(*command != newptr)
+         {
+                free(*command);
+                *command=newptr;
+         }
+
+        return 0;
+}
+
+char*  outputfileRemaps(char *sb,char *sbrmp)
+{
+        /*
+                Files in TransferOutputFile attribute are remapped on TransferOutputFileRemaps
+                Example of possible remapping combinations:
+                out1,out2,out3,log/out4,log/out5,out6,/tmp/out7
+                out2=out2a,out3=/my/data/dir/out3a,log/out5=/my/log/dir/out5a,out6=sub/out6
+        */
+        char *newbuffer = NULL;
+        char *tstr = NULL;
+        char *tstr2 = NULL;
+        int sblen = strlen(sb);
+        int sbrmplen = strlen(sbrmp);
+        char *sbtemp = malloc(sblen);
+        char *sbrmptemp = malloc(sbrmplen);
+        int i = 0, j = 0, endstridx = 0, begstridx = 0, endstridx1 = 0, begstridx1 = 0, strmpd = 0, blen = 0, last = 0;
+        for( i = 0; i <= sblen ; i++)
+        {
+                if((sb[i] == ',')||(i == sblen - 1))
+                {
+                        /* Files to be remapped are extracted*/
+                        if(i < sblen )
+                        {
+                                endstridx = (i ==(sblen - 1) ? i: i - 1);
+                                tstr = malloc(endstridx  - begstridx + 2);
+                                strncpy(tstr,&sb[begstridx],endstridx  - begstridx + 1);
+                                tstr[endstridx  - begstridx + 1] = '\0';
+                                if(i < sblen )
+                                begstridx = i + 1;
+                        }else
+                        {
+                                endstridx = i;
+                                tstr = malloc(endstridx  - begstridx + 2);
+                                strncpy(tstr,&sb[begstridx],endstridx  - begstridx + 1);
+                                tstr[endstridx  - begstridx + 1] = '\0';
+                                last = 1;
+                        }
+                        /* Search if the file must be remapped */
+                        for(j = 0; j <= sbrmplen;)
+                        {
+                                endstridx1=0;
+                                if(!strncmp(&sbrmp[j],tstr,strlen(tstr)))
+                                {
+                                        begstridx1 = j + strlen(tstr) + 1;
+               /* separator ; */        while((sbrmp[begstridx1 + endstridx1] != ';')&&((begstridx1 + endstridx1) <= sbrmplen ))
+                                                 endstridx1++;
+                                        if(begstridx1 + endstridx1 <= sbrmplen + 1)
+                                        {
+                                                tstr2=malloc(endstridx1 + 1);
+                                                memset(tstr2,0,endstridx1);
+                                                strncpy(tstr2,&sbrmp[begstridx1],endstridx1);
+                                                tstr2[endstridx1]='\0';
+                                                strmpd = 1;
+                                        }
+                                        begstridx1 = 0;
+                                        break;
+                                }else j++;
+                        }
+                        if(newbuffer)
+                                blen = strlen(newbuffer);
+                        if(strmpd == 0)
+                        {
+                                newbuffer =(char*) realloc((void*)newbuffer, blen + strlen(tstr) + 2);
+                                strcpy(&newbuffer[blen],tstr);
+                                newbuffer[blen + strlen(tstr)] = (last? 0: ',');
+                                newbuffer[blen + strlen(tstr) + 1] = '\0';
+                                memset((void*)tstr,0,strlen(tstr));
+                        }
+                        else
+                        {
+                                newbuffer = (char*) realloc((void*)newbuffer, blen + strlen(tstr2) + 2);
+                                strcpy(&newbuffer[blen],tstr2);
+                                newbuffer[blen + strlen(tstr2)] = (last? 0: ',');
+                                newbuffer[blen + strlen(tstr2) + 1] = '\0';
+                                memset((void*)tstr2,0,strlen(tstr2));
+                                memset((void*)tstr,0,strlen(tstr));
+                        }
+                        strmpd = 0;
+                        if (tstr2){free(tstr2); tstr2=NULL;}
+                        if (tstr) {free(tstr); tstr=NULL;}
+                }
+        }
+
+        return newbuffer;
+}
+
+#define SINGLE_QUOTE_CHAR '\''
+#define DOUBLE_QUOTE_CHAR '\"'
+#define CONVARG_OPENING        "\"\\\""
+#define CONVARG_OPENING_LEN    3
+#define CONVARG_CLOSING        "\\\"\"\000"
+#define CONVARG_CLOSING_LEN    4
+#define CONVARG_QUOTSEP        "\\\"%c\\\""
+#define CONVARG_QUOTSEP_LEN    5
+#define CONVARG_DBLQUOTESC     "\\\\\\\""
+#define CONVARG_DBLQUOTESC_LEN 4
+
+char*
+ConvertArgs(char* original, char separator)
+{
+	/* example arguments
+	args(1)="a '''b''' 'c d' e' 'f ''''" ---> "a;\'b\';c\ d;e\ f;\'"
+	args(1)="'''b''' 'c d'" --> "\'b\';c\ d"
+	*/
+
+	int inside_quotes = 0;
+	char *result, *short_result;
+	int i, j;
+	int orig_len;
+
+	char quoted_sep[CONVARG_QUOTSEP_LEN];
+	sprintf(quoted_sep, CONVARG_QUOTSEP, separator);
+
+	orig_len = strlen(original);
+	if (orig_len == 0) return NULL;
+
+        /* Worst case is <a> --> <"\"a\""> */
+	result = (char *)malloc(orig_len * 10);
+	if (result == NULL) return NULL;
+
+	memcpy(result, CONVARG_OPENING, CONVARG_OPENING_LEN);
+	j = CONVARG_OPENING_LEN;
+
+	for(i=0; i < orig_len; i++)
+	{
+		if(original[i] == SINGLE_QUOTE_CHAR && !inside_quotes)
+		{	/* the quote is an opening quote */
+			inside_quotes = 1;
+		}
+		else if (original[i] == SINGLE_QUOTE_CHAR)
+		{	/* a quote inside quotes... */
+			if ((i+1) < orig_len && original[i+1] == SINGLE_QUOTE_CHAR) 
+			{	/* the quote is a literal, copy and skip */
+				result[j++] = original[i++];
+			}
+			else
+			{	/* the quote is a closing quote */
+				inside_quotes = 0;
+			}
+		}
+		else if (original[i] == ' ')
+		{	/* a blank... */
+			if (inside_quotes)
+			{	/* the blank is a literal, copy */
+				result[j++] = original[i];
+			}
+			else
+			{	/* the blank is a separator */
+				memcpy(result + j, quoted_sep, CONVARG_QUOTSEP_LEN);
+				j += CONVARG_QUOTSEP_LEN;
+			}
+		}
+		else if (original[i] == DOUBLE_QUOTE_CHAR)
+		{	/* double quotes need to be triple-escaped to make it to the submit file */
+			memcpy(result + j, CONVARG_DBLQUOTESC, CONVARG_DBLQUOTESC_LEN);
+			j += CONVARG_DBLQUOTESC_LEN;
+		}
+		else
+		{	/* plain copy from the original */
+			result[j++] = original[i];
+		}
+	}
+	memcpy(result + j, CONVARG_CLOSING, CONVARG_CLOSING_LEN);
+
+	return(result);
 }
 
