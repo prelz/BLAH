@@ -2,11 +2,11 @@
 # * BLAHP scripts * 
 # *****************
 #
-# $Id: Makefile.am,v 1.2 2005/10/18 10:48:20 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.3 2007/08/30 13:46:29 fprelz Exp $ 
 #
 # File:           Makefile.am
 #
-# Author(s):      Francesco Prelz ($Author: mezzadri $)
+# Author(s):      Francesco Prelz ($Author: fprelz $)
 #        e-mail: "Francesco.Prelz@mi.infn.it"
 #
 # Revision history:
@@ -14,6 +14,9 @@
 # 16-Apr-2004  Created 
 #
 
-bin_SCRIPTS = pbs_cancel.sh pbs_status.sh pbs_submit.sh pbs_hold.sh pbs_resume.sh lsf_cancel.sh lsf_status.sh lsf_submit.sh lsf_hold.sh lsf_resume.sh
+bin_SCRIPTS = blah_common_submit_functions.sh \
+  pbs_cancel.sh pbs_status.sh pbs_submit.sh pbs_hold.sh pbs_resume.sh \
+  lsf_cancel.sh lsf_status.sh lsf_submit.sh lsf_hold.sh lsf_resume.sh \
+  condor_cancel.sh condor_status.sh condor_submit.sh condor_hold.sh condor_resume.sh 
 
 EXTRA_DIST = $(bin_SCRIPTS)
