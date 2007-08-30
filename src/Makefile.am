@@ -2,11 +2,11 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.13 2007/02/08 08:48:29 pandreet Exp $ 
+# $Id: Makefile.am,v 1.14 2007/08/30 09:44:14 fprelz Exp $ 
 #
 # File:           Makefile.am
 #
-# Author(s):      Francesco Prelz ($Author: pandreet $)
+# Author(s):      Francesco Prelz ($Author: fprelz $)
 #        e-mail: "Francesco.Prelz@mi.infn.it"
 #
 # Revision history:
@@ -20,7 +20,7 @@ SUBDIRS = scripts
 
 bin_PROGRAMS = blahpd blahpd_daemon BPRclient BPRserver BLClient BLParserLSF BLParserPBS BAParser BAClient BDlogger test_condor_logger
 
-common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C mtsafe_popen.c
+common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C mtsafe_popen.c proxy_hashcontainer.c
 
 blahpd_SOURCES = main.c $(common_sources)
 
