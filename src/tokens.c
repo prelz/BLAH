@@ -1,4 +1,4 @@
-// $Id: tokens.c,v 1.2 2005/03/23 10:32:24 drebatto Exp $
+// $Id: tokens.c,v 1.3 2007/08/31 13:28:11 fprelz Exp $
 
 /**
  * @file tokens.cpp
@@ -84,7 +84,7 @@ int send_token(void *arg, void *token, size_t token_length)
  * @param arg pointer to the descriptor of the socket.
  * @param token pointer to the token buffer to fill with received token.
  * @param token_length token buffer length
- * @returns the number of bytes recieved, or -1 on failure.
+ * @returns 0 on success, or -1 on failure.
  */
 int get_token(void *arg, void **token, size_t *token_length)
 {
