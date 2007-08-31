@@ -39,7 +39,6 @@ main(int argc, char **argv)
 	char *workernode;
 	struct stat proxy_stat;
 	char buffer[8192];
-	char *message;
 	char *globus_location;
 
 	OM_uint32	major_status;
@@ -145,24 +144,24 @@ main(int argc, char **argv)
 	if (verify_context(context_handle))
 	{
 		printf("%s: server certificate mismatch", argv[0]);
+		close(fd_socket);
 		exit(1);
 	}
 
-	if ((proxy_file = open(proxy_filename, O_RDONLY)) == -1)
+	if (stat(proxy_filename, &proxy_stat) == -1)
 	{
-		printf("%s: unable to open proxy file %s", argv[0], proxy_filename);
+		printf("%s: unable to stat proxy file %s", argv[0], proxy_filename);
+		close(fd_socket);
 		exit(1);
 	}
-	fstat(proxy_file, &proxy_stat); /* Get the proxy size */
-	if ((message = (char *)malloc(proxy_stat.st_size + 1)) == NULL)
+
+	if (delegate_proxy(proxy_filename, credential_handle, context_handle, fd_socket) != BPR_DELEGATE_PROXY_OK)
 	{
-		printf("%s: unable to allocate read buffer (%d bytes)", argv[0], proxy_stat.st_size + 1);
+		printf("%s: unable to delegate proxy file %s", argv[0], proxy_filename);
+		close(fd_socket);
 		exit(1);
 	}
-	read(proxy_file, message, proxy_stat.st_size);
-	close(proxy_file);
-	message[proxy_stat.st_size] = 0;
-	send_string(message, context_handle, fd_socket);
+
 	close(fd_socket);
 
 	exit(0);

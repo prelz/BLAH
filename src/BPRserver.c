@@ -175,38 +175,41 @@ main(int argc, char **argv)
 				{
 					fprintf(stderr, "Security context accepted\n");
 					fprintf(stderr, "Client name: %s\n", client_name);
-					fprintf(stderr, "Receiving new proxy...\n");
-					receive_string(&message, context_handle, read_socket);
-					proxy_file_name_copy = strdup(proxy_file_name);
-					proxy_dir = dirname(proxy_file_name_copy); /* Use a copy as dirname can change the argument */
-					if ((proxy_tmp_name = (char *)malloc(strlen(proxy_dir) + strlen(PROXYTMP) + 2)) == NULL)
+					fprintf(stderr, "Receiving new delegated proxy...\n");
+					if (receive_delegated_proxy(&message, context_handle, read_socket) == BPR_RECEIVE_DELEGATED_PROXY_OK)
 					{
-						fprintf(stderr, "Cannot allocate memory for tempfile name!\n");
-						exit(1);
-					}
-					sprintf(proxy_tmp_name, "%s/%s", proxy_dir, PROXYTMP);
-					proxy_file = mkstemp(proxy_tmp_name);
-					if (proxy_file == -1)
-					{
-						perror("Cannot create temp file");
-						exit(1);
-					}
-					write(proxy_file, message, strlen(message));
-					close(proxy_file);
-					fprintf(stderr, "Renaming %s to %s\n", proxy_tmp_name, proxy_file_name);
-					if (rename(proxy_tmp_name, proxy_file_name))
-					{
-						perror("Error while renaming");
-						unlink(proxy_tmp_name);
-						exit(1);
+						proxy_file_name_copy = strdup(proxy_file_name);
+						proxy_dir = dirname(proxy_file_name_copy); /* Use a copy as dirname can change the argument */
+						if ((proxy_tmp_name = (char *)malloc(strlen(proxy_dir) + strlen(PROXYTMP) + 2)) == NULL)
+						{
+							fprintf(stderr, "Cannot allocate memory for tempfile name!\n");
+							exit(1);
+						}
+						sprintf(proxy_tmp_name, "%s/%s", proxy_dir, PROXYTMP);
+						proxy_file = mkstemp(proxy_tmp_name);
+						if (proxy_file == -1)
+						{
+							perror("Cannot create temp file");
+							exit(1);
+						}
+						write(proxy_file, message, strlen(message));
+						close(proxy_file);
+	
+						fprintf(stderr, "Renaming %s to %s\n", proxy_tmp_name, proxy_file_name);
+						if (rename(proxy_tmp_name, proxy_file_name))
+						{
+							perror("Error while renaming");
+							unlink(proxy_tmp_name);
+							exit(1);
+						}
+						gss_delete_sec_context(&minor_status, &context_handle, GSS_C_NO_BUFFER);
+						if (message) free (message);
+						free(proxy_file_name_copy);
+						free(proxy_tmp_name);
+						fprintf(stderr, "New proxy saved.\n");
 					}
 					gss_release_cred(&major_status, &credential_handle);
-					gss_delete_sec_context(&minor_status, &context_handle, GSS_C_NO_BUFFER);
-					if (message) free (message);
-					free(proxy_file_name_copy);
-					free(proxy_tmp_name);
 					close(read_socket);
-					fprintf(stderr, "New proxy saved.\n");
 					fprintf(stderr, "Listening for further connections...\n");
 				}
 			}
