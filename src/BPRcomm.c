@@ -18,6 +18,190 @@
 	}
 
 int
+delegate_proxy(const char *proxy_file, gss_cred_id_t cred_handle, gss_ctx_id_t gss_context, int sck)
+{
+	int return_status = BPR_DELEGATE_PROXY_ERROR;
+	int send_status;
+	gss_buffer_desc  input_token, output_token;
+	gss_buffer_desc  rcv_token, snd_token;
+	OM_uint32        del_maj_stat, maj_stat, min_stat;
+	int conf_req_flag = 1; /* Non zero value to request confidentiality */
+
+	if (gss_context != GSS_C_NO_CREDENTIAL)
+	{
+		/* Bootstrap call */
+		del_maj_stat = gss_init_delegation(&min_stat,
+					gss_context,
+				        cred_handle,
+					GSS_C_NO_OID,
+					GSS_C_NO_OID_SET,
+					GSS_C_NO_BUFFER_SET,
+					GSS_C_NO_BUFFER,
+					GSS_C_GLOBUS_SSL_COMPATIBLE,
+					0,
+					&snd_token);
+
+		while (1) /* Will break after the last token has been sent */
+		{
+
+			maj_stat = gss_wrap(
+					&min_stat,
+					gss_context,
+					conf_req_flag,
+					GSS_C_QOP_DEFAULT,
+					&snd_token,
+					NULL,
+					&output_token);
+			gss_release_buffer(&min_stat, &snd_token);
+
+			if (!GSS_ERROR(maj_stat))
+			{
+				send_status = send_token((void*)&sck, output_token.value, output_token.length);
+				gss_release_buffer(&min_stat, &output_token);
+				if (send_status < 0)
+				{
+					break;
+				}
+			}
+			else 
+			{
+				break;
+			}
+			if (del_maj_stat != GSS_S_CONTINUE_NEEDED) break;
+
+			if (get_token(&sck, &input_token.value, &input_token.length) < 0) break;
+			maj_stat = gss_unwrap(
+					&min_stat,
+					gss_context,
+					&input_token,
+					&rcv_token,
+					NULL,
+					NULL);
+	
+			gss_release_buffer(&min_stat, &input_token);
+
+			del_maj_stat = gss_init_delegation(&min_stat,
+						gss_context,
+					        cred_handle,
+						GSS_C_NO_OID,
+						GSS_C_NO_OID_SET,
+						GSS_C_NO_BUFFER_SET,
+						&rcv_token,
+						GSS_C_GLOBUS_SSL_COMPATIBLE,
+						0,
+						&snd_token);
+			gss_release_buffer(&min_stat, &rcv_token);
+		}
+	}
+
+	if (del_maj_stat == GSS_S_COMPLETE) return_status = BPR_DELEGATE_PROXY_OK;
+
+	return return_status;
+
+}
+
+int 
+receive_delegated_proxy(char **s, gss_ctx_id_t gss_context, int sck)
+{
+	char             *buf;
+	int              return_status = BPR_RECEIVE_DELEGATED_PROXY_ERROR;
+	int              send_status;
+	gss_buffer_desc  input_token,output_token;
+	gss_buffer_desc  snd_token, rcv_token;
+	gss_buffer_desc  cred_token;
+	gss_cred_id_t    delegated_cred = GSS_C_NO_CREDENTIAL;
+	OM_uint32        del_maj_stat, maj_stat, min_stat, time_rec;
+	int conf_req_flag = 1; /* Non zero value to request confidentiality */
+
+	del_maj_stat = GSS_S_CONTINUE_NEEDED;
+
+	if (gss_context != GSS_C_NO_CREDENTIAL) 
+	{
+		while (del_maj_stat == GSS_S_CONTINUE_NEEDED)
+		{
+			if (get_token(&sck, &input_token.value, &input_token.length) < 0) break;
+			maj_stat = gss_unwrap(
+					&min_stat,
+					gss_context,
+					&input_token,
+					&rcv_token,
+					NULL,
+					NULL);
+	
+			gss_release_buffer(&min_stat, &input_token);
+	
+			if (!GSS_ERROR(maj_stat))
+			{
+				del_maj_stat=gss_accept_delegation(&min_stat,
+					gss_context,
+					GSS_C_NO_OID_SET,
+					GSS_C_NO_BUFFER_SET,
+					&rcv_token,
+					GSS_C_GLOBUS_SSL_COMPATIBLE,
+					0,
+					&time_rec,
+					&delegated_cred,
+					NULL,
+					&snd_token);
+			}
+			else break;
+	
+			gss_release_buffer(&min_stat, &rcv_token);
+
+			if (del_maj_stat != GSS_S_CONTINUE_NEEDED) break;
+
+			maj_stat = gss_wrap(
+					&min_stat,
+					gss_context,
+					conf_req_flag,
+					GSS_C_QOP_DEFAULT,
+					&snd_token,
+					NULL,
+					&output_token);
+			gss_release_buffer(&min_stat, &snd_token);
+
+			if (!GSS_ERROR(maj_stat))
+			{
+				send_status = send_token((void*)&sck, output_token.value, output_token.length);
+				gss_release_buffer(&min_stat, &output_token);
+				if (send_status < 0)
+				{
+					break;
+				}
+			}
+			else 
+			{
+				break;
+			}
+		}
+	}
+	if (del_maj_stat == GSS_S_COMPLETE) 
+	{
+		/* Export credential to a string */
+		maj_stat = gss_export_cred(&min_stat, 
+					delegated_cred, 
+					GSS_C_NO_OID,
+					0,
+					&cred_token);
+		if (maj_stat == GSS_S_COMPLETE) {
+			
+			if (s != NULL) 
+			{
+				*s = (char *)malloc(cred_token.length + 1);
+				if (*s != NULL)
+				{
+					memcpy(*s, cred_token.value, cred_token.length);
+					(*s)[cred_token.length]='\000';
+					return_status = BPR_RECEIVE_DELEGATED_PROXY_OK;
+				}
+			}
+		}
+		gss_release_buffer(&min_stat, &cred_token);
+	}
+	return return_status;
+}
+
+int
 send_string(const char *s, gss_ctx_id_t gss_context, int sck)
 {
 	int return_status = 2;
