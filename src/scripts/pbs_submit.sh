@@ -140,7 +140,6 @@ sleep 5
 logfile=""
 jobID_log=""
 log_check_retry_count=0
-tfbasename="`basename ${bls_tmp_file}`"
 while [ "x$logfile" == "x" -a "x$jobID_log" == "x" ]; do
 
  cliretcode=0
