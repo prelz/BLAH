@@ -392,15 +392,16 @@ function bls_add_job_wrapper ()
   fi
   
   # Set the temporary home (including cd'ing into it)
-  echo "mkdir ~/home_$bls_tmp_name">>$bls_tmp_file
-  [ -z "$bls_to_be_moved" ] || echo "mv $bls_to_be_moved ~/home_$bls_tmp_name &>/dev/null">>$bls_tmp_file
-  echo "export HOME=~/home_$bls_tmp_name">>$bls_tmp_file
-  echo "cd">>$bls_tmp_file
+  echo "new_home=\`pwd\`/home_$bls_tmp_name">>$bls_tmp_file
+  echo "mkdir \$new_home">>$bls_tmp_file
+  [ -z "$bls_to_be_moved" ] || echo "mv $bls_to_be_moved \$new_home &>/dev/null">>$bls_tmp_file
+  echo "export HOME=\$new_home">>$bls_tmp_file
+  echo "cd \$new_home">>$bls_tmp_file
   
   # Set the path to the user proxy
   if [ "x$bls_need_to_reset_proxy" == "xyes" ] ; then
       echo "# Resetting proxy to local position" >> $bls_tmp_file
-      echo "export X509_USER_PROXY=\`pwd\`/${bls_proxy_remote_file}" >> $bls_tmp_file
+      echo "export X509_USER_PROXY=\$new_home/${bls_proxy_remote_file}" >> $bls_tmp_file
   fi
   
   # Add the command (with full path if not staged)
@@ -410,8 +411,10 @@ function bls_add_job_wrapper ()
   then
       bls_opt_the_command="./`basename $bls_opt_the_command`"
       echo "if [ ! -x $bls_opt_the_command ]; then chmod u+x $bls_opt_the_command; fi" >> $bls_tmp_file
+      echo "\$new_home/`basename $bls_opt_the_command` $bls_arguments &" >> $bls_tmp_file
+  else
+      echo "$bls_opt_the_command $bls_arguments &" >> $bls_tmp_file
   fi
-  echo "$bls_opt_the_command $bls_arguments &" >> $bls_tmp_file
   
   echo "job_pid=\$!" >> $bls_tmp_file
   
@@ -420,7 +423,7 @@ function bls_add_job_wrapper ()
       echo "" >> $bls_tmp_file
       echo "# Start the proxy renewal server" >> $bls_tmp_file
       echo "if [ ! -x $remote_BPRserver ]; then chmod u+x $remote_BPRserver; fi" >> $bls_tmp_file
-      echo "\`pwd\`/$remote_BPRserver \$job_pid $bls_opt_prnpoll $bls_opt_prnlifetime \${PBS_JOBID} &" >> $bls_tmp_file
+      echo "\$new_home/$remote_BPRserver \$job_pid $bls_opt_prnpoll $bls_opt_prnlifetime \${PBS_JOBID} &" >> $bls_tmp_file
       echo "server_pid=\$!" >> $bls_tmp_file
   fi
   
