@@ -209,7 +209,7 @@ END {
 		result=""
 		usedBLParser="no"
 		datefile=blahdate_$RANDOM$RANDOM$RANDOM
-		`touch $tmp_file;chmod 600 $tmp_file`
+		touch $datefile;chmod 600 $datefile
 
 		if [ $? -ne 0 ]; then
    			echo 'Error creating temporary file'
@@ -223,7 +223,7 @@ END {
 		lsf_clustername=`${lsf_binpath}/lsid | grep 'My cluster name is'|awk -F" " '{ print $5 }'`
 		logpath=$lsf_base_path/$lsf_clustername/logdir
 		logeventfile=lsb.events
-		touch -t $datenow $datefile
+		touch -t ${datenow}0000 $datefile
 		ulogs=`find $logpath -name $logeventfile.[0-9]* -maxdepth 1 -type f -newer $datefile -print 2>/dev/null`
 		rm -f $datefile 2>/dev/null
 		for i in `echo $ulogs | sed "s|${logpath}/${logeventfile}\.||g" | sort -nr`; do
@@ -310,19 +310,19 @@ END {
 	if (jobstatus == 4) {
 		print "ExitCode = " exitcode ";"
 		if (exitcode == 130) {
-			print "ExitReason = " Memory limit reached ";"
+			print "ExitReason = \" Memory limit reached \";"
 		}else if(exitcode == 137){
-			print "ExitReason = " Memory limit reached ";"
+			print "ExitReason = \" Memory limit reached \";"
 		}else if(exitcode == 140){
-			print "ExitReason = " RUNtime limit reached ";"
+			print "ExitReason = \" RUNtime limit reached \";"
 		}else if(exitcode == 143){
-			print "ExitReason = " Memory limit reached ";"
+			print "ExitReason = \" Memory limit reached \";"
 		}else if(exitcode == 152){
-			print "ExitReason = " CPUtime limit reached ";"
+			print "ExitReason = \" CPUtime limit reached \";"
 		}else if(exitcode == 153){
-			print "ExitReason = " FILEsize limit reached ";"
+			print "ExitReason = \" FILEsize limit reached \";"
 		}else if(exitcode == 157){
-			print "ExitReason = " Directory Access Error (No AFS token, dir does not exist) ";"
+			print "ExitReason = \" Directory Access Error (No AFS token, dir does not exist) \";"
 		}
 	}
 	print "]"
