@@ -38,6 +38,45 @@ srvfound=""
 
 BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 
+qstatcache=/tmp/qstatcache.txt
+qstattmp=/tmp/qstattmp.txt
+
+############################
+#functions
+############################
+
+function search_wn(){
+
+	workernode=""
+	if [ -e $qstatcache ] ; then
+		workernode=`grep $reqjob $qstatcache|awk -F":" '{ print $2 }'`
+	fi
+	if [ "x$workernode" == "x" ] ; then
+		result=`${pbs_binpath}/qstat -f 2> /dev/null | awk -v cqstat=$qstattmp '
+BEGIN {
+    current_job = ""
+    current_wn = ""
+}
+
+/Job Id:/ {
+    current_job = substr($0, index($0, ":") + 2)
+}
+/exec_host =/ {
+    current_wn = substr($0, index($0, "=")+2)
+    current_wn = substr(current_wn, 1, index(current_wn, "/")-1)
+    print current_job":"current_wn>cqstat
+}
+'
+`
+		`mv -f $qstattmp $qstatcache`
+		
+		if [ -e $qstatcache ] ; then
+			workernode=`grep $reqjob $qstatcache|awk -F":" '{ print $2 }'`
+		fi
+	fi
+
+}
+
 ###############################################################
 # Parse parameters
 ###############################################################
@@ -169,7 +208,7 @@ END {
 
      else
 	if [ "x$getwn" == "xyes" ] ; then
-		workernode=`${pbs_binpath}/qstat -f $reqjob 2> /dev/null | grep exec_host| sed "s/exec_host = //" | awk -F"/" '{ print $1 }'`
+		search_wn
 	fi
 
 	cliretcode=0
