@@ -239,7 +239,11 @@ function bls_setup_all_files ()
   if [ "x$bls_opt_debug" != "xyes" ]
   then
       if [ ! -z "$bls_opt_creamjobid"  ] ; then
-          bls_tmp_name="cream_${bls_opt_creamjobid}"
+          if [ $bls_opt_creamjobid == ${bls_opt_creamjobid%*_*} ] ; then 
+             bls_tmp_name="cream_${bls_opt_creamjobid}"
+          else
+              bls_tmp_name=${bls_opt_creamjobid}
+          fi 
           bls_tmp_file="$bls_opt_temp_dir/$bls_tmp_name"
       else
           rand=$RANDOM$RANDOM$RANDOM$RANDOM

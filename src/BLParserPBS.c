@@ -998,7 +998,7 @@ LookupAndSend(int m_sock)
 			sprintf(out_buf,"%d\n",creamport);
 			goto close;
 		}
-	
+
 /* get jobid from blahjob id (needed by *_submit.sh) */
        
 		if(strcmp(logdate,"BLAHJOB")==0){
@@ -1228,46 +1228,85 @@ CreamConnection(int c_sock)
 
 	while ( 1 ) {
 	  
-		retcod = poll(pfds, nfds, timeout); 
+		if(conn_c < 0){
+	  
+			retcod = poll(pfds, nfds, timeout); 
         
-		if(retcod < 0){
-			close(conn_c);
-			sysfatal("Poll error in CreamConnection: %r");
-		}
-    
-		if ( retcod > 0 ){
-			if ( ( fds[0].revents & ( POLLERR | POLLNVAL | POLLHUP) )){
-				switch (fds[0].revents){
-				case POLLNVAL:
-					syserror("poll() file descriptor error for Cream: %r");
-					break;
-				case POLLHUP:
-					syserror("Connection closed for Cream: %r");
-					break;
-				case POLLERR:
-					syserror("poll() POLLERR for Cream: %r");
-					break;
-				}
-			} else {
-            
-				if ( (conn_c = accept(c_sock, NULL, NULL) ) < 0 ) {
-					sysfatal("Error calling accept(): %r");
-				}
-	    
-				buffer[0]='\0';
-				Readline(conn_c, buffer, STR_CHARS-1);
+			if( retcod < 0 ){
+				close(conn_c);
 				if(debug){
-					fprintf(debuglogfile, "Received for Cream:%s",buffer);
+					fprintf(debuglogfile, "Fatal Error:Poll error in CreamConnection\n");
 					fflush(debuglogfile);
 				}
-				if(buffer && (strstr(buffer,"STARTNOTIFY")!=NULL)){
+				sysfatal("Poll error in CreamConnection: %r");
+			}
+    
+			if ( retcod > 0 ){
+ret_c:
+				if ( ( fds[0].revents & ( POLLERR | POLLNVAL | POLLHUP) )){
+					switch (fds[0].revents){
+					case POLLNVAL:
+						if(debug){
+							fprintf(debuglogfile, "Error:poll() file descriptor error in CreamConnection\n");
+							fflush(debuglogfile);
+						}
+						syserror("poll() file descriptor error in CreamConnection: %r");
+						break;
+					case POLLHUP:
+						if(debug){
+							fprintf(debuglogfile, "Error:Connection closed in CreamConnection\n");
+							fflush(debuglogfile);
+						}
+						syserror("Connection closed in CreamConnection: %r");
+						break;
+					case POLLERR:
+						if(debug){
+							fprintf(debuglogfile, "Error:poll() POLLERR in CreamConnection\n");
+							fflush(debuglogfile);
+						}
+						syserror("poll() POLLERR in CreamConnection: %r");
+						break;
+					}
+				} else {
+            
+					if ( (conn_c = accept(c_sock, NULL, NULL) ) < 0 ) {
+						if(debug){
+							fprintf(debuglogfile, "Fatal Error:Error calling accept() in CreamConnection\n");
+							fflush(debuglogfile);
+						}
+						sysfatal("Error calling accept() in CreamConnection: %r");
+					}
+					goto write_c;
+				} 
+			} 
+		} else {
+			retcod = poll(pfds, nfds, timeout);
+			if( retcod < 0 ){
+				close(conn_c);
+				if(debug){
+					fprintf(debuglogfile, "Fatal Error:Poll error in CreamConnection\n");
+					fflush(debuglogfile);
+				}
+				sysfatal("Poll error in CreamConnection: %r");
+			}
+			if(retcod > 0 ){
+				close(conn_c);
+				goto ret_c;
+			}
+write_c:      
+			buffer[0]='\0';
+			Readline(conn_c, buffer, STR_CHARS-1);
+			if(strlen(buffer)>0){
+				if(debug){
+					fprintf(debuglogfile, "Received for Cream:%s\n",buffer);
+					fflush(debuglogfile);
+				}
+				if(buffer && ((strstr(buffer,"STARTNOTIFY")!=NULL) ||(strstr(buffer,"CREAMFILTER")!=NULL))){
 					NotifyFromDate(buffer);
 				}
-	
-			} 
-		}       
-	}       
-    
+			}
+		}
+	}
 }
 
 int
@@ -1314,8 +1353,23 @@ NotifyFromDate(char *in_buf)
 		free(tbuf[j]);
 	}
 	free(tbuf);
-            
-	if(notstr && strcmp(notstr,"STARTNOTIFY")==0){
+	
+/*if CREAMFILTER is sent this string is used instead of default cream_string */
+
+	if(notstr && strcmp(notstr,"CREAMFILTER")==0){
+		cream_string=strdup(notdate);
+		if(cream_string!=NULL){
+			sprintf(out_buf,"CREAMFILTER set to %s\n",cream_string);
+		}else{
+			sprintf(out_buf,"CREAMFILTER ERROR\n");
+		}
+		
+		Writeline(conn_c, out_buf, strlen(out_buf));
+		if(debug){
+			fprintf(debuglogfile, "Sent Reply for CREAMFILTER command:%s",out_buf);
+			fflush(debuglogfile); 
+		}
+	}else if(notstr && strcmp(notstr,"STARTNOTIFY")==0){
     
 		creamisconn=1;
       
@@ -1372,6 +1426,10 @@ NotifyFromDate(char *in_buf)
 			}
 		}
 		Writeline(conn_c, "NTFDATE/END\n", strlen("NTFDATE/END\n"));
+		if(debug){
+			fprintf(debuglogfile, "Sent for Cream_nftdate:NTFDATE/END\n");
+			fflush(debuglogfile);
+		}
       
 		free(out_buf);
 		free(notstr);
@@ -1488,6 +1546,10 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
         
 	if(retcod <0){
 		close(conn_c);
+		if(debug){
+			fprintf(debuglogfile, "Fatal Error:Poll error in NotifyCream\n");
+			fflush(debuglogfile);
+		}
 		sysfatal("Poll error in NotifyCream: %r");
 	}
     
@@ -1495,13 +1557,25 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
 		if ( ( fds[0].revents & ( POLLERR | POLLNVAL | POLLHUP) )){
 			switch (fds[0].revents){
 			case POLLNVAL:
-				syserror("poll() file descriptor error for Cream: %r");
+				if(debug){
+					fprintf(debuglogfile, "Error:poll() file descriptor error in NotifyCream\n");
+					fflush(debuglogfile);
+				}
+				syserror("poll() file descriptor error in NotifyCream: %r");
 				break;
 			case POLLHUP:
-				syserror("Connection closed for Cream: %r");
+				if(debug){
+					fprintf(debuglogfile, "Connection closed in NotifyCream\n");
+					fflush(debuglogfile);
+				}
+				syserror("Connection closed in NotifyCream: %r");
 				break;
 			case POLLERR:
-				syserror("poll() POLLERR for Cream: %r");
+				if(debug){
+					fprintf(debuglogfile, "Error:poll() POLLERR in NotifyCream\n");
+					fflush(debuglogfile);
+				}
+				syserror("poll() POLLERR in NotifyCream: %r");
 				break;
 			}
 		} else {
