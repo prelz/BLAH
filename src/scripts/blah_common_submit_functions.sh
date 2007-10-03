@@ -162,7 +162,7 @@ function bls_parse_submit_options ()
   
   if [ ! -r "$bls_proxyrenewald" ]
   then
-      unset bls_opt_proxyrenew
+      bls_opt_proxyrenew="no"
   fi
   
   bls_proxy_dir=~/.blah_jobproxy_dir
@@ -192,7 +192,7 @@ function bls_parse_submit_options ()
       w) bls_opt_workdir="$OPTARG";;
       q) bls_opt_queue="$OPTARG";;
       n) bls_opt_mpinodes="$OPTARG";;
-      r) bls_opt_proxyrenew="yes" ;;
+      r) bls_opt_proxyrenew="$OPTARG" ;;
       p) bls_opt_prnpoll="$OPTARG" ;;
       l) bls_opt_prnlifetime="$OPTARG" ;;
       x) bls_opt_proxy_string="$OPTARG" ;;
@@ -280,7 +280,7 @@ function bls_setup_all_files ()
           bls_fl_add_value inputsand "$bls_proxyrenewald" "${blahpd_inputsandbox}${remote_BPRserver}"
           bls_to_be_moved="$bls_to_be_moved $remote_BPRserver"
       else
-          unset bls_opt_proxyrenew
+          bls_opt_proxyrenew="no"
       fi
   fi
   
@@ -422,7 +422,7 @@ function bls_add_job_wrapper ()
   
   echo "job_pid=\$!" >> $bls_tmp_file
   
-  if [ ! -z $bls_opt_proxyrenew ]
+  if [ "x$bls_opt_proxyrenew" == "xyes" ]
   then
       echo "" >> $bls_tmp_file
       echo "# Start the proxy renewal server" >> $bls_tmp_file
@@ -436,7 +436,7 @@ function bls_add_job_wrapper ()
   echo "wait \$job_pid" >> $bls_tmp_file
   echo "user_retcode=\$?" >> $bls_tmp_file
   
-  if [ ! -z $bls_opt_proxyrenew ]
+  if [ "x$bls_opt_proxyrenew" == "xyes" ]
   then
       echo "# Kill the watchdog when done" >> $bls_tmp_file
       echo "sleep 1" >> $bls_tmp_file
