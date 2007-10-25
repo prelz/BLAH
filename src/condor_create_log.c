@@ -114,7 +114,7 @@ int  logAccInfo(char* jobId, char* gridjobid, char* ce_id, char* queue, char* fq
         /* Submission time */
         time(&tt);
         t_m = gmtime(&tt);
-        sprintf(date_str,"%04d-%02d-%02d\\\ %02d:%02d:%02d", 1900+t_m->tm_year, t_m->tm_mon+1, t_m->tm_mday, t_m->tm_hour, t_m->tm_min, t_m->tm_sec);
+        sprintf(date_str,"%04d-%02d-%02d\\ %02d:%02d:%02d", 1900+t_m->tm_year, t_m->tm_mon+1, t_m->tm_mday, t_m->tm_hour, t_m->tm_min, t_m->tm_sec);
 
         /* These data must be logged in the log file:
          "timestamp=<submission time to LRMS>" "userDN=<user's DN>" "userFQAN=<user's FQAN>"
@@ -148,7 +148,7 @@ int  logAccInfo(char* jobId, char* gridjobid, char* ce_id, char* queue, char* fq
         /* log line with in addiction unixuser */
         // call to suided tool
         esc_userDN=escape_spaces(userDN);
-        log_line=make_message("%s/BDlogger %s \\\"timestamp=%s\\\"\\\ \\\"userDN=%s\\\"\\\ %s\\\"ceID=%s\\\"\\\ \\\"jobID=%s\\\"\\\ \\\"lrmsID=%s\\\"\\\ \\\"localUser=%s\\\"", bin_location, blah_conf, date_str, esc_userDN, fqan, ce_id, gridjobid, jobId, uid);
+        log_line=make_message("%s/BDlogger %s \\\"timestamp=%s\\\"\\ \\\"userDN=%s\\\"\\ %s\\\"ceID=%s\\\"\\ \\\"jobID=%s\\\"\\ \\\"lrmsID=%s\\\"\\ \\\"localUser=%s\\\"", bin_location, blah_conf, date_str, esc_userDN, fqan, ce_id, gridjobid, jobId, uid);
         system(log_line);
 
         if(gridjobid) free(gridjobid);
@@ -210,9 +210,9 @@ int getProxyInfo(char* proxname, char* fqan, char* userDN)
                 strcat(fqan,fqanlong);
                 memset(fqanlong,0,MAX_TEMP_ARRAY_SIZE);
                 if(fqan[strlen(fqan)-1]=='\n') fqan[strlen(fqan)-1] = 0;
-                strcat(fqan,"\\\"\\\ ");
+                strcat(fqan,"\\\"\\ ");
           }
-         if (!strcmp(fqan,"")) sprintf(fqan,"\\\"userFQAN=\\\"\\\ ");
+         if (!strcmp(fqan,"")) sprintf(fqan,"\\\"userFQAN=\\\"\\ ");
          result = pclose(cmd_out);
          return 0;
 }
