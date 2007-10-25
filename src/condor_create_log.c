@@ -171,7 +171,7 @@ int getProxyInfo(char* proxname, char* fqan, char* userDN)
         sprintf(temp_str,"openssl x509 -in %s  -subject -noout", proxname);
         if ((cmd_out=popen(temp_str, "r")) == NULL)
                 return 1;
-        result = fgets(fqanlong, MAX_TEMP_ARRAY_SIZE, cmd_out);
+        fgets(fqanlong, MAX_TEMP_ARRAY_SIZE, cmd_out);
         result = pclose(cmd_out);
         /* example:
            subject= /C=IT/O=INFN/OU=Personal Certificate/L=Milano/CN=Francesco
