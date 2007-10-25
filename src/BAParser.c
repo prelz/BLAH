@@ -513,7 +513,7 @@ verify_dn(gss_ctx_id_t context_handle)
 		NULL, /* don't need user_to_user */
 		NULL  /* don't need user_to_user */
 	);
-	CHECK_GLOBUS_CALL("GSS context inquire failure ", 1, major_status);
+	CHECK_GLOBUS_CALL("GSS context inquire failure ", NULL, major_status);
 
 	/* Get the client principal name */
 	major_status = gss_display_name(
@@ -521,7 +521,7 @@ verify_dn(gss_ctx_id_t context_handle)
 		src_name,
 		&name_buffer,
 		NULL);
-	CHECK_GLOBUS_CALL("GSS display_name failure ", 1, major_status);
+	CHECK_GLOBUS_CALL("GSS display_name failure ", NULL, major_status);
 	if ((src_name_str = calloc((name_buffer.length + 1) * sizeof(char),1)) == NULL){
 		fprintf(stderr, "verify_context(): Out of memory\n");
 		return(NULL);
