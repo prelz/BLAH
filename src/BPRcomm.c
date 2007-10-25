@@ -27,7 +27,7 @@ delegate_proxy(const char *proxy_file, gss_cred_id_t cred_handle, gss_ctx_id_t g
 	OM_uint32        del_maj_stat, maj_stat, min_stat;
 	int conf_req_flag = 1; /* Non zero value to request confidentiality */
 
-	if (gss_context != GSS_C_NO_CREDENTIAL)
+	if (gss_context != GSS_C_NO_CONTEXT)
 	{
 		/* Bootstrap call */
 		del_maj_stat = gss_init_delegation(&min_stat,
@@ -115,7 +115,7 @@ receive_delegated_proxy(char **s, gss_ctx_id_t gss_context, int sck)
 
 	del_maj_stat = GSS_S_CONTINUE_NEEDED;
 
-	if (gss_context != GSS_C_NO_CREDENTIAL) 
+	if (gss_context != GSS_C_NO_CONTEXT) 
 	{
 		while (del_maj_stat == GSS_S_CONTINUE_NEEDED)
 		{
@@ -210,7 +210,7 @@ send_string(const char *s, gss_ctx_id_t gss_context, int sck)
 	OM_uint32        maj_stat, min_stat;
 	int conf_req_flag = 1; /* Non zero value to request confidentiality */
 
-	if (gss_context != GSS_C_NO_CREDENTIAL)
+	if (gss_context != GSS_C_NO_CONTEXT)
 	{
 		input_token.value = (void*)s;
 		input_token.length = strlen(s) + 1; 
@@ -243,7 +243,7 @@ receive_string(char **s, gss_ctx_id_t gss_context, int sck)
 	gss_buffer_desc  output_token;
 	OM_uint32        maj_stat, min_stat;
 
-	if (!(gss_context == GSS_C_NO_CREDENTIAL || get_token(&sck, &input_token.value, &input_token.length) != 0)) 
+	if (!(gss_context == GSS_C_NO_CONTEXT || get_token(&sck, &input_token.value, &input_token.length) != 0)) 
 	{
 		maj_stat = gss_unwrap(
 				&min_stat,
