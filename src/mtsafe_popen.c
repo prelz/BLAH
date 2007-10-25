@@ -213,7 +213,7 @@ exe_getout(char *const command, char *const environment[], char **cmd_output)
 #else
 				/* FIXME: should import make_message here too */
 				*cmd_output = (char *)malloc(strlen(killed_format));
-				snprintf(cmd_output, strlen(killed_format), killed_format, exitcode);
+				snprintf(*cmd_output, strlen(killed_format), killed_format, exitcode);
 #endif
 				exitcode = -exitcode;
 			}
