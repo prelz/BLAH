@@ -16,6 +16,8 @@
 #include <globus_gsi_proxy.h>
 #include <globus_gsi_system_config.h>
 
+#include "BPRcomm.h"
+
 #define LISTENQ            1024
 #define DEFAULT_PORT       43432
 #define MAX_CHARS          100000
