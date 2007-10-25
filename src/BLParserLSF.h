@@ -1,9 +1,10 @@
+#define _GNU_SOURCE
+#define _XOPEN_SOURCE
 #include <unistd.h>    
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-#define _XOPEN_SOURCE
 #include <time.h>
 #include <sys/socket.h>
 #include <sys/types.h> 
