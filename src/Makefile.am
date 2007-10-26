@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.14 2007/08/30 09:44:14 fprelz Exp $ 
+# $Id: Makefile.am,v 1.15 2007/10/26 07:26:36 fprelz Exp $ 
 #
 # File:           Makefile.am
 #
@@ -77,7 +77,7 @@ lib_LTLIBRARIES = libglite_ce_condor_logger.la
 libglite_ce_condor_logger_la_SOURCES = condor_create_log.c 
 
 
-noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h mtsafe_popen.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h BAParser.h
+noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h mtsafe_popen.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h BAParser.h condor_create_log.h proxy_hashcontainer.h
 
 #bin_SCRIPTS = pbs_cancel.sh pbs_status.sh pbs_submit.sh lsf_cancel.sh lsf_status.sh lsf_submit.sh
 
