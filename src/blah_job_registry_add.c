@@ -36,7 +36,7 @@ main(int argc, char *argv[])
   char *blah_id, *batch_id;
   int ret;
 
-  if ((registry_file = getenv("BLAH_REGISTRY_FILE")) == NULL)
+  if ((registry_file = getenv("BLAH_JOB_REGISTRY_FILE")) == NULL)
    {
     my_home = getenv("HOME");
     if (my_home == NULL) my_home = ".";
