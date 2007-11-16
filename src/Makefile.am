@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.16 2007/11/16 17:19:55 fprelz Exp $ 
+# $Id: Makefile.am,v 1.17 2007/11/16 17:30:10 fprelz Exp $ 
 #
 # File:           Makefile.am
 #
@@ -19,7 +19,7 @@ INCLUDES = -I. $(CLASSAD_CFLAGS) $(GLOBUS_NOTHR_CFLAGS)
 SUBDIRS = scripts
 
 bin_PROGRAMS = blahpd blahpd_daemon BPRclient BPRserver BLClient BLParserLSF BLParserPBS BAParser BAClient BDlogger test_condor_logger blah_job_registry_add blah_job_registry_lkup
-noinst_PROGRAMS = test_job_registry_create test_job_registry_purge test_job_registry_update
+noinst_PROGRAMS = test_job_registry_create test_job_registry_purge test_job_registry_update test_job_registry_access
 
 common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C mtsafe_popen.c proxy_hashcontainer.c
 
@@ -87,6 +87,9 @@ test_job_registry_create_CFLAGS = $(AM_CFLAGS)
 
 test_job_registry_update_SOURCES = test_job_registry_update.c job_registry.c
 test_job_registry_update_CFLAGS = $(AM_CFLAGS)
+
+test_job_registry_access_SOURCES = test_job_registry_access.c job_registry.c
+test_job_registry_access_CFLAGS = $(AM_CFLAGS)
 
 lib_LTLIBRARIES = libglite_ce_condor_logger.la 
 
