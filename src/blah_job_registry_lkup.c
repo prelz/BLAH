@@ -44,6 +44,7 @@ main(int argc, char *argv[])
   if (argc < 2)
    {
     fprintf(stderr,"Usage: %s [-b to look up batch IDs] <id>\n",argv[0]);
+    return 1;
    }
 
   id = argv[1];
