@@ -1,0 +1,905 @@
+/*
+ *  File :     job_registry.c
+ *
+ *
+ *  Author :   Francesco Prelz ($Author: fprelz $)
+ *  e-mail :   "francesco.prelz@mi.infn.it"
+ *
+ *  Revision history :
+ *  12-Nov-2007 Original release
+ *
+ *  Description:
+ *    File-based container to cache job IDs and statuses to implement
+ *    bulk status commands in BLAH.
+ *
+ *  Copyright (c) 2007 Istituto Nazionale di Fisica Nucleare (INFN).
+ *   All rights reserved.
+ *   See http://grid.infn.it/grid/license.html for license details.
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <libgen.h>
+#include <time.h>
+#include <errno.h>
+
+#include "job_registry.h"
+
+char *
+jobregistry_construct_path(const char *format, const char *path, 
+                           unsigned int num)
+ {
+  char *pcopy1=NULL, *pcopy2=NULL;
+  char *basepath, *dirpath;
+  char *retpath = NULL;
+  unsigned int ntemp, numlen;
+
+  /* Make copies of the path as basename() and dirname() will change them. */
+  pcopy1 = strdup(path);
+  if (pcopy1 == NULL)
+   {
+    errno = ENOMEM;
+    return NULL;
+   }
+  pcopy2 = strdup(path);
+  if (pcopy2 == NULL)
+   {
+    errno = ENOMEM;
+    free(pcopy1);
+    return NULL;
+   }
+  
+  if (num > 0)
+   {
+    /* Count pid digits */
+    ntemp = num; numlen = 1;
+    while (ntemp > 0)
+     {
+      if ((int)(ntemp/=10) > 0) numlen++;
+     }
+   }
+  else numlen = 0;
+
+  basepath = basename(pcopy1);
+  dirpath  = dirname(pcopy2);
+
+  retpath = (char *)malloc(strlen(basepath) + strlen(dirpath) + 
+                               strlen(format) + numlen); 
+
+  if (retpath == NULL)
+   {
+    errno = ENOMEM;
+    free(pcopy1);
+    free(pcopy2);
+    return NULL;
+   }
+
+  if (num > 0) sprintf(retpath,format,dirpath,basepath,num);
+  else         sprintf(retpath,format,dirpath,basepath);
+  free(pcopy1);
+  free(pcopy2); 
+
+  return retpath;
+}
+
+int 
+job_registry_purge(const char *path, time_t oldest_creation_date)
+{
+  /* This call is meant to occur *before* the registry is open or */
+  /* accessed by a given process. */
+
+  FILE *fd,*fdw;
+  struct flock wlock;
+  char *newreg_path=NULL;
+  job_registry_entry first,cur;
+  job_registry_recnum_t first_recnum, last_recnum;
+  int ret;
+
+  fd = fopen(path,"r+");
+  if (fd == NULL) return JOB_REGISTRY_FOPEN_FAIL;
+
+  /* Now obtain the requested write lock */
+
+  wlock.l_type = F_WRLCK;
+  wlock.l_whence = SEEK_SET;
+  wlock.l_start = 0;
+  wlock.l_len = 0; /* Lock whole file */
+  
+  if (fcntl(fileno(fd), F_SETLKW, &wlock) < 0) 
+   {
+    fclose(fd);
+    return JOB_REGISTRY_FLOCK_FAIL;
+   }
+
+  if ((ret = job_registry_seek_next(fd,&first)) < 0)
+   {
+    fclose(fd);
+    return JOB_REGISTRY_NO_VALID_RECORD;
+   }
+  if (ret == 0)
+   {
+    fclose(fd);
+    return JOB_REGISTRY_SUCCESS;
+   }
+  
+  if ( (first.magic_start != JOB_REGISTRY_MAGIC_START) ||
+       (first.magic_end   != JOB_REGISTRY_MAGIC_END) )
+   {
+    errno = ENOMSG;
+    fclose(fd);
+    return JOB_REGISTRY_CORRUPT_RECORD;
+   }
+
+  first_recnum = last_recnum = first.recnum;
+
+  if (first.cdate > oldest_creation_date)
+   {
+    fclose(fd);
+    return JOB_REGISTRY_SUCCESS;
+   }
+
+  /* Create purged registry file that will be rotated in place */
+  /* of the current registry. */
+  newreg_path = jobregistry_construct_path("%s/%s.new.%d", path, getpid());
+  if (newreg_path == NULL) return JOB_REGISTRY_MALLOC_FAIL;
+  
+  fdw = fopen(newreg_path,"w");
+  if (fdw == NULL)
+   {
+    fclose(fd);
+    return JOB_REGISTRY_FOPEN_FAIL;
+   }
+
+  while (!feof(fd))
+   {
+    if ((ret = job_registry_seek_next(fd,&cur)) < 0)
+     {
+      fclose(fd);
+      fclose(fdw);
+      return JOB_REGISTRY_NO_VALID_RECORD;
+     }
+    if (ret == 0) break;
+
+    /* Sanitize sequence numbers */
+    if (cur.recnum != (last_recnum+1)) cur.recnum = last_recnum + 1;
+    last_recnum = cur.recnum;
+    if (cur.cdate < oldest_creation_date) continue;
+
+    if (fwrite(&cur,sizeof(job_registry_entry),1,fdw) < 1)
+     {
+      fclose(fd);
+      fclose(fdw);
+      return JOB_REGISTRY_FWRITE_FAIL;
+     }
+   }
+
+  fclose(fdw);
+  fclose (fd);
+
+  if (rename(newreg_path, path) < 0)
+   {
+    return JOB_REGISTRY_RENAME_FAIL;
+   }
+
+  return JOB_REGISTRY_SUCCESS;
+}
+
+job_registry_handle *
+job_registry_init(const char *path,
+                  job_registry_index_mode mode)
+{
+  job_registry_handle *rha;
+  FILE *fd;
+
+  rha = (job_registry_handle *)malloc(sizeof(job_registry_handle));
+  if (rha == NULL) 
+   {
+    errno = ENOMEM;
+    return NULL;
+   }
+
+  rha->firstrec = rha->lastrec = 0;
+  rha->entries = NULL;
+  rha->n_entries = 0;
+  rha->n_alloc = 0;
+  rha->mode = mode;
+
+  /* Copy path of file repository */
+  rha->path = strdup(path);
+  if (rha->path == NULL)
+   {
+    free(rha);
+    errno = ENOMEM;
+    return NULL;
+   }
+  
+  /* Create path for lock test file */
+  rha->lockfile = jobregistry_construct_path("%s/.%s.locktest",path,0);
+  if (rha->lockfile == NULL)
+   {
+    free(rha);
+    errno = ENOMEM;
+    return NULL;
+   }
+
+  /* Now read the entire file and cache its contents */
+  /* In NO_INDEX mode only firstrec and lastrec will be updated */
+  fd = job_registry_open(rha, "r");
+  if (fd == NULL)
+   {
+    if (errno == ENOENT) fd = job_registry_open(rha, "w+");
+    if (fd == NULL)
+     {
+      job_registry_destroy(rha);
+      return NULL;
+     }
+   }
+  if (job_registry_rdlock(rha, fd) < 0)
+   {
+    job_registry_destroy(rha);
+    return NULL;
+   }
+  if (job_registry_resync(rha, fd) < 0)
+   {
+    fclose(fd);
+    job_registry_destroy(rha);
+    return NULL;
+   }
+     
+  fclose(fd);
+
+  return(rha);
+}
+
+void 
+job_registry_destroy(job_registry_handle *rha)
+{
+   if (rha->path != NULL) free(rha->path);
+   if (rha->lockfile != NULL) free(rha->lockfile);
+   rha->n_entries = rha->n_alloc = 0;
+   if (rha->entries != NULL) free(rha->entries);
+}
+
+job_registry_recnum_t
+job_registry_firstrec(FILE *fd)
+{
+  /* Get the record number of the first record in the registry file. */
+  /* Record numbers are supposed to be in ascending order, with no gaps. */
+  int ret;
+  job_registry_entry first; 
+  ret = fseek(fd, 0L, SEEK_SET);
+  if (ret < 0) return ret; 
+
+  ret = fread(&first, sizeof(job_registry_entry), 1, fd);
+  if (ret < 1) 
+   {
+    if (feof(fd)) return 0;
+    else return JOB_REGISTRY_FREAD_FAIL;
+   }
+
+  if ( (first.magic_start != JOB_REGISTRY_MAGIC_START) ||
+       (first.magic_end   != JOB_REGISTRY_MAGIC_END) )
+   {
+    errno = ENOMSG;
+    return JOB_REGISTRY_CORRUPT_RECORD;
+   }
+
+  return first.recnum;
+}
+
+int
+job_registry_resync(job_registry_handle *rha, FILE *fd)
+{
+  /* fd *must* be at least read locked before calling this function. */
+
+  job_registry_recnum_t firstrec;
+  job_registry_entry *ren;
+  job_registry_index *new_entries;
+  char *chosen_id;
+
+  firstrec = job_registry_firstrec(fd);
+
+       /* File new or changed? */
+  if ( (rha->lastrec == 0 && rha->firstrec == 0) || firstrec != rha->firstrec)
+   {
+    if (fseek(fd,0L,SEEK_SET) < 0) return JOB_REGISTRY_FSEEK_FAIL;
+    if (rha->entries != NULL) free(rha->entries);
+    rha->firstrec = 0;
+    rha->lastrec = 0;
+    rha->n_entries = 0;
+    rha->n_alloc = 0;
+   }
+  else
+   {
+    /* Move to the last known end of file and keep on reading */
+    if (fseek(fd,(long)((rha->lastrec - rha->firstrec + 1)*sizeof(job_registry_entry)),
+              SEEK_SET) < 0) return JOB_REGISTRY_FSEEK_FAIL;
+   }
+
+  if (rha->mode == NO_INDEX) 
+   {
+    /* Just figure out the first and last recnum */
+    if ((ren = job_registry_get_next(rha, fd)) != NULL)
+     {
+      if (rha->firstrec == 0) rha->firstrec = ren->recnum;
+      free(ren);
+      if (fseek(fd,(long)-sizeof(job_registry_entry),SEEK_END) >= 0)
+       {
+        if ((ren = job_registry_get_next(rha, fd)) != NULL)
+         {
+          rha->lastrec = ren->recnum;
+          free(ren);
+         }
+        else return JOB_REGISTRY_NO_VALID_RECORD;
+       }
+     }
+    return JOB_REGISTRY_SUCCESS;
+   }
+
+  while ((ren = job_registry_get_next(rha, fd)) != NULL)
+   {
+    if (rha->firstrec == 0) rha->firstrec = ren->recnum;
+    if (ren->recnum > rha->lastrec) rha->lastrec = ren->recnum;
+    (rha->n_entries)++;
+    if (rha->n_entries > rha->n_alloc)
+     {
+      rha->n_alloc += 20;
+      new_entries = realloc(rha->entries, 
+                            rha->n_alloc * sizeof(job_registry_index));
+      if (new_entries == NULL)
+       {
+        errno = ENOMEM;
+        free(ren);
+        return JOB_REGISTRY_MALLOC_FAIL;
+       }
+      rha->entries = new_entries;
+     }
+    if (rha->mode == BY_BLAH_ID) chosen_id = ren->blah_id;
+    else                         chosen_id = ren->batch_id;
+
+    JOB_REGISTRY_ASSIGN_ENTRY((rha->entries[rha->n_entries-1]).id,
+                              chosen_id);
+            
+    (rha->entries[rha->n_entries-1]).recnum = ren->recnum; 
+    free(ren);
+   }
+  job_registry_sort(rha);
+  return JOB_REGISTRY_SUCCESS;
+}
+
+int
+job_registry_sort(job_registry_handle *rha)
+{
+  /* Non-recursive quicksort of registry data */
+
+  job_registry_sort_state *sst;
+  job_registry_index swap;
+  int i,k,kp,left,right,size,median;
+  char median_id[JOBID_MAX_LEN];
+  int n_sorted;
+
+  /* Anything to do ? */
+  if (rha->n_entries <= 1) return JOB_REGISTRY_SUCCESS;
+
+  srand(time(0));
+
+  sst = (job_registry_sort_state *)malloc(rha->n_entries * 
+              sizeof(job_registry_sort_state));
+  if (sst == NULL)
+   {
+    errno = ENOMEM;
+    return JOB_REGISTRY_MALLOC_FAIL;
+   }
+  
+  sst[0] = LEFT_BOUND;
+  for (i=1;i<(rha->n_entries - 1);i++) sst[i] = UNSORTED;
+  sst[rha->n_entries - 1] = RIGHT_BOUND;
+
+  for (n_sorted = 0; n_sorted < rha->n_entries; )
+   {
+    for (left=0; left<rha->n_entries; left=right+1)
+     {
+      if (sst[left] == SORTED) 
+       {
+        right = left;
+        continue;
+       }
+      else if (sst[left] == LEFT_BOUND)
+       {
+        /* Find end of current sort partition */
+        for (right = left+1; right<rha->n_entries; right++)
+         {
+          if (sst[right] == RIGHT_BOUND) break;
+          else sst[right] = UNSORTED;
+         }
+        /* Separate entries from 'right' to 'left' and separate them at */
+        /* entry 'median'. */
+        size = (right - left + 1);
+        median = rand()%size + left;
+        JOB_REGISTRY_ASSIGN_ENTRY(median_id, rha->entries[median].id);
+        for (i = left, k = right; ; i++,k--)
+         {
+          while (strcmp(rha->entries[i].id,median_id) < 0) i++;
+          while (strcmp(rha->entries[k].id,median_id) > 0) k--;
+          if (i>=k) break; /* Indices crossed ? */
+
+          /* If we reach here entries 'i' and 'k' need to be swapped. */
+          swap = rha->entries[i];
+          rha->entries[i] = rha->entries[k];
+          rha->entries[k] = swap;
+         }
+        /* 'k' is a new candidate right bound. 'k+1' a candidate left bound */
+        if (k >= left)
+         {
+          if (sst[k] == LEFT_BOUND)  sst[k] = SORTED, n_sorted++;
+          else                       sst[k] = RIGHT_BOUND;
+         }
+        kp = k+1;
+        if ((kp) <= right)
+         {
+          if (sst[kp] == RIGHT_BOUND) sst[kp] = SORTED, n_sorted++;
+          else                        sst[kp] = LEFT_BOUND;
+         }
+       }
+     }
+   }
+  free(sst);
+  return JOB_REGISTRY_SUCCESS;
+}
+
+int
+job_registry_append(job_registry_handle *rha,
+                    job_registry_entry *entry)
+{
+  job_registry_recnum_t found,curr_recn;
+  job_registry_entry last;
+  FILE *fd;
+  long curr_pos;
+  int ret;
+
+  if (rha->mode != NO_INDEX)
+   {
+    if (rha->mode == BY_BLAH_ID) 
+      found = job_registry_lookup(rha, entry->blah_id);
+    else
+      found = job_registry_lookup(rha, entry->batch_id);
+    if (found != 0)
+     { 
+      return job_registry_update(rha, entry);
+     }
+   }
+
+  /* Open file, writelock it and append entry */
+
+  fd = job_registry_open(rha,"a+");
+  if (fd == NULL) return JOB_REGISTRY_FOPEN_FAIL;
+
+  if (job_registry_wrlock(rha,fd) < 0)
+   {
+    fclose(fd);
+    return JOB_REGISTRY_FLOCK_FAIL;
+   }
+
+  /* 'a+' positions the read pointer at the beginning of the file */
+  if (fseek(fd, 0L, SEEK_END) < 0)
+   {
+    fclose(fd);
+    return JOB_REGISTRY_FSEEK_FAIL;
+   }
+
+  curr_pos = ftell(fd);
+  if (curr_pos > 0)
+   {
+    /* Read in last recnum */
+    if (fseek(fd, (long)-sizeof(job_registry_entry), SEEK_CUR) < 0)
+     {
+      fclose(fd);
+      return JOB_REGISTRY_FSEEK_FAIL;
+     }
+    if (fread(&last, sizeof(job_registry_entry),1,fd) < 1)
+     {
+      fclose(fd);
+      return JOB_REGISTRY_FREAD_FAIL;
+     }
+    /* Consistency checks */
+    if ( (last.magic_start != JOB_REGISTRY_MAGIC_START) ||
+         (last.magic_end   != JOB_REGISTRY_MAGIC_END) )
+     {
+      errno = ENOMSG;
+      fclose(fd);
+      return JOB_REGISTRY_CORRUPT_RECORD;
+     }
+    entry->recnum = last.recnum+1;
+   }
+  else entry->recnum = 1;
+
+  entry->magic_start = JOB_REGISTRY_MAGIC_START;
+  entry->magic_end   = JOB_REGISTRY_MAGIC_END;
+  entry->reclen = sizeof(job_registry_entry);
+  entry->cdate = entry->mdate = time(0);
+
+  if (rha->firstrec > 0)
+   {
+    JOB_REGISTRY_GET_REC_OFFSET(curr_recn,entry->recnum,rha->firstrec)
+    if (curr_pos != (long)(curr_recn*sizeof(job_registry_entry)))
+     {
+      errno = EBADMSG;
+      fclose(fd);
+      return JOB_REGISTRY_BAD_POSITION;
+     }
+   }
+  
+  if (fwrite(entry, sizeof(job_registry_entry),1,fd) < 1)
+   {
+    fclose(fd);
+    return JOB_REGISTRY_FWRITE_FAIL;
+   }
+
+  ret = job_registry_resync(rha,fd);
+  fclose(fd);
+  return ret;
+}
+
+int
+job_registry_update(job_registry_handle *rha,
+                    job_registry_entry *entry)
+{
+  return job_registry_update_op(rha, entry, NULL);
+}
+
+int
+job_registry_update_op(job_registry_handle *rha,
+                       job_registry_entry *entry, FILE *fd)
+{
+  job_registry_recnum_t found, firstrec, req_recn;
+  job_registry_entry old_entry;
+  int need_to_fclose = FALSE;
+
+  if (rha->mode == NO_INDEX)
+    return JOB_REGISTRY_NO_INDEX;
+  else if (rha->mode == BY_BLAH_ID) 
+    found = job_registry_lookup(rha, entry->blah_id);
+  else
+    found = job_registry_lookup(rha, entry->batch_id);
+  if (found == 0)
+   {
+    return JOB_REGISTRY_NOT_FOUND;
+   }
+
+  if (fd == NULL)
+   {
+    /* Open file, writelock it and replace entry */
+
+    fd = job_registry_open(rha,"r+");
+    if (fd == NULL) return JOB_REGISTRY_FOPEN_FAIL;
+
+    if (job_registry_wrlock(rha,fd) < 0)
+     {
+      fclose(fd);
+      return JOB_REGISTRY_FLOCK_FAIL;
+     }
+    need_to_fclose = TRUE;
+   }
+
+  firstrec = job_registry_firstrec(fd);
+  JOB_REGISTRY_GET_REC_OFFSET(req_recn,found,firstrec)
+  
+  if (fseek(fd, (long)(req_recn*sizeof(job_registry_entry)), SEEK_SET) < 0)
+   {
+    if (need_to_fclose) fclose(fd);
+    return JOB_REGISTRY_FSEEK_FAIL;
+   }
+  if (fread(&old_entry, sizeof(job_registry_entry),1,fd) < 1)
+   {
+    if (need_to_fclose) fclose(fd);
+    return JOB_REGISTRY_FREAD_FAIL;
+   }
+  if (old_entry.recnum != found)
+   {
+    errno = EBADMSG;
+    if (need_to_fclose) fclose(fd);
+    return JOB_REGISTRY_BAD_RECNUM;
+   }
+  if (fseek(fd, (long)(req_recn*sizeof(job_registry_entry)), SEEK_SET) < 0)
+   {
+    if (need_to_fclose) fclose(fd);
+    return JOB_REGISTRY_FSEEK_FAIL;
+   }
+
+  /* Update original entry and rewrite it */
+  old_entry.mdate = time(0);
+  JOB_REGISTRY_ASSIGN_ENTRY(old_entry.wn_addr, entry->wn_addr);
+  old_entry.status = entry->status;
+  old_entry.exitcode = entry->exitcode;
+  old_entry.udate = entry->udate;
+  
+  if (fwrite(&old_entry, sizeof(job_registry_entry),1,fd) < 1)
+   {
+    if (need_to_fclose) fclose(fd);
+    return JOB_REGISTRY_FWRITE_FAIL;
+   }
+
+  if (need_to_fclose) fclose(fd);
+  return JOB_REGISTRY_SUCCESS;
+}
+
+job_registry_recnum_t 
+job_registry_lookup(job_registry_handle *rha,
+                    const char *id)
+{
+  /* Binary search in entries */
+  /* As a resync attempt is performed inside this function, */
+  /* the registry should not be open when this function is called. */
+  int left,right,cur;
+  job_registry_recnum_t found=0;
+  int cmp;
+  FILE *fd;
+  int retry;
+
+  left = 0;
+  right = rha->n_entries -1;
+
+  for (retry=0; retry < 2; retry++)
+   {
+    while (right >= left)
+     {
+      cur = (right + left) /2;
+      cmp = strcmp(rha->entries[cur].id,id);
+      if (cmp == 0)
+       {
+        found = rha->entries[cur].recnum;
+        break;
+       }
+      else if (cmp < 0)
+       {
+        left = cur+1;
+       }
+      else
+       {
+        right = cur-1;
+       }
+     }
+    /* If the entry was not found the first time around, try resyncing once */
+    if (found == 0 && retry == 0)
+     {
+      fd = job_registry_open(rha, "r");
+      if (fd == NULL) break;
+      if (job_registry_rdlock(rha, fd) < 0)
+       {
+        fclose(fd);
+        break;
+       }
+      if (job_registry_resync(rha, fd) < 0)
+       {
+        fclose(fd);
+        break;
+       }
+      fclose(fd);
+     }
+    if (found > 0) break;
+   }
+   
+  return found;
+}
+
+job_registry_entry *
+job_registry_get(job_registry_handle *rha,
+                 const char *id)
+{
+  job_registry_recnum_t found, firstrec, req_recn;
+  job_registry_entry *entry;
+  FILE *fd;
+
+  if (rha->mode == NO_INDEX)
+   {
+    errno = EINVAL;
+    return NULL;
+   }
+
+  found = job_registry_lookup(rha, id);
+  if (found == 0)
+   {
+    errno = ENOENT;
+    return NULL;
+   }
+
+  /* Open file, readlock it and fetch entry */
+
+  fd = job_registry_open(rha,"r");
+  if (fd == NULL) return NULL;
+
+  if (job_registry_rdlock(rha,fd) < 0)
+   {
+    fclose(fd);
+    return NULL;
+   }
+
+  firstrec = job_registry_firstrec(fd);
+  JOB_REGISTRY_GET_REC_OFFSET(req_recn,found,firstrec)
+  
+  if (fseek(fd, (long)(req_recn*sizeof(job_registry_entry)), SEEK_SET) < 0)
+   {
+    fclose(fd);
+    return NULL;
+   }
+  
+  entry = job_registry_get_next(rha, fd);
+
+  fclose(fd);
+  return entry;
+}
+
+FILE *
+job_registry_open(const job_registry_handle *rha, const char *mode)
+{
+  FILE *fd;
+
+  fd = fopen(rha->path, mode);
+
+  return fd;
+}
+
+int
+job_registry_rdlock(const job_registry_handle *rha, FILE *sfd)
+{
+  int fd, lfd;
+  struct flock tlock, rlock;
+  int ret;
+
+  fd = fileno(sfd);
+
+  /* First of all, try obtaining a write lock to rha->lockfile */
+  /* to make sure no write lock is pending */
+
+  lfd = open(rha->lockfile, O_WRONLY|O_CREAT, 0664); 
+  if (lfd < 0) return lfd;
+
+  tlock.l_type = F_WRLCK;
+  tlock.l_whence = SEEK_SET;
+  tlock.l_start = 0;
+  tlock.l_len = 0; /* Lock whole file */
+
+  if ((ret = fcntl(lfd, F_SETLKW, &tlock)) < 0)  return ret;
+
+  /* Close file immediately */
+
+  close(lfd);
+
+  /* Now obtain the requested read lock */
+
+  rlock.l_type = F_RDLCK;
+  rlock.l_whence = SEEK_SET;
+  rlock.l_start = 0;
+  rlock.l_len = 0; /* Lock whole file */
+  
+  ret = fcntl(fd, F_SETLKW, &rlock);
+  return ret;
+}
+
+int
+job_registry_wrlock(const job_registry_handle *rha, FILE *sfd)
+{
+  int fd, lfd;
+  struct flock tlock, wlock;
+  int ret;
+
+  fd = fileno(sfd);
+
+  /* Obtain and keep a write lock to rha->lockfile */
+  /* to prevent new read locks. */
+
+  lfd = open(rha->lockfile, O_WRONLY|O_CREAT); 
+  if (lfd < 0) return lfd;
+
+  tlock.l_type = F_WRLCK;
+  tlock.l_whence = SEEK_SET;
+  tlock.l_start = 0;
+  tlock.l_len = 0; /* Lock whole file */
+
+  if ((ret = fcntl(lfd, F_SETLKW, &tlock)) < 0)  return ret;
+
+  /* Now obtain the requested write lock */
+
+  wlock.l_type = F_WRLCK;
+  wlock.l_whence = SEEK_SET;
+  wlock.l_start = 0;
+  wlock.l_len = 0; /* Lock whole file */
+  
+  ret = fcntl(fd, F_SETLKW, &wlock);
+
+  /* Release lock on rha->lockfile */
+
+  close(lfd);
+
+  return ret;
+}
+
+job_registry_entry *
+job_registry_get_next(const job_registry_handle *rha,
+                      FILE *fd)
+{
+  /* Get the next valid file record. */
+  /* Keep checking the consistency of the file */
+
+  int ret;
+  job_registry_entry *result=NULL;
+  long curr_pos;
+  job_registry_recnum_t curr_recn;
+
+  result = (job_registry_entry *)malloc(sizeof(job_registry_entry));
+  if (result == NULL)
+   {
+    errno = ENOMEM;
+    return NULL;
+   } 
+  
+  ret = fread(result, sizeof(job_registry_entry), 1, fd);
+  if (ret < 1)
+   {
+    free(result);
+    return NULL;
+   }
+  if ( (result->magic_start != JOB_REGISTRY_MAGIC_START) ||
+       (result->magic_end   != JOB_REGISTRY_MAGIC_END) )
+   {
+    errno = ENOMSG;
+    free(result);
+    return NULL;
+   }
+
+  if (rha->firstrec > 0) /* Keep checking file consistency */
+   {
+    curr_pos = ftell(fd);
+    JOB_REGISTRY_GET_REC_OFFSET(curr_recn,result->recnum,rha->firstrec)
+    if (curr_pos != ((curr_recn+1)*sizeof(job_registry_entry)))
+     {
+      errno = EBADMSG;
+      free(result);
+      return NULL;
+     }
+   }
+  return result;
+}
+
+int
+job_registry_seek_next(FILE *fd, job_registry_entry *result)
+{
+  /* Look for a valid file record anywhere starting from the current */
+  /* position in the file. No consistency check is performed. */
+  /* Used for file recovery. */
+
+  int ret;
+  
+  ret = fread(result, sizeof(job_registry_entry), 1, fd);
+  if (ret < 1)
+   {
+    if (feof(fd)) return 0;
+    else          return JOB_REGISTRY_FREAD_FAIL;
+   }
+
+  while ( (result->magic_start != JOB_REGISTRY_MAGIC_START) ||
+          (result->magic_end   != JOB_REGISTRY_MAGIC_END) )
+   {
+    /* Move 1 byte ahead */
+    ret = fseek(fd, (long)(-sizeof(job_registry_entry)+1), SEEK_CUR);
+    if (ret < 0)
+     {
+      return JOB_REGISTRY_FSEEK_FAIL;
+     }
+
+    ret = fread(result, sizeof(job_registry_entry), 1, fd);
+    if (ret < 1)
+     {
+      if (feof(fd)) return 0;
+      else          return JOB_REGISTRY_FREAD_FAIL;
+     }
+   }
+
+  return 1;
+}
+
