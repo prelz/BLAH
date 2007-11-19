@@ -31,6 +31,7 @@ main(int argc, char *argv[])
   job_registry_entry en;
   job_status_t status=IDLE;
   int exitcode = -1; 
+  char *exitreason = "";
   char *wn_addr = "";
   time_t udate=0;
   char *blah_id, *batch_id;
@@ -48,7 +49,7 @@ main(int argc, char *argv[])
  
   if (argc < 3)
    {
-    fprintf(stderr,"Usage: %s <BLAH id> <batch id> [job status] [exit code] [udate] [worker node]\n",argv[0]);
+    fprintf(stderr,"Usage: %s <BLAH id> <batch id> [job status] [exit code] [udate] [worker node] [exit reason]\n",argv[0]);
     return 1;
    }
 
@@ -59,6 +60,7 @@ main(int argc, char *argv[])
   if (argc > 4) exitcode = atoi(argv[4]);
   if (argc > 5) udate = atol(argv[5]);
   if (argc > 6) wn_addr = argv[6];
+  if (argc > 7) exitreason = argv[7];
    
   job_registry_handle *rha;
 
@@ -77,6 +79,7 @@ main(int argc, char *argv[])
   en.exitcode = exitcode;
   JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_addr); 
   en.udate = udate;
+  JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,exitreason); 
     
   if ((ret=job_registry_append(rha, &en)) < 0)
    {

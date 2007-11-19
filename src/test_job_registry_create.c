@@ -62,6 +62,7 @@ main(int argc, char *argv[])
     en.status = IDLE;
     en.exitcode = -1;
     en.wn_addr[0]='\000';
+    en.exitreason[0] = '\000';
     
     if ((ret=job_registry_append(rha, &en)) < 0)
      {

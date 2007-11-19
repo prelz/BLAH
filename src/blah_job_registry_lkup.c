@@ -43,7 +43,7 @@ main(int argc, char *argv[])
  
   if (argc < 2)
    {
-    fprintf(stderr,"Usage: %s [-b to look up batch IDs] <id>\n",argv[0]);
+    fprintf(stderr,"Usage: %s [-b to look up for batch IDs] <id>\n",argv[0]);
     return 1;
    }
 
@@ -77,15 +77,16 @@ main(int argc, char *argv[])
     return 1;
    } 
 
-  printf("recnum   == %d\n",ren->recnum);
-  printf("blah_id  == <%s>\n",ren->blah_id);
-  printf("batch_id == <%s>\n",ren->batch_id);
-  printf("cdate    == %d - %s",ren->cdate,ctime(&ren->cdate));
-  printf("mdate    == %d - %s",ren->mdate,ctime(&ren->mdate));
-  printf("udate    == %d - %s",ren->udate,ctime(&ren->udate));
-  printf("status   == %d\n",ren->status);
-  printf("exitcode == %d\n",ren->exitcode);
-  printf("wn_addr  == <%s>\n",ren->wn_addr);
+  printf("[BatchJobId=\"%s\"; JobStatus=%d; BlahJobId=\"%s\"; ",
+         ren->batch_id, ren->status, ren->blah_id);
+  printf("CreateTime=%d; ModifiedTime=%d; UserTime=%d; ",
+         ren->cdate, ren->mdate, ren->udate);
+  if (strlen(ren->wn_addr) > 0) printf("WorkerNode=\"%s\"; ",
+                                       ren->wn_addr);
+  if (ren->exitcode > 0) printf("ExitCode=%d; ", ren->exitcode);
+  if (strlen(ren->exitreason) > 0) printf("ExitReason=\"%s\"; ",
+                                       ren->exitreason);
+  printf("]\n");
 
   free(ren);
   job_registry_destroy(rha);

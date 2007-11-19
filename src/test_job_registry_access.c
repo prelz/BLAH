@@ -31,6 +31,8 @@ main(int argc, char *argv[])
   int ret;
   int pick;
   int n_read_tests;
+  struct timeval tm_start, tm_end;
+  float elapsed_secs;
   int i;
 
   srand(time(0));
@@ -48,7 +50,7 @@ main(int argc, char *argv[])
 
   if (rha->n_entries <= 0)
    {
-    fprintf(stderr,"%s: job registry %s has %d entries. Little to do.\n ",
+    fprintf(stderr,"%s: job registry %s has %d entries. Little to do.\n",
             argv[0], test_registry_file, rha->n_entries);
     job_registry_destroy(rha);
     return 1;
@@ -59,7 +61,7 @@ main(int argc, char *argv[])
    {
     if (strcmp(rha->entries[i].id,rha->entries[i-1].id) < 0)
      {
-      fprintf(stderr,"%s: job registry entry #%d (%s) should not be before #%d (%s).\n ",
+      fprintf(stderr,"%s: job registry entry #%d (%s) should not be before #%d (%s).\n",
               argv[0], i-1, rha->entries[i-1].id, i, rha->entries[i].id);   
       job_registry_destroy(rha);
       return 1;
@@ -68,13 +70,14 @@ main(int argc, char *argv[])
   n_read_tests = rha->n_entries*3;
   printf("%s: Successfully indexed %d entries. Now performing %d reads and checks.\n",
          argv[0],rha->n_entries, n_read_tests);
+  gettimeofday(&tm_start, NULL);
   for (i=0; i<n_read_tests; i++)
    {
     pick = rand()%(rha->n_entries);
     en = job_registry_get(rha, rha->entries[pick].id);
     if (en == NULL)
      {
-      fprintf(stderr,"%s: job registry entry with ID==%s not found.\n ",
+      fprintf(stderr,"%s: job registry entry with ID==%s not found.\n",
               argv[0], rha->entries[pick].id);
       job_registry_destroy(rha);
       return 1;
@@ -82,13 +85,19 @@ main(int argc, char *argv[])
     if (strcmp(&(en->blah_id[strlen(en->blah_id)-6]),
                &(en->batch_id[strlen(en->batch_id)-6])) != 0)
      {
-      fprintf(stderr,"%s: Trailing number of IDs %s and %d differs.\n ",
+      fprintf(stderr,"%s: Trailing number of IDs %s and %d differs.\n",
               argv[0], en->blah_id, en->batch_id);
       job_registry_destroy(rha);
       return 1;
      }
     free(en);
    }
+  gettimeofday(&tm_end, NULL);
+
+  elapsed_secs = (tm_end.tv_sec - tm_start.tv_sec) +
+                 (float)(tm_end.tv_usec - tm_start.tv_usec)/1000000;
+  printf("%s: Successfully read/checked %d entries in %g seconds (%g entries/s).\n",
+         argv[0],n_read_tests, elapsed_secs, n_read_tests/elapsed_secs);
 
   job_registry_destroy(rha);
   return 0;

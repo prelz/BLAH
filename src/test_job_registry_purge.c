@@ -39,7 +39,16 @@ main(int argc, char *argv[])
   if (argc > 2) 
    {
     old_date = atol(argv[2]);
-    job_registry_purge(test_registry_file, old_date);
+    if (job_registry_purge(test_registry_file, old_date, FALSE) < 0)
+     {
+      /* Registry file may be corrupt. Try forcing repair by rewriting */
+      /* the file. */
+      if ((ret=job_registry_purge(test_registry_file, old_date, TRUE)) < 0)
+       {
+        fprintf(stderr,"%s: job_registry_purge returns %d: ",argv[0],ret);
+        return 1;
+       }
+     }
    }
 
   job_registry_handle *rha;

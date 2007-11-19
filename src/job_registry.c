@@ -30,6 +30,25 @@
 
 #include "job_registry.h"
 
+/*
+ * jobregistry_construct_path
+ *
+ * Assemble dirname and basename of 'path', and an optional numeric
+ * argument into a dynamically-allocated string formatted according to
+ * 'format'.
+ * 
+ * @param format Format string including two %s and an optional %d converter
+ *               These will be filled with the dirname, basename and numeric
+ *               argument (if > 0).
+ * @param path   Full file path name
+ * @param num    Optional numerical argument. Will be taken into account
+ *               only if it is greater than 0.
+ *
+ * @return       Dynamically allocated string containing the formatting
+ *               result. Needs to be free'd.
+ *
+ */
+
 char *
 jobregistry_construct_path(const char *format, const char *path, 
                            unsigned int num)
@@ -87,12 +106,33 @@ jobregistry_construct_path(const char *format, const char *path,
   return retpath;
 }
 
-int 
-job_registry_purge(const char *path, time_t oldest_creation_date)
-{
-  /* This call is meant to occur *before* the registry is open or */
-  /* accessed by a given process. */
+/*
+ * job_registry_purge
+ *
+ * Remove from the registry located in 'path' all entries that were
+ * created before 'oldest_creation_date'.
+ * This call is meant to be issued before the registry is open and
+ * before job_registry_init() is called, as it has the ability to recover 
+ * corrupted files if possible. The file will not be scanned and rewritten
+ * if the first entry is more recent than 'oldest_creation_date' unless
+ * 'force_rewrite' is true. In the latter case the file will be rescanned
+ * and rewritten.
+ *
+ * @param path Path to the job registry file.
+ * @param oldest_creation_date Oldest cdate of entries that will be
+ *        kept in the registry.
+ * @param force_rewrite If this evaluates to true, it will cause the 
+ *        registry file to be entirely scanned and rewritten also in case
+ *        no purging is needed.
+ *
+ * @return Less than zero on error. errno is set in case of error.
+ *
+ */
 
+int 
+job_registry_purge(const char *path, time_t oldest_creation_date,
+                   int force_rewrite)
+{
   FILE *fd,*fdw;
   struct flock wlock;
   char *newreg_path=NULL;
@@ -118,11 +158,13 @@ job_registry_purge(const char *path, time_t oldest_creation_date)
 
   if ((ret = job_registry_seek_next(fd,&first)) < 0)
    {
+    if (force_rewrite) ftruncate(fd, 0);
     fclose(fd);
     return JOB_REGISTRY_NO_VALID_RECORD;
    }
   if (ret == 0)
    {
+    /* End of file. */
     fclose(fd);
     return JOB_REGISTRY_SUCCESS;
    }
@@ -137,8 +179,9 @@ job_registry_purge(const char *path, time_t oldest_creation_date)
 
   first_recnum = last_recnum = first.recnum;
 
-  if (first.cdate > oldest_creation_date)
+  if (!force_rewrite && (first.cdate >= oldest_creation_date))
    {
+    /* Nothing to purge. Go home. */
     fclose(fd);
     return JOB_REGISTRY_SUCCESS;
    }
@@ -152,7 +195,20 @@ job_registry_purge(const char *path, time_t oldest_creation_date)
   if (fdw == NULL)
    {
     fclose(fd);
+    free(newreg_path);
     return JOB_REGISTRY_FOPEN_FAIL;
+   }
+
+  if (force_rewrite && (first.cdate >= oldest_creation_date))
+   {
+    /* Write out the first record if needed */
+    if (fwrite(&first,sizeof(job_registry_entry),1,fdw) < 1)
+     {
+      fclose(fd);
+      fclose(fdw);
+      free(newreg_path);
+      return JOB_REGISTRY_FWRITE_FAIL;
+     }
    }
 
   while (!feof(fd))
@@ -161,6 +217,7 @@ job_registry_purge(const char *path, time_t oldest_creation_date)
      {
       fclose(fd);
       fclose(fdw);
+      free(newreg_path);
       return JOB_REGISTRY_NO_VALID_RECORD;
      }
     if (ret == 0) break;
@@ -174,20 +231,41 @@ job_registry_purge(const char *path, time_t oldest_creation_date)
      {
       fclose(fd);
       fclose(fdw);
+      free(newreg_path);
       return JOB_REGISTRY_FWRITE_FAIL;
      }
    }
 
   fclose(fdw);
-  fclose (fd);
 
   if (rename(newreg_path, path) < 0)
    {
     return JOB_REGISTRY_RENAME_FAIL;
    }
 
+  /* Closing fd will release the write lock. */
+  fclose (fd);
+
+  free(newreg_path);
+
   return JOB_REGISTRY_SUCCESS;
 }
+
+/*
+ * job_registry_init
+ *
+ * Sets up for access to a job registry file pointed to by 'path'.
+ * An entry index is loaded in memory if mode is not set to NO_INDEX.
+ *
+ * @param path Pathname of the job registry file.
+ * @param mode Operation of the index cache: NO_INDEX disables the cache
+ *             (job_registry_lookup, job_registry_update and job_registry_get
+ *             cannot be used), BY_BATCH_ID uses batch_id as the cache index 
+ *             key while BY_BLAH_ID sets blah_id as the cache index key.
+ *
+ * @return Pointer to a dynamically allocated handle to the job registry.
+ *         This needs to be freed via job_registry_destroy.
+ */
 
 job_registry_handle *
 job_registry_init(const char *path,
@@ -222,6 +300,7 @@ job_registry_init(const char *path,
   rha->lockfile = jobregistry_construct_path("%s/.%s.locktest",path,0);
   if (rha->lockfile == NULL)
    {
+    free(rha->path);
     free(rha);
     errno = ENOMEM;
     return NULL;
@@ -256,6 +335,14 @@ job_registry_init(const char *path,
   return(rha);
 }
 
+/*
+ * job_registry_destroy
+ *
+ * Frees any dynamic content and the job registry handle itself.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init
+ */
+
 void 
 job_registry_destroy(job_registry_handle *rha)
 {
@@ -265,11 +352,24 @@ job_registry_destroy(job_registry_handle *rha)
    if (rha->entries != NULL) free(rha->entries);
 }
 
+/*
+ * job_registry_firstrec
+ * 
+ * Get the record number of the first record in the open registry file
+ * pointed to by fd. 
+ * Record numbers are supposed to be in ascending order, with no gaps. 
+ *
+ * @param fd Stream descriptor of an open registry file.
+ *        fd *must* be at least read locked before calling this function. 
+ *        The file will be left positioned after the first record.
+ *
+ * @return Record number in the first record of the file.
+ *
+ */
+
 job_registry_recnum_t
 job_registry_firstrec(FILE *fd)
 {
-  /* Get the record number of the first record in the registry file. */
-  /* Record numbers are supposed to be in ascending order, with no gaps. */
   int ret;
   job_registry_entry first; 
   ret = fseek(fd, 0L, SEEK_SET);
@@ -292,10 +392,24 @@ job_registry_firstrec(FILE *fd)
   return first.recnum;
 }
 
+/*
+ * job_registry_resync
+ *
+ * Update the cache inside the job registry handle, if enabled,
+ * otherwise just update rha->firstrec and rha->lastrec.
+ * Will rescan the entire file in case this was found to be purged.
+ * 
+ * @param fd Stream descriptor of an open registry file.
+ *        fd *must* be at least read locked before calling this function. 
+ * @param rha Pointer to a job registry handle returned by job_registry_init
+ *
+ * @return Less than zero on error. See job_registry.h for error codes.
+ *         errno is also set in case of error.
+ */
+
 int
 job_registry_resync(job_registry_handle *rha, FILE *fd)
 {
-  /* fd *must* be at least read locked before calling this function. */
 
   job_registry_recnum_t firstrec;
   job_registry_entry *ren;
@@ -348,7 +462,7 @@ job_registry_resync(job_registry_handle *rha, FILE *fd)
     (rha->n_entries)++;
     if (rha->n_entries > rha->n_alloc)
      {
-      rha->n_alloc += 20;
+      rha->n_alloc += JOB_REGISTRY_ALLOC_CHUNK;
       new_entries = realloc(rha->entries, 
                             rha->n_alloc * sizeof(job_registry_index));
       if (new_entries == NULL)
@@ -371,6 +485,19 @@ job_registry_resync(job_registry_handle *rha, FILE *fd)
   job_registry_sort(rha);
   return JOB_REGISTRY_SUCCESS;
 }
+
+/*
+ * job_registry_sort
+ *
+ * Will perform a non-recursive quicksort of the registry index.
+ * This needs to be called before job_registry_lookup, as the latter
+ * assumes the index to be ordered.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init
+ *
+ * @return Less than zero on error. See job_registry.h for error codes.
+ *         errno is also set in case of error.
+ */
 
 int
 job_registry_sort(job_registry_handle *rha)
@@ -452,6 +579,23 @@ job_registry_sort(job_registry_handle *rha)
   return JOB_REGISTRY_SUCCESS;
 }
 
+/*
+ * job_registry_append
+ *
+ * Appends an entry to the registry, unless an entry with the same
+ * active ID is found there already (in that case will fall through
+ * to job_registry_update).
+ * Will open, lock and close the registry file.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
+ * @param entry pointer to a registry entry to append to the registry.
+ *        entry->recnum, entry->cdate and entry->mdate will be updated
+ *        to current values. entry->magic_start and entry->magic_end will
+ *        be appropriately set.
+ *
+ * @return Less than zero on error. See job_registry.h for error codes.
+ *         errno is also set in case of error.
+ */
 int
 job_registry_append(job_registry_handle *rha,
                     job_registry_entry *entry)
@@ -522,17 +666,6 @@ job_registry_append(job_registry_handle *rha,
   entry->magic_end   = JOB_REGISTRY_MAGIC_END;
   entry->reclen = sizeof(job_registry_entry);
   entry->cdate = entry->mdate = time(0);
-
-  if (rha->firstrec > 0)
-   {
-    JOB_REGISTRY_GET_REC_OFFSET(curr_recn,entry->recnum,rha->firstrec)
-    if (curr_pos != (long)(curr_recn*sizeof(job_registry_entry)))
-     {
-      errno = EBADMSG;
-      fclose(fd);
-      return JOB_REGISTRY_BAD_POSITION;
-     }
-   }
   
   if (fwrite(entry, sizeof(job_registry_entry),1,fd) < 1)
    {
@@ -544,6 +677,28 @@ job_registry_append(job_registry_handle *rha,
   fclose(fd);
   return ret;
 }
+
+/*
+ * job_registry_update
+ * job_registry_update_op
+ *
+ * Update an existing entry in the job registry pointed to by rha.
+ * Will return JOB_REGISTRY_NOT_FOUND if the entry does not exist.
+ * job_registry_update will cause job_registry_update_op to open, (write) lock 
+ * and close the registry file, while job_registry_update_op will work
+ * on a file that's aleady open and writelocked.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
+ * @param entry pointer to a registry entry with values to be
+ *        updated into the registry.
+ *        The values of udate, status, exitcode, exitreason and wn_addr
+ *        will be used for the update.
+ * @param fd Stream descriptor of an open (for write) and writelocked 
+ *        registry file. The file will be opened and closed if fd==NULL.
+ *
+ * @return Less than zero on error. See job_registry.h for error codes.
+ *         errno is also set in case of error.
+ */
 
 int
 job_registry_update(job_registry_handle *rha,
@@ -563,9 +718,9 @@ job_registry_update_op(job_registry_handle *rha,
   if (rha->mode == NO_INDEX)
     return JOB_REGISTRY_NO_INDEX;
   else if (rha->mode == BY_BLAH_ID) 
-    found = job_registry_lookup(rha, entry->blah_id);
+    found = job_registry_lookup_op(rha, entry->blah_id, fd);
   else
-    found = job_registry_lookup(rha, entry->batch_id);
+    found = job_registry_lookup_op(rha, entry->batch_id, fd);
   if (found == 0)
    {
     return JOB_REGISTRY_NOT_FOUND;
@@ -617,6 +772,7 @@ job_registry_update_op(job_registry_handle *rha,
   old_entry.status = entry->status;
   old_entry.exitcode = entry->exitcode;
   old_entry.udate = entry->udate;
+  JOB_REGISTRY_ASSIGN_ENTRY(old_entry.exitreason, entry->exitreason);
   
   if (fwrite(&old_entry, sizeof(job_registry_entry),1,fd) < 1)
    {
@@ -628,18 +784,45 @@ job_registry_update_op(job_registry_handle *rha,
   return JOB_REGISTRY_SUCCESS;
 }
 
+/*
+ * job_registry_lookup
+ * job_registry_lookup_op
+ *
+ * Binary search for an entry in the indexed, sorted job registry pointed to by
+ * rha. If the entry is not found, a job_registry_resync will be attempted.
+ * job_registry_lookup_op can operate on an already open and at least read-
+ * locked file.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
+ * @param id Job id key to be looked up 
+ * @param fd Stream descriptor of an open and at least readlocked 
+ *        registry file. The file will be opened and closed if 
+ *        job_registry_resync is needed and fd==NULL.
+ *
+ * @return Record number of the found record, or 0 if the record was not found.
+ */
+
 job_registry_recnum_t 
 job_registry_lookup(job_registry_handle *rha,
                     const char *id)
 {
-  /* Binary search in entries */
   /* As a resync attempt is performed inside this function, */
   /* the registry should not be open when this function is called. */
+  /* Use job_registry_lookup_op if an open file is needed */
+
+  return job_registry_lookup_op(rha, id, NULL);
+}
+
+job_registry_recnum_t 
+job_registry_lookup_op(job_registry_handle *rha,
+                       const char *id, FILE *fd)
+{
+  /* Binary search in entries */
   int left,right,cur;
   job_registry_recnum_t found=0;
   int cmp;
-  FILE *fd;
   int retry;
+  int need_to_fclose = FALSE;
 
   left = 0;
   right = rha->n_entries -1;
@@ -667,25 +850,44 @@ job_registry_lookup(job_registry_handle *rha,
     /* If the entry was not found the first time around, try resyncing once */
     if (found == 0 && retry == 0)
      {
-      fd = job_registry_open(rha, "r");
-      if (fd == NULL) break;
-      if (job_registry_rdlock(rha, fd) < 0)
+      if (fd == NULL)
        {
-        fclose(fd);
-        break;
+        fd = job_registry_open(rha, "r");
+        if (fd == NULL) break;
+        if (job_registry_rdlock(rha, fd) < 0)
+         {
+          fclose(fd);
+          break;
+         }
+        need_to_fclose = TRUE;
        }
       if (job_registry_resync(rha, fd) < 0)
        {
-        fclose(fd);
+        if (need_to_fclose) fclose(fd);
         break;
        }
-      fclose(fd);
+      if (need_to_fclose) fclose(fd);
      }
     if (found > 0) break;
    }
-   
   return found;
 }
+
+/*
+ * job_registry_get
+ *
+ * Search for an entry in the indexed, sorted job registry pointed to by
+ * rha and fetch it from the registry file. If the entry is not found, a 
+ * job_registry_resync will be attempted.
+ * The registry file will be opened, locked and closed as an effect
+ * of this operation, so the file should not be open upon entering
+ * this function.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
+ * @param id Job id key to be looked up 
+ *
+ * @return Dynamically allocated registry entry. Needs to be free'd.
+ */
 
 job_registry_entry *
 job_registry_get(job_registry_handle *rha,
@@ -734,6 +936,18 @@ job_registry_get(job_registry_handle *rha,
   return entry;
 }
 
+/*
+ * job_registry_open
+ *
+ * Open a registry file. Just a wrapper around fopen at the time being.
+ * May include more operations further on.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
+ * @param mode fopen mode string.
+ *
+ * @return stream descriptor of the open file or NULL on error.
+ */
+
 FILE *
 job_registry_open(const job_registry_handle *rha, const char *mode)
 {
@@ -744,6 +958,19 @@ job_registry_open(const job_registry_handle *rha, const char *mode)
   return fd;
 }
 
+/*
+ * job_registry_rdlock
+ *
+ * Obtain a read lock to sfd, after making sure no write lock request
+ * is pending on the same file.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
+ * @param sfd Stream descriptor of an open (for reading) file to lock.
+ * 
+ * @return Less than zero on error. See job_registry.h for error codes.
+ *         errno is also set in case of error.
+ */
+
 int
 job_registry_rdlock(const job_registry_handle *rha, FILE *sfd)
 {
@@ -752,6 +979,7 @@ job_registry_rdlock(const job_registry_handle *rha, FILE *sfd)
   int ret;
 
   fd = fileno(sfd);
+  if (fd < 0) return fd; /* sfd is an invalid stream */
 
   /* First of all, try obtaining a write lock to rha->lockfile */
   /* to make sure no write lock is pending */
@@ -780,6 +1008,19 @@ job_registry_rdlock(const job_registry_handle *rha, FILE *sfd)
   ret = fcntl(fd, F_SETLKW, &rlock);
   return ret;
 }
+
+/*
+ * job_registry_wrlock
+ * 
+ * Obtain a write lock to sfd. Also lock rha->lockfile to prevent more
+ * read locks from being issued.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
+ * @param sfd Stream descriptor of an open (for writing) file to lock.
+ * 
+ * @return Less than zero on error. See job_registry.h for error codes.
+ *         errno is also set in case of error.
+ */
 
 int
 job_registry_wrlock(const job_registry_handle *rha, FILE *sfd)
@@ -819,13 +1060,25 @@ job_registry_wrlock(const job_registry_handle *rha, FILE *sfd)
   return ret;
 }
 
+/*
+ * job_registry_get_next
+ *
+ * Get the registry entry currently pointed to in open stream fd and try
+ * making sure it is consistent.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
+ * @param fd Open (at least for reading) stream descriptor into a registry file
+ *        The stream must be positioned at the beginning of a valid entry,
+ *        or an error will be returned. Use job_registry_seek_next is the
+ *        stream needs to be positioned.
+ *
+ * @return Dynamically allocated registry entry. Needs to be free'd.
+ */
+
 job_registry_entry *
 job_registry_get_next(const job_registry_handle *rha,
                       FILE *fd)
 {
-  /* Get the next valid file record. */
-  /* Keep checking the consistency of the file */
-
   int ret;
   job_registry_entry *result=NULL;
   long curr_pos;
@@ -853,6 +1106,7 @@ job_registry_get_next(const job_registry_handle *rha,
    }
 
   if (rha->firstrec > 0) /* Keep checking file consistency */
+                         /* (correspondence of file offset and record num) */
    {
     curr_pos = ftell(fd);
     JOB_REGISTRY_GET_REC_OFFSET(curr_recn,result->recnum,rha->firstrec)
@@ -866,13 +1120,24 @@ job_registry_get_next(const job_registry_handle *rha,
   return result;
 }
 
+/*
+ * job_registry_seek_next
+ *
+ * Look for a valid registry entry anywhere starting from the current 
+ * position in fd. No consistency check is performed. 
+ * This function can be used for file recovery. 
+ *
+ * @param fd Open (at least for reading) stream descriptor into a registry file.
+ * @param result Pointer to an allocated registry entry that will be 
+ *        used to store the result of the read.
+ *
+ * @return Less than zero on error. See job_registry.h for error codes.
+ *         errno is also set in case of error.
+ */
+
 int
 job_registry_seek_next(FILE *fd, job_registry_entry *result)
 {
-  /* Look for a valid file record anywhere starting from the current */
-  /* position in the file. No consistency check is performed. */
-  /* Used for file recovery. */
-
   int ret;
   
   ret = fread(result, sizeof(job_registry_entry), 1, fd);

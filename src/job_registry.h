@@ -34,6 +34,8 @@ typedef uint32_t job_registry_recnum_t;
   if ((found) >= (firstrec)) (req_recn) = (found) - (firstrec); \
   else (req_recn) = JOB_REGISTRY_MAX_RECNUM - (firstrec) + (found);
 
+#define JOB_REGISTRY_MAX_EXITREASON 120
+
 typedef struct job_registry_entry_s
  {
    uint32_t     magic_start; 
@@ -46,6 +48,7 @@ typedef struct job_registry_entry_s
    char         batch_id[JOBID_MAX_LEN];
    job_status_t status; 
    int          exitcode;
+   char         exitreason[JOB_REGISTRY_MAX_EXITREASON];
    char         wn_addr[40]; /* Accommodates IPV6 addresses */
    uint32_t     magic_end; 
  } job_registry_entry;
@@ -104,10 +107,12 @@ typedef enum job_registry_sort_state_e
 #define JOB_REGISTRY_BAD_RECNUM      -14 
 
 #define JOB_REGISTRY_TEST_FILE "/tmp/test_reg.bjr"
+#define JOB_REGISTRY_ALLOC_CHUNK     20
 
 char *jobregistry_construct_path(const char *format, const char *path,
                                  unsigned int num);
-int job_registry_purge(const char *path, time_t oldest_creation_date);
+int job_registry_purge(const char *path, time_t oldest_creation_date,
+                       int force_rewrite);
 job_registry_handle *job_registry_init(const char *path, 
                                        job_registry_index_mode mode);
 void job_registry_destroy(job_registry_handle *rhandle);
@@ -116,6 +121,8 @@ int job_registry_resync(job_registry_handle *rhandle, FILE *fd);
 int job_registry_sort(job_registry_handle *rhandle);
 job_registry_recnum_t job_registry_lookup(job_registry_handle *rhandle,
                                           const char *id);
+job_registry_recnum_t job_registry_lookup_op(job_registry_handle *rhandle,
+                                          const char *id, FILE *fd);
 int job_registry_append(job_registry_handle *rhandle, 
                         job_registry_entry *entry);
 int job_registry_update(job_registry_handle *rhandle, 
