@@ -26,7 +26,7 @@ config_handle *
 config_read(const char *ipath)
  {
   char *path;
-  char *install_location;
+  char *install_location=NULL;
   char *line=NULL,*new_line=NULL;
   char *cur;
   char *key_start, *key_end, *val_start, *val_end;
@@ -41,14 +41,15 @@ config_read(const char *ipath)
   const int line_alloc_chunk = 128;
   FILE *cf;
 
+  if ((install_location = getenv("GLITE_LOCATION")) == NULL)
+   {
+    install_location = getenv("BLAHPD_LOCATION");
+    if (install_location == NULL) install_location = DEFAULT_GLITE_LOCATION;
+   }
+
   if (ipath == NULL)
    {
     /* Read from default path. */
-    if ((install_location = getenv("GLITE_LOCATION")) == NULL)
-     {
-      install_location = getenv("BLAHPD_LOCATION");
-      if (install_location == NULL) install_location = DEFAULT_GLITE_LOCATION;
-     }
     path = (char *)malloc(strlen(CONFIG_FILE_BASE)+strlen(install_location)+6);
     if (path == NULL) return NULL;
     sprintf(path,"%s/etc/%s",install_location,CONFIG_FILE_BASE);
@@ -69,19 +70,30 @@ config_read(const char *ipath)
   rha = (config_handle *)malloc(sizeof(config_handle));
   if (rha == NULL)
    {
+    fclose(cf);
     free(path);
     return NULL;
    }
 
-  rha->path = path;
+  rha->config_path = path;
   rha->list = NULL;
+  if (install_location != NULL) rha->install_path = strdup(install_location);
+  rha->bin_path = (char *)malloc(strlen(install_location)+5);
+  if (rha->install_path == NULL || rha->bin_path == NULL)
+   {
+    /* Out of memory */
+    fclose(cf);
+    config_free(rha);
+    return NULL;
+   }
+  sprintf(rha->bin_path,"%s/bin",install_location);
 
   line_alloc = line_alloc_chunk;
   line = (char *)malloc(line_alloc);
   if (line == NULL) 
    {
     fclose(cf);
-    free(rha);
+    config_free(rha);
     return NULL;
    }
   line[0]='\000';
@@ -250,7 +262,9 @@ config_free(config_handle *handle)
      }
    }
 
-  if ((handle->path) != NULL) free(handle->path);
+  if ((handle->config_path) != NULL) free(handle->config_path);
+  if ((handle->install_path) != NULL) free(handle->install_path);
+  if ((handle->bin_path) != NULL) free(handle->bin_path);
 
   free(handle);
  }

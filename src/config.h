@@ -32,7 +32,9 @@ typedef struct config_entry_s
 
 typedef struct config_handle_s
  {
-   char *path;
+   char *install_path;
+   char *bin_path;
+   char *config_path;
    config_entry *list;
  } config_handle;
 
