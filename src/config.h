@@ -21,8 +21,6 @@
 
 #include <stdio.h>
 
-#include "blahpd.h"
-
 typedef struct config_entry_s
  {
    char *key;
@@ -43,7 +41,7 @@ config_entry *config_get(const char *key, config_handle *handle);
 int config_test_boolean(const config_entry *entry);
 void config_free(config_handle *handle);
 
-#define CONFIG_FILE_BASE "blah_config.h"
+#define CONFIG_FILE_BASE "blah.config"
 
 #define CONFIG_SKIP_WHITESPACE_FWD(c) while ((*(c) == ' ')  || (*(c) == '\t') || \
                                   (*(c) == '\n') || (*(c) == '\r') ) (c)++;

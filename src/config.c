@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "blahpd.h"
 #include "config.h"
 
 config_handle *
