@@ -158,7 +158,7 @@ job_registry_purge(const char *path, time_t oldest_creation_date,
 
   if ((ret = job_registry_seek_next(fd,&first)) < 0)
    {
-    if (force_rewrite) ftruncate(fd, 0);
+    if (force_rewrite) ftruncate(fileno(fd), 0);
     fclose(fd);
     return JOB_REGISTRY_NO_VALID_RECORD;
    }
