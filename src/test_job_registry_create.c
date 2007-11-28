@@ -18,6 +18,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h> /* geteuid() */
 #include <time.h>
 #include <errno.h>
 #include "job_registry.h"
@@ -63,6 +64,7 @@ main(int argc, char *argv[])
     en.exitcode = -1;
     en.wn_addr[0]='\000';
     en.exitreason[0] = '\000';
+    en.submitter = geteuid();
     
     if ((ret=job_registry_append(rha, &en)) < 0)
      {

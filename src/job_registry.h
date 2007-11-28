@@ -41,6 +41,7 @@ typedef struct job_registry_entry_s
    uint32_t     magic_start; 
    uint32_t     reclen;
    job_registry_recnum_t recnum;
+   uid_t        submitter;
    time_t       cdate;
    time_t       mdate;
    time_t       udate;

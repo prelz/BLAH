@@ -18,6 +18,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h> /* geteuid() */
 #include <time.h>
 #include <errno.h>
 #include "job_registry.h"
@@ -80,6 +81,7 @@ main(int argc, char *argv[])
   JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_addr); 
   en.udate = udate;
   JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,exitreason); 
+  en.submitter = geteuid();
     
   if ((ret=job_registry_append(rha, &en)) < 0)
    {
