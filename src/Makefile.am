@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.17 2007/11/16 17:30:10 fprelz Exp $ 
+# $Id: Makefile.am,v 1.18 2007/11/28 15:40:10 fprelz Exp $ 
 #
 # File:           Makefile.am
 #
@@ -21,7 +21,7 @@ SUBDIRS = scripts
 bin_PROGRAMS = blahpd blahpd_daemon BPRclient BPRserver BLClient BLParserLSF BLParserPBS BAParser BAClient BDlogger test_condor_logger blah_job_registry_add blah_job_registry_lkup
 noinst_PROGRAMS = test_job_registry_create test_job_registry_purge test_job_registry_update test_job_registry_access
 
-common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C mtsafe_popen.c proxy_hashcontainer.c
+common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C mtsafe_popen.c proxy_hashcontainer.c config.c
 
 blahpd_SOURCES = main.c $(common_sources)
 
@@ -67,9 +67,9 @@ BDlogger_SOURCES = BDlogger.c
 
 BDlogger_LDADD =
 
-test_condor_logger_SOURCES = test_condor_create_log.c condor_create_log.c
+test_condor_logger_SOURCES = test_condor_create_log.c
 
-test_condor_logger_LDADD =
+test_condor_logger_LDADD = -lglite_ce_condor_logger
 
 test_condor_logger_CFLAGS = $(AM_CFLAGS)
 
@@ -93,9 +93,9 @@ test_job_registry_access_CFLAGS = $(AM_CFLAGS)
 
 lib_LTLIBRARIES = libglite_ce_condor_logger.la 
 
-libglite_ce_condor_logger_la_SOURCES = condor_create_log.c 
+libglite_ce_condor_logger_la_SOURCES = condor_create_log.c config.c
 
-noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h mtsafe_popen.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h BAParser.h condor_create_log.h proxy_hashcontainer.h job_registry.h
+noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h mtsafe_popen.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h BAParser.h condor_create_log.h proxy_hashcontainer.h job_registry.h config.h
 
 #bin_SCRIPTS = pbs_cancel.sh pbs_status.sh pbs_submit.sh lsf_cancel.sh lsf_status.sh lsf_submit.sh
 

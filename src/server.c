@@ -20,6 +20,7 @@
 #   20 Sep 2004 - Added support for Queue attribute.
 #   12 Dec 2006 - (prelz@mi.infn.it). Added commands to cache proxy
 #                 filenames.
+#   23 Nov 2007 - (prelz@mi.infn.it). Access blah.config via config API.
 #
 #  Description:
 #   Serve a connection to a blahp client, performing appropriate
@@ -51,6 +52,7 @@
 #include <fcntl.h>
 
 #include "blahpd.h"
+#include "config.h"
 #include "classad_c_helper.h"
 #include "commands.h"
 #include "job_status.h"
@@ -117,6 +119,7 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId);
 char *ConvertArgs(char* args, char sep);
 
 /* Global variables */
+config_handle *blah_config_handle = NULL;
 static int server_socket;
 static int async_mode = 0;
 static int async_notice = 0;
@@ -173,17 +176,21 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	int i, argc;
 	char **argv;
 	command_t *command;
-	FILE *conffile = NULL;
-	char *conffilestr = NULL;
-	char buffer[128];
 	int bc=0;
 	char *needed_libs=NULL;
 	char *old_ld_lib=NULL;
 	char *new_ld_lib=NULL;
-	char **str_cad;
-	const char *enable_condor_glexec_attr="enable_glexec_from_condor";
-	int enable_condor_glexec_attr_size;
-	char *value_loc;
+	config_entry *suplrms;
+	char *next_lrms_s, *next_lrms_e;
+	int lrms_len;
+
+	blah_config_handle = config_read(NULL);
+	if (blah_config_handle == NULL)
+	{
+		fprintf(stderr, "Cannot access blah.config file in default locations ($GLITE_LOCATION/etc or $BLAHPD_LOCATION/etc): ");
+		perror("");
+		exit(MALLOC_ERROR);
+	}
 
 	for (i = 0; i < GLEXEC_ENV_TOTAL; i++)
 		glexec_env_var[i] = NULL;
@@ -207,86 +214,70 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	if(old_ld_lib)
 	{
 		new_ld_lib =(char*)malloc(strlen(old_ld_lib) + 2 + strlen(needed_libs));
+		if (new_ld_lib == NULL)
+		{
+			fprintf(stderr, "Out of memory\n");
+			exit(MALLOC_ERROR);
+		}
 	  	sprintf(new_ld_lib,"%s;%s",old_ld_lib,needed_libs);
 	  	setenv("LD_LIBRARY_PATH",new_ld_lib,1);
 	}else
 	 	 setenv("LD_LIBRARY_PATH",needed_libs,1);
 	
-	blah_script_location = make_message(BINDIR_LOCATION, result);
+	blah_script_location = strdup(blah_config_handle->bin_path);
 	blah_version = make_message(RCSID_VERSION, VERSION, "poly");
 	if ((gloc=getenv("GLEXEC_COMMAND")) == NULL)
 	{
 		gloc = DEFAULT_GLEXEC_COMMAND;
 	}
-	conffilestr = make_message("%s/etc/blah.config",result);
-
-	enable_condor_glexec_attr_size = strlen(enable_condor_glexec_attr);
-
-	if((conffile = fopen(conffilestr,"r")) != NULL)
-	{
-		while(fgets(buffer, 128, conffile))
-		{
-			if (!strncmp(buffer,enable_condor_glexec_attr,
-			                    enable_condor_glexec_attr_size))
-			{
-				enable_condor_glexec = TRUE;
-				value_loc = strchr(buffer + enable_condor_glexec_attr_size, '=');
-				if (value_loc != NULL)
-				{
-				  	for(value_loc++;
-					    *value_loc == ' ' || 
-					    *value_loc == '\t';
-					    value_loc++) 
-						/*Empty - skip whitespace*/ ;
-				}
-
-				/* Attribute set to 'no' ? */
-				if ((value_loc[0] == 'n' || value_loc[0] == 'N')
-				  &&(value_loc[1] == 'o' || value_loc[1] == 'O'))
-					enable_condor_glexec = FALSE;
+	enable_condor_glexec = config_test_boolean(config_get("enable_glexec_from_condor",blah_config_handle));
 				
-				if (enable_condor_glexec)
-				{
-					/* Enable condor/glexec commands */
-					/* FIXME: should check/assert for success */
-					command = find_command("CACHE_PROXY_FROM_FILE");
-					if (command) command->cmd_handler = cmd_cache_proxy_from_file;
-					command = find_command("USE_CACHED_PROXY");
-					if (command) command->cmd_handler = cmd_use_cached_proxy;
-					command = find_command("UNCACHE_PROXY");
-					if (command) command->cmd_handler = cmd_uncache_proxy;
-					/* Check that tmp_dir is group writable */
-					if (stat(tmp_dir, &tmp_stat) >= 0)
-					{
-						if ((tmp_stat.st_mode & S_IWGRP) == 0)
-						{
-							if (chmod(tmp_dir,tmp_stat.st_mode|S_IWGRP|S_IRGRP|S_IXGRP)<0)
-							{
-								fprintf(stderr,"WARNING: cannot make %s group writable: %s\n",
-								        tmp_dir, strerror(errno));
-							}
-						}
-					}
-				}
-			}
-
-			if (!strncmp (buffer,"supported_lrms=", strlen("supported_lrms=")))
+	if (enable_condor_glexec)
+	{
+		/* Enable condor/glexec commands */
+		/* FIXME: should check/assert for success */
+		command = find_command("CACHE_PROXY_FROM_FILE");
+		if (command) command->cmd_handler = cmd_cache_proxy_from_file;
+		command = find_command("USE_CACHED_PROXY");
+		if (command) command->cmd_handler = cmd_use_cached_proxy;
+		command = find_command("UNCACHE_PROXY");
+		if (command) command->cmd_handler = cmd_uncache_proxy;
+		/* Check that tmp_dir is group writable */
+		if (stat(tmp_dir, &tmp_stat) >= 0)
+		{
+			if ((tmp_stat.st_mode & S_IWGRP) == 0)
 			{
-				bc+=strlen("supported_lrms=");
-				while(strlen(&buffer[bc]) > 0)
+				if (chmod(tmp_dir,tmp_stat.st_mode|S_IWGRP|S_IRGRP|S_IXGRP)<0)
 				{
-					strncpy(lrmslist[lrms_counter],&buffer[bc],3);
-					lrms_counter++;
-					if(strlen(&buffer[bc]) > 3) bc+=4;
-					else break;
+					fprintf(stderr,"WARNING: cannot make %s group writable: %s\n",
+					        tmp_dir, strerror(errno));
 				}
 			}
-			bc=0;
-			memset(buffer,0,128);
 		}
-		
-		fclose(conffile);
-		free(conffilestr);
+	}
+
+	suplrms = config_get("supported_lrms", blah_config_handle);
+
+	if (suplrms != NULL)
+	{
+		next_lrms_s = suplrms->value;
+		for(lrms_counter = 0; next_lrms_s < (suplrms->value + strlen(suplrms->value)) && lrms_counter < MAX_LRMS_NUMBER; )
+		{
+			next_lrms_e = strchr(next_lrms_s,','); 
+			if (next_lrms_e == NULL) 
+				next_lrms_e = suplrms->value + strlen(suplrms->value);
+			lrms_len = (int)(next_lrms_e - next_lrms_s);
+			if (lrms_len >= MAX_LRMS_NAME_SIZE)
+				lrms_len = MAX_LRMS_NAME_SIZE-1;
+			if (lrms_len > 0)
+			{
+				memcpy(lrmslist[lrms_counter],next_lrms_s,lrms_len);
+				lrmslist[lrms_counter][lrms_len] = '\000';
+				lrms_counter++;
+			}
+			if (*next_lrms_e == '\000') break;
+			next_lrms_s = next_lrms_e + 1;
+		}
 	}
 	
 	write(server_socket, blah_version, strlen(blah_version));
@@ -2026,7 +2017,6 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
 	time_t tt;
 	struct tm *t_m=NULL;
 	char *glite_loc=NULL;
-	char *blah_conf=NULL;
 	char host_name[MAX_TEMP_ARRAY_SIZE];
 	char *jobid=NULL;
 	char *lrms_jobid=NULL;
@@ -2042,7 +2032,6 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
 	{
 		glite_loc = DEFAULT_GLITE_LOCATION;
 	}
-	blah_conf=make_message("%s/etc/blah.config",glite_loc);
 	/* Submission time */
 	time(&tt);
 	t_m = gmtime(&tt);
@@ -2121,10 +2110,9 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
 		uid = make_message("%d",getuid());
 	/* log line with in addiction unixuser */
 	esc_userDN=escape_spaces(userDN);
-	/* log_line=make_message("%s/BDlogger %s \\\"timestamp=%s\\\"\\\ \\\"userDN=%s\\\"\\\ %s\\\"ceID=%s\\\"\\\ \\\"jobID=%s\\\"\\\ \\\"lrmsID=%s\\\"\\\ \\\"localUser=%s\\\"", blah_script_location, blah_conf, date_str, esc_userDN, fqan, ce_id, gridjobid, lrms_jobid, uid); */
-	log_line=make_message("%s/BDlogger %s \\\"timestamp=%s\\\"\\ \\\"userDN=%s\\\"\\ %s\\\"ceID=%s\\\"\\ \\\"jobID=%s\\\"\\ \\\"lrmsID=%s\\\"\\ \\\"localUser=%s\\\"", blah_script_location, blah_conf, date_str, esc_userDN, fqan, ce_id, gridjobid, lrms_jobid, uid);
+	/* log_line=make_message("%s/BDlogger %s \\\"timestamp=%s\\\"\\\ \\\"userDN=%s\\\"\\\ %s\\\"ceID=%s\\\"\\\ \\\"jobID=%s\\\"\\\ \\\"lrmsID=%s\\\"\\\ \\\"localUser=%s\\\"", blah_script_location, blah_config_handle->config_path, date_str, esc_userDN, fqan, ce_id, gridjobid, lrms_jobid, uid); */
+	log_line=make_message("%s/BDlogger %s \\\"timestamp=%s\\\"\\ \\\"userDN=%s\\\"\\ %s\\\"ceID=%s\\\"\\ \\\"jobID=%s\\\"\\ \\\"lrmsID=%s\\\"\\ \\\"localUser=%s\\\"", blah_script_location, blah_config_handle->config_path, date_str, esc_userDN, fqan, ce_id, gridjobid, lrms_jobid, uid);
 	system(log_line);
-	if(blah_conf) free(blah_conf);	
 	if(gridjobid) free(gridjobid);
 	free(uid);
 	free(log_line);

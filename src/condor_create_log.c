@@ -24,12 +24,13 @@
 #include <stdarg.h>
 #include <sys/stat.h>
 #include "condor_create_log.h"
+#include "config.h"
 
 #define MAX_TEMP_ARRAY_SIZE              1000
 #define DEFAULT_GLITE_LOCATION  	"/opt/glite"
 
 static char* acc_loc=NULL;
-static char* bin_location=NULL;
+static config_handle *blah_config_handle=NULL;
 
 /* prototypes */
 int logAccInfo(char* jobId, char* gridjobid, char* ce_id, char* queue, char* fqan, char* userDN);
@@ -76,8 +77,9 @@ int create_accounting_log(int argc, char** argname, char** argvalue)
         }else
                  setenv("LD_LIBRARY_PATH",acc_needed_libs,1);
 
-        bin_location = make_message("%s/bin", acc_loc);
-	
+        blah_config_handle = config_read(NULL);
+        if (blah_config_handle == NULL) 
+		return 1;
         if(getProxyInfo(proxyname, fqan, userDN)) 
 		return 1;
         if(userDN) 
@@ -97,20 +99,12 @@ int  logAccInfo(char* jobId, char* gridjobid, char* ce_id, char* queue, char* fq
         char date_str[MAX_TEMP_ARRAY_SIZE];
         time_t tt;
         struct tm *t_m=NULL;
-        char *glite_loc=NULL;
-        char *blah_conf=NULL;
         char host_name[MAX_TEMP_ARRAY_SIZE];
         int id;
         char bs[4];
         char *esc_userDN=NULL;
         char uid[MAX_TEMP_ARRAY_SIZE];
 
-        /* Get values from environment and compose the logfile pathname */
-        if ((acc_loc = getenv("GLITE_LOCATION")) == NULL)
-        {
-                acc_loc = DEFAULT_GLITE_LOCATION;
-        }
-        blah_conf=make_message("%s/etc/blah.config",acc_loc);
         /* Submission time */
         time(&tt);
         t_m = gmtime(&tt);
@@ -148,7 +142,7 @@ int  logAccInfo(char* jobId, char* gridjobid, char* ce_id, char* queue, char* fq
         /* log line with in addiction unixuser */
         // call to suided tool
         esc_userDN=escape_spaces(userDN);
-        log_line=make_message("%s/BDlogger %s \\\"timestamp=%s\\\"\\ \\\"userDN=%s\\\"\\ %s\\\"ceID=%s\\\"\\ \\\"jobID=%s\\\"\\ \\\"lrmsID=%s\\\"\\ \\\"localUser=%s\\\"", bin_location, blah_conf, date_str, esc_userDN, fqan, ce_id, gridjobid, jobId, uid);
+        log_line=make_message("%s/BDlogger %s \\\"timestamp=%s\\\"\\ \\\"userDN=%s\\\"\\ %s\\\"ceID=%s\\\"\\ \\\"jobID=%s\\\"\\ \\\"lrmsID=%s\\\"\\ \\\"localUser=%s\\\"", blah_config_handle->bin_path, blah_config_handle->config_path, date_str, esc_userDN, fqan, ce_id, gridjobid, jobId, uid);
         system(log_line);
 
         if(gridjobid) free(gridjobid);
@@ -201,7 +195,7 @@ int getProxyInfo(char* proxname, char* fqan, char* userDN)
           memset(fqanlong,0,MAX_TEMP_ARRAY_SIZE);
           /* command : voms-proxy-info -file proxname -fqan  */
           memset(temp_str,0,MAX_TEMP_ARRAY_SIZE);
-          sprintf(temp_str,"%s/voms-proxy-info -file %s -fqan 2> /dev/null",  bin_location, proxname);
+          sprintf(temp_str,"%s/voms-proxy-info -file %s -fqan 2> /dev/null", blah_config_handle->bin_path, proxname);
           if ((cmd_out=popen(temp_str, "r")) == NULL)
                 return 1;
           while(fgets(fqanlong, MAX_TEMP_ARRAY_SIZE, cmd_out))

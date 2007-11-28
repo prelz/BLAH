@@ -5,13 +5,14 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
+#include "config.h"
+
 #define RCSID_VERSION		"$GahpVersion: %s Nov 30 2006 INFN\\ blahpd\\ (%s) $"
 #define BUFFER_FILE		"/tmp/blahp_result_buffer"
 #define FLUSHED_BUFFER		"/tmp/blahp_result_buffer.flushed"
 
 #define DEFAULT_GLITE_LOCATION	"/opt/glite"
 #define DEFAULT_GLEXEC_COMMAND "/opt/glite/sbin/glexec"
-#define BINDIR_LOCATION		"%s/bin"
 
 /* Change this in order to select the default batch system
  * (overridden by BLAH_LRMS env variable)*/
@@ -55,5 +56,7 @@ typedef struct s_resline {
 
 
 char *make_message(const char *fmt, ...);
+
+extern config_handle *blah_config_handle;
 
 #endif /* defined BLAHPD_H_INCLUDED */
