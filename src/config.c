@@ -51,9 +51,19 @@ config_read(const char *ipath)
   if (ipath == NULL)
    {
     /* Read from default path. */
-    path = (char *)malloc(strlen(CONFIG_FILE_BASE)+strlen(install_location)+6);
-    if (path == NULL) return NULL;
-    sprintf(path,"%s/etc/%s",install_location,CONFIG_FILE_BASE);
+    path = getenv("BLAHPD_CONFIG_LOCATION");
+    if (path == NULL)
+     {
+      path = (char *)malloc(strlen(CONFIG_FILE_BASE)+strlen(install_location)+6);
+      if (path == NULL) return NULL;
+      sprintf(path,"%s/etc/%s",install_location,CONFIG_FILE_BASE);
+     }
+    else
+     {
+      /* Make a malloc'ed copy */
+      path = strdup(path);
+      if (path == NULL) return NULL;
+     }
    }
   else 
    {
@@ -328,7 +338,8 @@ main(int argc, char *argv[])
   
   close(tcf);
 
-  cha = config_read(path);
+  setenv("BLAHPD_CONFIG_LOCATION",path,1);
+  cha = config_read(NULL);
   unlink(path);
   if (cha == NULL)
    {
