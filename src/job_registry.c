@@ -1168,3 +1168,74 @@ job_registry_seek_next(FILE *fd, job_registry_entry *result)
   return 1;
 }
 
+/*
+ * job_registry_entry_as_classad
+ *
+ * Look for a valid registry entry anywhere starting from the current 
+ * position in fd. No consistency check is performed. 
+ * This function can be used for file recovery. 
+ *
+ * @param entry Job registry entry to be formatted as classad.
+ *
+ * @return Dynamically-allocated string containing the classad
+ *         rappresentation of entry.
+ */
+
+#define JOB_REGISTRY_APPEND_ATTRIBUTE(format,attribute) \
+    fmt_extra = (format); \
+    esiz = snprintf(NULL, 0, fmt_extra, (attribute)) + 1; \
+    new_extra_attrs = (char *)realloc(extra_attrs, extra_attrs_size + esiz); \
+    if (new_extra_attrs == NULL) \
+     { \
+      if (extra_attrs != NULL) free(extra_attrs); \
+      return NULL; \
+     } \
+    need_to_free_extra_attrs = TRUE; \
+    extra_attrs = new_extra_attrs; \
+    snprintf(extra_attrs+extra_attrs_size, esiz, fmt_extra, (attribute)); \
+    extra_attrs_size += (esiz-1); 
+
+char *
+job_registry_entry_as_classad(const job_registry_entry *entry)
+{
+  char *fmt_base = "[ BatchJobId=\"%s\"; JobStatus=%d; BlahJobId=\"%s\"; "
+                   "CreateTime=%u; ModifiedTime=%u; UserTime=%u; %s]";
+  char *result, *fmt_extra, *extra_attrs=NULL, *new_extra_attrs;
+  char *extra_attrs_append;
+  int extra_attrs_size = 0;
+  int need_to_free_extra_attrs = FALSE;
+  int esiz,fsiz;
+
+  if ((entry->wn_addr != NULL) && (strlen(entry->wn_addr) > 0)) 
+   { 
+    JOB_REGISTRY_APPEND_ATTRIBUTE("WorkerNode=\"%s\"; ",entry->wn_addr);
+   }
+  if (entry->exitcode > 0)
+   {
+    JOB_REGISTRY_APPEND_ATTRIBUTE("ExitCode=%d; ",entry->exitcode);
+   }
+  if ((entry->exitreason != NULL) && (strlen(entry->exitreason) > 0)) 
+   { 
+    JOB_REGISTRY_APPEND_ATTRIBUTE("ExitReason=\"%s\"; ",entry->exitreason);
+   }
+
+  if (extra_attrs == NULL) 
+   {
+    extra_attrs = "";
+    need_to_free_extra_attrs = FALSE;
+   }
+
+  fsiz = snprintf(NULL, 0, fmt_base, 
+                  entry->batch_id, entry->status, entry->blah_id,
+                  entry->cdate, entry->mdate, entry->udate, extra_attrs) + 1;
+
+  result = (char *)malloc(fsiz);
+  if (result)
+    snprintf(result, fsiz, fmt_base,
+             entry->batch_id, entry->status, entry->blah_id,
+             entry->cdate, entry->mdate, entry->udate, extra_attrs);
+
+  if (need_to_free_extra_attrs) free(extra_attrs);
+
+  return result;
+}

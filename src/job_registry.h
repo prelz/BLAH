@@ -138,6 +138,7 @@ int job_registry_wrlock(const job_registry_handle *rhandle, FILE *sfd);
 job_registry_entry *job_registry_get_next(const job_registry_handle *rhandle,
                                           FILE *fd);
 int job_registry_seek_next(FILE *fd, job_registry_entry *result);
+char *job_registry_entry_as_classad(const job_registry_entry *entry);
 
 #ifndef TRUE
 #define TRUE 1
