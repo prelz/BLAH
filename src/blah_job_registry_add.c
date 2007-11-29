@@ -22,11 +22,13 @@
 #include <time.h>
 #include <errno.h>
 #include "job_registry.h"
+#include "config.h"
 
 int
 main(int argc, char *argv[])
 {
   char *registry_file;
+  int need_to_free_registry_file = FALSE;
   const char *default_registry_file = "blah_job_registry.bjr";
   char *my_home;
   job_registry_entry en;
@@ -37,17 +39,10 @@ main(int argc, char *argv[])
   time_t udate=0;
   char *blah_id, *batch_id;
   int ret;
+  config_handle *cha;
+  config_entry *rge;
+  job_registry_handle *rha;
 
-  if ((registry_file = getenv("BLAH_JOB_REGISTRY_FILE")) == NULL)
-   {
-    my_home = getenv("HOME");
-    if (my_home == NULL) my_home = ".";
-    registry_file = (char *)malloc(strlen(default_registry_file)+strlen(my_home)+2);
-    if (registry_file != NULL) 
-      sprintf(registry_file,"%s/%s",my_home,default_registry_file);
-    else return 1;
-   }
- 
   if (argc < 3)
    {
     fprintf(stderr,"Usage: %s <BLAH id> <batch id> [job status] [exit code] [udate] [worker node] [exit reason]\n",argv[0]);
@@ -63,7 +58,29 @@ main(int argc, char *argv[])
   if (argc > 6) wn_addr = argv[6];
   if (argc > 7) exitreason = argv[7];
    
-  job_registry_handle *rha;
+  cha = config_read(NULL); /* Read config from default locations. */
+  if (cha != NULL)
+   {
+    rge = config_get("job_registry", cha);
+    if (rge != NULL) registry_file = rge->value;
+   }
+  if (registry_file == NULL) registry_file = getenv("BLAH_JOB_REGISTRY_FILE");
+  if (registry_file == NULL)
+   {
+    my_home = getenv("HOME");
+    if (my_home == NULL) my_home = ".";
+    registry_file = (char *)malloc(strlen(default_registry_file)+strlen(my_home)+2);
+    if (registry_file != NULL)
+     {
+      sprintf(registry_file,"%s/%s",my_home,default_registry_file);
+      need_to_free_registry_file = TRUE;
+     }
+    else 
+     {
+      if (cha != NULL) config_free(cha);
+      return 1;
+     }
+   }
 
   rha=job_registry_init(registry_file, BY_BLAH_ID);
 
@@ -71,8 +88,14 @@ main(int argc, char *argv[])
    {
     fprintf(stderr,"%s: error initialising job registry: ",argv[0]);
     perror("");
+    if (cha != NULL) config_free(cha);
+    if (need_to_free_registry_file) free(registry_file);
     return 2;
    }
+
+  /* Filename is stored in job registry handle. - Don't need these anymore */
+  if (cha != NULL) config_free(cha);
+  if (need_to_free_registry_file) free(registry_file);
 
   JOB_REGISTRY_ASSIGN_ENTRY(en.blah_id,blah_id); 
   JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_id); 

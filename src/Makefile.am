@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.18 2007/11/28 15:40:10 fprelz Exp $ 
+# $Id: Makefile.am,v 1.19 2007/11/29 10:26:13 fprelz Exp $ 
 #
 # File:           Makefile.am
 #
@@ -73,10 +73,10 @@ test_condor_logger_LDADD = -lglite_ce_condor_logger
 
 test_condor_logger_CFLAGS = $(AM_CFLAGS)
 
-blah_job_registry_add_SOURCES = blah_job_registry_add.c job_registry.c
+blah_job_registry_add_SOURCES = blah_job_registry_add.c job_registry.c config.c
 blah_job_registry_add_CFLAGS = $(AM_CFLAGS)
 
-blah_job_registry_lkup_SOURCES = blah_job_registry_lkup.c job_registry.c
+blah_job_registry_lkup_SOURCES = blah_job_registry_lkup.c job_registry.c config.c
 blah_job_registry_lkup_CFLAGS = $(AM_CFLAGS)
 
 test_job_registry_purge_SOURCES = test_job_registry_purge.c job_registry.c
