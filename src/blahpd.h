@@ -57,6 +57,4 @@ typedef struct s_resline {
 
 char *make_message(const char *fmt, ...);
 
-extern config_handle *blah_config_handle;
-
 #endif /* defined BLAHPD_H_INCLUDED */
