@@ -714,6 +714,7 @@ job_registry_update_op(job_registry_handle *rha,
   job_registry_recnum_t found, firstrec, req_recn;
   job_registry_entry old_entry;
   int need_to_fclose = FALSE;
+  int need_to_update = FALSE;
 
   if (rha->mode == NO_INDEX)
     return JOB_REGISTRY_NO_INDEX;
@@ -767,17 +768,41 @@ job_registry_update_op(job_registry_handle *rha,
    }
 
   /* Update original entry and rewrite it */
-  old_entry.mdate = time(0);
-  JOB_REGISTRY_ASSIGN_ENTRY(old_entry.wn_addr, entry->wn_addr);
-  old_entry.status = entry->status;
-  old_entry.exitcode = entry->exitcode;
-  old_entry.udate = entry->udate;
-  JOB_REGISTRY_ASSIGN_ENTRY(old_entry.exitreason, entry->exitreason);
-  
-  if (fwrite(&old_entry, sizeof(job_registry_entry),1,fd) < 1)
+  if (strncmp(old_entry.wn_addr, entry->wn_addr, sizeof(old_entry.wn_addr)) != 0)
    {
-    if (need_to_fclose) fclose(fd);
-    return JOB_REGISTRY_FWRITE_FAIL;
+    JOB_REGISTRY_ASSIGN_ENTRY(old_entry.wn_addr, entry->wn_addr);
+    need_to_update = TRUE;
+   }
+  if (old_entry.status != entry->status)
+   {
+    old_entry.status = entry->status;
+    need_to_update = TRUE;
+   }
+  if (old_entry.exitcode != entry->exitcode)
+   {
+    old_entry.exitcode = entry->exitcode;
+    need_to_update = TRUE;
+   }
+  if (old_entry.udate != entry->udate)
+   {
+    old_entry.udate = entry->udate;
+    need_to_update = TRUE;
+   }
+  if (strncmp(old_entry.exitreason, entry->exitreason, sizeof(old_entry.exitreason)) != 0)
+   {
+    JOB_REGISTRY_ASSIGN_ENTRY(old_entry.exitreason, entry->exitreason);
+    need_to_update = TRUE;
+   }
+
+  if (need_to_update)
+   {
+    old_entry.mdate = time(0);
+  
+    if (fwrite(&old_entry, sizeof(job_registry_entry),1,fd) < 1)
+     {
+      if (need_to_fclose) fclose(fd);
+      return JOB_REGISTRY_FWRITE_FAIL;
+     }
    }
 
   if (need_to_fclose) fclose(fd);
