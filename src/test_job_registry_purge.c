@@ -63,7 +63,7 @@ main(int argc, char *argv[])
    }
 
   printf("%s: job registry %s contains %d entries.\n",argv[0],
-         test_registry_file, rha->lastrec - rha->firstrec);
+         test_registry_file, rha->lastrec - rha->firstrec + 1);
 
   fd = job_registry_open(rha, "r");
   if (fd == NULL)
