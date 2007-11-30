@@ -53,6 +53,7 @@
 
 #include "blahpd.h"
 #include "config.h"
+#include "job_registry.h"
 #include "classad_c_helper.h"
 #include "commands.h"
 #include "job_status.h"
@@ -120,6 +121,7 @@ char *ConvertArgs(char* args, char sep);
 
 /* Global variables */
 config_handle *blah_config_handle = NULL;
+job_registry_handle *blah_jr_handle = NULL;
 static int server_socket;
 static int async_mode = 0;
 static int async_notice = 0;
@@ -180,7 +182,7 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	char *needed_libs=NULL;
 	char *old_ld_lib=NULL;
 	char *new_ld_lib=NULL;
-	config_entry *suplrms;
+	config_entry *suplrms, *jre;
 	char *next_lrms_s, *next_lrms_e;
 	int lrms_len;
 
@@ -280,6 +282,23 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 		}
 	}
 	
+	jre = config_get("job_registry", blah_config_handle);
+	if (jre != NULL)
+	{
+		blah_jr_handle = job_registry_init(jre->value, BY_BLAH_ID);
+		if (blah_jr_handle != NULL)
+		{
+			/* Enable BLAH_JOB_STATUS_ALL/SELECT commands */
+                        /* (served by the same function) */
+			/* FIXME: should check/assert for success */
+			command = find_command("BLAH_JOB_STATUS_ALL");
+			if (command) command->cmd_handler = cmd_status_job_all;
+			command = find_command("BLAH_JOB_STATUS_SELECT");
+			if (command) command->cmd_handler = cmd_status_job_all; 
+		}
+	}
+
+
 	write(server_socket, blah_version, strlen(blah_version));
 	write(server_socket, "\r\n", 2);
 	while(!exit_program)
@@ -1111,6 +1130,112 @@ cmd_status_job(void *args)
 
 	/* Free up all arguments */
 	free_args(argv);
+	return;
+}
+
+void*
+cmd_status_job_all(void *args)
+{
+	char *resultLine=NULL;
+	char *str_cad=NULL;
+	char *en_cad, *new_str_cad;
+	int  str_cad_app, str_cad_len=0;
+	char *esc_str_cad, *esc_errstr;
+	char **argv = (char **)args;
+	char *reqId = argv[1];
+	char *selectad = argv[2]; /* May be NULL */
+	classad_expr_tree selecttr = NULL;
+	int jobStatus, n_jobs=0;
+	FILE *fd;
+	job_registry_entry *en;
+	int select_ret, select_result;
+
+	fd = job_registry_open(blah_jr_handle, "r");
+	if (fd == NULL)
+	{
+	  	/* Report error opening registry. */
+		esc_errstr = escape_spaces(strerror(errno));
+		resultLine = make_message("%s 1 Cannot\\ open\\ BLAH\\ job\\ registry:\\ %s N/A", reqId, esc_errstr);
+		free(esc_errstr);
+		goto wrap_up;
+	}
+	if (job_registry_rdlock(blah_jr_handle, fd) < 0)
+	{
+	  	/* Report error locking registry. */
+		esc_errstr = escape_spaces(strerror(errno));
+		resultLine = make_message("%s 1 Cannot\\ lock\\ BLAH\\ job\\ registry:\\ %s N/A", reqId, esc_errstr);
+		free(esc_errstr);
+		goto wrap_up;
+	}
+
+	if (selectad != NULL)
+	{
+		selecttr = classad_parse_expr(selectad);
+	}
+
+	while ((en = job_registry_get_next(blah_jr_handle, fd)) != NULL)
+	{
+		en_cad = job_registry_entry_as_classad(en);
+		if (en_cad != NULL)
+		{
+			if (selecttr != NULL)
+			{
+				select_ret = classad_evaluate_boolean_expr(en_cad,selecttr,&select_result);
+				if ((select_ret == C_CLASSAD_NO_ERROR && !select_result) ||
+				     select_ret != C_CLASSAD_NO_ERROR)
+				{
+					free(en_cad);
+					free(en);
+					continue;
+				}
+			}
+			str_cad_app = str_cad_len;
+			str_cad_len += (strlen(en_cad)+1);
+			new_str_cad = realloc(str_cad,str_cad_len);
+			if (new_str_cad == NULL)
+			{
+				free(str_cad);
+				free(en_cad);
+				free(en);
+				resultLine = make_message("%s 1 Out\\ of\\ memory\\ servicing\\ status_all\\ request N/A", reqId);
+				goto wrap_up;
+			}
+			str_cad = new_str_cad;
+			if (str_cad_app > 0)
+			{
+				strcat(str_cad,";"); 
+			} else {
+				str_cad[0] = '\000';
+			}
+			strcat(str_cad, en_cad);
+			n_jobs++;
+			free(en_cad);
+		}
+		free(en);
+	}
+	if (str_cad != NULL)
+	{
+		esc_str_cad = escape_spaces(str_cad);
+		if (esc_str_cad != NULL)
+			resultLine = make_message("%s 0 No\\ error [%s]", reqId, esc_str_cad);
+		else resultLine = make_message("%s 1 Out\\ of\\ memory\\ servicing\\ status_all\\ request N/A", reqId);
+		free(str_cad);
+		if (esc_str_cad != NULL) free(esc_str_cad);
+	} else {
+		resultLine = make_message("%s 0 No\\ error []", reqId);
+	}
+
+wrap_up:
+	if (selecttr != NULL) classad_free_tree(selecttr);
+	fclose(fd);
+
+	/* Free up all arguments */
+	free_args(argv);
+	if(resultLine)
+	{
+		enqueue_result(resultLine);
+		free (resultLine);
+	}
 	return;
 }
 

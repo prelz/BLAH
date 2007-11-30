@@ -41,6 +41,8 @@ command_t commands_array[] = {
 	{ "BLAH_JOB_REFRESH_PROXY",       3, 2, cmd_renew_proxy },
 	{ "BLAH_JOB_RESUME",              2, 1, cmd_resume_job },
 	{ "BLAH_JOB_STATUS",              2, 1, cmd_status_job },
+	{ "BLAH_JOB_STATUS_ALL",          1, 1, cmd_unknown },
+	{ "BLAH_JOB_STATUS_SELECT",       2, 1, cmd_unknown },
 	{ "BLAH_JOB_SUBMIT",              2, 2, cmd_submit_job },
 	{ "BLAH_SET_GLEXEC_DN",           3, 0, cmd_set_glexec_dn },
         { "BLAH_SET_GLEXEC_OFF",          0, 0, cmd_unset_glexec_dn },	

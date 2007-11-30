@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.19 2007/11/29 10:26:13 fprelz Exp $ 
+# $Id: Makefile.am,v 1.20 2007/11/30 15:49:39 fprelz Exp $ 
 #
 # File:           Makefile.am
 #
@@ -21,7 +21,7 @@ SUBDIRS = scripts
 bin_PROGRAMS = blahpd blahpd_daemon BPRclient BPRserver BLClient BLParserLSF BLParserPBS BAParser BAClient BDlogger test_condor_logger blah_job_registry_add blah_job_registry_lkup
 noinst_PROGRAMS = test_job_registry_create test_job_registry_purge test_job_registry_update test_job_registry_access
 
-common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C mtsafe_popen.c proxy_hashcontainer.c config.c
+common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C mtsafe_popen.c proxy_hashcontainer.c config.c job_registry.c
 
 blahpd_SOURCES = main.c $(common_sources)
 

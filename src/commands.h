@@ -12,6 +12,7 @@ typedef struct command_s {
 void *cmd_submit_job(void *args);
 void *cmd_cancel_job(void *args);
 void *cmd_status_job(void *args);
+void *cmd_status_job_all(void *args);
 void *cmd_renew_proxy(void *args);
 void *cmd_quit(void *args);
 void *cmd_version(void *args);
