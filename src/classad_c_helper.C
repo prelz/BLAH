@@ -2,7 +2,7 @@
 //  File :     classad_c_helper.C
 //
 //
-//  Author :   Francesco Prelz ($Author: gfiorent $)
+//  Author :   Francesco Prelz ($Author: fprelz $)
 //  e-mail :   "francesco.prelz@mi.infn.it"
 //
 //  Revision history :
@@ -10,6 +10,8 @@
 //  16-Apr-2004 Added string list parse and unparse.
 //   7-May-2004 Added retrieval of string argument into dynamic string.
 //  19-Aug-2004 Added boolean attribute.
+//  30-Nov-2007 Added function to evaluate a boolean expression 
+//              in the context of a classad.
 //
 //  Description:
 //   c-callable layer for handling Classad parse and unparse via the 'new'
@@ -387,6 +389,60 @@ extern "C"
 
     if (need_to_delete_et) delete et;
     return C_CLASSAD_NO_ERROR;
+   }
+
+  classad_expr_tree 
+  classad_parse_expr(const char *s_ex)
+   {
+    ClassAdParser parser;
+    ExprTree *et = parser.ParseExpression(s_ex);
+
+    // et == NULL on error.
+    return ((classad_expr_tree)et);
+   }
+
+  void 
+  classad_free_tree(classad_expr_tree t_ex)
+   {
+    ExprTree *et = (ExprTree *)t_ex;
+    if (et) delete et;
+   }
+
+  int
+  classad_evaluate_boolean_expr(const char *s_in, const classad_expr_tree t_ex,
+                                int *result)
+   {
+    ClassAd *ad;
+    ClassAdParser parser;
+    
+    if (s_in == NULL || t_ex == NULL || result == NULL) 
+      return C_CLASSAD_INVALID_ARG;
+
+    ExprTree *et = (ExprTree *)t_ex;
+
+    ad = parser.ParseClassAd(s_in);
+    if (ad == NULL) return C_CLASSAD_PARSE_ERROR;
+
+    int retcod = C_CLASSAD_NO_ERROR;
+
+    Value v;
+    et->SetParentScope(ad);
+    ad->EvaluateExpr(et, v);
+    et->SetParentScope(NULL);
+
+    bool tmp_res;
+
+    if (v.IsBooleanValue( tmp_res ))
+     {
+      if (tmp_res) *result = 1;
+      else         *result = 0;
+      retcod = C_CLASSAD_NO_ERROR;
+     }
+    else retcod = C_CLASSAD_INVALID_VALUE;
+
+    delete ad;  
+
+    return retcod;
    }
 
  } // end of extern "C"
