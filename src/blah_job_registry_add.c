@@ -27,7 +27,7 @@
 int
 main(int argc, char *argv[])
 {
-  char *registry_file;
+  char *registry_file = NULL;
   int need_to_free_registry_file = FALSE;
   const char *default_registry_file = "blah_job_registry.bjr";
   char *my_home;
