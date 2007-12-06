@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <libgen.h>
@@ -139,6 +140,7 @@ job_registry_purge(const char *path, time_t oldest_creation_date,
   job_registry_entry first,cur;
   job_registry_recnum_t first_recnum, last_recnum;
   int ret;
+  mode_t old_umask;
 
   fd = fopen(path,"r+");
   if (fd == NULL) return JOB_REGISTRY_FOPEN_FAIL;
@@ -191,7 +193,10 @@ job_registry_purge(const char *path, time_t oldest_creation_date,
   newreg_path = jobregistry_construct_path("%s/%s.new.%d", path, getpid());
   if (newreg_path == NULL) return JOB_REGISTRY_MALLOC_FAIL;
   
+  /* Make sure the file is group writable. */
+  old_umask=umask(S_IWOTH);
   fdw = fopen(newreg_path,"w");
+  umask(old_umask);
   if (fdw == NULL)
    {
     fclose(fd);
@@ -272,6 +277,7 @@ job_registry_init(const char *path,
                   job_registry_index_mode mode)
 {
   job_registry_handle *rha;
+  mode_t old_umask;
   FILE *fd;
 
   rha = (job_registry_handle *)malloc(sizeof(job_registry_handle));
@@ -311,7 +317,10 @@ job_registry_init(const char *path,
   fd = job_registry_open(rha, "r");
   if (fd == NULL)
    {
+    /* Make sure the file is group writable. */
+    old_umask = umask(S_IWOTH);
     if (errno == ENOENT) fd = job_registry_open(rha, "w+");
+    umask(old_umask);
     if (fd == NULL)
      {
       job_registry_destroy(rha);
@@ -1059,7 +1068,7 @@ job_registry_wrlock(const job_registry_handle *rha, FILE *sfd)
   /* Obtain and keep a write lock to rha->lockfile */
   /* to prevent new read locks. */
 
-  lfd = open(rha->lockfile, O_WRONLY|O_CREAT); 
+  lfd = open(rha->lockfile, O_WRONLY|O_CREAT, 0664); 
   if (lfd < 0) return lfd;
 
   tlock.l_type = F_WRLCK;
