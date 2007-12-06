@@ -195,7 +195,13 @@ if [ "x$pbs_nologaccess" == "xyes" -o "x$pbs_nochecksubmission" == "xyes" ]; the
 fi
   
 # Compose the blahp jobID ("pbs/" + logfile + pbs jobid)
-echo "BLAHP_JOBID_PREFIXpbs/`basename $logfile`/$jobID"
+blahp_jobID="pbs/`basename $logfile`/$jobID"
+
+if [ "x$job_registry" != "x" ]; then
+  `dirname $0`/blah_job_registry_add "$blahp_jobID" "$jobID" 1
+fi
+
+echo "BLAHP_JOBID_PREFIX$blahp_jobID"
   
 bls_wrap_up_submit
 

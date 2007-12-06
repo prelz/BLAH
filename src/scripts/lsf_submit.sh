@@ -207,8 +207,14 @@ fi
 fi #end if on $lsf_nologaccess
 
 # Compose the blahp jobID (date + lsf jobid)
+blahp_jobID="lsf/${datenow}/$jobID"
+
+if [ "x$job_registry" != "x" ]; then
+  `dirname $0`/blah_job_registry_add "$blahp_jobID" "$jobID" 1
+fi
+
 echo ""
-echo "BLAHP_JOBID_PREFIXlsf/${datenow}/$jobID"
+echo "BLAHP_JOBID_PREFIX$blahp_jobID"
 
 bls_wrap_up_submit
 

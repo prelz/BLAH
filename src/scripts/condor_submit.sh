@@ -208,8 +208,13 @@ return_code=$?
 
 if [ "$return_code" == "0" ] ; then
     jobID=`echo $full_result | awk '{print $8}' | tr -d '.'`
+    blahp_jobID="con/$jobID/$queue/$pool"
 
-    echo "BLAHP_JOBID_PREFIXcon/$jobID/$queue/$pool"
+    if [ "x$job_registry" != "x" ]; then
+      `dirname $0`/blah_job_registry_add "$blahp_jobID" "$jobID" 1
+    fi
+
+    echo "BLAHP_JOBID_PREFIX$blahp_jobID"
 else
     echo "Failed to submit"
     echo Error
