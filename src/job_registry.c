@@ -1256,7 +1256,8 @@ char *
 job_registry_entry_as_classad(const job_registry_entry *entry)
 {
   char *fmt_base = "[ BatchJobId=\"%s\"; JobStatus=%d; BlahJobId=\"%s\"; "
-                   "CreateTime=%u; ModifiedTime=%u; UserTime=%u; %s]";
+                   "CreateTime=%u; ModifiedTime=%u; UserTime=%u; "
+                   "SubmitterUid=%d; %s]";
   char *result, *fmt_extra, *extra_attrs=NULL, *new_extra_attrs;
   char *extra_attrs_append;
   int extra_attrs_size = 0;
@@ -1284,13 +1285,15 @@ job_registry_entry_as_classad(const job_registry_entry *entry)
 
   fsiz = snprintf(NULL, 0, fmt_base, 
                   entry->batch_id, entry->status, entry->blah_id,
-                  entry->cdate, entry->mdate, entry->udate, extra_attrs) + 1;
+                  entry->cdate, entry->mdate, entry->udate, entry->submitter,
+                  extra_attrs) + 1;
 
   result = (char *)malloc(fsiz);
   if (result)
     snprintf(result, fsiz, fmt_base,
              entry->batch_id, entry->status, entry->blah_id,
-             entry->cdate, entry->mdate, entry->udate, extra_attrs);
+             entry->cdate, entry->mdate, entry->udate, entry->submitter,
+             extra_attrs);
 
   if (need_to_free_extra_attrs) free(extra_attrs);
 
