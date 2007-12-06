@@ -277,6 +277,7 @@ job_registry_init(const char *path,
                   job_registry_index_mode mode)
 {
   job_registry_handle *rha;
+  struct stat lst;
   mode_t old_umask;
   FILE *fd;
 
@@ -310,6 +311,28 @@ job_registry_init(const char *path,
     free(rha);
     errno = ENOMEM;
     return NULL;
+   }
+
+  if (stat(rha->lockfile, &lst) < 0)
+   {
+    if (errno == ENOENT)
+     {
+      old_umask = umask(S_IWOTH);
+      if (creat(rha->lockfile,0664) < 0)
+       {
+        umask(old_umask);
+        free(rha->path);
+        free(rha);
+        return NULL;
+       }
+      umask(old_umask);
+     }
+    else
+     {
+      free(rha->path);
+      free(rha);
+      return NULL;
+     }
    }
 
   /* Now read the entire file and cache its contents */
