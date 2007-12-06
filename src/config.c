@@ -36,6 +36,9 @@ config_read(const char *ipath)
   config_handle *rha;
   config_entry *c_tail = NULL;
   config_entry *found,*new_entry=NULL;
+  char *set_command=NULL;
+  const char *set_command_format = ". %s; set";
+  int set_command_size;
   int line_len = 0;
   int line_alloc = 0;
   int c;
@@ -71,12 +74,24 @@ config_read(const char *ipath)
     if (path == NULL) return NULL;
    }
 
-  cf = fopen(path, "r");
-  if (cf == NULL) 
+  set_command_size = snprintf(NULL,0,set_command_format,path)+1;
+  set_command = (char *)malloc(set_command_size);
+  if (set_command == NULL)
    {
     free(path);
     return NULL;
    }
+  snprintf(set_command, set_command_size, set_command_format, path);
+
+  cf = popen(set_command, "r");
+  if (cf == NULL) 
+   {
+    free(set_command);
+    free(path);
+    return NULL;
+   }
+
+  free(set_command);
 
   rha = (config_handle *)malloc(sizeof(config_handle));
   if (rha == NULL)
@@ -295,17 +310,19 @@ main(int argc, char *argv[])
     "\n"
     "# This is a test configuration file \n"
     " #\n\n"
-    "a = 123\n"
+    "a=123\n"
     "  # Merrily merrily quirky \n"
-    "b =b_value\n"
-    " c = Junk  \n"
-    " c =c_value   \n"
-    " b1= tRuE \n"
+    "#But parsable by /bin/sh \n"
+    "b=b_value\n"
+    " c=Junk  \n"
+    " c=c_value   \n"
+    " b1=tRuE \n"
     "b2=1 \n"
     "b3=Yes\n"
-    "b4 = 0\n"
-    "b4 =   Junk\n"
-    "b5 = False\n"
+    "b4=0\n"
+    "b4=\"   Junk\"\n"
+    "b5=\" False\"\n"
+    "file=/tmp/test_`whoami`.bjr\n"
     "\n";
 
   config_handle *cha;
@@ -372,6 +389,9 @@ main(int argc, char *argv[])
   ret = config_get("b5",cha);
   if (ret == NULL) fprintf(stderr,"%s: key b5 not found\n",argv[0]),r=18;
   else if (config_test_boolean(ret)) fprintf(stderr,"%s: key b5 is true\n",argv[0]),r=19;
+  ret = config_get("file",cha);
+  if (ret == NULL) fprintf(stderr,"%s: key file not found\n",argv[0]),r=19;
+  printf("file == <%s>\n",ret->value);
 
   config_free(cha);
 
