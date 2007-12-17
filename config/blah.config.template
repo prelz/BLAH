@@ -75,3 +75,25 @@ lsf_BLPport1=
 #
 lsf_BLPserver2=
 lsf_BLPport2=
+
+#Registry file location
+registry_file=
+
+#port for asyncronous notification
+async_notif_port=
+
+#debug level
+debug_level=
+
+#debug log file
+debug_logfile=
+
+# purge interval
+purge_interval=
+
+#final state query interval
+finalstate_query_interval=
+
+#after that interval an unseen job is set as done (status == 4) and exitstatus == -1
+alldone_interval=
+
