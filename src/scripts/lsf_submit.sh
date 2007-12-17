@@ -92,7 +92,7 @@ end_of_preamble
 # handle queue overriding
 [ -z "$bls_opt_queue" ] || grep -q "^#BSUB -q" $bls_tmp_file || echo "#BSUB -q $bls_opt_queue" >> $bls_tmp_file
 
-[ -z "$bls_opt_mpinodes" ]       || echo "#BSUB -n $bls_opt_mpinodes" >> $tmp_file
+[ -z "$bls_opt_mpinodes" ]       || echo "#BSUB -n $bls_opt_mpinodes" >> $bls_tmp_file
 
 #local batch system-specific file output must be added to the submit file
 if [ ! -z $bls_opt_req_file ] ; then
