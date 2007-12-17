@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.20 2007/11/30 15:49:39 fprelz Exp $ 
+# $Id: Makefile.am,v 1.21 2007/12/17 09:40:45 fprelz Exp $ 
 #
 # File:           Makefile.am
 #
@@ -67,10 +67,7 @@ BDlogger_SOURCES = BDlogger.c
 
 BDlogger_LDADD =
 
-test_condor_logger_SOURCES = test_condor_create_log.c
-
-test_condor_logger_LDADD = -lglite_ce_condor_logger
-
+test_condor_logger_SOURCES = test_condor_create_log.c condor_create_log.c config.c
 test_condor_logger_CFLAGS = $(AM_CFLAGS)
 
 blah_job_registry_add_SOURCES = blah_job_registry_add.c job_registry.c config.c
@@ -90,10 +87,6 @@ test_job_registry_update_CFLAGS = $(AM_CFLAGS)
 
 test_job_registry_access_SOURCES = test_job_registry_access.c job_registry.c
 test_job_registry_access_CFLAGS = $(AM_CFLAGS)
-
-lib_LTLIBRARIES = libglite_ce_condor_logger.la 
-
-libglite_ce_condor_logger_la_SOURCES = condor_create_log.c config.c
 
 noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h mtsafe_popen.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h BAParser.h condor_create_log.h proxy_hashcontainer.h job_registry.h config.h
 
