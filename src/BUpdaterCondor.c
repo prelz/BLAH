@@ -132,7 +132,7 @@ int main(int argc, char *argv[]){
 				AssignFinalState(en->batch_id);	
 			}
 			
-			printf("MM Delta:%lu ID:%s Status:%d mdate:%lu blah_id:%s\n",now-en->mdate,en->batch_id,en->status,en->mdate,en->blah_id);
+			/* printf("MM Delta:%lu ID:%s Status:%d mdate:%lu blah_id:%s\n",now-en->mdate,en->batch_id,en->status,en->mdate,en->blah_id); */
 			if((now-en->mdate>finalstate_query_interval) && en->status!=3 && en->status!=4)
 			{
 				/* create the constraint that will be used in condor_history command in FinalStateQuery*/
@@ -154,7 +154,6 @@ int main(int argc, char *argv[]){
 			free(en);
 		}
 		
-		printf("MM Final Query:%sXXX\n",query);
 		if(runfinal){
 			FinalStateQuery(query);
 			runfinal=FALSE;

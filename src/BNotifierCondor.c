@@ -180,10 +180,10 @@ PollDB()
 		
 			now=time(0);
 			/* Compare en->mdate and modification time notiffile */
-			printf("MM NOW:%lu ID:%s Status:%d mdate:%lu file:%d\n",time(0),en->batch_id,en->status,en->mdate,GetModTime(notiffile));
+			/* printf("MM NOW:%lu ID:%s Status:%d mdate:%lu file:%d\n",time(0),en->batch_id,en->status,en->mdate,GetModTime(notiffile)); */
 			if(en->mdate >= GetModTime(notiffile) && en->mdate < now )
 			{
-			        printf("MMIN NOW:%lu ID:%s Status:%d mdate:%lu file:%d\n",time(0),en->batch_id,en->status,en->mdate,GetModTime(notiffile));
+			       /* printf("MMIN NOW:%lu ID:%s Status:%d mdate:%lu file:%d\n",time(0),en->batch_id,en->status,en->mdate,GetModTime(notiffile)); */
 				strudate=iepoch2str(en->udate);
 				sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%d; Timestamp=%s;",en->batch_id, en->status, strudate);
 				free(strudate);
