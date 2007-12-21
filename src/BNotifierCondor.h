@@ -21,7 +21,8 @@
 
 int PollDB();
 int UpdateFileTime(int sec);
-int NotifyStart(char * buffer);
+int NotifyStart(char *buffer);
+int GetFilter(char *buffer);
 int GetModTime(char *filename);
 void CreamConnection(int c_sock);
 int NotifyCream(char *buffer);
@@ -33,6 +34,8 @@ char *progname="BNotifierCondor";
 char *notiffile="/tmp/.notiftime.txt";
 
 char *registry_file;
+
+char *creamfilter="cream_";
 
 int async_notif_port;
 
@@ -53,5 +56,6 @@ to know if cream is connected:
 0 - not connected
 1 - connected
 */
-int creamisconn=0;
+int creamisconn=FALSE;
+int startnotify=FALSE;
 

@@ -181,7 +181,7 @@ PollDB()
 			now=time(0);
 			/* Compare en->mdate and modification time notiffile */
 			/* printf("MM NOW:%lu ID:%s Status:%d mdate:%lu file:%d\n",time(0),en->batch_id,en->status,en->mdate,GetModTime(notiffile)); */
-			if(en->mdate >= GetModTime(notiffile) && en->mdate < now )
+			if(en->mdate >= GetModTime(notiffile) && en->mdate < now && en->blah_id && strstr(en->blah_id,creamfilter)!=NULL)
 			{
 			       /* printf("MMIN NOW:%lu ID:%s Status:%d mdate:%lu file:%d\n",time(0),en->batch_id,en->status,en->mdate,GetModTime(notiffile)); */
 				strudate=iepoch2str(en->udate);
@@ -230,7 +230,11 @@ PollDB()
 
 	        /* change date of notification file */
 		UpdateFileTime(now);
-		
+
+		if(startnotify){
+			NotifyCream("NTFDATE/END");
+			startnotify=FALSE;
+		}		
 		fclose(fd);
                 job_registry_destroy(rha);
 		sleep(2);
@@ -371,16 +375,48 @@ write_c:
 					fprintf(debuglogfile, "Received for Cream:%s\n",buffer);
 					fflush(debuglogfile);
 				}
-				if(buffer && ((strstr(buffer,"STARTNOTIFY")!=NULL) ||(strstr(buffer,"CREAMFILTER")!=NULL))){
+				if(buffer && strstr(buffer,"STARTNOTIFY")!=NULL){
 					NotifyStart(buffer);
-					creamisconn=1;
+					creamisconn=TRUE;
+					startnotify=TRUE;
 				}
+                                if(buffer && strstr(buffer,"CREAMFILTER")!=NULL){
+                                        GetFilter(buffer);
+                                }
 			}
 		}
 	} 
 }
 
-int NotifyStart(char * buffer){
+int GetFilter(char *buffer){
+
+        int  maxtok,i;
+        char **tbuf;
+        char *cp;
+
+        if((tbuf=calloc(10 * sizeof *tbuf,1)) == 0){
+                sysfatal("can't malloc tbuf: %r");
+        }
+
+        maxtok=strtoken(buffer,'/',tbuf);
+
+        if(tbuf[1]){
+                creamfilter=strdup(tbuf[1]);
+                if ((cp = strrchr (creamfilter, '\n')) != NULL){
+                        *cp = '\0';
+                }
+        }
+
+        for(i=0;i<maxtok;i++){
+                free(tbuf[i]);
+        }
+        free(tbuf);
+
+        return(0);
+
+}
+
+int NotifyStart(char *buffer){
 
         int  maxtok,i;
         char **tbuf;
@@ -435,7 +471,7 @@ NotifyCream(char *buffer)
 	fds[0].events = ( POLLIN | POLLOUT | POLLPRI | POLLERR | POLLHUP | POLLNVAL ) ;
 	pfds = fds;    
     
-	if((creamisconn==0)){
+	if(!creamisconn){
 		free(buffer);
 		return -1;
 	}
