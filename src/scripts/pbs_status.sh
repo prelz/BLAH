@@ -299,7 +299,7 @@ END {
         if [ "x$usedBLParser" == "xyes" ] ; then
                 pr_removal=`echo $result | sed -e 's/^.*\///'`
                 result=`echo $result | sed 's/\/.*//'`
-                res=`echo $result|awk -F"\; ExitCode=" '{ print $2 }'|awk -F"\;" '{ print $1 }'`;
+                res=`echo $result|awk -F"; ExitCode=" '{ print $2 }'|awk -F";" '{ print $1 }'`;
                 if [ "$res" == "271" ] ; then
                         out=`sed -n 's/^=>> PBS: //p' *.e$reqjob 2>/dev/null`
                         if [ ! -z $out ] ; then
