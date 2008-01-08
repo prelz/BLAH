@@ -677,26 +677,18 @@ AddToStruct(char *line, int flag)
 		} else if(rex && ((strstr(rex,rex_uhold)!=NULL) || (strstr(rex,rex_ohold)!=NULL) || (strstr(rex,rex_ohold)!=NULL))){
    
 			if(strcmp(j2js[id],"1")==0){
-				InfoAdd(id,"5/1","JOBSTATUS");
-			}else if(strcmp(j2js[id],"2")==0){
-				InfoAdd(id,"5/2","JOBSTATUS");
-			}
-   
-			if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
-				NotifyCream(id, "5", j2bl[id], "NA", "NA", j_time, flag);
+				InfoAdd(id,"5","JOBSTATUS");
+	                        if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
+					NotifyCream(id, "5", j2bl[id], "NA", "NA", j_time, flag);
+				}
 			}
    
 		} else if(rex && ((strstr(rex,rex_uresume)!=NULL) || (strstr(rex,rex_oresume)!=NULL) || (strstr(rex,rex_oresume)!=NULL))){
    
-			if(strcmp(j2js[id],"5/1")==0){
+			if(strcmp(j2js[id],"5")==0){
 				InfoAdd(id,"1","JOBSTATUS");
 				if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
 					NotifyCream(id, "1", j2bl[id], "NA", "NA", j_time, flag);
-				}
-			}else if(strcmp(j2js[id],"5/2")==0){
-				InfoAdd(id,"2","JOBSTATUS");
-				if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
-					NotifyCream(id, "2", j2bl[id], "NA", "NA", j_time, flag);
 				}
 			}
    
@@ -1052,11 +1044,7 @@ LookupAndSend(int m_sock)
 			} else {
 				pr_removal="Not";
 			}
-			if((strcmp(j2js[id],"5/1")==0) || (strcmp(j2js[id],"5/2")==0)){
-				sprintf(jstat," JobStatus=5;");
-			}else{
-				sprintf(jstat," JobStatus=%s;",j2js[id]);
-			}
+			sprintf(jstat," JobStatus=%s;",j2js[id]);
 	 
 			if(strcmp(j2js[id],"4")==0){
 				sprintf(out_buf,"[BatchJobId=\"%s\";%s LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\"; ExitCode=%s;/%s\n",jobid, jstat, j2st[id], j2rt[id], j2ct[id], j2ec[id], pr_removal);
@@ -1086,11 +1074,8 @@ LookupAndSend(int m_sock)
 				} else {
 					pr_removal="Not";
 				}
-				if((strcmp(j2js[id],"5/1")==0) || (strcmp(j2js[id],"5/2")==0)){
-					sprintf(jstat," JobStatus=5;");
-				}else{
-					sprintf(jstat," JobStatus=%s;",j2js[id]);
-				}
+				
+				sprintf(jstat," JobStatus=%s;",j2js[id]);
 	  
 				if(strcmp(j2js[id],"4")==0){
 					sprintf(out_buf,"[BatchJobId=\"%s\";%s LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\"; ExitCode=%s;/%s\n",jobid, jstat, j2st[id], j2rt[id], j2ct[id], j2ec[id], pr_removal);
