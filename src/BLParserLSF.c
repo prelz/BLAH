@@ -804,7 +804,7 @@ LookupAndSend(int m_sock)
 			if((irptr=calloc(STR_CHARS,1)) == 0){
 				sysfatal("can't malloc irptr in LookupAndSend: %r");
 			}
-			sprintf(out_buf,"List of latest %d jobid:",listcnt);
+			sprintf(out_buf,"List of last %d jobid:",listcnt);
 	 
 			if(recycled){
 				for(i=RDXHASHSIZE+(ptrcnt-listcnt);i<RDXHASHSIZE;i++){
