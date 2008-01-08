@@ -427,7 +427,7 @@ function bls_add_job_wrapper ()
       echo "" >> $bls_tmp_file
       echo "# Start the proxy renewal server" >> $bls_tmp_file
       echo "if [ ! -x $remote_BPRserver ]; then chmod u+x $remote_BPRserver; fi" >> $bls_tmp_file
-      echo "\$new_home/$remote_BPRserver \$job_pid $bls_opt_prnpoll $bls_opt_prnlifetime \${PBS_JOBID} &" >> $bls_tmp_file
+      echo "\$new_home/$remote_BPRserver \$job_pid $bls_opt_prnpoll $bls_opt_prnlifetime \${$bls_job_id_for_renewal} &" >> $bls_tmp_file
       echo "server_pid=\$!" >> $bls_tmp_file
   fi
   

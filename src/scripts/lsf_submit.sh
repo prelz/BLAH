@@ -45,6 +45,8 @@ logpath=$lsf_base_path/$lsf_clustername/logdir
 
 logfilename=lsb.events
 
+bls_job_id_for_renewal=LSB_JOBID
+
 srvfound=""
 
 original_args=$@

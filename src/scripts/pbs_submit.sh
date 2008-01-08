@@ -35,6 +35,8 @@
 
 logpath=${pbs_spoolpath}/server_logs
 
+bls_job_id_for_renewal=PBS_JOBID
+
 srvfound=""
 
 original_args=$@
