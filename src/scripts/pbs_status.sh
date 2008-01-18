@@ -235,7 +235,8 @@ END {
 		result=""
 		usedBLParser="no"
 		logs="$logpath/$logfile `find $logpath -type f -newer $logpath/$logfile`"
-		result=`awk -v jobId="$reqjob" -v wn="$workernode" -v proxyDir="$proxy_dir" '
+		job_data=`grep "$reqjob" $logs`
+		result=`echo $job_data | awk -v jobId="$reqjob" -v wn="$workernode" -v proxyDir="$proxy_dir" '
 BEGIN {
 	rex_queued   = jobId ";Job Queued "
 	rex_running  = jobId ";Job Run "
@@ -286,7 +287,7 @@ END {
 		system("rm " proxyDir "/" jobId ".proxy 2>/dev/null")
 	}
 }
-' $logs`
+' `
 
   		if [ "$?" == "0" ] ; then
 			echo "0"$result

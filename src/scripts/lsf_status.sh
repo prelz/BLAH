@@ -245,7 +245,9 @@ END {
 #define JOB_STAT_WAIT         (0x200) /* Chunk job waiting its turn to exec */
 #define JOB_STAT_UNKWN        0x10000
 
-result=`awk -v jobId=$requested -v proxyDir=$proxy_dir '
+job_data=`grep "$requested" $logs`
+
+result=`echo $job_data | awk -v jobId=$requested -v proxyDir=$proxy_dir '
 BEGIN {
 	rex_queued   = "\"JOB_NEW\" \"[0-9\.]+\" [0-9]+ " jobId
 	rex_running  = "\"JOB_START\" \"[0-9\.]+\" [0-9]+ " jobId
@@ -330,7 +332,7 @@ END {
 		system("rm " proxyDir "/" jobId ".proxy 2>/dev/null")
 	}
 }
-' $logs`
+' `
 
    		if [ "$?" == "0" ] ; then
         		echo "0"$result
