@@ -107,3 +107,6 @@ finalstate_query_interval=
 #after that interval an unseen job is set as done (status == 4) and exitstatus == -1
 alldone_interval=
 
+#path to condor_config
+export CONDOR_CONFIG=""
+
