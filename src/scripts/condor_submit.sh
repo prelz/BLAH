@@ -50,6 +50,11 @@ do
     esac
 done
 
+if [ -z "$temp_dir"  ] ; then
+      curdir=`pwd`
+      temp_dir="$curdir"
+fi
+
 shift `expr $OPTIND - 1`
 arguments=$*
 
@@ -76,7 +81,7 @@ fi
 # Create submit file
 ###############################################################
 
-submit_file=`mktemp -q $GAHP_TEMP/blahXXXXXX`
+submit_file=`mktemp -q $temp_dir/blahXXXXXX`
 if [ $? -ne 0 ]; then
     echo "mktemp failed" >&2
     echo Error
