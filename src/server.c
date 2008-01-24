@@ -171,6 +171,7 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	char *input_buffer;
 	char *reply;
 	char *result;
+	char *cmd_result;
 	fd_set readfs;
 	int exitcode = 0;
 	int reply_len;
@@ -348,15 +349,9 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 					}
 					else
 					{
-						if ((result = (char *)command->cmd_handler(argv)) == NULL)
-						{
-							reply = make_message("F\r\n");
-						}
-						else
-						{
-							reply = make_message("S %s\r\n", result);
-							free(result);
-						}
+						cmd_result = (char *)command->cmd_handler(argv);
+						reply = make_message("%s\r\n",cmd_result);
+						free(cmd_result);
 						free_args(argv);
 					}
 				}
@@ -375,7 +370,8 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 				free(reply);
 			}
 			else
-				write(server_socket, "E Cannot\\ allocate\\ return\\ line\r\n", 34);
+				/* WARNING: the command here could have been actually executed */
+				write(server_socket, "F Cannot\\ allocate\\ return\\ line\r\n", 34);
 			pthread_mutex_unlock(&send_lock);
 			
 			free(input_buffer);
@@ -411,16 +407,25 @@ cmd_quit(void *args)
 	char *result = NULL;
 	
 	exit_program = 1;
-	result = strdup("Server\\ exiting");
+	result = strdup("S Server\\ exiting");
 	return(result);
 }
 
 void *
 cmd_commands(void *args)
 {
+    char *commands;
 	char *result;
 
-	result = known_commands();
+	if ((commands = known_commands()) != NULL)
+	{
+		result = make_message("S %s", commands);
+		free(commands);
+	}
+	else
+    {
+		result = strdup("F known_commands()\\ returned\\ NULL");
+	}
 	return(result);
 }
 
@@ -443,10 +448,10 @@ cmd_cache_proxy_from_file(void *args)
 	if (proxy_hashcontainer_append(proxyId, proxyPath) == NULL)
 	{
 		/* Error in insertion */
-		return(NULL);
+		result = strdup("F Internal\\ hash\\ error:\\ proxy\\ not\\ cached");
 	} else 
 	{
-		result = strdup("Proxy\\ cached");
+		result = strdup("S Proxy\\ cached");
 	}
 	return(result);
 }
@@ -460,23 +465,35 @@ cmd_use_cached_proxy(void *args)
 	char *proxyId = argv[1];
 	char *result = NULL;
 	char *junk;
-	char *proxy_name, *proxy_dir;
+	char *proxy_name, *proxy_dir, *escaped_proxy;
+	int need_to_free_escaped_proxy = 0;
 	struct stat proxy_stat;
 
 	entry = proxy_hashcontainer_lookup(proxyId);
 	if (entry == NULL)
 	{
-		return(result);
+        result = strdup("F Cannot\\ find\\ required\\ proxyId");
 	} else
 	{
 		glexec_argv[0] = argv[0];
 		glexec_argv[1] = entry->proxy_file_name;
 		glexec_argv[2] = entry->proxy_file_name;
 		glexec_argv[3] = "0"; /* Limit the proxy */
-		if ((junk = (char *)cmd_set_glexec_dn((void *)glexec_argv)) != NULL)
+
+		junk = (char *)cmd_set_glexec_dn((void *)glexec_argv);
+		if (junk == NULL) 
 		{
+			result = strdup("F Glexec\\ proxy\\ not \\set\\ (internal\\ error)");
+		} 
+		else if (junk[0] == 'S')
+		{ 
 			free(junk);
 			/* Check that the proxy dir is group writable */
+			escaped_proxy = escape_spaces(entry->proxy_file_name);
+			/* Out of memory: Try with the full name */
+			if (escaped_proxy == NULL) escaped_proxy = entry->proxy_file_name;
+			else need_to_free_escaped_proxy = 1;
+
 			proxy_name = strdup(entry->proxy_file_name);
 			if (proxy_name != NULL)
 			{
@@ -487,27 +504,32 @@ cmd_use_cached_proxy(void *args)
 					{
 						if (chmod(proxy_dir,proxy_stat.st_mode|S_IWGRP|S_IRGRP|S_IXGRP)<0)
 						{
-							result = make_message("Glexec\\ proxy\\ set\\ to\\ %s\\ (could\\ not\\ set\\ dir\\ IWGRP\\ bit)",
-									entry->proxy_file_name);
+							result = make_message("S Glexec\\ proxy\\ set\\ to\\ %s\\ (could\\ not\\ set\\ dir\\ IWGRP\\ bit)",
+									escaped_proxy);
 						} else {
-							result = make_message("Glexec\\ proxy\\ set\\ to\\ %s\\ (dir\\ IWGRP\\ bit\\ set)",
-									entry->proxy_file_name);
+							result = make_message("S Glexec\\ proxy\\ set\\ to\\ %s\\ (dir\\ IWGRP\\ bit\\ set)",
+									escaped_proxy);
 						}
 					} else {
-						result = make_message("Glexec\\ proxy\\ set\\ to\\ %s\\ (dir\\ IWGRP\\ bit\\ already\\ on)",
-									entry->proxy_file_name);
+						result = make_message("S Glexec\\ proxy\\ set\\ to\\ %s\\ (dir\\ IWGRP\\ bit\\ already\\ on)",
+									escaped_proxy);
 					}
 				} else {
-					result = make_message("Glexec\\ proxy\\ set\\ to\\ %s\\ (cannot\\ stat\\ %s)",
-								entry->proxy_file_name, proxy_dir);
+					result = make_message("S Glexec\\ proxy\\ set\\ to\\ %s\\ (cannot\\ stat\\ dirname)",
+								escaped_proxy);
+
 				}
 				free(proxy_name);
 			} else {
-				result = make_message("Glexec\\ proxy\\ set\\ to\\ %s\\ (Out\\ of\\ memory)",
-							entry->proxy_file_name);
+				result = make_message("S Glexec\\ proxy\\ set\\ to\\ %s\\ (Out\\ of\\ memory)",
+							escaped_proxy);
 			}
+		} else {
+            /* Return original cmd_set_glexec_dn() error */
+			result = junk;
 		}
 	}
+	if (need_to_free_escaped_proxy) free(escaped_proxy);
 	return(result);
 }
 
@@ -524,7 +546,7 @@ cmd_uncache_proxy(void *args)
 	entry = proxy_hashcontainer_lookup(proxyId);
 	if (entry == NULL)
 	{
-		return(result);
+		result = strdup("F proxyId\\ not\\ found");
 	} else
 	{
                       /* Check for entry->proxy_file_name at the beginning */
@@ -537,10 +559,11 @@ cmd_uncache_proxy(void *args)
 		{
 			/* Need to unregister cached proxy from glexec */
                 	junk = (char *)cmd_unset_glexec_dn(NULL);
+					/* FIXME: need to check for error message in junk? */
                 	if (junk != NULL) free(junk);
 		}
 		proxy_hashcontainer_unlink(proxyId);
-		result = strdup("Proxy\\ uncached");
+		result = strdup("S Proxy\\ uncached");
 	}
 	return(result);
 }
@@ -550,7 +573,7 @@ cmd_version(void *args)
 {
 	char *result;
 
-	result = strdup(blah_version);
+	result = make_message("S %s",blah_version);
 	return(result);	
 }
 
@@ -562,7 +585,7 @@ cmd_async_on(void *args)
 	pthread_mutex_lock(&async_lock);
 	async_mode = async_notice = 1;
 	pthread_mutex_unlock(&async_lock);
-	result = strdup("Async\\ mode\\ on");
+	result = strdup("S Async\\ mode\\ on");
 	return(result);
 }
 			
@@ -574,7 +597,7 @@ cmd_async_off(void *args)
 	pthread_mutex_lock(&async_lock);
 	async_mode = async_notice = 0;
 	pthread_mutex_unlock(&async_lock);
-	result = strdup("Async\\ mode\\ off");
+	result = strdup("S Async\\ mode\\ off");
 	return(result);
 }
 
@@ -585,10 +608,10 @@ cmd_results(void *args)
 	char *res_lines;
 	char *tmp_realloc;
 
-	if (result = (char *) malloc (13)) /* hope 10 digits suffice*/
+	if (result = (char *) malloc (15)) /* hope 10 digits suffice*/
 	{
 		pthread_mutex_lock(&async_lock);
-		snprintf(result, 10, "%d", num_results());
+		snprintf(result, 12, "S %d", num_results());
 		if(num_results())
 		{
 			strcat(result, "\r\n");
@@ -627,7 +650,7 @@ cmd_unset_glexec_dn(void *args)
 		}
 	glexec_mode = 0;
 
-	result=make_message("Glexec\\ mode\\ off");
+	result = make_message("S Glexec\\ mode\\ off");
 	return (result);
 }
 
@@ -665,18 +688,25 @@ cmd_set_glexec_dn(void *args)
 				free(glexec_env_var[GLEXEC_CLIENT_CERT_IDX]);
 				glexec_env_var[GLEXEC_MODE_IDX] = NULL;
 				glexec_env_var[GLEXEC_CLIENT_CERT_IDX] = NULL;
-				return(result);
-			}               		
-			glexec_env_var[GLEXEC_SOURCE_PROXY_IDX] = proxynameNew;
+				result = strdup("F Cannot\\ limit\\ proxy\\ file");
+			}
+			else
+				glexec_env_var[GLEXEC_SOURCE_PROXY_IDX] = proxynameNew;
 		}
 		else
 		{
 			glexec_env_var[GLEXEC_SOURCE_PROXY_IDX] = strdup(proxt4);
 		}
-		glexec_mode = 1;
-		result = strdup("Glexec\\ mode\\ on");
+		if (!result)
+		{
+			glexec_mode = 1;
+			result = strdup("S Glexec\\ mode\\ on");
+		}
 	}
-
+	else
+	{
+		result = strdup("F Cannot\\ stat\\ proxy\\ file");
+	}
 	return(result);
 }
 
