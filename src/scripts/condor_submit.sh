@@ -202,7 +202,7 @@ else
     fi
 fi
 
-full_result=$($condor_bin/condor_submit $target $submit_file)
+full_result=$($condor_binpath/condor_submit $target $submit_file)
 return_code=$?
 
 if [ "$return_code" == "0" ] ; then

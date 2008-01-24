@@ -72,7 +72,7 @@ function update_cache {
 	fi
     fi
 
-    local data=$(echo $FORMAT | xargs $condor_bin/condor_q $target)
+    local data=$(echo $FORMAT | xargs $condor_binpath/condor_q $target)
 
     if [ "$?" == "0" ]; then
 	set +o noclobber
@@ -230,9 +230,9 @@ for job in $* ; do
     ### the history of an unexpected queue.
 
     # We can possibly get the location of the history file and check it.
-    history_file=$($condor_bin/condor_config_val $target -schedd history)
+    history_file=$($condor_binpath/condor_config_val $target -schedd history)
     if [ "$?" == "0" ]; then
-	line=$(echo $FORMAT | xargs $condor_bin/condor_history -f $history_file -backwards $id)
+	line=$(echo $FORMAT | xargs $condor_binpath/condor_history -f $history_file -backwards $id)
 	if  [ ! -z "$line" ] ; then
 	    echo "0$(make_ad $job "$line")"
 	    exit 0
@@ -243,7 +243,7 @@ for job in $* ; do
     # condition masked the status, in which case we want to directly
     # query the Schedd to make absolutely sure there is no status to
     # be found.
-    line=$(echo $FORMAT | xargs $condor_bin/condor_q $target $id)
+    line=$(echo $FORMAT | xargs $condor_binpath/condor_q $target $id)
     if  [ -z "$line" ] ; then
 	echo " 1 Status\\ not\\ found"
 	exit 1

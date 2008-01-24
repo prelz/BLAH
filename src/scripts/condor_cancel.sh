@@ -19,7 +19,7 @@ else
     fi
 fi
 
-$condor_bin/condor_rm $target $id >&/dev/null
+$condor_binpath/condor_rm $target $id >&/dev/null
 
 if [ "$?" == "0" ]; then
     echo " 0 No\\ error"
