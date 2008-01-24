@@ -67,7 +67,7 @@
 #define HOLD_JOB                1
 #define RESUME_JOB              0
 #define MAX_LRMS_NUMBER 	10
-#define MAX_LRMS_NAME_SIZE	4
+#define MAX_LRMS_NAME_SIZE	8
 #define MAX_CERT_SIZE		100000
 #define MAX_TEMP_ARRAY_SIZE              1000
 #define MAX_FILE_LIST_BUFFER_SIZE        10000
