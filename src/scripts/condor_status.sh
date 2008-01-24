@@ -2,8 +2,7 @@
 
 proxy_dir=~/.blah_jobproxy_dir
 
-condor_config=`grep con_config ${GLITE_LOCATION:-/opt/glite}/etc/batch_gahp.config | grep -v \# | awk -F"=" '{print $2}' | sed -e 's/ //g' | sed -e 's/\"//g'`/
-bin=`grep con_binpath ${GLITE_LOCATION:-/opt/glite}/etc/batch_gahp.config | grep -v \# | awk -F"=" '{print $2}' | sed -e 's/ //g' | sed -e 's/\"//g'`/
+[ -f ${GLITE_LOCATION:-/opt/glite}/etc/blah.config ] && . ${GLITE_LOCATION:-/opt/glite}/etc/blah.config
 
 FORMAT='-format "%d" ClusterId -format "," ALWAYS -format "%d" JobStatus -format "," ALWAYS -format "%f" RemoteSysCpu -format "," ALWAYS -format "%f" RemoteUserCpu -format "," ALWAYS -format "%f" BytesSent -format "," ALWAYS -format "%f" BytesRecvd -format "," ALWAYS -format "%f" RemoteWallClockTime -format "," ALWAYS -format "%d" ExitBySignal -format "," ALWAYS -format "%d" ExitCode -format "%d" ExitSignal -format "\n" ALWAYS'
 
@@ -73,7 +72,7 @@ function update_cache {
 	fi
     fi
 
-    local data=$(echo $FORMAT | xargs $bin/condor_q $target)
+    local data=$(echo $FORMAT | xargs $condor_bin/condor_q $target)
 
     if [ "$?" == "0" ]; then
 	set +o noclobber
@@ -231,9 +230,9 @@ for job in $* ; do
     ### the history of an unexpected queue.
 
     # We can possibly get the location of the history file and check it.
-    history_file=$($bin/condor_config_val $target -schedd history)
+    history_file=$($condor_bin/condor_config_val $target -schedd history)
     if [ "$?" == "0" ]; then
-	line=$(echo $FORMAT | xargs $bin/condor_history -f $history_file -backwards $id)
+	line=$(echo $FORMAT | xargs $condor_bin/condor_history -f $history_file -backwards $id)
 	if  [ ! -z "$line" ] ; then
 	    echo "0$(make_ad $job "$line")"
 	    exit 0
@@ -244,7 +243,7 @@ for job in $* ; do
     # condition masked the status, in which case we want to directly
     # query the Schedd to make absolutely sure there is no status to
     # be found.
-    line=$(echo $FORMAT | xargs $bin/condor_q $target $id)
+    line=$(echo $FORMAT | xargs $condor_bin/condor_q $target $id)
     if  [ -z "$line" ] ; then
 	echo " 1 Status\\ not\\ found"
 	exit 1

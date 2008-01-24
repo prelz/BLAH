@@ -1,7 +1,6 @@
 #!/bin/bash
 
-condor_config=`grep con_config ${GLITE_LOCATION:-/opt/glite}/etc/batch_gahp.config | grep -v \# | awk -F"=" '{print $2}' | sed -e 's/ //g' | sed -e 's/\"//g'`/
-bin=`grep con_binpath ${GLITE_LOCATION:-/opt/glite}/etc/batch_gahp.config | grep -v \# | awk -F"=" '{print $2}' | sed -e 's/ //g' | sed -e 's/\"//g'`/
+[ -f ${GLITE_LOCATION:-/opt/glite}/etc/blah.config ] && . ${GLITE_LOCATION:-/opt/glite}/etc/blah.config
 
 # The first and only argument is a JobId whose format is: Id/Queue/Pool
 
@@ -20,7 +19,7 @@ else
     fi
 fi
 
-$bin/condor_release $target $id >&/dev/null
+$condor_bin/condor_release $target $id >&/dev/null
 
 if [ "$?" == "0" ]; then
     echo " 0 No\\ error"

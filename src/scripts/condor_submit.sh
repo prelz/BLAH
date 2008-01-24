@@ -17,8 +17,7 @@
 #  	See http://grid.infn.it/grid/license.html for license details.
 #
 
-condor_config=`grep con_config ${GLITE_LOCATION:-/opt/glite}/etc/batch_gahp.config | grep -v \# | awk -F"=" '{print $2}' | sed -e 's/ //g' | sed -e 's/\"//g'`/
-bin=`grep con_binpath ${GLITE_LOCATION:-/opt/glite}/etc/batch_gahp.config | grep -v \# | awk -F"=" '{print $2}' | sed -e 's/ //g' | sed -e 's/\"//g'`/
+[ -f ${GLITE_LOCATION:-/opt/glite}/etc/blah.config ] && . ${GLITE_LOCATION:-/opt/glite}/etc/blah.config
 
 usage_string="Usage: $0 -c <command> [-i <stdin>] [-o <stdout>] [-e <stderr>] [-v <environment>] [-s <yes | no>] [-- command_arguments]"
 
@@ -30,7 +29,7 @@ proxy_dir=~/.blah_jobproxy_dir
 # Parse parameters
 ###############################################################
 original_args=$@
-while getopts "i:o:e:v:c:w:q:T:I:O:R:" arg 
+while getopts "i:o:e:v:c:w:x:q:T:I:O:R:" arg 
 do
     case "$arg" in
     i) stdin="$OPTARG" ;;
@@ -203,7 +202,7 @@ else
     fi
 fi
 
-full_result=$($bin/condor_submit $target $submit_file)
+full_result=$($condor_bin/condor_submit $target $submit_file)
 return_code=$?
 
 if [ "$return_code" == "0" ] ; then
