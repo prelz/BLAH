@@ -76,11 +76,21 @@ lsf_BLPport1=
 lsf_BLPserver2=
 lsf_BLPport2=
 
+#
+# Condor
+#
+
+#condor bin location
+condor_binpath=
+
 #Registry file location
-registry_file=
+job_registry=
+
+#host for asyncronous notification
+async_notification_host=
 
 #port for asyncronous notification
-async_notif_port=
+async_notification_port=
 
 #debug level
 debug_level=

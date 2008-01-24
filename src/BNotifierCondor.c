@@ -220,7 +220,7 @@ PollDB()
 					strcat(buffer,blahid);
 					free(blahid);
 				}
-				strcat(buffer,"]");
+				strcat(buffer,"]\n");
 				
 				NotifyCream(buffer);
 			}
@@ -232,7 +232,7 @@ PollDB()
 		UpdateFileTime(now);
 
 		if(startnotify){
-			NotifyCream("NTFDATE/END");
+			NotifyCream("NTFDATE/END\n");
 			startnotify=FALSE;
 		}		
 		fclose(fd);
@@ -519,8 +519,6 @@ NotifyCream(char *buffer)
 			if ((cp = strrchr (nowtm, '\n')) != NULL){
 				*cp = '\0';
 			}
-			
-			strcat(buffer,"\n");
 			
 			Writeline(conn_c, buffer, strlen(buffer));
 			if(debug){

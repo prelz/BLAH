@@ -12,6 +12,7 @@ int AssignFinalState(char *batchid);
 
 int runfinal=FALSE;
 char *command_string;
+char *condor_binpath;
 char *registry_file;
 int purge_interval=0;
 int finalstate_query_interval=0;

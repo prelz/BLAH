@@ -44,6 +44,13 @@ int main(int argc, char *argv[]){
 		perror("");
 		return -1;
 	}
+
+        ret = config_get("condor_binpath",cha);
+        if (ret == NULL){
+                fprintf(stderr,"key condor_binpath nott found\n");
+        } else {
+                condor_binpath=strdup(ret->value);
+        }
 	
 	ret = config_get("job_registry",cha);
 	if (ret == NULL){
@@ -195,7 +202,7 @@ IntStateQuery()
 		sysfatal("can't malloc token %r");
 	}
 	
-	sprintf(command_string,"/opt/condor-c/bin/condor_q -constraint \"JobStatus != 1\" -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus|grep -v condorc-");
+	sprintf(command_string,"%s/condor_q -constraint \"JobStatus != 1\" -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus|grep -v condorc-",condor_binpath);
 	file_output = popen(command_string,"r");
 
         if (file_output != NULL){
@@ -265,7 +272,7 @@ FinalStateQuery(char *query)
 		sysfatal("can't malloc token %r");
 	}
 
-	sprintf(command_string,"condor_history -constraint \"%s\" -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus",query);
+	sprintf(command_string,"%s/condor_history -constraint \"%s\" -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus",condor_binpath,query);
 	file_output = popen(command_string,"r");
 
         if (file_output != NULL){
