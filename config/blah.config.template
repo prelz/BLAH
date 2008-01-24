@@ -81,7 +81,7 @@ lsf_BLPport2=
 #
 
 #condor bin location
-condor_binpath=
+condor_binpath=/opt/condor-c/bin
 
 #Registry file location
 job_registry=
@@ -108,5 +108,5 @@ finalstate_query_interval=
 alldone_interval=
 
 #path to condor_config
-export CONDOR_CONFIG=""
+export CONDOR_CONFIG="/opt/condor-c/etc/condor_config"
 
