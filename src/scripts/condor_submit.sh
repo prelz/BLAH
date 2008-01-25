@@ -212,7 +212,7 @@ return_code=$?
 
 if [ "$return_code" == "0" ] ; then
     jobID=`echo $full_result | awk '{print $8}' | tr -d '.'`
-    blahp_jobID="con/$jobID/$queue/$pool"
+    blahp_jobID="condor/$jobID/$queue/$pool"
 
     if [ "x$job_registry" != "x" ]; then
       `dirname $0`/blah_job_registry_add "$blahp_jobID" "$jobID" 1
