@@ -1322,6 +1322,10 @@ NotifyFromDate(char *in_buf)
 	if((tbuf=calloc(10 * sizeof *tbuf,1)) == 0){
 		sysfatal("can't malloc tbuf: %r");
 	}
+
+        if((fullblahstring=calloc(20+strlen(cream_string),1)) == 0){
+                sysfatal("can't malloc fullblahstring: %r");
+        }       
        
 	maxtok=strtoken(in_buf,'/',tbuf);
     
