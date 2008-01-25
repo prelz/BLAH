@@ -6,6 +6,10 @@
  *
  *  Revision history :
  *  16-Nov-2007 Original release
+ *  25-Jan-2008 Note: in order to be compatible with existing BLAH 'status'
+ *              scripts, diagnostics are sent to STDOUT, and prefixed with
+ *              1 for Error and 0 for success. This seems not to be entirely
+ *              consistent in existing scripts and is ugly.
  *
  *  Description:
  *   Executable to look up for an entry in the BLAH job registry.
@@ -17,6 +21,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <errno.h>
 #include <sys/utsname.h> /* For uname */
@@ -45,7 +50,7 @@ main(int argc, char *argv[])
  
   if (argc < 2)
    {
-    fprintf(stderr,"Usage: %s [-w (get worker node)] [-n (get parser host:port)] [-b (look up for batch IDs)] <id>\n",argv[0]);
+    fprintf(stdout,"1ERROR Usage: %s [-w (get worker node)] [-n (get parser host:port)] [-b (look up for batch IDs)] <id>\n",argv[0]);
     return 1;
    }
 
@@ -85,7 +90,7 @@ main(int argc, char *argv[])
      }
     if (cha == NULL || anpe == NULL)
      {
-      fprintf(stderr,"%s: Cannot access value of async_notification_port in BLAH config.\n",argv[0]);
+      fprintf(stdout,"1ERROR %s: Cannot access value of async_notification_port in BLAH config.\n",argv[0]);
       if (cha != NULL) config_free(cha);
       return 1;
      }
@@ -93,7 +98,7 @@ main(int argc, char *argv[])
      {
       if (uname(&ruts) < 0)
        {
-        fprintf(stderr,"%s: Cannot access uname information. Please add async_notification_host in BLAH config.\n",argv[0]);
+        fprintf(stdout,"1ERROR %s: Cannot access uname information. Please add async_notification_host in BLAH config.\n",argv[0]);
         config_free(cha);
         return 1;
        }
@@ -118,6 +123,7 @@ main(int argc, char *argv[])
      }
     else 
      {
+      fprintf(stdout,"1ERROR %s: Out of memory.\n",argv[0]);
       if (cha != NULL) config_free(cha);
       return 1;
      }
@@ -127,8 +133,8 @@ main(int argc, char *argv[])
 
   if (rha == NULL)
    {
-    fprintf(stderr,"%s: error initialising job registry: ",argv[0]);
-    perror("");
+    fprintf(stdout,"1ERROR %s: error initialising job registry: %s\n",argv[0],
+            strerror(errno));
     if (cha != NULL) config_free(cha);
     if (need_to_free_registry_file) free(registry_file);
     return 2;
@@ -140,8 +146,8 @@ main(int argc, char *argv[])
 
   if ((ren=job_registry_get(rha, id)) == NULL)
    {
-    fprintf(stderr,"%s: Entry <%s> not found: ",argv[0],id);
-    perror("");
+    fprintf(stdout,"1ERROR %s: Entry <%s> not found: %s\n",argv[0],id,
+            strerror(errno));
     job_registry_destroy(rha);
     return 1;
    } 
@@ -153,10 +159,10 @@ main(int argc, char *argv[])
    }
 
   cad = job_registry_entry_as_classad(ren);
-  if (cad != NULL) printf("%s\n",cad);
+  if (cad != NULL) printf("0%s\n",cad);
   else 
    {
-    fprintf(stderr,"%s: Out of memory.\n",argv[0]);
+    fprintf(stdout,"1ERROR %s: Out of memory.\n",argv[0]);
     free(ren);
     job_registry_destroy(rha);
     return 1;
