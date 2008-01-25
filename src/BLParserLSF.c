@@ -1430,6 +1430,7 @@ NotifyFromDate(char *in_buf)
 	char **tbuf;
 	char *cp;
 	char *nowtm;
+	char *fullblahstring;
 	time_t now;
 
 	/* printf("thread/0x%08lx\n",pthread_self()); */
@@ -1440,6 +1441,10 @@ NotifyFromDate(char *in_buf)
     
 	if((tbuf=calloc(10 * sizeof *tbuf,1)) == 0){
 		sysfatal("can't malloc tbuf: %r");
+	}
+	
+	if((fullblahstring=calloc(20+strlen(cream_string),1)) == 0){
+		sysfatal("can't malloc fullblahstring: %r");
 	}
        
 	maxtok=strtoken(in_buf,'/',tbuf);
@@ -1500,11 +1505,14 @@ NotifyFromDate(char *in_buf)
 					if ((cp = strrchr (nowtm, '\n')) != NULL){
 						*cp = '\0';
 					}
-					sprintf(out_buf,"NTFDATE/%s",ntf[ii]);
-					Writeline(conn_c, out_buf, strlen(out_buf));
-					if(debug){
-						fprintf(debuglogfile, "%s Sent for Cream_nftdate:%s",nowtm,out_buf);
-						fflush(debuglogfile); 
+					sprintf(fullblahstring,"BlahJobName=\"%s",cream_string);
+					if(ntf[ii] && strstr(ntf[ii],fullblahstring)!=NULL){
+						sprintf(out_buf,"NTFDATE/%s",ntf[ii]);
+						Writeline(conn_c, out_buf, strlen(out_buf));
+						if(debug){
+							fprintf(debuglogfile, "%s Sent for Cream_nftdate:%s",nowtm,out_buf);
+							fflush(debuglogfile); 
+						}
 					}
 				}
 			}
@@ -1518,11 +1526,14 @@ NotifyFromDate(char *in_buf)
 				if ((cp = strrchr (nowtm, '\n')) != NULL){
 					*cp = '\0';
 				}
-				sprintf(out_buf,"NTFDATE/%s",ntf[ii]);  
-				Writeline(conn_c, out_buf, strlen(out_buf));
-				if(debug){
-					fprintf(debuglogfile, "%s Sent for Cream_nftdate:%s",nowtm,out_buf);
-					fflush(debuglogfile);
+				sprintf(fullblahstring,"BlahJobName=\"%s",cream_string);
+				if(ntf[ii] && strstr(ntf[ii],fullblahstring)!=NULL){
+					sprintf(out_buf,"NTFDATE/%s",ntf[ii]);  
+					Writeline(conn_c, out_buf, strlen(out_buf));
+					if(debug){
+						fprintf(debuglogfile, "%s Sent for Cream_nftdate:%s",nowtm,out_buf);
+						fflush(debuglogfile);
+					}
 				}
 			}
 		}
@@ -1535,6 +1546,7 @@ NotifyFromDate(char *in_buf)
 		free(out_buf);
 		free(notstr);
 		free(notdate);
+		free(fullblahstring);
 
 		return 0;    
 	}
@@ -1542,6 +1554,7 @@ NotifyFromDate(char *in_buf)
 	free(out_buf);
 	free(notstr);
 	free(notdate);
+	free(fullblahstring);
     	    
 	return 0;
 }
@@ -1636,7 +1649,7 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
 			fflush(debuglogfile);
 		}  
 	} 
-    
+	
 	nti[jcount]=str2epoch(timestamp,"S");
 	ntf[jcount++]=strdup(buffer);
     
