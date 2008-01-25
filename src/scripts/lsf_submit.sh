@@ -132,10 +132,16 @@ sleep 1
 ###############################################################
 
 datenow=`date +%Y%m%d`
-jobID=`cd && ${lsf_binpath}/bsub -o /dev/null -e /dev/null -i /dev/null < $bls_tmp_file | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"`
-
+bsub_out=`cd && ${lsf_binpath}/bsub -o /dev/null -e /dev/null -i /dev/null < $bls_tmp_file`
 retcode=$?
 if [ "$retcode" != "0" ] ; then
+        rm -f $bls_tmp_file
+        exit 1
+fi
+
+jobID=`echo "$bsub_out" | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"`
+
+if [ "x$jobID" == "x" ] ; then
         rm -f $bls_tmp_file
         exit 1
 fi
