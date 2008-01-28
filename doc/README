@@ -1,10 +1,13 @@
+
+BLAHPD README and command documentation : Version 0.4 - 20080123
+
 1.0   COMPONENT DESCRIPTION
 
 	BLAHPD is a light component accepting commands according to the
 	BLAH (Batch Local Ascii Helper) protocol to manage
-	jobs on different Local Resources Management Systems (LRMS). 
+	jobs on different Local Resources Management Systems (LRMS).
 	In section 3 a detailed descripion of the protocol is given.
-	BLAHPD has to be installed on a Computing Element (the head node 
+	BLAHPD has to be installed on a Computing Element (the head node
 	of a farm) and exposes a BLAH interface for job controllers
 	like CREAM and Condor gridmanager. BLAHPD is completely stateless,
 	so it is not a job controller itself. It can be regarded as
@@ -12,35 +15,38 @@
 	Currently, modules for PBS and LSF have been implemented.
 
 
-2.0   INSTALLATION
-
-	The RPM package for BLAHPD can be downloaded from the official
-	repository at http://glite.web.cern.ch/glite/packages.
-	It has no dependencies on other components, so it can be installed
-	on the target machine without any preliminary step.
+2.0   BLAHP COMMANDS
 
 
-3.0   BLAHP COMMANDS
-
-	The following list of commands represents the set 
+	The following list of commands represents the set
         of commands required for interaction with the BLAHP
         server, interfacing to a given Local Resource Management
         system. This is based on the minimum set of
         commands used in the original GAHP (v1.0.0) specification
-        removing commands that are specific to the operation of the 
-        GRAM protocol (INITIALIZE_FROM_FILE, GASS_SERVER_INIT, 
-        GRAM_CALLBACK_ALLOW, GRAM_JOB_CALLBACK_REGISTER, GRAM_PING). 
-        The JOB_SIGNAL command may be initially left unimplemented 
+        removing commands that are specific to the operation of the
+        GRAM protocol (INITIALIZE_FROM_FILE, GASS_SERVER_INIT,
+        GRAM_CALLBACK_ALLOW, GRAM_JOB_CALLBACK_REGISTER, GRAM_PING).
+        The JOB_SIGNAL command may be initially left unimplemented
         for some of the batch systems (and in that case will return
         an error -E- state and will not be returned by COMMANDS).
-		
+
 		BLAH_JOB_CANCEL
 		BLAH_JOB_SIGNAL
+		BLAH_JOB_HOLD
+		BLAH_JOB_REFRESH_PROXY
+		BLAH_JOB_RESUME
 		BLAH_JOB_STATUS
+		BLAH_JOB_STATUS_ALL
+		BLAH_JOB_STATUS_SELECT
 		BLAH_JOB_SUBMIT
+		BLAH_SET_GLEXEC_DN
+		BLAH_SET_GLEXEC_OFF
 		COMMANDS
+		CACHE_PROXY_FROM_FILE
 		QUIT
 		RESULTS
+		USE_CACHED_PROXY
+		UNCACHE_PROXY
 		VERSION
 
        Optionally, the following two commands may also be implemented:
@@ -48,8 +54,7 @@
 		ASYNC_MODE_ON
 		ASYNC_MODE_OFF
 
-
-3.1   CONVENTIONS AND TERMS USED IN SECTION 3.2
+2.1   CONVENTIONS AND TERMS USED IN SECTION 2.2
 
 	Below are definitions for the terms used in the sections to follow:
 
@@ -89,7 +94,7 @@
 		client receives from the BLAHP server.  Note that the "S: "
 		or "R: " should not actually be sent or received.
 
-3.2   BLAHP COMMAND STRUCTURE
+2.2   BLAHP COMMAND STRUCTURE
 
          BLAHP commands consist of three parts:
 
@@ -133,7 +138,7 @@
 	completed, the dispatched thread should create a Result Line and
 	enqueue it until the client issues a RESULT command.  
 
-3.3   TRANSPARENCY
+2.3   TRANSPARENCY
 
 	Arguments on a particular Line (be it Request, Return, or Result) are
 	typically separated by a <SP>.  In the event that a string argument
@@ -143,7 +148,7 @@
 	separator between arguments, but instead as a space character within a
 	string argument.
 
-3.4   SEQUENCE OF EVENTS
+2.4   SEQUENCE OF EVENTS
 
 	Upon startup, the BLAHP server should output to stdout a banner string
 	which is identical to the output from the VERSION command without the
@@ -163,7 +168,8 @@
 		S: QUIT
 		R: S
 
-3.4   COMMAND SYNTAX 
+
+2.5   COMMAND SYNTAX 
 
 	This section contains the syntax for the Request, Return, and Result
 	line for each command.
@@ -405,22 +411,23 @@
 	-----------------------------------------------
 
 	BLAH_JOB_SUBMIT
-	
+
 	Submit a job request to a specified queue (specified in the
         submit classad). This will cause the job to be submitted to the
         batch system.
 
 	+ Request Line:
-	
+
 		BLAH_JOB_SUBMIT <SP> <reqid> <SP> <submit classad> <CRLF>
 
-		* reqid = non-zero integer Request ID 
+		* reqid = non-zero integer Request ID
 
 		* submit classad = valid submit description for the job,
-                                   in string representation.
+                                   in string representation. See paragraph 3.0
+				   for a description of the format.
 			Here's a list of supported attributes with
 			a brief description.
-			"Cmd":	Full path of the executable in the local 
+			"Cmd":	Full path of the executable in the local
 				filesystem
 			"Args":	List of individual arguments (no '/bin/sh'
 				convention on argument separation, but
@@ -433,9 +440,22 @@
 			"Err": 	Full path in the local filesystem where
 				the standard error of the executable
 				will be stored (at job completion).
-			"Env":	Semicolon-separated list of environment 
+			"X509UserProxy":
+				Full path wherethe proxy certificate
+				is stored.
+			"Env":	Semicolon-separated list of environment
 				variables of the form:
         			<parameter> = <value>
+			"Stagecmd":
+				Sets if the executable of the job must
+				be copied on the WorkerNode: can be 
+				"TRUE" or "FALSE".
+			"Queue":Queue in the local batch system where
+				the job must be enqueued.
+			"Gridtype":
+				String indicating the underlying local batch
+				system (currently "pbs" and "lsf" supported). 
+				
 
 	+ Return Line:
 
@@ -446,13 +466,13 @@
 		    now pending), or an "E" for error on the
 		    parse of the request or its arguments (e.g. an
 		    unrecognized or unsupported command, or for missing or
-		    malformed arguments).  
+		    malformed arguments).
 
 	+ Result Lines:
-			
+
 		<reqid> <SP> <result-code> <SP> <error-string> <SP>
 			<job_local_id> <CRLF>
-			
+
 		* reqid = integer Request ID, set to the value specified in
 		    the corresponding Request Line.
 
@@ -460,7 +480,7 @@
 
 		* error-string = description of error
 
-		* job_local_id = on success, a string representing a unique 
+		* job_local_id = on success, a string representing a unique
 		    identifier for the job.  This identifier must not be bound
 		    to this BLAHP server, but instead must be allowed to be
 		    used in subsequent BLAHP server instantiations.  For
@@ -475,6 +495,15 @@
 			e) issue a BLAH_JOB_CANCEL command, passing it the
 			   stored job_local_id value obtained in step (b).
 
+	+ Example:
+        	S: BLAH_JOB_SUBMIT 2 [\ Cmd\ =\ "/usr/bin/test.sh";\ Args\ =\ "'X=3:Y=2'";
+	   	\ Env\ =\ "VAR1=56568";\ In\ =\ "/dev/null";\ Out\ =\ "/home/StdOutput";
+	   	\ Err\ =\ "/home/error";\ x509userproxy\ =\ "/home/123.proxy";\ Stagecmd
+          	\ =\ TRUE;\ Queue\ =\ "short";\ GridType\ =\ "pbs";\ ]'
+		R: S
+		S: RESULTS
+		R: 2 0 No\ error pbs/20051012/2957
+
 	-----------------------------------------------
 
 	BLAH_JOB_CANCEL
@@ -483,14 +512,14 @@
 	associated with a RUNNING job, releasing any associated resources.
 
 	+ Request Line:
-	
-		BLAH_JOB_CANCEL <SP> <reqid> <SP> <job_local_id> <CRLF>
-		
-		* reqid = non-zero integer Request ID 
 
-		* job_local_id = job_local_id (as returned from 
+		BLAH_JOB_CANCEL <SP> <reqid> <SP> <job_local_id> <CRLF>
+
+		* reqid = non-zero integer Request ID
+
+		* job_local_id = job_local_id (as returned from
 		    BLAH_JOB_SUBMIT) of the job to be canceled.
-	
+
 	+ Return Line:
 
 		<result> <CRLF>
@@ -500,12 +529,12 @@
 		    now pending), or an "E" for error on the
 		    parse of the request or its arguments (e.g. an
 		    unrecognized or unsupported command, or for missing or
-		    malformed arguments).  
+		    malformed arguments).
 
 	+ Result Line:
-			
+
 		<reqid> <SP> <result-code> <SP> <error-string> <CRLF>
-			
+
 		* reqid = integer Request ID, set to the value specified in
 		    the corresponding Request Line.
 
@@ -513,20 +542,99 @@
 
 		* error-string = description of error
 
+	+ Example:
+		S: BLAH_JOB_CANCEL 1 pbs/20051012/2957.grid001.mi.infn.it
+		R: S
+		R: R
+		S: RESULTS
+		R: S 1
+		R: 1 0 No\ error
+
 	-----------------------------------------------
 
-	BLAH_JOB_STATUS 
+	BLAH_JOB_STATUS
 
 	Query and report the current status of a submitted job.
 
 	+ Request Line:
 
 		BLAH_JOB_STATUS <SP> <reqid> <SP> <job_local_id> <CRLF>
+
+		* reqid = non-zero integer Request ID
+
+		* job_local_id = job_local_id (as returned from
+		    BLAH_JOB_SUBMIT) of the job whose status is desired.
+
+	+ Return Line:
+
+		<result> <CRLF>
+
+		* result = the character "S" (no quotes) for successful
+		    submission of the request (meaning that the request is
+		    now pending), or an "E" for error on the
+		    parse of the request or its arguments (e.g. an
+		    unrecognized or unsupported command, or for missing or
+		    malformed arguments).
+
+	+ Result Line:
+
+		<reqid> <SP> <result-code> <SP> <error-string> <SP>
+			<job_status> <SP> <result-classad> <CRLF>
+
+		* reqid = integer Request ID, set to the value specified in
+		    the corresponding Request Line.
+
+		* result-code = integer equal to 0 on success, or an error code
+
+		* error-string = description of error
+
+		* job_status = if the result_code is 0 (success), then
+		    job_status is set to an integer based upon the status of
+		    the job as follows:
+                      1 IDLE (job is waiting on the batch system queue)
+                      2 RUNNING (job is executing on a worker node)
+                      3 REMOVED (job was successfully cancelled)
+                      4 COMPLETED (job completed its execution on the batch
+                                   system)
+		      5 HELD (job execution is suspended; job is still in
+                              the batch system queue)
+		* result-classad = Aggregate information about the job status.
+		    The classad format can vary with the local batch system.
+		    Typically, the following attributes are defined:
+			JobStatus: job status - same codes as described above
+			BatchjobId: Job ID as known to the local batch system
+			ExitCode: Termination code - only for finished jobs
+			ExitReason: Exit reason, if available
+			    - only for finished jobs
+			WorkerNode: When available, FQDN of the worker node
+			    - only for running jobs
+
+	Example:
+		S: BLAH_JOB_STATUS 1 pbs/20051012/2958.grid001.mi.infn.it
+		R: S
+		R: R
+		S: RESULTS
+		R: S 1
+		R: 1 0 No\ Error 2 [\ BatchjobId\ =\ "2958.grid001.mi.infn.it";
+		   \ JobStatus\ =\ 2;\ WorkerNode\ =\ "\ grid001.mi.infn.it"\ ]
+
+
+	-----------------------------------------------
+
+	BLAH_JOB_STATUS_ALL
+
+	This command is only available if the BLAH local job registry
+	file is configured in the BLAH config file (job_registry attribute)
+	and supported by the active batch system.
+
+	Query and report the current status of all jobs managed by the
+	BLAH server.
+
+	+ Request Line:
+
+		BLAH_JOB_STATUS_ALL <SP> <reqid> <CRLF>
 		
 		* reqid = non-zero integer Request ID 
-
-		* job_local_id = job_local_id (as returned from 
-		    BLAH_JOB_SUBMIT) of the job whose status is desired.
 
 	+ Return Line:
 
@@ -542,7 +650,7 @@
 	+ Result Line:
 			
 		<reqid> <SP> <result-code> <SP> <error-string> <SP>
-			<job_status> <SP> <result-classad> <CRLF>
+			<result-classad> <CRLF>
 			
 		* reqid = integer Request ID, set to the value specified in
 		    the corresponding Request Line.
@@ -551,22 +659,66 @@
 
 		* error-string = description of error
 
-		* job_status = if the result_code is 0 (success), then
-		    job_status is set to an integer based upon the status of
-		    the job as follows:
-                      1 IDLE (job is waiting on the batch system queue)
-                      2 RUNNING (job is executing on a worker node)
-                      3 REMOVED (job was successfully cancelled)
-                      4 COMPLETED (job completed its execution on the batch 
-                                   system)
-		      5 HELD (job execution is suspended; job is still in
-                              the batch system queue)
-		* result-classad = Aggregate information about the job status.
-		    At least the following attributes are defined:
+		* result-classad = List of classads containing aggregate 
+		    information about the job status.
+		    In addition to the attributes defined for the output of the
+		    BLAH_JOB_STATUS command, as the status info comes from
+		    a local cache, the following attributes may also be present:
+			BlahJobId: Job ID as known to the BLAH layer. Typically
+			    a decorated form of BatchJobId
+			CreateTime: Seconds since the Unix epoch at the time
+			    the first job info was inserted into the cache.
+			ModifiedTime: Seconds since the Unix epoch when the
+			    most recent modification of the job info occurred.
 
-		    *********************************************
-			TO BE DEFINED
-		    *********************************************
+
+	-----------------------------------------------
+
+	BLAH_JOB_STATUS_SELECT
+
+	This command is only available if the BLAH local job registry
+	file is configured in the BLAH config file (job_registry attribute)
+	and supported by the active batch system.
+
+	Query and report the current status of all jobs managed by the
+	BLAH server.
+
+	+ Request Line:
+
+		BLAH_JOB_STATUS_SELECT <SP> <reqid> <SP> <selection expression> <CRLF>
+		
+		* reqid = non-zero integer Request ID 
+		* selection expression = Classad expression defining selection
+		    requirements on the returned job ads (e.g.: JobStatus==2).
+
+	+ Return Line:
+
+		<result> <CRLF>
+
+		* result = the character "S" (no quotes) for successful
+		    submission of the request (meaning that the request is
+		    now pending), or an "E" for error on the
+		    parse of the request or its arguments (e.g. an
+		    unrecognized or unsupported command, or for missing or
+		    malformed arguments).  
+
+	+ Result Line:
+			
+		<reqid> <SP> <result-code> <SP> <error-string> <SP>
+			<result-classad> <CRLF>
+			
+		* reqid = integer Request ID, set to the value specified in
+		    the corresponding Request Line.
+
+		* result-code = integer equal to 0 on success, or an error code
+
+		* error-string = description of error
+
+		* result-classad = List of classads containing aggregate 
+		    information about the status of the jobs that satisfy
+		    the selection requirement.
+		    The format is the same as for the BLAH_JOB_STATUS_ALL
+		    command.
 
 	-----------------------------------------------
 	
@@ -622,6 +774,399 @@
 
 	-----------------------------------------------
 
-** SECOND DRAFT ** SECOND DRAFT ** SECOND DRAFT ** SECOND DRAFT ** SECOND DRAFT **
+        BLAH_JOB_REFRESH_PROXY
+
+        Renew the proxy of an already submitted job. The job has to be in IDLE,
+	RUNNING or HELD status.
+
+        + Request Line:
+
+                BLAH_JOB_REFRESH_PROXY <SP> <reqid> <SP> <job_local_id> <SP>
+                        <proxy_file> <CRLF>
+
+                * reqid = non-zero integer Request ID
+
+                * job_local_id = job_local_id (as returned from
+                    BLAH_JOB_SUBMIT) of the job whose proxy has to be
+                    renewed.
+
+                * proxy_file = path to the fresh proxy file.
+
+        + Return Line:
+
+                <result> <CRLF>
+
+                * result = the character "S" (no quotes) for successful
+                    submission of the request (meaning that the request is
+                    now pending), or an "E" for error on the
+                    parse of the request or its arguments (e.g. an
+                    unrecognized or unsupported command, or for missing or
+                    malformed arguments).
+
+        + Result Line:
+
+                <reqid> <SP> <result-code> <SP> <error-string> <CRLF>
+
+                * reqid = integer Request ID, set to the value specified in
+                    the corresponding Request Line.
+
+                * result-code = integer equal to 0 on success, or an error code
+
+                * error-string = description of error
+
+        Example:
+                S: BLAH_JOB_REFRESH 1 123.proxy
+                R: S
+                R: R
+                S: RESULTS
+                R: S 1
+                R: 1 0 No\ Error
+
+
+        -----------------------------------------------
+
+        BLAH_JOB_HOLD
+
+        This function always puts an IDLE job request in a HELD  status. If
+	the job is already running RUNNING it can be HELD too, depending whether
+        the underlying batch system supports this feature.
+
+        + Request Line:
+
+                BLAH_JOB_HOLD <SP> <reqid> <SP> <job_local_id> <CRLF>
+
+                * reqid = non-zero integer Request ID
+
+                * job_local_id = job_local_id (as returned from
+                    BLAH_JOB_SUBMIT) of the job to be canceled.
+
+        + Return Line:
+
+                <result> <CRLF>
+
+                * result = the character "S" (no quotes) for successful
+                    submission of the request (meaning that the request is
+                    now pending), or an "E" for error on the
+                    parse of the request or its arguments (e.g. an
+                    unrecognized or unsupported command, or for missing or
+                    malformed arguments).
+
+        + Result Line:
+
+                <reqid> <SP> <result-code> <SP> <error-string> <CRLF>
+
+                * reqid = integer Request ID, set to the value specified in
+                    the corresponding Request Line.
+
+                * result-code = integer equal to 0 on success, or an error code
+
+                * error-string = description of error
+
+        + Example:
+                S: BLAH_JOB_HOLD 1 pbs/20051012/2957.grid001.mi.infn.it
+                R: S
+                R: R
+                S: RESULTS
+                R: S 1
+                R: 1 0 No\ error
+
+
+        -----------------------------------------------
+
+        BLAH_JOB_RESUME
+
+        This function puts an HELD job request in the status it was before the
+        holding action.
+
+        + Request Line:
+
+                BLAH_JOB_RESUME <SP> <reqid> <SP> <job_local_id> <CRLF>
+
+                * reqid = non-zero integer Request ID
+
+                * job_local_id = job_local_id (as returned from
+                    BLAH_JOB_SUBMIT) of the job to be canceled.
+
+        + Return Line:
+
+                <result> <CRLF>
+
+                * result = the character "S" (no quotes) for successful
+                    submission of the request (meaning that the request is
+                    now pending), or an "E" for error on the
+                    parse of the request or its arguments (e.g. an
+                    unrecognized or unsupported command, or for missing or
+                    malformed arguments).
+
+        + Result Line:
+
+                <reqid> <SP> <result-code> <SP> <error-string> <CRLF>
+
+                * reqid = integer Request ID, set to the value specified in
+                    the corresponding Request Line.
+
+                * result-code = integer equal to 0 on success, or an error code
+
+                * error-string = description of error
+
+        + Example:
+                S: BLAH_JOB_RESUME 1 pbs/20051012/2957.grid001.mi.infn.it
+                R: S
+                R: R
+                S: RESULTS
+                R: S 1
+                R: 1 0 No\ error
+
+        -----------------------------------------------
+
+        BLAH_SET_GLEXEC_DN
+
+	This function enables local user mapping via GLEXEC for all
+	subsequent actions. The call is synchronous and the effect
+	is immediate.
+
+	+ Request Line:
+
+		BLAH_SET_GLEXEC_DN <SP> <user_proxy> <SP> 
+		    <ssl_client_certificate> <SP> <not_limited> <CRLF>
+		* user_proxy Path to a valid GSI proxy file. This will
+		    be optionally (when not_limited == 0) turned into a 
+		    limited (delegated) proxy and be made available via 
+		    GLEXEC to the user job. 
+		    (The delegated proxy path is set in the GLEXEC_SOURCE_PROXY
+		    enviroment variable prior to the GLEXEC call).
+		* ssl_client_certificate Path to a valid GSI proxy file.
+		    Can be the same as user_proxy. This is the client
+		    certificate that is used for access to GLEXEC and local
+		    user mapping (it is set in the GLEXEC_CLIENT_CERT 
+		    environment variable prior to the GLEXEC call).
+		* not_limited If this argument is set to a numeric value
+		    not equal to zero, the supplied proxy will not
+		    be limited (delegated).
+
+	+ Return Line:
+
+		One of the following:
+
+		S <SP> <action description> <CRLF> - in case of success
+		F <CRLF> - in case of failure
+
+	+ Result Line:
+
+		None.
+
+
+        + Example:
+
+		S: BLAH_SET_GLEXEC_DN /path/test.proxy /path/test.proxy 0
+		R: S Glexec\ mode\ on
+
+        -----------------------------------------------
+
+        BLAH_SET_GLEXEC_OFF
+
+	This command unconditionally disables user mapping via GLEXEC for 
+	all subsequent actions. The call is synchronous and the effect
+	is immediate.
+
+        + Request Line:
+
+                BLAH_SET_GLEXEC_OFF <CRLF>
+
+                * reqid = integer Request ID, set to the value specified in
+                    the corresponding Request Line.
+
+	+ Return Line:
+
+		One of the following:
+
+		S <SP> <action-description> <CRLF> - in case of success
+		F <CRLF> - in case of failure
+
+	+ Result Line:
+
+		None.
+
+        + Example:
+
+		S: BLAH_SET_GLEXEC_OFF
+		R: S Glexec\ mode\ off
+
+        -----------------------------------------------
+
+	CACHE_PROXY_FROM_FILE
+
+	This command is only available if enable_glexec_from_condor is set
+	to 'yes' in the BLAHPD config file.
+	Read a GSI proxy from a specified file, and store it under the 
+	specified symbolic name. 
+
+	Unlike other GAHPs, and because this function is only used to
+        trigger GLEXEC access which requires access to a proxy file, 
+        BLAH does not read and cache the proxy contents but only
+        the file name. Changes to the file will affect the use
+        of the stored proxy. The proxy name caching is lost when the 
+	BLAHP server terminates.
+
+	The intent of this command is to allow the BLAHP server to capture
+	and use different proxy files for different jobs.
+
+	Other commands (e.g. by USE_CACHED_PROXY) may later be reference
+	the given cached proxy file by its symbolic name. USE_CACHED_PROXY
+	has the side effect of enabling GLEXEC.
+
+
+	+ Request Line:
+
+		CACHE_PROXY_FROM_FILE <SP> <id> <SP> 
+		<path-to-local-proxy-file> <CRLF>
+		
+		<id> = a symbolic name which will be used to reference the 
+		given proxy. 
+
+		<path-to-local-proxy-file> = a fully-qualified pathname to a
+		file local to the BLAHP server which contains a valid GSI
+		proxied certificate.
+
+	+ Return Line:
+
+		One of the following:
+
+		S <SP> <action-description> <CRLF>
+		F <SP> <error-string> <CRLF>
+
+		Upon success, use the "S" version; if not recognized, use the
+		"F" version.
+
+		* error-string = brief string description of the error,
+		    appropriate for reporting to a human end-user.
+
+	+ Result Line:
+
+		None.
+
+        + Example:
+
+		S: CACHE_PROXY_FROM_FILE 1 /path/test.proxy
+		R: S Proxy\ cached
+
+	-----------------------------------------------
+
+	USE_CACHED_PROXY
+
+	This command is only available if enable_glexec_from_condor is set
+	to 'yes' in the BLAHPD config file.
+	Sets the proxy previously cached under the specified name, as the
+	"active" proxy. Enable user mapping via GLEXEC for all subsequent 
+        actions. The active proxy will be used for GLEXEC user mapping, ana
+	will remain active until it is changed via the next invocation of 
+	USE_CACHED_PROXY.
+
+	The proxy must have been previously cached (under the specified 
+	name) using CACHE_PROXY_FROM_FILE command.
+
+	This command allows the BLAHP server to simultaneously act on behalf of
+	two or more jobs that require  
+
+	+ Request Line:
+
+		USE_CACHED_PROXY <SP> <id> <CRLF>
+
+		<id> = the symbolic name of the proxy to use
+
+	+ Return Line:
+
+		One of the following:
+
+		S <SP> <action-description> <CRLF>
+		F <SP> <error-string> <CRLF>
+
+		Upon success, use the "S" version; if not recognized, use the
+		"F" version.
+
+		* error-string = brief string description of the error,
+		    appropriate for reporting to a human end-user.
+
+	+ Result Line:
+
+		None.
+
+        + Example:
+
+		S: USE_CACHED_PROXY 1 
+		R: S Glexec\ proxy\ set\ to\ /path/test.proxy\ (dir\ IWGRP\ bit\ already\ on)
+
+	-----------------------------------------------
+
+	UNCACHE_PROXY
+
+	This command is only available if enable_glexec_from_condor is set
+	to 'yes' in the BLAHPD config file.
+	Removes the proxy (by the specified symbolic name) from the list 
+	of proxy files cached by the BLAHP server. 
+
+	The proxy must have been previously cached (under the specified 
+	name) using CACHE_PROXY_FROM_FILE command. If the proxy file
+	to be uncached is the one currently 'active' (by a previous
+	invocation of the USE_CACHED_PROXY command), this command has
+	the side effect of disabling GLEXEC mode for further commands
+	(as if the BLAH_SET_GLEXEC_OFF commandi had been invoked).
+
+	+ Request Line:
+
+		UNCACHE_PROXY <SP> <id> <CRLF>
+
+		<id> = the symbolic name of the proxy to remove
+
+	+ Return Line:
+
+		One of the following:
+
+		S <SP> <action-description> <CRLF>
+		F <SP> <error-string> <CRLF>
+
+		Upon success, use the "S" version; if not recognized, use the
+		"F" version.
+
+		* error-string = brief string description of the error,
+		    appropriate for reporting to a human end-user.
+
+	+ Result Line:
+
+		None.
+
+        + Example:
+
+		S: UNCACHE_PROXY 1 
+		R: S Proxy\ uncached
+
+	-----------------------------------------------
+	
+3.0	SUBMIT CLASSAD DESCRIPTION
+
+        As described in BLAH_JOB_SUBMIT  the submit classad is a valid submit
+	description for the job, supporting various optional and mandatory attributes.
+	A valid submit classad has the following format;
+	
+	[\ Attr1\ =\ "value1";\ Attr2\ =\ "value2";....;\ AttrN\ =\ "valueN";\ ]
+
+	where Attr1 ..AttrN are a variable number of the  attributes explained in
+	paragraph 2 and  value1...valueN their values.
+	Three attributes are mandatory: 
+
+        - "Cmd", "X509UserProxy", "GridType".
+
+  	The other attributes can be missing :
+
+	- "Args", "In", "Out", "Err", "Env", "Stagecmd", "Queue .
+ 
+	Previous BLAHPD versions didn't support the X509UserProxy attribute,
+	and the path to the user proxy was set from an environment variable.
+	Now this attribute is mandatory and setting a X509_USER_PROXY env variable
+	has no effect on BLAHPD submissions.
+
+	+ Example of a minimal submit classad:
+          
+	[\ Cmd\ =\ "/usr/bin/test.sh";\ x509userproxy\ =\ "/home/123.proxy";\ GridType\ =\ "pbs";\ ]'
 
 
