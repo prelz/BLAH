@@ -29,17 +29,21 @@ proxy_dir=~/.blah_jobproxy_dir
 # Parse parameters
 ###############################################################
 original_args=$@
-while getopts "i:o:e:v:c:w:x:q:T:I:O:R:" arg 
+# Note: -j (creamjobid) and -s (stage command) are ignored as they are 
+# not relevant for Condor.
+while getopts "i:o:e:j:v:c:w:x:q:s:T:I:O:R:" arg 
 do
     case "$arg" in
     i) stdin="$OPTARG" ;;
     o) stdout="$OPTARG" ;;
     e) stderr="$OPTARG" ;;
+    j) creamjobid="$OPTARG" ;;
     v) env="$OPTARG";;
     c) command="$OPTARG" ;;
     w) workdir="$OPTARG";;
     x) proxy_file="$OPTARG" ;;
     q) queue="$OPTARG";;
+    s) stgcmd="$OPTARG" ;;
     T) temp_dir="$OPTARG" ;;
     I) inputflstring="$OPTARG" ;;
     O) outputflstring="$OPTARG" ;;
