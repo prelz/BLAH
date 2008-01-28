@@ -85,20 +85,29 @@ int main(int argc, char *argv[]){
 	for(;;){
 		/* Purge old entries from registry */
 		now=time(0);
-		job_registry_purge(registry_file, now-purge_interval,0);
+		if(job_registry_purge(registry_file, now-purge_interval,0)<0){
+		
+                        fprintf(stderr,"%s: error purging job registry: ",argv[0]);
+                        perror("");
+			continue;
+
+		}
 		
 		/* chmod 666 registry file ONLY for Debug */
+		/*
 		if(chmod(registry_file,S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH) !=0){
 			fprintf(stderr,"%s: error chmod job registry: ",argv[0]);
 			perror("");
+			continue;
 		}
+		*/
 	       
 		rha=job_registry_init(registry_file, BY_BATCH_ID);
 		if (rha == NULL)
 		{
 			fprintf(stderr,"%s: error initialising job registry: ",argv[0]);
 			perror("");
-			return 1;
+			continue;
 		}
 
 		IntStateQuery();
@@ -108,13 +117,13 @@ int main(int argc, char *argv[]){
 		{
 			fprintf(stderr,"%s: Error opening registry %s: ",argv[0],registry_file);
 			perror("");
-			return 1;
+			continue;
 		}
 		if (job_registry_rdlock(rha, fd) < 0)
 		{
 			fprintf(stderr,"%s: Error read locking registry %s: ",argv[0],registry_file);
 			perror("");
-			return 1;
+			continue;
 		}
 
 		if((constraint=calloc(STR_CHARS,1)) == 0){
@@ -229,7 +238,6 @@ IntStateQuery()
 		{
 			fprintf(stderr,"Append of record returns %d: ",ret);
 			perror("");
-			return(-1);
 		}
 		
 		for(j=0;j<maxtok_t;j++){
