@@ -24,6 +24,7 @@ char *epoch2str(char *epoch);
 char *iepoch2str(int epoch);
 int str2epoch(char *str, char *f);
 void daemonize();
+void writepid(char * pidfile);
 void eprint(int err, char *fmt, va_list args);
 char *chopfmt(char *fmt);
 void syserror(char *fmt, ...);

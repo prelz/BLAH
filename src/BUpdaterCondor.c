@@ -9,6 +9,7 @@ int main(int argc, char *argv[]){
 	char *constraint;
 	char *query;
 	char *q;
+	char *pidfile;
 	
 	poptContext poptcon;
 	int rc;			     
@@ -47,7 +48,7 @@ int main(int argc, char *argv[]){
 
         ret = config_get("condor_binpath",cha);
         if (ret == NULL){
-                fprintf(stderr,"key condor_binpath nott found\n");
+                fprintf(stderr,"key condor_binpath not found\n");
         } else {
                 condor_binpath=strdup(ret->value);
         }
@@ -80,7 +81,19 @@ int main(int argc, char *argv[]){
 		alldone_interval=atoi(ret->value);
 	}
 	
+	ret = config_get("bupdater_pidfile",cha);
+	if (ret == NULL){
+		fprintf(stderr,"key bupdater_pidfile not found\n");
+	} else {
+		pidfile=strdup(ret->value);
+	}
+	
 	if( !nodmn ) daemonize();
+
+	if( pidfile ){
+		writepid(pidfile);
+		free(pidfile);
+	}
 
 	for(;;){
 		/* Purge old entries from registry */

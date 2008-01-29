@@ -251,6 +251,17 @@ daemonize()
 }
 
 void
+writepid(char * pidfile)
+{
+	FILE *fpid;
+	
+	fpid = fopen(pidfile, "w");
+	if ( !fpid ) { perror(pidfile); return 1; }
+	if (fprintf(fpid, "%d", getpid()) <= 0) { perror(pidfile); return 1; }
+	if (fclose(fpid) != 0) { perror(pidfile); return 1; }
+}
+
+void
 eprint(int err, char *fmt, va_list args)
 {
 	extern int errno;

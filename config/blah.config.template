@@ -80,11 +80,23 @@ lsf_BLPport2=
 # Condor
 #
 
+#Updater location
+bupdater_path=
+
+#Notifier location
+bnotifier_path=
+
+#Updater pid file
+bupdater_pidfile=/var/tmp/cream_tomcat_bupdater.pid
+
+#Notifier pid file
+bnotifier_pidfile=/var/tmp/cream_tomcat_bnotifier.pid
+
 #condor bin location
 condor_binpath=/opt/condor-c/bin
 
 #Registry file location
-job_registry=
+job_registry=/var/tmp/cream_tomcat_registry.db
 
 #host for asyncronous notification
 async_notification_host=
@@ -93,19 +105,19 @@ async_notification_host=
 async_notification_port=
 
 #debug level
-debug_level=
+debug_level=1
 
 #debug log file
-debug_logfile=
+debug_logfile=/var/tmp/cream_tomcat.log
 
 # purge interval
-purge_interval=
+purge_interval=7200
 
 #final state query interval
-finalstate_query_interval=
+finalstate_query_interval=20
 
 #after that interval an unseen job is set as done (status == 4) and exitstatus == -1
-alldone_interval=
+alldone_interval=1800
 
 #path to condor_config
 export CONDOR_CONFIG="/opt/condor-c/etc/condor_config"

@@ -14,6 +14,7 @@ main(int argc, char *argv[])
 	config_handle *cha;
 	config_entry *ret;
 	char *path;
+	char *pidfile;
 	
 	poptContext poptcon;
 	int rc;			     
@@ -80,6 +81,13 @@ main(int argc, char *argv[])
 		debuglogname=strdup(ret->value);
 	}
 	
+	ret = config_get("bnotifier_pidfile",cha);
+	if (ret == NULL){
+		fprintf(stderr,"key bnotifier_pidfile not found\n");
+	} else {
+		pidfile=strdup(ret->value);
+	}
+	
 	if(debug <=0){
 		debug=0;
 	}
@@ -118,6 +126,11 @@ main(int argc, char *argv[])
 	}
     
 	if( !nodmn ) daemonize();
+	
+	if( pidfile ){
+		writepid(pidfile);
+		free(pidfile);
+	}
        
 	pthread_create(&CreamThd, NULL, (void *)CreamConnection, (void *)list_c);
 	pthread_create(&PollThd, NULL, (void *)PollDB, (void *)NULL);
