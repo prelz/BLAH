@@ -166,22 +166,34 @@ PollDB()
 		rha=job_registry_init(registry_file, BY_BATCH_ID);
 		if (rha == NULL)
                 {
-                        fprintf(stderr,"error initialising job registry: ");
+			if(debug){
+				fprintf(debuglogfile, "%s: Error initialising job registry %s",argv0,registry_file);
+				fflush(debuglogfile);
+			}
+			fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
                         perror("");
-                        return(1);
+                        continue;;
                 }
 		fd = job_registry_open(rha, "r");
 		if (fd == NULL)
 		{
-			fprintf(stderr,"Error opening registry : ");
+			if(debug){
+				fprintf(debuglogfile, "%s: Error opening job registry %s",argv0,registry_file);
+				fflush(debuglogfile);
+			}
+			fprintf(stderr,"%s: Error opening job registry %s :",argv0,registry_file);
 			perror("");
-			return(1);
+			continue;
 		}
 		if (job_registry_rdlock(rha, fd) < 0)
 		{
-			fprintf(stderr,"Error read locking registry : ");
+			if(debug){
+				fprintf(debuglogfile, "%s: Error read locking registry %s",argv0,registry_file);
+				fflush(debuglogfile);
+			}
+			fprintf(stderr,"%s: Error read locking registry %s :",argv0,registry_file);
 			perror("");
-			return(1);
+			continue;
 		}
 		
 		while ((en = job_registry_get_next(rha, fd)) != NULL)
@@ -193,10 +205,8 @@ PollDB()
 		
 			now=time(0);
 			/* Compare en->mdate and modification time notiffile */
-			/* printf("MM NOW:%lu ID:%s Status:%d mdate:%lu file:%d\n",time(0),en->batch_id,en->status,en->mdate,GetModTime(notiffile)); */
 			if(en->mdate >= GetModTime(notiffile) && en->mdate < now && en->blah_id && strstr(en->blah_id,creamfilter)!=NULL)
 			{
-			       /* printf("MMIN NOW:%lu ID:%s Status:%d mdate:%lu file:%d\n",time(0),en->batch_id,en->status,en->mdate,GetModTime(notiffile)); */
 				strudate=iepoch2str(en->udate);
 				sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%d; Timestamp=%s;",en->batch_id, en->status, strudate);
 				free(strudate);
@@ -264,6 +274,10 @@ UpdateFileTime(int sec)
 		
 	fd = open(notiffile, O_RDWR | O_CREAT,S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 	if (fd < 0) {
+		if(debug){
+			fprintf(debuglogfile, "Error opening file in UpdateFileTime\n");
+			fflush(debuglogfile);
+		}
 		fprintf(stderr,"Error opening file in UpdateFileTime: ");
 		perror("");
 		return 1;
@@ -275,6 +289,10 @@ UpdateFileTime(int sec)
 	utb.modtime = sec;
 
 	if (utime(notiffile, &utb)) {
+		if(debug){
+			fprintf(debuglogfile, "Error in utime in UpdateFileTime\n");
+			fflush(debuglogfile);
+		}
 		fprintf(stderr,"Error in utime in UpdateFileTime: ");
 		perror("");
 		return(1);

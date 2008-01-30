@@ -13,7 +13,6 @@ int main(int argc, char *argv[]){
 	
 	poptContext poptcon;
 	int rc;			     
-	int nodmn=0;
 	int version=0;
 	int first=TRUE;
 	
@@ -81,6 +80,20 @@ int main(int argc, char *argv[]){
 		alldone_interval=atoi(ret->value);
 	}
 	
+	ret = config_get("debug_level",cha);
+	if (ret == NULL){
+		fprintf(stderr,"key debug_level not found\n");
+	} else {
+		debug=atoi(ret->value);
+	}
+	
+	ret = config_get("debug_logfile",cha);
+	if (ret == NULL){
+		fprintf(stderr,"key debug_logfile not found\n");
+	} else {
+		debuglogname=strdup(ret->value);
+	}
+	
 	ret = config_get("bupdater_pidfile",cha);
 	if (ret == NULL){
 		fprintf(stderr,"key bupdater_pidfile not found\n");
@@ -89,6 +102,16 @@ int main(int argc, char *argv[]){
 	}
 	
 	if( !nodmn ) daemonize();
+
+	if(debug <=0){
+		debug=0;
+	}
+    
+	if(debug){
+		if((debuglogfile = fopen(debuglogname, "a+"))==0){
+			debuglogfile =  fopen("/dev/null", "a+");
+		}
+	}
 
 	if( pidfile ){
 		writepid(pidfile);
@@ -99,26 +122,25 @@ int main(int argc, char *argv[]){
 		/* Purge old entries from registry */
 		now=time(0);
 		if(job_registry_purge(registry_file, now-purge_interval,0)<0){
-		
-                        fprintf(stderr,"%s: error purging job registry: ",argv[0]);
+
+			if(debug){
+				fprintf(debuglogfile, "%s: Error purging job registry %s",argv0,registry_file);
+				fflush(debuglogfile);
+			}
+                        fprintf(stderr,"%s: Error purging job registry %s :",argv0,registry_file);
                         perror("");
 			continue;
 
 		}
-		
-		/* chmod 666 registry file ONLY for Debug */
-		/*
-		if(chmod(registry_file,S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH) !=0){
-			fprintf(stderr,"%s: error chmod job registry: ",argv[0]);
-			perror("");
-			continue;
-		}
-		*/
 	       
 		rha=job_registry_init(registry_file, BY_BATCH_ID);
 		if (rha == NULL)
 		{
-			fprintf(stderr,"%s: error initialising job registry: ",argv[0]);
+			if(debug){
+				fprintf(debuglogfile, "%s: Error initialising job registry %s",argv0,registry_file);
+				fflush(debuglogfile);
+			}
+			fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
 			perror("");
 			continue;
 		}
@@ -128,26 +150,30 @@ int main(int argc, char *argv[]){
 		fd = job_registry_open(rha, "r");
 		if (fd == NULL)
 		{
-			fprintf(stderr,"%s: Error opening registry %s: ",argv[0],registry_file);
+			if(debug){
+				fprintf(debuglogfile, "%s: Error opening job registry %s",argv0,registry_file);
+				fflush(debuglogfile);
+			}
+			fprintf(stderr,"%s: Error opening job registry %s :",argv0,registry_file);
 			perror("");
 			continue;
 		}
 		if (job_registry_rdlock(rha, fd) < 0)
 		{
-			fprintf(stderr,"%s: Error read locking registry %s: ",argv[0],registry_file);
+			if(debug){
+				fprintf(debuglogfile, "%s: Error read locking job registry %s",argv0,registry_file);
+				fflush(debuglogfile);
+			}
+			fprintf(stderr,"%s: Error read locking job registry %s :",argv0,registry_file);
 			perror("");
 			continue;
 		}
 
 		if((constraint=calloc(STR_CHARS,1)) == 0){
-                	fprintf(stderr,"%s: can't malloc constraint: ",argv[0]);
-			perror("");
-			continue;
+			sysfatal("can't malloc constraint %r");
         	}
 		if((query=calloc(CSTR_CHARS,1)) == 0){
-                	fprintf(stderr,"%s: can't malloc query: ",argv[0]);
-			perror("");
-			continue;			
+			sysfatal("can't malloc query %r");
         	}
 		query[0]='\0';
 		first=TRUE;
@@ -161,7 +187,6 @@ int main(int argc, char *argv[]){
 				AssignFinalState(en->batch_id);	
 			}
 			
-			/* printf("MM Delta:%lu ID:%s Status:%d mdate:%lu blah_id:%s\n",now-en->mdate,en->batch_id,en->status,en->mdate,en->blah_id); */
 			if((now-en->mdate>finalstate_query_interval) && en->status!=3 && en->status!=4)
 			{
 				/* create the constraint that will be used in condor_history command in FinalStateQuery*/
@@ -173,6 +198,10 @@ int main(int argc, char *argv[]){
 				if(q != NULL){
 					query=q;	
 				}else{
+					if(debug){
+						fprintf(debuglogfile, "can't realloc query\n");
+						fflush(debuglogfile);
+					}
                 			fprintf(stderr,"%s: can't realloc query: ",argv[0]);
 					perror("");
 					continue;			
@@ -320,7 +349,6 @@ FinalStateQuery(char *query)
 		{
 			fprintf(stderr,"Append of record %d returns %d: ",i,ret);
 			perror("");
-			return(-1);
 		}
 		
 		for(j=0;j<maxtok_t;j++){
@@ -357,7 +385,6 @@ int AssignFinalState(char *batchid){
 	{
 		fprintf(stderr,"Append of record %d returns %d: ",i,ret);
 		perror("");
-		return(-1);
 	}
 	return(0);
 }

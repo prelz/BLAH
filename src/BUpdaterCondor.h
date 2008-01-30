@@ -17,6 +17,12 @@ char *registry_file;
 int purge_interval=0;
 int finalstate_query_interval=0;
 int alldone_interval=0;
+int debug=0;
+int nodmn=0;
+
+FILE *debuglogfile;
+char *debuglogname;
+
 job_registry_handle *rha;
 config_handle *cha;
 config_entry *ret;

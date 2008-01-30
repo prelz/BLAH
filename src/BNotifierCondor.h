@@ -43,7 +43,7 @@ int debug=0;
 int nodmn=0;
 
 FILE *debuglogfile;
-char *debuglogname="/opt/glite/var/log/BNotifierCondor.log";;
+char *debuglogname;
 
 struct sockaddr_in cservaddr;
 
