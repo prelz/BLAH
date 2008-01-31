@@ -172,7 +172,8 @@ PollDB()
 			}
 			fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
                         perror("");
-                        continue;;
+			sleep(2);
+                        continue;
                 }
 		fd = job_registry_open(rha, "r");
 		if (fd == NULL)
@@ -183,6 +184,7 @@ PollDB()
 			}
 			fprintf(stderr,"%s: Error opening job registry %s :",argv0,registry_file);
 			perror("");
+			sleep(2);
 			continue;
 		}
 		if (job_registry_rdlock(rha, fd) < 0)
@@ -193,6 +195,7 @@ PollDB()
 			}
 			fprintf(stderr,"%s: Error read locking registry %s :",argv0,registry_file);
 			perror("");
+			sleep(2);
 			continue;
 		}
 		
