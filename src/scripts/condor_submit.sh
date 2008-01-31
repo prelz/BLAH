@@ -31,14 +31,15 @@ proxy_dir=~/.blah_jobproxy_dir
 original_args=$@
 # Note: -j (creamjobid) and -s (stage command) are ignored as they are 
 # not relevant for Condor.
-while getopts "i:o:e:j:v:c:w:x:q:s:T:I:O:R:" arg 
+while getopts "i:o:e:j:v:V:c:w:x:q:s:T:I:O:R:" arg 
 do
     case "$arg" in
     i) stdin="$OPTARG" ;;
     o) stdout="$OPTARG" ;;
     e) stderr="$OPTARG" ;;
     j) creamjobid="$OPTARG" ;;
-    v) env="$OPTARG";;
+    v) envir="$OPTARG";;
+    V) environment="$OPTARG";;
     c) command="$OPTARG" ;;
     w) workdir="$OPTARG";;
     x) proxy_file="$OPTARG" ;;
@@ -153,6 +154,32 @@ if [ ${#remap_files[@]} -gt 0 ] ; then
     transfer_output_remaps="$transfer_output_remaps\""
 fi
 
+# Convert input environment (old Condor or shell format as dictated by 
+# input args):
+
+submit_file_environment="#"
+
+if [ "x$environment" != "x" ] ; then
+# Input format is suitable for bourne shell style assignment. Convert to
+# old condor format (no double quotes in submit file).
+# FIXME: probably it's better to convert everything into the 'new' Condor
+# environment format.
+    eval "env_array=($environment)"
+    submit_file_environment=""
+    for  env_var in "${env_array[@]}"; do
+        if [ "x$submit_file_environment" == "x" ] ; then
+            submit_file_environment="environment = "
+        else
+            submit_file_environment="$submit_file_environment;"
+        fi
+        submit_file_environment="${submit_file_environment}${env_var}"
+    done
+else
+    if [ "x$envir" != "x" ] ; then
+# Old Condor format (no double quotes in submit file)
+        submit_file_environment="environment = $envir"
+    fi
+fi
 
 ### This appears to only be necessary if Condor is passing arguments
 ### with the "new_esc_format"
@@ -178,6 +205,7 @@ $transfer_output_remaps
 when_to_transfer_output = on_exit
 should_transfer_files = yes
 notification = error
+$submit_file_environment
 # Hang around for 1 day (86400 seconds) ?
 # Hang around for 30 minutes (1800 seconds) ?
 leave_in_queue = JobStatus == 4 && (CompletionDate =?= UNDEFINED || CompletionDate == 0 || ((CurrentTime - CompletionDate) < 1800))

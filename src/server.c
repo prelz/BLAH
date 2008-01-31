@@ -21,6 +21,8 @@
 #   12 Dec 2006 - (prelz@mi.infn.it). Added commands to cache proxy
 #                 filenames.
 #   23 Nov 2007 - (prelz@mi.infn.it). Access blah.config via config API.
+#   31 Jan 2008 - (prelz@mi.infn.it). Add watches on a few needed processes
+#                                     (bupdater and bnotifier for starters)
 #
 #  Description:
 #   Serve a connection to a blahp client, performing appropriate
@@ -50,6 +52,7 @@
 #include <stdarg.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <signal.h>
 
 #include "blahpd.h"
 #include "config.h"
@@ -120,6 +123,13 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId);
 char *ConvertArgs(char* args, char sep);
 
 /* Global variables */
+struct blah_managed_child {
+	char *exefile;
+	char *pidfile;
+};
+static struct blah_managed_child *blah_children=NULL;
+static int blah_children_count=0;
+
 config_handle *blah_config_handle = NULL;
 job_registry_handle *blah_jr_handle = NULL;
 static int server_socket;
@@ -128,6 +138,7 @@ static int async_notice = 0;
 static int exit_program = 0;
 static pthread_mutex_t send_lock  = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t async_lock  = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t bfork_lock  = PTHREAD_MUTEX_INITIALIZER;
 char *blah_script_location;
 char *blah_version;
 static char lrmslist[MAX_LRMS_NUMBER][MAX_LRMS_NAME_SIZE];
@@ -148,6 +159,94 @@ static char *glexec_env_name[] = {"GLEXEC_MODE", "GLEXEC_CLIENT_CERT", "GLEXEC_S
 static char *glexec_env_var[GLEXEC_ENV_TOTAL];
 
 /* #define TSF_DEBUG */
+
+/* Check on good health of our managed children
+ **/
+void
+check_on_children(const struct blah_managed_child *children, const int count)
+{
+	FILE *pid;
+	pid_t ch_pid;
+	int junk;
+	int i;
+	int try_to_restart;
+	int fret;
+	static time_t lastfork=0;
+	time_t new_lastfork;
+	static time_t calldiff=0;
+	const time_t default_calldiff = 150;
+	config_entry *ccld;
+	time_t now;
+
+	pthread_mutex_lock(&bfork_lock);
+	if (calldiff <= 0)
+	{
+		ccld = config_get("blah_children_restart_interval",blah_config_handle);
+		if (ccld != NULL) calldiff = atoi(ccld->value);
+		if (calldiff <= 0) calldiff = default_calldiff;
+	}
+
+	time(&now);
+	new_lastfork = lastfork;
+
+	for (i=0; i<count; i++)
+	{
+		try_to_restart = 0;
+		if ((pid = fopen(children[i].pidfile, "r")) == NULL)
+		{
+			if (errno != ENOENT) continue;
+			else try_to_restart = 1;
+		} else {
+			if (fscanf(pid,"%d",&ch_pid) < 1) 
+			{
+				fclose(pid);
+				continue;
+			}
+			if (kill(ch_pid, SIGCONT) < 0)
+			{
+				/* The child process disappeared. */
+				if (errno == ESRCH) try_to_restart = 1;
+			}
+			fclose(pid);
+		}
+		if (try_to_restart)
+		{
+			/* Don't attempt to restart too often. */
+			if ((now - lastfork) < calldiff) 
+			{
+				fprintf(stderr,"Restarting %s too frequently.\n",
+					children[i].exefile);
+				fprintf(stderr,"Last restart %d seconds ago (<%d).\n",
+					(int)(now-lastfork), calldiff);
+				continue;
+			}
+			fret = fork();
+			if (fret == 0)
+			{
+				/* Child process. Exec exe file. */
+				if (execl(children[i].exefile, children[i].exefile, NULL) < 0)
+				{
+					fprintf(stderr,"Cannot exec %s: %s\n",
+						children[i].exefile,
+						strerror(errno));
+					exit(1);
+				}
+			} else if (fret < 0) {
+				fprintf(stderr,"Cannot fork trying to start %s: %s\n",
+					children[i].exefile,
+					strerror(errno));
+			}
+			new_lastfork = now;
+		}
+	}
+
+	/* Reap dead children. Yuck.*/
+	while (waitpid(-1, &junk, WNOHANG) > 0) /* Empty loop */;
+
+	lastfork = new_lastfork;
+
+	pthread_mutex_unlock(&bfork_lock);
+}
 
 /* Free all tokens of a command
  * */
@@ -186,6 +285,10 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	config_entry *suplrms, *jre;
 	char *next_lrms_s, *next_lrms_e;
 	int lrms_len;
+	char *children_names[3] = {"bupdater", "bnotifier", NULL};
+	char **child_prefix;
+	char *child_exe_conf, *child_pid_conf;
+        config_entry *child_config_exe, *child_config_pid;
 
 	blah_config_handle = config_read(NULL);
 	if (blah_config_handle == NULL)
@@ -299,6 +402,56 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 		}
 	}
 
+	/* Get list of BLAHPD children whose survival we care about. */
+
+	blah_children_count = 0;
+	for (child_prefix = children_names; (*child_prefix)!=NULL;
+	     child_prefix++)
+	{
+		child_pid_conf = make_message("%s_pidfile",*child_prefix);
+		child_exe_conf = make_message("%s_path",*child_prefix);
+		if (child_exe_conf == NULL || child_pid_conf == NULL)
+		{
+			fprintf(stderr, "Out of memory\n");
+			exit(MALLOC_ERROR);
+		}
+		child_config_exe = config_get(child_exe_conf,blah_config_handle);
+		child_config_pid = config_get(child_pid_conf,blah_config_handle);
+		
+		if (child_config_exe != NULL && child_config_pid != NULL)
+		{
+			if (strlen(child_config_exe->value) <= 0 ||
+			    strlen(child_config_pid->value) <= 0) 
+			{
+				free(child_exe_conf);
+				free(child_pid_conf);
+				continue;
+			}
+
+			blah_children = realloc(blah_children,
+				(blah_children_count + 1) * 
+				sizeof(struct blah_managed_child));
+			if (blah_children == NULL)
+			{
+				fprintf(stderr, "Out of memory\n");
+				exit(MALLOC_ERROR);
+			}
+			blah_children[blah_children_count].exefile = strdup(child_config_exe->value);
+			blah_children[blah_children_count].pidfile = strdup(child_config_pid->value);
+			if (blah_children[blah_children_count].exefile == NULL ||
+			    blah_children[blah_children_count].pidfile == NULL)
+			{
+				fprintf(stderr, "Out of memory\n");
+				exit(MALLOC_ERROR);
+			}
+			blah_children_count++;
+			
+		}
+		free(child_exe_conf);
+		free(child_pid_conf);
+	}
+
+	if (blah_children_count>0) check_on_children(blah_children, blah_children_count);
 
 	write(server_socket, blah_version, strlen(blah_version));
 	write(server_socket, "\r\n", 2);
@@ -1117,6 +1270,8 @@ cmd_status_job(void *args)
 	int jobStatus, retcode;
 	int i, job_number;
 
+	if (blah_children_count>0) check_on_children(blah_children, blah_children_count);
+
 	retcode = get_status(jobDescr, status_ad, argv + CMD_STATUS_JOB_ARGS + 1, errstr, 0, &job_number);
 	if (!retcode)
 	{
@@ -1179,6 +1334,8 @@ cmd_status_job_all(void *args)
 	FILE *fd;
 	job_registry_entry *en;
 	int select_ret, select_result;
+
+	if (blah_children_count>0) check_on_children(blah_children, blah_children_count);
 
 	fd = job_registry_open(blah_jr_handle, "r");
 	if (fd == NULL)
@@ -1427,6 +1584,8 @@ cmd_renew_proxy(void *args)
 	int use_glexec;
 
 	use_glexec = (argv[CMD_RENEW_PROXY_ARGS + 1] != NULL);
+
+	if (blah_children_count>0) check_on_children(blah_children, blah_children_count);
 
 	if ((jobStatus=get_status_and_old_proxy(use_glexec, jobDescr, argv + CMD_RENEW_PROXY_ARGS + 1, &old_proxy, &workernode, &error_string)) < 0)
 	{
