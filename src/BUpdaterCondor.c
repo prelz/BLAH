@@ -5,14 +5,14 @@ int main(int argc, char *argv[]){
 	FILE *fd;
 	job_registry_entry *en;
 	time_t now;
-	char *path;
-	char *constraint;
-	char *query;
-	char *q;
-	char *pidfile;
+	char *path=NULL;
+	char *constraint=NULL;
+	char *query=NULL;
+	char *q=NULL;
+	char *pidfile=NULL;
 	
 	poptContext poptcon;
-	int rc;			     
+	int rc=0;			     
 	int version=0;
 	int first=TRUE;
 	
@@ -45,64 +45,15 @@ int main(int argc, char *argv[]){
 		return -1;
 	}
 
-        ret = config_get("condor_binpath",cha);
-        if (ret == NULL){
-                fprintf(stderr,"key condor_binpath not found\n");
-        } else {
-                condor_binpath=strdup(ret->value);
-        }
-	
-	ret = config_get("job_registry",cha);
-	if (ret == NULL){
-		fprintf(stderr,"key job_registry not found\n");
-	} else {
-		registry_file=strdup(ret->value);
-	}
-	
-	ret = config_get("purge_interval",cha);
-	if (ret == NULL){
-		fprintf(stderr,"key purge_interval not found\n");
-	} else {
-		purge_interval=atoi(ret->value);
-	}
-	
-	ret = config_get("finalstate_query_interval",cha);
-	if (ret == NULL){
-		fprintf(stderr,"key finalstate_query_interval not found\n");
-	} else {
-		finalstate_query_interval=atoi(ret->value);
-	}
-	
-	ret = config_get("alldone_interval",cha);
-	if (ret == NULL){
-		fprintf(stderr,"key alldone_interval not found\n");
-	} else {
-		alldone_interval=atoi(ret->value);
-	}
-	
 	ret = config_get("debug_level",cha);
-	if (ret == NULL){
-		fprintf(stderr,"key debug_level not found\n");
-	} else {
+	if (ret != NULL){
 		debug=atoi(ret->value);
 	}
 	
 	ret = config_get("debug_logfile",cha);
-	if (ret == NULL){
-		fprintf(stderr,"key debug_logfile not found\n");
-	} else {
+	if (ret != NULL){
 		debuglogname=strdup(ret->value);
 	}
-	
-	ret = config_get("bupdater_pidfile",cha);
-	if (ret == NULL){
-		fprintf(stderr,"key bupdater_pidfile not found\n");
-	} else {
-		pidfile=strdup(ret->value);
-	}
-	
-	if( !nodmn ) daemonize();
-
 	if(debug <=0){
 		debug=0;
 	}
@@ -112,6 +63,69 @@ int main(int argc, char *argv[]){
 			debuglogfile =  fopen("/dev/null", "a+");
 		}
 	}
+	
+        ret = config_get("condor_binpath",cha);
+        if (ret == NULL){
+                if(debug){
+			fprintf(debuglogfile, "%s: key condor_binpath not found\n",argv0);
+			fflush(debuglogfile);
+		}
+        } else {
+                condor_binpath=strdup(ret->value);
+        }
+	
+	ret = config_get("job_registry",cha);
+	if (ret == NULL){
+                if(debug){
+			fprintf(debuglogfile, "%s: key job_registry not found\n",argv0);
+			fflush(debuglogfile);
+		}
+	} else {
+		registry_file=strdup(ret->value);
+	}
+	
+	ret = config_get("purge_interval",cha);
+	if (ret == NULL){
+                if(debug){
+			fprintf(debuglogfile, "%s: key purge_interval not found\n",argv0);
+			fflush(debuglogfile);
+		}
+	} else {
+		purge_interval=atoi(ret->value);
+	}
+	
+	ret = config_get("finalstate_query_interval",cha);
+	if (ret == NULL){
+                if(debug){
+			fprintf(debuglogfile, "%s: key finalstate_query_interval not found\n",argv0);
+			fflush(debuglogfile);
+		}
+	} else {
+		finalstate_query_interval=atoi(ret->value);
+	}
+	
+	ret = config_get("alldone_interval",cha);
+	if (ret == NULL){
+                if(debug){
+			fprintf(debuglogfile, "%s: key alldone_interval not found\n",argv0);
+			fflush(debuglogfile);
+		}
+	} else {
+		alldone_interval=atoi(ret->value);
+	}
+	
+	ret = config_get("bupdater_pidfile",cha);
+	if (ret == NULL){
+                if(debug){
+			fprintf(debuglogfile, "%s: key bupdater_pidfile not found\n",argv0);
+			fflush(debuglogfile);
+		}
+	} else {
+		pidfile=strdup(ret->value);
+	}
+	
+	if( !nodmn ) daemonize();
+
 
 	if( pidfile ){
 		writepid(pidfile);
@@ -124,13 +138,12 @@ int main(int argc, char *argv[]){
 		if(job_registry_purge(registry_file, now-purge_interval,0)<0){
 
 			if(debug){
-				fprintf(debuglogfile, "%s: Error purging job registry %s",argv0,registry_file);
+				fprintf(debuglogfile, "%s: Error purging job registry %s\n",argv0,registry_file);
 				fflush(debuglogfile);
 			}
                         fprintf(stderr,"%s: Error purging job registry %s :",argv0,registry_file);
                         perror("");
 			sleep(2);
-			continue;
 
 		}
 	       
@@ -138,7 +151,7 @@ int main(int argc, char *argv[]){
 		if (rha == NULL)
 		{
 			if(debug){
-				fprintf(debuglogfile, "%s: Error initialising job registry %s",argv0,registry_file);
+				fprintf(debuglogfile, "%s: Error initialising job registry %s\n",argv0,registry_file);
 				fflush(debuglogfile);
 			}
 			fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
@@ -153,7 +166,7 @@ int main(int argc, char *argv[]){
 		if (fd == NULL)
 		{
 			if(debug){
-				fprintf(debuglogfile, "%s: Error opening job registry %s",argv0,registry_file);
+				fprintf(debuglogfile, "%s: Error opening job registry %s\n",argv0,registry_file);
 				fflush(debuglogfile);
 			}
 			fprintf(stderr,"%s: Error opening job registry %s :",argv0,registry_file);
@@ -164,7 +177,7 @@ int main(int argc, char *argv[]){
 		if (job_registry_rdlock(rha, fd) < 0)
 		{
 			if(debug){
-				fprintf(debuglogfile, "%s: Error read locking job registry %s",argv0,registry_file);
+				fprintf(debuglogfile, "%s: Error read locking job registry %s\n",argv0,registry_file);
 				fflush(debuglogfile);
 			}
 			fprintf(stderr,"%s: Error read locking job registry %s :",argv0,registry_file);

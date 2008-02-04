@@ -13,11 +13,11 @@ main(int argc, char *argv[])
 	pthread_t PollThd;
 	config_handle *cha;
 	config_entry *ret;
-	char *path;
-	char *pidfile;
+	char *path=NULL;
+	char *pidfile=NULL;
 	
 	poptContext poptcon;
-	int rc;			     
+	int rc=0;			     
 
 	struct poptOption poptopt[] = {     
 		{ "nodaemon",      'o', POPT_ARG_NONE,   &nodmn, 	    0, "do not run as daemon",    NULL },
@@ -50,42 +50,17 @@ main(int argc, char *argv[])
 	{
 		fprintf(stderr,"Error reading config from %s: ",path);
 		perror("");
-		return -1;
+		exit(EXIT_FAILURE);
 	}
 	
-	ret = config_get("job_registry",cha);
-	if (ret == NULL){
-		fprintf(stderr,"key job_registry not found\n");
-	} else {
-		registry_file=strdup(ret->value);
-	}
-	
-	ret = config_get("async_notification_port",cha);
-	if (ret == NULL){
-		fprintf(stderr,"key async_notification_port not found\n");
-	} else {
-		async_notif_port =atoi(ret->value);
-	}
-
 	ret = config_get("debug_level",cha);
-	if (ret == NULL){
-		fprintf(stderr,"key debug_level not found\n");
-	} else {
+	if (ret != NULL){
 		debug=atoi(ret->value);
 	}
 	
 	ret = config_get("debug_logfile",cha);
-	if (ret == NULL){
-		fprintf(stderr,"key debug_logfile not found\n");
-	} else {
+	if (ret != NULL){
 		debuglogname=strdup(ret->value);
-	}
-	
-	ret = config_get("bnotifier_pidfile",cha);
-	if (ret == NULL){
-		fprintf(stderr,"key bnotifier_pidfile not found\n");
-	} else {
-		pidfile=strdup(ret->value);
 	}
 	
 	if(debug <=0){
@@ -98,6 +73,36 @@ main(int argc, char *argv[])
 		}
 	}
         
+	ret = config_get("job_registry",cha);
+	if (ret == NULL){
+                if(debug){
+			fprintf(debuglogfile, "%s: key job_registry not found\n",argv0);
+			fflush(debuglogfile);
+		}
+	} else {
+		registry_file=strdup(ret->value);
+	}
+	
+	ret = config_get("async_notification_port",cha);
+	if (ret == NULL){
+                if(debug){
+			fprintf(debuglogfile, "%s: key async_notification_port not found\n",argv0);
+			fflush(debuglogfile);
+		}
+	} else {
+		async_notif_port =atoi(ret->value);
+	}
+
+	ret = config_get("bnotifier_pidfile",cha);
+	if (ret == NULL){
+                if(debug){
+			fprintf(debuglogfile, "%s: key bnotifier_pidfile not found\n",argv0);
+			fflush(debuglogfile);
+		}
+	} else {
+		pidfile=strdup(ret->value);
+	}
+	
 	/* create listening socket for Cream */
     
 	if ( !async_notif_port ) {
