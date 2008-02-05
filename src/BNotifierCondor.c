@@ -167,6 +167,8 @@ PollDB()
 	
 	while(1){
 	
+		now=time(NULL);
+	
 		if(!creamisconn){
 			sleep(2);
 			continue;
@@ -215,7 +217,6 @@ PollDB()
 				sysfatal("can't malloc buffer in PollDB: %r");
 			}
 		
-			now=time(0);
 			/* Compare en->mdate and modification time notiffile */
 			if(en->mdate >= GetModTime(notiffile) && en->mdate < now && en->blah_id && strstr(en->blah_id,creamfilter)!=NULL)
 			{
