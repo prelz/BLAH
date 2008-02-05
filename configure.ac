@@ -12,11 +12,14 @@
 #       Council for the Central Laboratory of the Research Councils (CCLRC), United Kingdom
 #
 #       Authors: Francesco Prelz <francesco.prelz@mi.infn.it>
-#       Version info: $Id: configure.ac,v 1.35 2008/02/05 13:50:11 fprelz Exp $
+#       Version info: $Id: configure.ac,v 1.36 2008/02/05 14:31:57 fprelz Exp $
 #       Release: $Name:  $
 #
 #       Revision history:
 #       $Log: configure.ac,v $
+#       Revision 1.36  2008/02/05 14:31:57  fprelz
+#       Bump up version for ANT builds.
+#
 #       Revision 1.35  2008/02/05 13:50:11  fprelz
 #       Bump version up for ANT builds.
 #
@@ -107,7 +110,7 @@
 #
 
 AC_PREREQ(2.57)
-AC_INIT([GLite CE blahp], [1.10.0])
+AC_INIT([GLite CE blahp], [1.11.0])
 AC_CONFIG_AUX_DIR([./project])
 AM_INIT_AUTOMAKE([1.6.3 subdir-objects])
 AC_CONFIG_SRCDIR([src/main.c])
