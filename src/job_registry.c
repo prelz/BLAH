@@ -382,6 +382,7 @@ job_registry_destroy(job_registry_handle *rha)
    if (rha->lockfile != NULL) free(rha->lockfile);
    rha->n_entries = rha->n_alloc = 0;
    if (rha->entries != NULL) free(rha->entries);
+   free(rha);
 }
 
 /*
