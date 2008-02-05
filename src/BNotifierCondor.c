@@ -37,6 +37,8 @@ main(int argc, char *argv[])
 	if((rc = poptGetNextOpt(poptcon)) != -1){
 		sysfatal("Invalid flag supplied: %r");
 	}
+	
+	poptFreeContext(poptcon);
  
 	if(version) {
 		printf("%s Version: %s\n",progname,VERSION);
@@ -137,6 +139,8 @@ main(int argc, char *argv[])
 		free(pidfile);
 	}
        
+	config_free(cha);
+
 	pthread_create(&CreamThd, NULL, (void *)CreamConnection, (void *)list_c);
 	pthread_create(&PollThd, NULL, (void *)PollDB, (void *)NULL);
 

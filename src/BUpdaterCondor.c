@@ -30,7 +30,9 @@ int main(int argc, char *argv[]){
 	if((rc = poptGetNextOpt(poptcon)) != -1){
 		sysfatal("Invalid flag supplied: %r");
 	}
- 
+	
+	poptFreeContext(poptcon);
+	
 	if(version) {
 		printf("%s Version: %s\n",progname,VERSION);
 		exit(EXIT_SUCCESS);
@@ -131,6 +133,8 @@ int main(int argc, char *argv[]){
 		writepid(pidfile);
 		free(pidfile);
 	}
+	
+	config_free(cha);
 
 	for(;;){
 		/* Purge old entries from registry */
