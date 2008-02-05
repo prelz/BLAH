@@ -24,6 +24,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 #include <time.h>
 #include "blahpd.h"
 
@@ -56,7 +57,7 @@ typedef struct job_registry_entry_s
 
 #define JOB_REGISTRY_ASSIGN_ENTRY(dest,src) \
   (dest)[sizeof(dest)-1]='\000'; \
-  memcpy((dest),(src),sizeof(dest)); 
+  strncpy((dest),(src),sizeof(dest)); 
 
 typedef struct job_registry_index_s
  {
