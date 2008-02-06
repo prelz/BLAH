@@ -253,6 +253,23 @@ int main(int argc, char *argv[]){
 int
 IntStateQuery()
 {
+/*
+ Output format for status query for unfinished jobs for condor:
+ batch_id   user      status     executable     exitcode   udate(timestamp_for_current_status)
+ 22018     gliteuser  2          /bin/sleep     0          1202288920
+
+ Filled entries:
+ batch_id
+ status
+ exitcode
+ udate
+ 
+ Unfilled entries:
+ wn_addr
+ exitreason
+ blah_id 
+*/
+
 	char *output;
         FILE *file_output;
 	int len;
@@ -316,12 +333,28 @@ IntStateQuery()
 	free(token);
 	free(output);
 	free(command_string);
-	return 0;
+	return(0);
 }
 
 int
 FinalStateQuery(char *query)
 {
+/*
+ Output format for status query for finished jobs for condor:
+ batch_id   user      status     executable     exitcode   udate(timestamp_for_current_status)
+ 22018     gliteuser  4          /bin/sleep     0          1202288920
+
+ Filled entries:
+ batch_id
+ status
+ exitcode
+ udate
+ 
+ Unfilled entries:
+ wn_addr
+ exitreason
+ blah_id 
+*/
 	char *output;
         FILE *file_output;
 	int len;
@@ -384,7 +417,7 @@ FinalStateQuery(char *query)
 	free(token);
 	free(output);
 	free(command_string);
-	return 0;
+	return(0);
 }
 
 int AssignFinalState(char *batchid){

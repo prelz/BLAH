@@ -275,7 +275,7 @@ PollDB()
                 job_registry_destroy(rha);
 		sleep(2);
 	}
-	return 0;
+	return(0);
 }
 int
 UpdateFileTime(int sec)
@@ -572,7 +572,7 @@ NotifyCream(char *buffer)
 		} 
 	}       
 
-	return 0;
+	return(0);
 
 }
 
