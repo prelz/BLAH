@@ -264,10 +264,12 @@ IntStateQuery()
  exitcode
  udate
  
+ Filled by suhmit script:
+ blah_id 
+ 
  Unfilled entries:
  wn_addr
  exitreason
- blah_id 
 */
 
 	char *output;
@@ -313,7 +315,6 @@ IntStateQuery()
 		en.udate=atoi(token[5]);
 		JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 		JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
-		JOB_REGISTRY_ASSIGN_ENTRY(en.blah_id,"\0");
 		
 		if ((ret=job_registry_update(rha, &en)) < 0)
 		{
@@ -350,10 +351,12 @@ FinalStateQuery(char *query)
  exitcode
  udate
  
+ Filled by suhmit script:
+ blah_id 
+ 
  Unfilled entries:
  wn_addr
  exitreason
- blah_id 
 */
 	char *output;
         FILE *file_output;
@@ -398,7 +401,6 @@ FinalStateQuery(char *query)
 		en.udate=atoi(token[5]);
                 JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
                 JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
-		JOB_REGISTRY_ASSIGN_ENTRY(en.blah_id,"\0");
 		
 		if ((ret=job_registry_update(rha, &en)) < 0)
 		{
@@ -434,7 +436,6 @@ int AssignFinalState(char *batchid){
 	en.udate=now;
 	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 	JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
-	JOB_REGISTRY_ASSIGN_ENTRY(en.blah_id,"\0");
 		
 	if ((ret=job_registry_update(rha, &en)) < 0)
 	{
