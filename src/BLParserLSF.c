@@ -1608,7 +1608,7 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
     
 	sprintf(sjobid, "%d",rptr[jobid]);
     
-	if(strcmp(reason,"NA")!=0){
+	if(reason && strcmp(reason,"NA")!=0){
 		sprintf(outreason," Reason=\"lsf_reason=%s\";" ,reason);
 		if((strcmp(reason,"130")==0) || (strcmp(reason,"137")==0) || (strcmp(reason,"143")==0)){
 			sprintf(exitreason," ExitReason=\"Memory limit reached\";");
@@ -1625,7 +1625,7 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
     
 	maxtok = strtoken(blahjobid, '_', clientjobid);    
     
-	if(strcmp(wn,"NA")!=0){
+	if(wn && strcmp(wn,"NA")!=0){
 		sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\"; WorkerNode=%s;%s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], wn, outreason, exitreason, timestamp);
 	}else{
 		sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\";%s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], outreason, exitreason, timestamp);
