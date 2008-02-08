@@ -496,11 +496,22 @@ int AddToStruct(char *line, int flag){
 
 				if(j2js[id] && strcmp(j2js[id],"3")!=0){
 					InfoAdd(id,"4","JOBSTATUS");
-					InfoAdd(id,failex_status,"EXITCODE");
-					InfoAdd(id,j_time,"COMPLTIME");
-					if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
-						NotifyCream(id, "4", j2bl[id], j2wn[id], failex_status, j2ct[id], flag);
+					if(failex_status!=NULL){
+						InfoAdd(id,failex_status,"EXITCODE");
+					}else{
+						InfoAdd(id,j_reason,"EXITCODE");
 					}
+					InfoAdd(id,j_time,"COMPLTIME");
+					if(failex_status!=NULL){
+						if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
+							NotifyCream(id, "4", j2bl[id], j2wn[id], failex_status, j2ct[id], flag);
+						}
+					}else{
+						if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
+							NotifyCream(id, "4", j2bl[id], j2wn[id], j_reason, j2ct[id], flag);
+						}
+					}
+					
 				}
 
 			} else if((j_status && strcmp(j_status,"16")==0) || (j_status && strcmp(j_status,"8")==0) || (j_status && strcmp(j_status,"2")==0)){
@@ -1468,6 +1479,9 @@ NotifyFromDate(char *in_buf)
 
 	if(notstr && strcmp(notstr,"CREAMFILTER")==0){
 		cream_string=strdup(notdate);
+                cream_string[6]='\000';
+		jcount=0;
+		nti[0]=0;
 		if(cream_string!=NULL){
 			sprintf(out_buf,"CREAMFILTER set to %s\n",cream_string);
 		}else{
@@ -1489,8 +1503,10 @@ NotifyFromDate(char *in_buf)
 			logepoch=nti[jcount+1];
 		}else{
 			logepoch=nti[0];
-		}      
-
+		} 
+		if(logepoch<=0){
+			logepoch=time(NULL);
+		}     
 		if(notepoch<=logepoch){
 			lnotdate=iepoch2str(notepoch);
 			GetEventsInOldLogs(lnotdate);

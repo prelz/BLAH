@@ -1348,6 +1348,9 @@ NotifyFromDate(char *in_buf)
 
 	if(notstr && strcmp(notstr,"CREAMFILTER")==0){
 		cream_string=strdup(notdate);
+                cream_string[6]='\000';
+		jcount=0;
+		nti[0]=0;
 		if(cream_string!=NULL){
 			sprintf(out_buf,"CREAMFILTER set to %s\n",cream_string);
 		}else{
@@ -1370,7 +1373,7 @@ NotifyFromDate(char *in_buf)
 			logepoch=nti[jcount+1];
 		}else{
 			if(nti[0]==0){
-				logepoch=str2epoch(cnow,"D");
+				logepoch=time(NULL);
 			}else{
 				logepoch=nti[0];
 			}
