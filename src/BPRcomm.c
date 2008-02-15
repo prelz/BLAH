@@ -119,7 +119,8 @@ receive_delegated_proxy(char **s, gss_ctx_id_t gss_context, int sck)
 	{
 		while (del_maj_stat == GSS_S_CONTINUE_NEEDED)
 		{
-			if (get_token(&sck, &input_token.value, &input_token.length) < 0) break;
+                        /* get_token can return -1 on error or GLOBUS_GSS_ASSIST_TOKEN_EOF==3 */
+			if (get_token(&sck, &input_token.value, &input_token.length) != 0) break;
 			maj_stat = gss_unwrap(
 					&min_stat,
 					gss_context,
