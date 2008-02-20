@@ -1928,7 +1928,9 @@ cmd_get_hostport(void *args)
 	char *resultLine;
 	int  retcode;
 	int i;
-	
+
+        if (blah_children_count>0) check_on_children(blah_children, blah_children_count);
+
 	if (lrms_counter)
 	{
 		resultLine = make_message("%s 0 ", reqId);
