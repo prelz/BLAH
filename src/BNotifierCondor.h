@@ -35,7 +35,7 @@ char *notiffile="/tmp/.notiftime.txt";
 
 char *registry_file;
 
-char *creamfilter="cream_";
+char *creamfilter=NULL;
 
 int async_notif_port;
 
@@ -51,11 +51,7 @@ int  list_c;
 int  conn_c=-1;
 int  c_sock;
 
-/* 
-to know if cream is connected:
-0 - not connected
-1 - connected
-*/
 int creamisconn=FALSE;
 int startnotify=FALSE;
+int firstnotify=FALSE;
 

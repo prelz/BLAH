@@ -169,11 +169,11 @@ PollDB()
 	
 		now=time(NULL);
 	
-		if(!creamisconn){
+		if(!startnotify){
 			sleep(2);
 			continue;
 		}
-		
+
 		rha=job_registry_init(registry_file, BY_BATCH_ID);
 		if (rha == NULL)
                 {
@@ -218,6 +218,7 @@ PollDB()
 			}
 		
 			/* Compare en->mdate and modification time notiffile */
+			
 			if(en->mdate >= GetModTime(notiffile) && en->mdate < now && en->blah_id && strstr(en->blah_id,creamfilter)!=NULL)
 			{
 				strudate=iepoch2str(en->udate);
@@ -257,7 +258,6 @@ PollDB()
 					free(blahid);
 				}
 				strcat(buffer,"]\n");
-				
 				NotifyCream(buffer);
 			}
 			free(en);
@@ -267,9 +267,9 @@ PollDB()
 	        /* change date of notification file */
 		UpdateFileTime(now);
 
-		if(startnotify){
+		if(firstnotify){
 			NotifyCream("NTFDATE/END\n");
-			startnotify=FALSE;
+			firstnotify=FALSE;
 		}		
 		fclose(fd);
                 job_registry_destroy(rha);
@@ -421,11 +421,12 @@ write_c:
 				}
 				if(buffer && strstr(buffer,"STARTNOTIFY")!=NULL){
 					NotifyStart(buffer);
-					creamisconn=TRUE;
 					startnotify=TRUE;
+					firstnotify=TRUE;
 				}
                                 if(buffer && strstr(buffer,"CREAMFILTER")!=NULL){
                                         GetFilter(buffer);
+					creamisconn=TRUE;
                                 }
 			}
 		}
@@ -437,7 +438,12 @@ int GetFilter(char *buffer){
         int  maxtok,i;
         char **tbuf;
         char *cp;
+        char * out_buf;
 
+        if((out_buf=calloc(STR_CHARS,1)) == 0){
+                sysfatal("can't malloc out_buf: %r");
+        }
+	
         if((tbuf=calloc(10 * sizeof *tbuf,1)) == 0){
                 sysfatal("can't malloc tbuf: %r");
         }
@@ -447,15 +453,30 @@ int GetFilter(char *buffer){
         if(tbuf[1]){
                 creamfilter=strdup(tbuf[1]);
                 if ((cp = strrchr (creamfilter, '\n')) != NULL){
-                        *cp = '\0';
+                	*cp = '\0';
                 }
-        }
+                if ((cp = strrchr (creamfilter, '\r')) != NULL){
+                	*cp = '\0';
+                }
+		sprintf(out_buf,"CREAMFILTER set to %s\n",creamfilter);
+
+        }else{
+		sprintf(out_buf,"CREAMFILTER ERROR\n");
+	}
+		
+	Writeline(conn_c, out_buf, strlen(out_buf));
+
+	if(debug){
+		fprintf(debuglogfile, "Sent Reply for CREAMFILTER command:%s",out_buf);
+		fflush(debuglogfile);
+	}
 
         for(i=0;i<maxtok;i++){
                 free(tbuf[i]);
         }
         free(tbuf);
-
+        free(out_buf);
+	
         return(0);
 
 }
@@ -479,6 +500,9 @@ int NotifyStart(char *buffer){
                 if ((cp = strrchr (notifdate, '\n')) != NULL){
                         *cp = '\0';
                 }
+                if ((cp = strrchr (notifdate, '\r')) != NULL){
+                        *cp = '\0';
+                }
         }
 
         for(i=0;i<maxtok;i++){
@@ -488,6 +512,7 @@ int NotifyStart(char *buffer){
 
 	notifepoch=str2epoch(notifdate,"S");
 	free(notifdate);
+
 	UpdateFileTime(notifepoch);
 	
 	return(0);
@@ -561,6 +586,9 @@ NotifyCream(char *buffer)
 			now=time(NULL);
 			nowtm=ctime(&now);
 			if ((cp = strrchr (nowtm, '\n')) != NULL){
+				*cp = '\0';
+			}
+			if ((cp = strrchr (nowtm, '\r')) != NULL){
 				*cp = '\0';
 			}
 			
