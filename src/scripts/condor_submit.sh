@@ -29,8 +29,8 @@ proxy_dir=~/.blah_jobproxy_dir
 # Parse parameters
 ###############################################################
 original_args=$@
-# Note: -j (creamjobid) and -s (stage command) are ignored as they are 
-# not relevant for Condor.
+# Note: -s (stage command) s ignored as it is not relevant for Condor.
+
 while getopts "i:o:e:j:v:V:c:w:x:q:s:T:I:O:R:" arg 
 do
     case "$arg" in
