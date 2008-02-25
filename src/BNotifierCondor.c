@@ -217,8 +217,6 @@ PollDB()
 				sysfatal("can't malloc buffer in PollDB: %r");
 			}
 		
-			/* Compare en->mdate and modification time notiffile */
-			
 			if(en->mdate >= GetModTime(notiffile) && en->mdate < now && en->blah_id && strstr(en->blah_id,creamfilter)!=NULL)
 			{
 				strudate=iepoch2str(en->udate);

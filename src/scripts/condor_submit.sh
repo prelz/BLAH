@@ -239,15 +239,17 @@ else
     fi
 fi
 
+now=`date +%s`
+
 full_result=$($condor_binpath/condor_submit $target $submit_file)
 return_code=$?
 
 if [ "$return_code" == "0" ] ; then
     jobID=`echo $full_result | awk '{print $8}' | tr -d '.'`
-    blahp_jobID="condor/$jobID/$queue/$pool"
+    blahp_jobID="$creamjobid/condor/$jobID/$queue/$pool"
 
     if [ "x$job_registry" != "x" ]; then
-      `dirname $0`/blah_job_registry_add "$blahp_jobID" "$jobID" 1
+      `dirname $0`/blah_job_registry_add "$blahp_jobID" "$jobID" 1 "" $now-1
     fi
 
     echo "BLAHP_JOBID_PREFIX$blahp_jobID"

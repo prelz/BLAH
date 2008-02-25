@@ -309,13 +309,14 @@ IntStateQuery()
 	for(i=0;i<maxtok_l;i++){
 		maxtok_t = strtoken(line[i], ' ', token);
 		
+		
 		JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,token[0]);
 		en.status=atoi(token[2]);
 		en.exitcode=atoi(token[4]);
 		en.udate=atoi(token[5]);
 		JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 		JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
-		
+				
 		if ((ret=job_registry_update(rha, &en)) < 0)
 		{
 			fprintf(stderr,"Append of record returns %d: ",ret);
