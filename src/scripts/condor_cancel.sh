@@ -13,9 +13,9 @@ if [ -z "$queue" ]; then
     target=""
 else
     if [ -z "$pool" ]; then
-	target="-name $queue"
+        target="-name $queue"
     else
-	target="-pool $pool -name $queue"
+        target="-pool $pool -name $queue"
     fi
 fi
 
@@ -28,3 +28,4 @@ else
     echo " 1 Error"
     exit 1
 fi
+

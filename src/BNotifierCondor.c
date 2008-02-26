@@ -164,6 +164,10 @@ PollDB()
 	char *blahid;
 	char *strudate;
 	time_t now;
+        int  maxtok,i;
+        char **tbuf;
+	char *clientid=NULL;
+	char *cp;
 	
 	while(1){
 	
@@ -220,7 +224,7 @@ PollDB()
 			if(en->mdate >= GetModTime(notiffile) && en->mdate < now && en->blah_id && strstr(en->blah_id,creamfilter)!=NULL)
 			{
 				strudate=iepoch2str(en->udate);
-				sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%d; Timestamp=%s;",en->batch_id, en->status, strudate);
+				sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%d; ChangeTime=\"%s\";",en->batch_id, en->status, strudate);
 				free(strudate);
 
 				if (strlen(en->wn_addr) > 0){
@@ -231,11 +235,11 @@ PollDB()
 					strcat(buffer,wn);
 					free(wn);
 				}
-				if (en->exitcode > 0){
+				if (en->status == 3 || en->status == 4){
 					if((excode=calloc(STR_CHARS,1)) == 0){
 						sysfatal("can't malloc excode in PollDB: %r");
 					}
-					sprintf(excode," ExitCode=%d;", en->exitcode);
+					sprintf(excode," ExitCode=%d; Reason=\"condor_reason=%d\";", en->exitcode, en->exitcode);
 					strcat(buffer,excode);
 					free(excode);
 				}
@@ -251,9 +255,30 @@ PollDB()
 					if((blahid=calloc(STR_CHARS,1)) == 0){
 						sysfatal("can't malloc blahid in PollDB: %r");
 					}
-					sprintf(blahid," BlahJobId=\"%s\";", en->blah_id);
+					if((clientid=calloc(STR_CHARS,1)) == 0){
+						sysfatal("can't malloc clientid in PollDB: %r");
+					}
+                                        if((tbuf=calloc(10 * sizeof *tbuf,1)) == 0){
+                                                sysfatal("can't malloc tbuf: %r");
+                                        }
+                                        maxtok=strtoken(en->blah_id,'_',tbuf);
+					if(tbuf[1]){
+						if ((cp = strrchr (tbuf[1], '\n')) != NULL){
+							*cp = '\0';
+						}
+						if ((cp = strrchr (tbuf[1], '\r')) != NULL){
+							*cp = '\0';
+						}
+						 sprintf(clientid," ClientJobId=\"%s\";",tbuf[1]);
+					}
+					sprintf(blahid,"%s BlahJobName=\"%s\";",clientid, en->blah_id);
 					strcat(buffer,blahid);
 					free(blahid);
+                                        for(i=0;i<maxtok;i++){
+                                                free(tbuf[i]);
+                                        }
+                                        free(tbuf);
+                                        free(clientid);
 				}
 				strcat(buffer,"]\n");
 				NotifyCream(buffer);

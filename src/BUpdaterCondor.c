@@ -309,7 +309,6 @@ IntStateQuery()
 	for(i=0;i<maxtok_l;i++){
 		maxtok_t = strtoken(line[i], ' ', token);
 		
-		
 		JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,token[0]);
 		en.status=atoi(token[2]);
 		en.exitcode=atoi(token[4]);
