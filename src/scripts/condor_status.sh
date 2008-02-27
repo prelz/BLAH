@@ -201,8 +201,8 @@ done
 shift `expr $OPTIND - 1`
 
 for job in $* ; do
-# The job's format is: con/Id/Queue/Pool
-    job=${job:4} # Strip off the "con/"
+# The job's format is: condor/Id/Queue/Pool
+    job=${job#con*/} # Strip off the leading "con(dor)/"
     id=${job%%/*} # Id, everything before the first / in Id/Queue/Pool
     queue_pool=${job#*/} # Queue/Pool, everything after the first /  in Id/Queue/Pool
     queue=${queue_pool%/*} # Queue, everything before the first / in Queue/Pool
