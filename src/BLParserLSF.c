@@ -484,12 +484,14 @@ int AddToStruct(char *line, int flag){
     
 			if(j_status && strcmp(j_status,"192")==0){
 
-				InfoAdd(id,"4","JOBSTATUS");
-				InfoAdd(id,"0","EXITCODE");
-				InfoAdd(id,j_time,"COMPLTIME");
+				if(j2js[id] && strcmp(j2js[id],"3")!=0){
+					InfoAdd(id,"4","JOBSTATUS");
+					InfoAdd(id,"0","EXITCODE");
+					InfoAdd(id,j_time,"COMPLTIME");
     
-				if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
-					NotifyCream(id, "4", j2bl[id], j2wn[id], j_reason, j2ct[id], flag);
+					if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
+						NotifyCream(id, "4", j2bl[id], j2wn[id], j_reason, j2ct[id], flag);
+					}
 				}
 
 			}  else if(j_status && strcmp(j_status,"32")==0){
