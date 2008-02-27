@@ -1185,31 +1185,21 @@ cmd_cancel_job(void* args)
 	char *resultLine = NULL;
 	char **argv = (char **)args;
 	char **arg_ptr;
-	char *server_lrms;
+	job_registry_split_id *spid;
 	char *reqId = argv[1];
-	char *jobId;
 	char *error_string;
 	char answer[1024];
-	char *separator;
 
 	/* Split <lrms> and actual job Id */
-	if((server_lrms = strdup(argv[2])) == NULL)
+	if((spid = job_registry_split_blah_id(argv[2])) == NULL)
 	{
 		/* PUSH A FAILURE */
-		resultLine = make_message("%s 1 Cannot\\ allocate\\ memory\\ for\\ the\\ lrms\\ string", reqId);
+		resultLine = make_message("%s 2 Malformed\\ jobId\\ %s\\ or\\ out\\ of\\ memory", reqId, argv[2]);
 		goto cleanup_argv;
 	}
-	if ((separator = strchr(server_lrms, '/')) == NULL)
-	{
-		/* PUSH A FAILURE */
-		resultLine = make_message("%s 2 Malformed\\ jobId %s", reqId, jobId);
-		goto cleanup_lrms;
-	}
-	*separator = '\0';
-	jobId = separator + 1;
 
 	/* Prepare the cancellation command */
-	command = make_message("%s %s/%s_cancel.sh %s", argv[CMD_CANCEL_JOB_ARGS + 1] ? gloc : "", blah_script_location, server_lrms, jobId);
+	command = make_message("%s %s/%s_cancel.sh %s", argv[CMD_CANCEL_JOB_ARGS + 1] ? gloc : "", blah_script_location, spid->lrms, spid->script_id);
 	if (command == NULL)
 	{
 		/* PUSH A FAILURE */
@@ -1242,7 +1232,7 @@ cleanup_command:
 	if (cmd_out) free(cmd_out);
 	free(command);
 cleanup_lrms:
-	free(server_lrms);
+	job_registry_free_split_id(spid);
 cleanup_argv:
 	free_args(argv);
 	if(resultLine)
@@ -1439,7 +1429,7 @@ get_status_and_old_proxy(int use_glexec, char *jobDescr,
 	int jobNumber=0, jobStatus;
 	char *command, *escaped_command;
 	char error_buffer[ERROR_MAX_LEN];
-	char *jobDescr_tail;
+	job_registry_split_id *spid;
 	int i;
 
 	if (old_proxy == NULL) return(-1);
@@ -1448,9 +1438,8 @@ get_status_and_old_proxy(int use_glexec, char *jobDescr,
 	*workernode = NULL;
 	if (error_string != NULL) *error_string = NULL;
 
-	jobDescr_tail = strrchr(jobDescr, '/');
-	if (jobDescr_tail == NULL) jobDescr_tail = jobDescr;
-	else jobDescr_tail++;
+	spid = job_registry_split_blah_id(jobDescr);
+	if (spid == NULL) return(-1); /* Error */
 
 	if (!use_glexec)
 	{
@@ -1459,7 +1448,7 @@ get_status_and_old_proxy(int use_glexec, char *jobDescr,
 			fprintf(stderr, "Out of memory.\n");
 			exit(MALLOC_ERROR);
 		}
-		if ((proxy_link = make_message("%s/.blah_jobproxy_dir/%s.proxy", getenv("HOME"), jobDescr_tail)) == NULL)
+		if ((proxy_link = make_message("%s/.blah_jobproxy_dir/%s.proxy", getenv("HOME"), spid->proxy_id)) == NULL)
 	 	{
 			fprintf(stderr, "Out of memory.\n");
 			exit(MALLOC_ERROR);
@@ -1473,7 +1462,7 @@ get_status_and_old_proxy(int use_glexec, char *jobDescr,
 			/* Proxy link for renewal is not accessible */
 			/* Try with .norenew */
 			free(proxy_link);
-			if ((proxy_link = make_message("%s/.blah_jobproxy_dir/%s.proxy.norenew", getenv("HOME"), jobDescr_tail)) == NULL)
+			if ((proxy_link = make_message("%s/.blah_jobproxy_dir/%s.proxy.norenew", getenv("HOME"), spid->proxy_id)) == NULL)
 	 		{
 				fprintf(stderr, "Out of memory.\n");
 				exit(MALLOC_ERROR);
@@ -1485,10 +1474,12 @@ get_status_and_old_proxy(int use_glexec, char *jobDescr,
 				r_old_proxy[readlink_res] = '\000'; /* readlink does not append final NULL */
 				*old_proxy = r_old_proxy;
 				free(proxy_link);
+				job_registry_free_split_id(spid);
 				return 1; /* 'local' state */
 			}
 			free(proxy_link);
 			free(r_old_proxy);
+			job_registry_free_split_id(spid);
 			return -1; /* Error */
 		}
 		r_old_proxy[readlink_res] = '\000'; /* readlink does not append final NULL */
@@ -1499,7 +1490,7 @@ get_status_and_old_proxy(int use_glexec, char *jobDescr,
 	else
 	{
 		/* GLEXEC case */
-		command = make_message("%s /usr/bin/readlink -n .blah_jobproxy_dir/%s.proxy", gloc, jobDescr_tail);
+		command = make_message("%s /usr/bin/readlink -n .blah_jobproxy_dir/%s.proxy", gloc, spid->proxy_id);
 		if (command == NULL)
 	 	{
 			fprintf(stderr, "Out of memory.\n");
@@ -1523,7 +1514,7 @@ get_status_and_old_proxy(int use_glexec, char *jobDescr,
 			/* Proxy link for renewal is not accessible */
 			/* Try with .norenew */
 			free(command);
-			command = make_message("%s /usr/bin/readlink -n .blah_jobproxy_dir/%s.proxy.norenew", gloc, jobDescr_tail);
+			command = make_message("%s /usr/bin/readlink -n .blah_jobproxy_dir/%s.proxy.norenew", gloc, spid->proxy_id);
 			retcod = exe_getout(command, status_argv, &r_old_proxy);
 			if (r_old_proxy != NULL && strlen(r_old_proxy) > 0 && retcod == 0)
 			{
@@ -1531,15 +1522,19 @@ get_status_and_old_proxy(int use_glexec, char *jobDescr,
 				/* Proxy has to be renewed locally */
 				*old_proxy = r_old_proxy;
 				free(command);
+				job_registry_free_split_id(spid);
 				return 1; /* 'local' state */
 			}
 			if (r_old_proxy != NULL) free(r_old_proxy);
 			free(command);
+			job_registry_free_split_id(spid);
 			return(-1);
 		}
 		*old_proxy = r_old_proxy;
 		free(command);
 	}
+
+	job_registry_free_split_id(spid);
 
 	/* If we reach here we have a proxy *and* we have */
 	/* to check on the job status */
@@ -1707,44 +1702,34 @@ hold_res_exec(char* jobdescr, char* reqId, char* action, int status, char **envi
 	char *cmd_out;
 	char *command;
 	char *resultLine = NULL;
-	char *server_lrms;
-	char *jobId;
+	job_registry_split_id *spid;
 	char *error_string;
-	char *separator;
 
 	/* Split <lrms> and actual job Id */
-	if((server_lrms = strdup(jobdescr)) == NULL)
+	if((spid = job_registry_split_blah_id(jobdescr)) == NULL)
 	{
 		/* PUSH A FAILURE */
-		resultLine = make_message("%s 1 Cannot\\ allocate\\ memory\\ for\\ the\\ lrms\\ string", reqId);
+		resultLine = make_message("%s 2 Malformed\\ jobId\\ %s\\ or\\ out\\ of\\ memory", reqId, jobdescr);
 		goto cleanup_argv;
 	}
-	if ((separator = strchr(server_lrms, '/')) == NULL)
-	{
-		/* PUSH A FAILURE */
-		resultLine = make_message("%s 2 Malformed\\ jobId\\ %s", reqId, jobdescr);
-		goto cleanup_lrms;
-	}
-	*separator = '\0';
-	jobId = separator + 1;
 
 	if(*environment)
 	{
 		if(!strcmp(action,"hold"))
 		{
-		        command = make_message("%s %s/%s_%s.sh %s %d", gloc, blah_script_location, server_lrms, action, jobId, status);
+		        command = make_message("%s %s/%s_%s.sh %s %d", gloc, blah_script_location, spid->lrms, action, spid->script_id, status);
 		}else
 		{
-		        command = make_message("%s %s/%s_%s.sh %s", gloc, blah_script_location, server_lrms, action, jobId);
+		        command = make_message("%s %s/%s_%s.sh %s", gloc, blah_script_location, spid->lrms, action, spid->script_id);
 		}
 	}else
 	{
 		if(!strcmp(action,"hold"))
 		{
-		        command = make_message("%s/%s_%s.sh %s %d", blah_script_location, server_lrms, action, jobId, status);
+		        command = make_message("%s/%s_%s.sh %s %d", blah_script_location, spid->lrms, action, spid->script_id, status);
 		}else
 		{
-		        command = make_message("%s/%s_%s.sh %s", blah_script_location, server_lrms, action, jobId);
+		        command = make_message("%s/%s_%s.sh %s", blah_script_location, spid->lrms, action, spid->script_id);
 		}
 	}
 
@@ -1759,12 +1744,12 @@ hold_res_exec(char* jobdescr, char* reqId, char* action, int status, char **envi
 	retcod = exe_getout(command, environment, &cmd_out);
 	if(cmd_out == NULL)
 	{
-		resultLine = make_message("%s 1 Cannot\\ execute\\ %s\\ script", reqId, retcod, server_lrms);
+		resultLine = make_message("%s 1 Cannot\\ execute\\ %s\\ script", reqId, retcod, spid->lrms);
 		goto cleanup_command;
 	}
 	if(retcod)
 	{
-		resultLine = make_message("%s %d Job\\ %s:\\ %s\\ not\\ supported\\ by\\ %s", reqId, retcod, statusstring[status - 1], action, server_lrms);
+		resultLine = make_message("%s %d Job\\ %s:\\ %s\\ not\\ supported\\ by\\ %s", reqId, retcod, statusstring[status - 1], action, spid->lrms);
 	}else
 		resultLine = make_message("%s %d No\\ error", reqId, retcod);
 
@@ -1773,7 +1758,7 @@ hold_res_exec(char* jobdescr, char* reqId, char* action, int status, char **envi
 cleanup_command:
 	free(command);
 cleanup_lrms:
-	free(server_lrms);
+	job_registry_free_split_id(spid);
 cleanup_argv:
 	if(resultLine)
 	{

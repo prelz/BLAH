@@ -27,6 +27,7 @@
 #include "classad_c_helper.h"
 #include "blahpd.h"
 #include "mtsafe_popen.h"
+#include "job_registry.h"
 #define MAX_TEMP_ARRAY_SIZE              1000
 #define CAD_LEN                          1024
 
@@ -41,48 +42,33 @@ int get_status(const char *jobDesc, classad_context *cad, char **environment, ch
 	char *command;
 	char cad_str[100][CAD_LEN];
 	int  retcode = 0;
-	char *server_lrms;
-	char *separator;
-	char *jobId;
+	job_registry_split_id *spid;
 	int  i, lc;
 	classad_context tmpcad;
 	int res_length;
 	char *begin_res;
 	char *end_res;
 
-	if((server_lrms = strdup(jobDesc)) == NULL)
-	{
-		fprintf(stderr, "Out of memory\n");
-		exit(MALLOC_ERROR);
-	}
-
-	/* batch system name must not be limited to 3 chars */
-	if ((separator = strchr(server_lrms, '/')) == NULL)
+	if((spid = job_registry_split_blah_id(jobDesc)) == NULL)
 	{
 		/* PUSH A FAILURE */
-		strcpy(*error_str, "Malformed jobId");
-		free(server_lrms);
+		strcpy(*error_str, "Malformed jobId or out of memory");
 		return(255);
 	}
-	*separator = '\0';
-	jobId = separator + 1;
-
-		/* command = make_message("%s %s/%s_status.sh %s %s", *environment ? gloc : "", 
-	                         blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobId); */
 
 		command = make_message("%s %s/%s_status.sh %s %s", *environment ? gloc : "", 
-	                         blah_script_location, server_lrms, (get_workernode ? "-w" : ""), jobDesc);
+	                         blah_script_location, spid->lrms, (get_workernode ? "-w" : ""), jobDesc);
 
 	if ((retcode = exe_getout(command, environment, &cmd_out)) != 0)
         {
 		sprintf(*error_str, "status command failed (exit code %d)", retcode);
-		free(server_lrms);
+		job_registry_free_split_id(spid);
 		free(command);
 		if (cmd_out) free (cmd_out);
                 return(255);
         }
 	free(command);
-	free(server_lrms);
+	job_registry_free_split_id(spid);
 
 	lc = 0;
 	res_length = strlen(cmd_out);
