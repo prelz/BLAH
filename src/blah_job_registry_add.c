@@ -7,6 +7,7 @@
  *
  *  Revision history :
  *  16-Nov-2007 Original release
+ *  27-Feb-2008 Added user_prefix.
  *
  *  Description:
  *   Executable to add (append or update) an entry to the job registry.
@@ -35,6 +36,7 @@ main(int argc, char *argv[])
   job_status_t status=IDLE;
   int exitcode = -1; 
   char *exitreason = "";
+  char *user_prefix = "";
   char *wn_addr = "";
   time_t udate=0;
   char *blah_id, *batch_id;
@@ -45,7 +47,7 @@ main(int argc, char *argv[])
 
   if (argc < 3)
    {
-    fprintf(stderr,"Usage: %s <BLAH id> <batch id> [job status] [exit code] [udate] [worker node] [exit reason]\n",argv[0]);
+    fprintf(stderr,"Usage: %s <BLAH id> <batch id> [job status] [exit code] [udate] [worker node] [exit reason] [user prefix]\n",argv[0]);
     return 1;
    }
 
@@ -57,6 +59,7 @@ main(int argc, char *argv[])
   if (argc > 5) udate = atol(argv[5]);
   if (argc > 6) wn_addr = argv[6];
   if (argc > 7) exitreason = argv[7];
+  if (argc > 8) user_prefix = argv[8];
    
   cha = config_read(NULL); /* Read config from default locations. */
   if (cha != NULL)
@@ -105,6 +108,7 @@ main(int argc, char *argv[])
   en.udate = udate;
   JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,exitreason); 
   en.submitter = geteuid();
+  JOB_REGISTRY_ASSIGN_ENTRY(en.user_prefix,user_prefix); 
     
   if ((ret=job_registry_append(rha, &en)) < 0)
    {

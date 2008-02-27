@@ -7,6 +7,8 @@
  *
  *  Revision history :
  *  12-Nov-2007 Original release
+ *  27-Feb-2008 Added user_prefix to classad printout.
+ *              Added job_registry_split_blah_id and its free call.
  *
  *  Description:
  *    File-based container to cache job IDs and statuses to implement
@@ -1229,9 +1231,8 @@ job_registry_seek_next(FILE *fd, job_registry_entry *result)
 /*
  * job_registry_entry_as_classad
  *
- * Look for a valid registry entry anywhere starting from the current 
- * position in fd. No consistency check is performed. 
- * This function can be used for file recovery. 
+ * Create a classad (in standard string representation)
+ * including the attributes of the supplied registry entry.
  *
  * @param entry Job registry entry to be formatted as classad.
  *
@@ -1277,6 +1278,10 @@ job_registry_entry_as_classad(const job_registry_entry *entry)
    { 
     JOB_REGISTRY_APPEND_ATTRIBUTE("ExitReason=\"%s\"; ",entry->exitreason);
    }
+  if ((entry->user_prefix != NULL) && (strlen(entry->user_prefix) > 0)) 
+   { 
+    JOB_REGISTRY_APPEND_ATTRIBUTE("UserPrefix=\"%s\"; ",entry->user_prefix);
+   }
 
   if (extra_attrs == NULL) 
    {
@@ -1300,3 +1305,83 @@ job_registry_entry_as_classad(const job_registry_entry *entry)
 
   return result;
 }
+
+/*
+ * job_registry_split_blah_id
+ *
+ * Return a structure (to be freed with job_registry_free_split_id)
+ * filled with dynamically allocated copies of the various parts
+ * of the BLAH ID:
+ *  - lrms: the part up to and excluding the first slash ('/')
+ *  - script_id: the part following and excluding the first slash 
+ *  - proxy_id: the part between the first and the second slash 
+ *
+ * @param id BLAH job ID string.
+ *
+ * @return Pointer to a job_registry_split_id structure containing the split id
+ *         or NULL if no slash was found in the ID or malloc failed.
+ *         The resulting pointer has to be freed via job_registry_free_split_id.
+ */
+
+job_registry_split_id *
+job_registry_split_blah_id(const char *bid)
+ {
+  char *firsts, *seconds;
+  int fsl, ssl, psl;
+  job_registry_split_id *ret;
+
+  firsts = strchr(bid, '/');
+
+  if (firsts == NULL) return NULL;
+
+  ret = (job_registry_split_id *)malloc(sizeof(job_registry_split_id));
+  if (ret == NULL) return NULL;
+
+  seconds = strchr(firsts+1, '/');
+  if (seconds == NULL) seconds = bid+strlen(bid);
+
+  fsl = (int)(firsts - bid);
+  ssl = strlen(bid)-fsl-1;
+  psl = (int)(seconds - firsts) - 1;
+
+  ret->lrms      = (char *)malloc(fsl + 1);
+  ret->script_id = (char *)malloc(ssl + 1);
+  ret->proxy_id  = (char *)malloc(ssl + 1);
+
+  if (ret->lrms == NULL || ret->script_id == NULL || ret->proxy_id == NULL)
+   {
+    job_registry_free_split_id(ret);
+    return NULL;
+   }
+
+  memcpy(ret->lrms,      bid, fsl);
+  memcpy(ret->script_id, firsts+1, ssl);
+  memcpy(ret->proxy_id,  firsts+1, psl);
+
+  (ret->lrms)     [fsl] = '\000';
+  (ret->script_id)[ssl] = '\000';
+  (ret->proxy_id) [psl] = '\000';
+
+  return ret;
+ }
+
+/*
+ * job_registry_free_split_id
+ *
+ * Frees a job_registry_split_id with all its dynamic contents.
+ *
+ * @param spid Pointer to a job_registry_split_id returned by 
+ *             job_registry_split_blah_id.
+ */
+
+void 
+job_registry_free_split_id(job_registry_split_id *spid)
+ {
+   if (spid == NULL) return;
+
+   if (spid->lrms != NULL)      free(spid->lrms);
+   if (spid->script_id != NULL) free(spid->script_id);
+   if (spid->proxy_id != NULL)  free(spid->proxy_id);
+
+   free(spid);
+ }

@@ -7,6 +7,7 @@
  *
  *  Revision history :
  *  14-Nov-2007 Original release
+ *  27-Feb-2008 Added test of job_registry_split_blah_id.
  *
  *  Description:
  *   Access test for job registries created by test_job_registry_create.
@@ -28,6 +29,7 @@ main(int argc, char *argv[])
 {
   char *test_registry_file = JOB_REGISTRY_TEST_FILE;
   job_registry_entry *en;
+  job_registry_split_id *spid;
   int ret;
   int pick;
   int n_read_tests;
@@ -82,13 +84,23 @@ main(int argc, char *argv[])
       job_registry_destroy(rha);
       return 1;
      }
-    if (strcmp(&(en->blah_id[strlen(en->blah_id)-6]),
-               &(en->batch_id[strlen(en->batch_id)-6])) != 0)
+    if ((spid = job_registry_split_blah_id(en->blah_id)) == NULL)
      {
-      fprintf(stderr,"%s: Trailing number of IDs %s and %d differs.\n",
-              argv[0], en->blah_id, en->batch_id);
-      job_registry_destroy(rha);
-      return 1;
+      fprintf(stderr,"%s: BLAH job ID %s invalid according to job_registry_split_blah_id.\n",
+              argv[0], en->blah_id);
+     }
+    else 
+     {
+      if (strcmp(&(spid->proxy_id[strlen(spid->proxy_id)-6]),
+                 &(en->batch_id[strlen(en->batch_id)-6])) != 0)
+       {
+        fprintf(stderr,"%s: Trailing number of IDs %s and %s differs.\n",
+                argv[0], en->blah_id, en->batch_id);
+        job_registry_free_split_id(spid);
+        job_registry_destroy(rha);
+        return 1;
+       }
+      job_registry_free_split_id(spid);
      }
     free(en);
    }

@@ -7,6 +7,7 @@
  *
  *  Revision history :
  *  14-Nov-2007 Original release
+ *  27-Feb-2008 Added user_prefix.
  *
  *  Description:
  *    Job registry creation test for code in job_registry.{c,h}
@@ -27,7 +28,7 @@ int
 main(int argc, char *argv[])
 {
   char *test_registry_file = JOB_REGISTRY_TEST_FILE;
-  char *test_blahid_format="%c%c%c_blahid_%05d";
+  char *test_blahid_format="lrms/%c%c%c_blahid_%05d/stuff";
   char *test_batchid_format="%c%c%c_batchid_%05d";
   job_registry_entry en;
   struct timeval tm_start, tm_end;
@@ -56,8 +57,9 @@ main(int argc, char *argv[])
   /* Create and append n_entries entries */
   for(i=0;i<n_entries;i++)
    {
-    sprintf(en.blah_id, test_blahid_format, rand()%94+33, rand()%94+33,
-                           rand()%94+33, i);
+    /* Make sure we don't include a slash (ASCII 47) in the BLAH ID */
+    sprintf(en.blah_id, test_blahid_format, rand()%78+48, rand()%78+48,
+                           rand()%78+48, i);
     sprintf(en.batch_id, test_batchid_format, rand()%94+33, rand()%94+33,
                            rand()%94+33, i);
     en.status = IDLE;
@@ -65,6 +67,11 @@ main(int argc, char *argv[])
     en.wn_addr[0]='\000';
     en.exitreason[0] = '\000';
     en.submitter = geteuid();
+    if ((rand()%100) > 70) 
+     {
+      JOB_REGISTRY_ASSIGN_ENTRY(en.user_prefix,"testp_");
+     }
+    else                   en.user_prefix[0] = '\000';
     
     if ((ret=job_registry_append(rha, &en)) < 0)
      {

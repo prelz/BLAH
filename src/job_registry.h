@@ -7,6 +7,8 @@
  *
  *  Revision history :
  *  12-Nov-2007 Original release
+ *  27-Feb-2008 Added user_prefix at CREAM's request.
+ *              Added job_registry_split_blah_id and its free call.
  *
  *  Description:
  *    Prototypes of functions defined in job_registry.c
@@ -36,6 +38,7 @@ typedef uint32_t job_registry_recnum_t;
   else (req_recn) = JOB_REGISTRY_MAX_RECNUM - (firstrec) + (found);
 
 #define JOB_REGISTRY_MAX_EXITREASON 120
+#define JOB_REGISTRY_MAX_USER_PREFIX 32
 
 typedef struct job_registry_entry_s
  {
@@ -52,6 +55,7 @@ typedef struct job_registry_entry_s
    int          exitcode;
    char         exitreason[JOB_REGISTRY_MAX_EXITREASON];
    char         wn_addr[40]; /* Accommodates IPV6 addresses */
+   char         user_prefix[JOB_REGISTRY_MAX_USER_PREFIX];
    uint32_t     magic_end; 
  } job_registry_entry;
 
@@ -91,6 +95,13 @@ typedef enum job_registry_sort_state_e
    RIGHT_BOUND,
    SORTED
  } job_registry_sort_state;
+
+typedef struct job_registry_split_id_s
+ {
+   char *lrms;
+   char *script_id;
+   char *proxy_id;
+ } job_registry_split_id;
 
 #define JOB_REGISTRY_SUCCESS          0
 #define JOB_REGISTRY_FAIL            -1 
@@ -140,6 +151,8 @@ job_registry_entry *job_registry_get_next(const job_registry_handle *rhandle,
                                           FILE *fd);
 int job_registry_seek_next(FILE *fd, job_registry_entry *result);
 char *job_registry_entry_as_classad(const job_registry_entry *entry);
+job_registry_split_id *job_registry_split_blah_id(const char *bid);
+void job_registry_free_split_id(job_registry_split_id *spid);
 
 #ifndef TRUE
 #define TRUE 1

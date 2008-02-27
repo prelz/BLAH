@@ -1,7 +1,7 @@
 /*
  *  File :     blah_job_registry_lkup.c
  *
- *  Author :   Francesco Prelz ($Author: mezzadri $)
+ *  Author :   Francesco Prelz ($Author: fprelz $)
  *  e-mail :   "francesco.prelz@mi.infn.it"
  *
  *  Revision history :
@@ -36,7 +36,7 @@ main(int argc, char *argv[])
   int need_to_free_registry_file = FALSE;
   const char *default_registry_file = "blah_job_registry.bjr";
   char *my_home;
-  job_registry_index_mode mode= BY_BATCH_ID;
+  job_registry_index_mode mode=BY_BLAH_ID;
   char *id;
   job_registry_entry *ren;
   char *cad;
@@ -47,13 +47,10 @@ main(int argc, char *argv[])
   int opt_get_port = FALSE;
   char *anhname;
   struct utsname ruts;
-  char *jobid;
-  char *sep1;
-  char *sep2;
  
   if (argc < 2)
    {
-    fprintf(stdout,"1ERROR Usage: %s [-w (get worker node)] [-n (get parser host:port)] [-b (look up for blah IDs)] <id>\n",argv[0]);
+    fprintf(stdout,"1ERROR Usage: %s [-w (get worker node)] [-n (get parser host:port)] [-b (look up for batch IDs)] <id>\n",argv[0]);
     return 1;
    }
 
@@ -64,7 +61,7 @@ main(int argc, char *argv[])
     switch (argv[idc][1])
      {
       case 'b':
-        mode = BY_BLAH_ID;
+        mode = BY_BATCH_ID;
         break;
       case 'n':
         opt_get_port = TRUE;
@@ -75,20 +72,7 @@ main(int argc, char *argv[])
      }
    }
 
-  jobid = argv[idc];
-  
-  if ((sep1 = strchr(jobid, '/')) == NULL)
-  {
-    return 2;
-  }
-  *sep1 = '\0';
-  id = sep1 + 1;
-  
-    if ((sep2 = strchr(id, '/')) == NULL)
-  {
-    return 2;
-  }
-  *sep2 = '\0';
+  id = argv[idc];
 
   cha = config_read(NULL); /* Read config from default locations. */
   if (cha != NULL)
