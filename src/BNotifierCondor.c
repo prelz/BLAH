@@ -221,7 +221,7 @@ PollDB()
 				sysfatal("can't malloc buffer in PollDB: %r");
 			}
 		
-			if(en->mdate >= GetModTime(notiffile) && en->mdate < now && en->blah_id && strstr(en->blah_id,creamfilter)!=NULL)
+			if(en->mdate >= GetModTime(notiffile) && en->mdate < now && en->user_prefix && strstr(en->user_prefix,creamfilter)!=NULL)
 			{
 				strudate=iepoch2str(en->udate);
 				sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%d; ChangeTime=\"%s\";",en->batch_id, en->status, strudate);
@@ -251,7 +251,7 @@ PollDB()
 					strcat(buffer,exreas);
 					free(exreas);
 				}
-				if (strlen(en->blah_id) > 0){
+				if (strlen(en->user_prefix) > 0){
 					if((blahid=calloc(STR_CHARS,1)) == 0){
 						sysfatal("can't malloc blahid in PollDB: %r");
 					}
@@ -261,7 +261,7 @@ PollDB()
                                         if((tbuf=calloc(10 * sizeof *tbuf,1)) == 0){
                                                 sysfatal("can't malloc tbuf: %r");
                                         }
-                                        maxtok=strtoken(en->blah_id,'_',tbuf);
+                                        maxtok=strtoken(en->user_prefix,'_',tbuf);
 					if(tbuf[1]){
 						if ((cp = strrchr (tbuf[1], '\n')) != NULL){
 							*cp = '\0';
@@ -271,7 +271,7 @@ PollDB()
 						}
 						 sprintf(clientid," ClientJobId=\"%s\";",tbuf[1]);
 					}
-					sprintf(blahid,"%s BlahJobName=\"%s\";",clientid, en->blah_id);
+					sprintf(blahid,"%s BlahJobName=\"%s\";",clientid, en->user_prefix);
 					strcat(buffer,blahid);
 					free(blahid);
                                         for(i=0;i<maxtok;i++){
