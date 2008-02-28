@@ -217,8 +217,10 @@ fi #end if on $lsf_nologaccess
 # Compose the blahp jobID (date + lsf jobid)
 blahp_jobID="lsf/${datenow}/$jobID"
 
+
 if [ "x$job_registry" != "x" ]; then
-  `dirname $0`/blah_job_registry_add "$blahp_jobID" "$jobID" 1
+  now=`date +%s`
+  `dirname $0`/blah_job_registry_add "$blahp_jobID" "$jobID" 1 $now-1 "$bls_opt_creamjobid"
 fi
 
 echo ""

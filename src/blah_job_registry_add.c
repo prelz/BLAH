@@ -47,7 +47,7 @@ main(int argc, char *argv[])
 
   if (argc < 3)
    {
-    fprintf(stderr,"Usage: %s <BLAH id> <batch id> [job status] [exit code] [udate] [worker node] [exit reason] [user prefix]\n",argv[0]);
+    fprintf(stderr,"Usage: %s <BLAH id> <batch id> [job status] [udate] [user prefix] [worker node] [exit code] [exit reason]\n",argv[0]);
     return 1;
    }
 
@@ -55,11 +55,11 @@ main(int argc, char *argv[])
   batch_id = argv[2]; 
 
   if (argc > 3) status = atoi(argv[3]);
-  if (argc > 4) exitcode = atoi(argv[4]);
-  if (argc > 5) udate = atol(argv[5]);
+  if (argc > 4) udate = atol(argv[4]);
+  if (argc > 5) user_prefix = argv[5];
   if (argc > 6) wn_addr = argv[6];
-  if (argc > 7) exitreason = argv[7];
-  if (argc > 8) user_prefix = argv[8];
+  if (argc > 7) exitcode = atoi(argv[7]);
+  if (argc > 8) exitreason = argv[8];
    
   cha = config_read(NULL); /* Read config from default locations. */
   if (cha != NULL)
