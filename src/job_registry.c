@@ -1326,7 +1326,7 @@ job_registry_entry_as_classad(const job_registry_entry *entry)
 job_registry_split_id *
 job_registry_split_blah_id(const char *bid)
  {
-  char *firsts, *seconds;
+  char *firsts, *seconds, *pstart;
   int fsl, ssl, psl;
   job_registry_split_id *ret;
 
@@ -1337,28 +1337,47 @@ job_registry_split_blah_id(const char *bid)
   ret = (job_registry_split_id *)malloc(sizeof(job_registry_split_id));
   if (ret == NULL) return NULL;
 
-  seconds = strchr(firsts+1, '/');
-  if (seconds == NULL) seconds = bid+strlen(bid);
-
   fsl = (int)(firsts - bid);
+  ret->lrms = (char *)malloc(fsl + 1);
+  if (ret->lrms == NULL)
+   {
+    job_registry_free_split_id(ret);
+    return NULL;
+   }
+  memcpy(ret->lrms, bid, fsl);
+  (ret->lrms)[fsl] = '\000';
+
+  /* FIXME: Work around syntax for Condor */
+  
+  if (strstr(ret->lrms, "con") == ret->lrms)
+   {
+    seconds = strchr(firsts+1, '/');
+    if (seconds == NULL) seconds = bid+strlen(bid);
+    pstart = firsts+1;
+    psl = (int)(seconds - firsts) - 1;
+   }
+  else
+   {
+    seconds = strrchr(firsts+1, '/');
+    if (seconds == NULL) seconds = firsts;
+    pstart = seconds+1;
+    psl = strlen(pstart);
+   }
+
   ssl = strlen(bid)-fsl-1;
-  psl = (int)(seconds - firsts) - 1;
 
-  ret->lrms      = (char *)malloc(fsl + 1);
   ret->script_id = (char *)malloc(ssl + 1);
-  ret->proxy_id  = (char *)malloc(ssl + 1);
+  ret->proxy_id  = (char *)malloc(psl + 1);
 
-  if (ret->lrms == NULL || ret->script_id == NULL || ret->proxy_id == NULL)
+  if (ret->script_id == NULL || ret->proxy_id == NULL)
    {
     job_registry_free_split_id(ret);
     return NULL;
    }
 
-  memcpy(ret->lrms,      bid, fsl);
   memcpy(ret->script_id, firsts+1, ssl);
-  memcpy(ret->proxy_id,  firsts+1, psl);
+  memcpy(ret->proxy_id,  pstart, psl);
 
-  (ret->lrms)     [fsl] = '\000';
   (ret->script_id)[ssl] = '\000';
   (ret->proxy_id) [psl] = '\000';
 

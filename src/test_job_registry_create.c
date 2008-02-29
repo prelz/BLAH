@@ -28,7 +28,7 @@ int
 main(int argc, char *argv[])
 {
   char *test_registry_file = JOB_REGISTRY_TEST_FILE;
-  char *test_blahid_format="lrms/%c%c%c_blahid_%05d/stuff";
+  char *test_blahid_format="conlrms/%c%c%c_blahid_%05d/stuff";
   char *test_batchid_format="%c%c%c_batchid_%05d";
   job_registry_entry en;
   struct timeval tm_start, tm_end;
