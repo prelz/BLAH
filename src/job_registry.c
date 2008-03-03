@@ -9,6 +9,8 @@
  *  12-Nov-2007 Original release
  *  27-Feb-2008 Added user_prefix to classad printout.
  *              Added job_registry_split_blah_id and its free call.
+ *  3-Mar-2008  Added non-privileged updates to fit CREAM's file and process
+ *              ownership model.
  *
  *  Description:
  *    File-based container to cache job IDs and statuses to implement
@@ -26,6 +28,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <dirent.h>
 #include <fcntl.h>
 #include <libgen.h>
 #include <time.h>
@@ -78,7 +81,7 @@ jobregistry_construct_path(const char *format, const char *path,
   
   if (num > 0)
    {
-    /* Count pid digits */
+    /* Count digits in num */
     ntemp = num; numlen = 1;
     while (ntemp > 0)
      {
@@ -269,6 +272,8 @@ job_registry_purge(const char *path, time_t oldest_creation_date,
  *             (job_registry_lookup, job_registry_update and job_registry_get
  *             cannot be used), BY_BATCH_ID uses batch_id as the cache index 
  *             key while BY_BLAH_ID sets blah_id as the cache index key.
+ *             NAMES_ONLY will fill the rha structure with the appropriate
+ *             file paths without performing any file access.
  *
  * @return Pointer to a dynamically allocated handle to the job registry.
  *         This needs to be freed via job_registry_destroy.
@@ -279,8 +284,9 @@ job_registry_init(const char *path,
                   job_registry_index_mode mode)
 {
   job_registry_handle *rha;
-  struct stat lst;
+  struct stat lst, dst;
   mode_t old_umask;
+  const char *npu_tail="/npu";
   FILE *fd;
 
   rha = (job_registry_handle *)malloc(sizeof(job_registry_handle));
@@ -315,29 +321,76 @@ job_registry_init(const char *path,
     return NULL;
    }
 
-  if (stat(rha->lockfile, &lst) < 0)
+  if (mode != NAMES_ONLY)
    {
-    if (errno == ENOENT)
+    if (stat(rha->lockfile, &lst) < 0)
      {
-      old_umask = umask(S_IWOTH);
-      if (creat(rha->lockfile,0664) < 0)
+      if (errno == ENOENT)
        {
+        old_umask = umask(S_IWOTH);
+        if (creat(rha->lockfile,0664) < 0)
+         {
+          umask(old_umask);
+          free(rha->path);
+          free(rha);
+          return NULL;
+         }
         umask(old_umask);
+       }
+      else
+       {
         free(rha->path);
         free(rha);
         return NULL;
        }
-      umask(old_umask);
-     }
-    else
-     {
-      free(rha->path);
-      free(rha);
-      return NULL;
      }
    }
 
+  /* Create path and dir for NPU storage */
+  rha->npudir = jobregistry_construct_path("%s/.%s.npudir",path,0);
+  if (rha->npudir == NULL)
+   {
+    job_registry_destroy(rha);
+    errno = ENOMEM;
+    return NULL;
+   }
+
+  if (mode != NAMES_ONLY)
+   {
+    if (stat(rha->npudir, &dst) < 0)
+     {
+      if (errno == ENOENT)
+       {
+        old_umask = umask(0);
+        if (mkdir(rha->npudir,01777) < 0)
+         {
+          umask(old_umask);
+          job_registry_destroy(rha);
+          return NULL;
+         }
+        umask(old_umask);
+       }
+      else
+       {
+        job_registry_destroy(rha);
+        return NULL;
+       }
+     }
+    else
+     {
+      if (!S_ISDIR(dst.st_mode))
+       {
+        job_registry_destroy(rha);
+        errno = ENOTDIR;
+        return NULL;
+       }
+     }
+   }
+  
+  if (mode == NAMES_ONLY) return(rha);
+
   /* Now read the entire file and cache its contents */
+
   /* In NO_INDEX mode only firstrec and lastrec will be updated */
   fd = job_registry_open(rha, "r");
   if (fd == NULL)
@@ -382,6 +435,7 @@ job_registry_destroy(job_registry_handle *rha)
 {
    if (rha->path != NULL) free(rha->path);
    if (rha->lockfile != NULL) free(rha->lockfile);
+   if (rha->npudir != NULL) free(rha->npudir);
    rha->n_entries = rha->n_alloc = 0;
    if (rha->entries != NULL) free(rha->entries);
    free(rha);
@@ -616,17 +670,23 @@ job_registry_sort(job_registry_handle *rha)
 
 /*
  * job_registry_append
+ * job_registry_append_op
  *
  * Appends an entry to the registry, unless an entry with the same
  * active ID is found there already (in that case will fall through
  * to job_registry_update).
- * Will open, lock and close the registry file.
+ * job_registry_append will cause job_registry_append_op to open, (write) lock 
+ * and close the registry file, while job_registry_append_op will work
+ * on a file that's aleady open and writelocked.
  *
  * @param rha Pointer to a job registry handle returned by job_registry_init.
  * @param entry pointer to a registry entry to append to the registry.
  *        entry->recnum, entry->cdate and entry->mdate will be updated
  *        to current values. entry->magic_start and entry->magic_end will
  *        be appropriately set.
+ * @param fd Stream descriptor of an open (for write) and writelocked 
+ *        registry file. The file will be opened and closed if fd==NULL.
+ * @param now Timestamp to be used for the update.
  *
  * @return Less than zero on error. See job_registry.h for error codes.
  *         errno is also set in case of error.
@@ -635,39 +695,51 @@ int
 job_registry_append(job_registry_handle *rha,
                     job_registry_entry *entry)
 {
+  return job_registry_append_op(rha, entry, NULL, time(0));
+}
+
+int
+job_registry_append_op(job_registry_handle *rha,
+                       job_registry_entry *entry, FILE *fd, time_t now)
+{
   job_registry_recnum_t found,curr_recn;
   job_registry_entry last;
-  FILE *fd;
   long curr_pos;
+  int need_to_fclose = FALSE;
   int ret;
 
   if (rha->mode != NO_INDEX)
    {
     if (rha->mode == BY_BLAH_ID) 
-      found = job_registry_lookup(rha, entry->blah_id);
+      found = job_registry_lookup_op(rha, entry->blah_id, fd);
     else
-      found = job_registry_lookup(rha, entry->batch_id);
+      found = job_registry_lookup_op(rha, entry->batch_id, fd);
     if (found != 0)
      { 
-      return job_registry_update(rha, entry);
+      return job_registry_update_op(rha, entry, fd);
      }
    }
 
-  /* Open file, writelock it and append entry */
-
-  fd = job_registry_open(rha,"a+");
-  if (fd == NULL) return JOB_REGISTRY_FOPEN_FAIL;
-
-  if (job_registry_wrlock(rha,fd) < 0)
+  if (fd == NULL)
    {
-    fclose(fd);
-    return JOB_REGISTRY_FLOCK_FAIL;
+    /* Open file, writelock it and append entry */
+
+    fd = job_registry_open(rha,"a+");
+    if (fd == NULL) return JOB_REGISTRY_FOPEN_FAIL;
+
+    if (job_registry_wrlock(rha,fd) < 0)
+     {
+      fclose(fd);
+      return JOB_REGISTRY_FLOCK_FAIL;
+     }
+    need_to_fclose = TRUE;
    }
 
   /* 'a+' positions the read pointer at the beginning of the file */
+  /* Make sure we move there in case of an open fd. */
   if (fseek(fd, 0L, SEEK_END) < 0)
    {
-    fclose(fd);
+    if (need_to_fclose) fclose(fd);
     return JOB_REGISTRY_FSEEK_FAIL;
    }
 
@@ -677,12 +749,12 @@ job_registry_append(job_registry_handle *rha,
     /* Read in last recnum */
     if (fseek(fd, (long)-sizeof(job_registry_entry), SEEK_CUR) < 0)
      {
-      fclose(fd);
+      if (need_to_fclose) fclose(fd);
       return JOB_REGISTRY_FSEEK_FAIL;
      }
     if (fread(&last, sizeof(job_registry_entry),1,fd) < 1)
      {
-      fclose(fd);
+      if (need_to_fclose) fclose(fd);
       return JOB_REGISTRY_FREAD_FAIL;
      }
     /* Consistency checks */
@@ -690,7 +762,7 @@ job_registry_append(job_registry_handle *rha,
          (last.magic_end   != JOB_REGISTRY_MAGIC_END) )
      {
       errno = ENOMSG;
-      fclose(fd);
+      if (need_to_fclose) fclose(fd);
       return JOB_REGISTRY_CORRUPT_RECORD;
      }
     entry->recnum = last.recnum+1;
@@ -700,17 +772,199 @@ job_registry_append(job_registry_handle *rha,
   entry->magic_start = JOB_REGISTRY_MAGIC_START;
   entry->magic_end   = JOB_REGISTRY_MAGIC_END;
   entry->reclen = sizeof(job_registry_entry);
-  entry->cdate = entry->mdate = time(0);
+  entry->cdate = entry->mdate = now;
   
   if (fwrite(entry, sizeof(job_registry_entry),1,fd) < 1)
    {
-    fclose(fd);
+    if (need_to_fclose) fclose(fd);
     return JOB_REGISTRY_FWRITE_FAIL;
    }
 
   ret = job_registry_resync(rha,fd);
-  fclose(fd);
+  if (need_to_fclose) fclose(fd);
   return ret;
+}
+
+/*
+ * job_registry_get_new_npufd
+ *
+ * Open a unique file for storage or retrieval of
+ * non-privileged-update entries.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
+ *
+ * @return Stream descriptor to open file, NULL (and errno set to
+ *         ENOMEM) when running out of memory, NULL (and errno set
+ *         appropriately) when file operations fail..
+ */
+FILE*
+job_registry_get_new_npufd(job_registry_handle *rha)
+{
+  FILE *rfd = NULL;
+  int lfd;
+  char *tp;
+  struct stat fst;
+  const char *npu_tail="/npu_XXXXXX";
+  int i;
+
+  /* Append a filename to rha->npudir, so it can be passed back to */
+  /* jobregistry_construct_path */
+  tp = (char *)malloc(strlen(rha->npudir) + strlen(npu_tail) + 1);
+  if (tp == NULL)
+   {
+    errno = ENOMEM;
+    return NULL;
+   }
+
+  sprintf(tp, "%s%s", rha->npudir, npu_tail);
+  lfd = mkstemp(tp);
+  if (lfd >= 0) 
+   {
+    /* Make it group writable as usual */
+    fchmod(lfd, 0664);
+    rfd = fdopen(lfd, "w"); 
+   }
+
+  free (tp);
+
+  return(rfd);
+}
+
+/*
+ * job_registry_append_nonpriv
+ *
+ * Schedule an entry for appending it into the registry. This is done
+ * by writing the entry as a file in rha->npudir.
+ * The entry will be appended on the first lookup done by a
+ * process that owns write rights to teh registry.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
+ * @param entry pointer to a registry entry to append to the registry.
+ *
+ * @return Less than zero on error. See job_registry.h for error codes.
+ *         errno is also set in case of error.
+ */
+int
+job_registry_append_nonpriv(job_registry_handle *rha,
+                            job_registry_entry *entry)
+{
+    FILE *cfd;
+
+    cfd = job_registry_get_new_npufd(rha);
+
+    if (cfd == NULL) return JOB_REGISTRY_FOPEN_FAIL;
+
+    /* We don't need to lock the file or to make sure some sort of atomic  */
+    /* write is made. If an incomplete entry is read, the file will be     */
+    /* left untouched and read again. */
+
+    if (fwrite(entry,sizeof(job_registry_entry), 1, cfd) < 1)
+     {
+      fclose(cfd);
+      return JOB_REGISTRY_FWRITE_FAIL;
+     }
+
+    fclose(cfd);
+
+    return JOB_REGISTRY_SUCCESS;
+}
+
+/*
+ * job_registry_merge_pending_nonpriv_updates
+ *
+ * Look for new entries that could not be appended to the registry
+ * file due to lack of privileges and append them to the registry.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
+ * @param fd Stream descriptor of an open and *write* locked 
+ *        registry file. The registry file will be opened and closed if
+ *        fd==NULL.
+ *
+ * @return Number of added entries. Less than zero on error. 
+ *         See job_registry.h for error codes.
+ *         errno is also set in case of error.
+ */
+int
+job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
+                                           FILE *fd)
+{
+  int i;
+  int nadd = 0;
+  int rapp;
+  job_registry_entry en;
+  FILE *ofd = NULL;
+  struct stat cfp_st;
+  char *cfp;
+  FILE *cfd;
+  DIR  *npd;
+  struct dirent *de;
+
+  ofd = fd;
+
+  npd = opendir(rha->npudir);
+  if (npd == NULL)
+   {
+    return JOB_REGISTRY_OPENDIR_FAIL; 
+   }
+  
+  while ((de = readdir(npd)) != NULL) 
+   {
+    cfp = (char *)malloc(strlen(rha->npudir)+strlen(de->d_name)+2);
+    if (cfp != NULL)
+     {
+      sprintf(cfp,"%s/%s",rha->npudir,de->d_name);
+      if (stat(cfp, &cfp_st) < 0)   { free(cfp); continue; }
+      if (!S_ISREG(cfp_st.st_mode)) { free(cfp); continue; }
+      cfd = fopen(cfp, "r");
+      if (cfd == NULL) continue;
+
+      if (fread(&en, sizeof(job_registry_entry), 1, cfd) == 1)
+       {
+        fclose(cfd);
+        if (ofd == NULL)
+         {
+          /* Open file and writelock it */
+          /* Don't user job_registry_open, as we get called from */
+          /* within it. */
+
+          ofd = fopen(rha->path,"a+");
+          if (ofd == NULL) return JOB_REGISTRY_FOPEN_FAIL;
+
+          if (job_registry_wrlock(rha,ofd) < 0)
+           {
+            free(cfp);
+            fclose(ofd);
+            closedir(npd);
+            return JOB_REGISTRY_FLOCK_FAIL;
+           }
+         }
+
+        /* User the file mtime as event creation timestamp */
+        if ((rapp = job_registry_append_op(rha, &en, ofd, cfp_st.st_mtime)) < 0) 
+         {
+          free(cfp);
+          fclose(ofd);
+          closedir(npd);
+          return rapp;
+         }
+        else
+         {
+          nadd++;
+          unlink(cfp);
+          /* FIXME: If the unlink operation fails we should report a warning. */
+          /* No bad things will happen if this file is re-read, but that */
+          /* will be inefficient. The job registry creator should *always* */
+          /* be able to unlink the file as it is also the owner of the ufd */
+          /* directory. */
+         }
+       }
+      else fclose(cfd);
+      free(cfp);
+     }
+   }
+  closedir(npd);
+  if (fd == NULL && ofd != NULL) fclose(ofd);
+  return nadd;
 }
 
 /*
@@ -855,9 +1109,12 @@ job_registry_update_op(job_registry_handle *rha,
  *
  * @param rha Pointer to a job registry handle returned by job_registry_init.
  * @param id Job id key to be looked up 
- * @param fd Stream descriptor of an open and at least readlocked 
- *        registry file. The file will be opened and closed if 
- *        job_registry_resync is needed and fd==NULL.
+ * @param fd Stream descriptor of an open and *write* locked 
+ *        registry file. The write lock is needed only in case
+ *        non privileged new entries need to be merged into the registry.
+ *        When fd==NULL, the file will be opened and closed if new 
+ *        non-privileged entries are present (write lock), or 
+ *        job_registry_resync is needed (read lock).
  *
  * @return Record number of the found record, or 0 if the record was not found.
  */
@@ -1012,6 +1269,9 @@ FILE *
 job_registry_open(const job_registry_handle *rha, const char *mode)
 {
   FILE *fd;
+
+  /* Do we need to merge any non-privileged updates into the file? */
+  job_registry_merge_pending_nonpriv_updates(rha, NULL);
 
   fd = fopen(rha->path, mode);
 

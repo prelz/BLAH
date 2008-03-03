@@ -9,6 +9,8 @@
  *  12-Nov-2007 Original release
  *  27-Feb-2008 Added user_prefix at CREAM's request.
  *              Added job_registry_split_blah_id and its free call.
+ *   3-Mar-2008 Added non-privileged updates to fit CREAM's file and process
+ *              ownership model.
  *
  *  Description:
  *    Prototypes of functions defined in job_registry.c
@@ -73,7 +75,8 @@ typedef enum job_registry_index_mode_e
  {
    NO_INDEX,
    BY_BLAH_ID,
-   BY_BATCH_ID
+   BY_BATCH_ID,
+   NAMES_ONLY
  } job_registry_index_mode;
 
 typedef struct job_registry_handle_s
@@ -82,6 +85,7 @@ typedef struct job_registry_handle_s
    uint32_t lastrec;
    char *path;
    char *lockfile;
+   char *npudir;
    job_registry_index *entries;
    int n_entries;
    int n_alloc;
@@ -118,6 +122,7 @@ typedef struct job_registry_split_id_s
 #define JOB_REGISTRY_CORRUPT_RECORD  -12 
 #define JOB_REGISTRY_BAD_POSITION    -13 
 #define JOB_REGISTRY_BAD_RECNUM      -14 
+#define JOB_REGISTRY_OPENDIR_FAIL    -15 
 
 #define JOB_REGISTRY_TEST_FILE "/tmp/test_reg.bjr"
 #define JOB_REGISTRY_ALLOC_CHUNK     20
@@ -138,6 +143,13 @@ job_registry_recnum_t job_registry_lookup_op(job_registry_handle *rhandle,
                                           const char *id, FILE *fd);
 int job_registry_append(job_registry_handle *rhandle, 
                         job_registry_entry *entry);
+int job_registry_append_op(job_registry_handle *rhandle, 
+                        job_registry_entry *entry, FILE *fd, time_t now);
+FILE* job_registry_get_new_npufd(job_registry_handle *rha);
+int job_registry_append_nonpriv(job_registry_handle *rha,
+                                job_registry_entry *entry);
+int job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
+                                               FILE *fd);
 int job_registry_update(job_registry_handle *rhandle, 
                         job_registry_entry *entry);
 int job_registry_update_op(job_registry_handle *rhandle, 

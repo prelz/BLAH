@@ -8,6 +8,8 @@
  *  Revision history :
  *  16-Nov-2007 Original release
  *  27-Feb-2008 Added user_prefix.
+ *   3-Mar-2008 Added non-privileged updates to fit CREAM's file and process
+ *              ownership model.
  *
  *  Description:
  *   Executable to add (append or update) an entry to the job registry.
@@ -43,7 +45,7 @@ main(int argc, char *argv[])
   int ret;
   config_handle *cha;
   config_entry *rge;
-  job_registry_handle *rha;
+  job_registry_handle *rha, *rhano;
 
   if (argc < 3)
    {
@@ -85,21 +87,6 @@ main(int argc, char *argv[])
      }
    }
 
-  rha=job_registry_init(registry_file, BY_BLAH_ID);
-
-  if (rha == NULL)
-   {
-    fprintf(stderr,"%s: error initialising job registry: ",argv[0]);
-    perror("");
-    if (cha != NULL) config_free(cha);
-    if (need_to_free_registry_file) free(registry_file);
-    return 2;
-   }
-
-  /* Filename is stored in job registry handle. - Don't need these anymore */
-  if (cha != NULL) config_free(cha);
-  if (need_to_free_registry_file) free(registry_file);
-
   JOB_REGISTRY_ASSIGN_ENTRY(en.blah_id,blah_id); 
   JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_id); 
   en.status = status;
@@ -110,6 +97,40 @@ main(int argc, char *argv[])
   en.submitter = geteuid();
   JOB_REGISTRY_ASSIGN_ENTRY(en.user_prefix,user_prefix); 
     
+  rha=job_registry_init(registry_file, BY_BLAH_ID);
+
+  if (rha == NULL)
+   {
+    if (errno == EACCES)
+     {
+      /* Try nonpriv update. It may work. */
+      rhano = job_registry_init(registry_file, NAMES_ONLY);
+      if (cha != NULL) config_free(cha);
+      if (need_to_free_registry_file) free(registry_file);
+      if (rhano != NULL)
+       {
+        ret=job_registry_append_nonpriv(rhano, &en);
+        job_registry_destroy(rhano);
+        if (ret < 0)
+         {
+          fprintf(stderr,"%s: job_registry_append_nonpriv returns %d: ",argv[0],ret);
+          perror("");
+         } 
+        else return 0;
+       }
+     }
+    else
+     {
+      fprintf(stderr,"%s: error initialising job registry: ",argv[0]);
+      perror("");
+     }
+    return 2;
+   }
+
+  /* Filename is stored in job registry handle. - Don't need these anymore */
+  if (cha != NULL) config_free(cha);
+  if (need_to_free_registry_file) free(registry_file);
+
   if ((ret=job_registry_append(rha, &en)) < 0)
    {
     fprintf(stderr,"%s: job_registry_append returns %d: ",argv[0],ret);
