@@ -854,6 +854,11 @@ job_registry_append_nonpriv(job_registry_handle *rha,
 
     if (cfd == NULL) return JOB_REGISTRY_FOPEN_FAIL;
 
+    entry->magic_start = JOB_REGISTRY_MAGIC_START;
+    entry->magic_end   = JOB_REGISTRY_MAGIC_END;
+    entry->reclen = sizeof(job_registry_entry);
+    entry->cdate = entry->mdate = time(0);
+
     /* We don't need to lock the file or to make sure some sort of atomic  */
     /* write is made. If an incomplete entry is read, the file will be     */
     /* left untouched and read again. */
@@ -891,6 +896,7 @@ job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
   int i;
   int nadd = 0;
   int rapp;
+  int frret;
   job_registry_entry en;
   FILE *ofd = NULL;
   struct stat cfp_st;
@@ -918,7 +924,17 @@ job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
       cfd = fopen(cfp, "r");
       if (cfd == NULL) continue;
 
-      if (fread(&en, sizeof(job_registry_entry), 1, cfd) == 1)
+      frret = fread(&en, sizeof(job_registry_entry), 1, cfd);
+      if (frret == 0 && feof(cfd))
+       {
+        /* File too short. Get rid of it. */
+        fclose(cfd);
+        unlink(cfp);
+        free(cfp);
+        continue;
+       }
+
+      if (frret == 1)
        {
         fclose(cfd);
         if (ofd == NULL)
@@ -939,7 +955,16 @@ job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
            }
          }
 
-        /* User the file mtime as event creation timestamp */
+        if (en.magic_start != JOB_REGISTRY_MAGIC_START ||
+            en.magic_end   != JOB_REGISTRY_MAGIC_END)
+         {
+          /* File contains garbage. Waste it. */
+          unlink(cfp);
+          free(cfp);
+          continue;
+         }
+         
+        /* Use the file mtime as event creation timestamp */
         if ((rapp = job_registry_append_op(rha, &en, ofd, cfp_st.st_mtime)) < 0) 
          {
           free(cfp);
