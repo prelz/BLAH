@@ -34,6 +34,7 @@
 extern char *blah_script_location;
 extern int  glexec_mode;
 extern char *gloc;
+extern job_registry_handle *blah_jr_handle;
 #define TSF_DEBUG
 
 int get_status(const char *jobDesc, classad_context *cad, char **environment, char error_str[][ERROR_MAX_LEN], int get_workernode, int *job_nr)
@@ -45,9 +46,47 @@ int get_status(const char *jobDesc, classad_context *cad, char **environment, ch
 	job_registry_split_id *spid;
 	int  i, lc;
 	classad_context tmpcad;
+	char *cadstr;
 	int res_length;
 	char *begin_res;
 	char *end_res;
+	job_registry_entry *ren;
+	FILE *fd;
+
+	/* Look up job registry first, if configured. */
+	if (blah_jr_handle != NULL)
+	{
+		fd = job_registry_open(blah_jr_handle, "r");
+		if (fd != NULL)
+        	{
+        		if (job_registry_rdlock(blah_jr_handle, fd) >= 0)
+			{
+				if ((ren=job_registry_get(blah_jr_handle, jobDesc)) != NULL)
+				{
+					if (!get_workernode) ren->wn_addr[0]='\000';
+					cadstr = job_registry_entry_as_classad(ren);                       
+					if (cadstr != NULL)
+					{
+						tmpcad=classad_parse(cadstr);
+						free(cadstr);
+						if (tmpcad != NULL)
+						{
+							*job_nr = 1;
+							strcpy(error_str[0],"No Error");
+							cad[0] = tmpcad;
+							fclose(fd);
+							return 0;
+						}
+					}
+				}
+        		}
+			fclose(fd);
+		}
+
+	}
+
+	/* If we reach here, any of the above telescope went wrong and, for */
+	/* the time being, we fall back to the old script approach */
 
 	if((spid = job_registry_split_blah_id(jobDesc)) == NULL)
 	{
