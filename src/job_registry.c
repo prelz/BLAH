@@ -327,8 +327,8 @@ job_registry_init(const char *path,
      {
       if (errno == ENOENT)
        {
-        old_umask = umask(S_IWOTH);
-        if (creat(rha->lockfile,0664) < 0)
+        old_umask = umask(0);
+        if (creat(rha->lockfile,0666) < 0)
          {
           umask(old_umask);
           free(rha->path);
@@ -1329,7 +1329,7 @@ job_registry_rdlock(const job_registry_handle *rha, FILE *sfd)
   /* First of all, try obtaining a write lock to rha->lockfile */
   /* to make sure no write lock is pending */
 
-  lfd = open(rha->lockfile, O_WRONLY|O_CREAT, 0664); 
+  lfd = open(rha->lockfile, O_WRONLY|O_CREAT, 0666); 
   if (lfd < 0) return lfd;
 
   tlock.l_type = F_WRLCK;
@@ -1379,7 +1379,7 @@ job_registry_wrlock(const job_registry_handle *rha, FILE *sfd)
   /* Obtain and keep a write lock to rha->lockfile */
   /* to prevent new read locks. */
 
-  lfd = open(rha->lockfile, O_WRONLY|O_CREAT, 0664); 
+  lfd = open(rha->lockfile, O_WRONLY|O_CREAT, 0666); 
   if (lfd < 0) return lfd;
 
   tlock.l_type = F_WRLCK;
