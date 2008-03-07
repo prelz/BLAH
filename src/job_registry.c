@@ -1322,6 +1322,7 @@ job_registry_rdlock(const job_registry_handle *rha, FILE *sfd)
   int fd, lfd;
   struct flock tlock, rlock;
   int ret;
+  mode_t old_umask;
 
   fd = fileno(sfd);
   if (fd < 0) return fd; /* sfd is an invalid stream */
@@ -1329,7 +1330,9 @@ job_registry_rdlock(const job_registry_handle *rha, FILE *sfd)
   /* First of all, try obtaining a write lock to rha->lockfile */
   /* to make sure no write lock is pending */
 
+  old_umask = umask(0);
   lfd = open(rha->lockfile, O_WRONLY|O_CREAT, 0666); 
+  umask(old_umask);
   if (lfd < 0) return lfd;
 
   tlock.l_type = F_WRLCK;
@@ -1373,13 +1376,16 @@ job_registry_wrlock(const job_registry_handle *rha, FILE *sfd)
   int fd, lfd;
   struct flock tlock, wlock;
   int ret;
+  mode_t old_umask;
 
   fd = fileno(sfd);
 
   /* Obtain and keep a write lock to rha->lockfile */
   /* to prevent new read locks. */
 
+  old_umask = umask(0);
   lfd = open(rha->lockfile, O_WRONLY|O_CREAT, 0666); 
+  umask(old_umask);
   if (lfd < 0) return lfd;
 
   tlock.l_type = F_WRLCK;
