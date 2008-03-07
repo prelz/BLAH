@@ -115,6 +115,7 @@ main(int argc, char *argv[])
          {
           fprintf(stderr,"%s: job_registry_append_nonpriv returns %d: ",argv[0],ret);
           perror("");
+          return 4;
          } 
         else return 0;
        }
@@ -133,8 +134,24 @@ main(int argc, char *argv[])
 
   if ((ret=job_registry_append(rha, &en)) < 0)
    {
+    if (errno == EACCES)
+     {
+      /* Try nonpriv update. It may work. */
+      ret=job_registry_append_nonpriv(rha, &en);
+      job_registry_destroy(rha);
+      if (ret < 0)
+       {
+        fprintf(stderr,"%s: job_registry_append_nonpriv returns %d: ",argv[0],ret);
+        perror("");
+        return 5;
+       } 
+      else return 0;
+     }
+
     fprintf(stderr,"%s: job_registry_append returns %d: ",argv[0],ret);
     perror("");
+    job_registry_destroy(rha);
+    return 3;
    } 
 
   job_registry_destroy(rha);
