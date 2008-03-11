@@ -2438,28 +2438,35 @@ int getProxyInfo(char* proxname, char* fqan, char* userDN)
 	if ((cmd_out = mtsafe_popen(temp_str, "r")) == NULL)
 		return 1;
 	fgets(fqanlong, MAX_TEMP_ARRAY_SIZE, cmd_out);
+	/* Trim trailing newline, if any */
+	slen = strlen(fqanlong);
+	if (fqanlong[slen-1] == '\n') 
+	{
+		fqanlong[slen-1] = '\000';
+		slen--;
+	}
+
 	result = mtsafe_pclose(cmd_out);
 	/* example:
-	   subject= /C=IT/O=INFN/OU=Personal Certificate/L=Milano/CN=Francesco Prelz/Email=francesco.prelz@mi.infn.it/CN=proxy
-	   CN=proxy, CN=limited must be elimnated from the bottom of the string
+	   subject= /C=IT/O=INFN/OU=Personal Certificate/L=Milano/CN=Giuseppe Fiorentino/Email=giuseppe.fiorentino@mi.infn.it/CN=proxy
+	   CN=proxy, CN=limited proxy must be removed from the 
+           tail of the string
 	*/
-	slen = strlen(fqanlong);
 	while(1)
 	{
-		if (!strncmp(&fqanlong[slen - 10],"/CN=proxy",9))
+		if (!strncmp(&fqanlong[slen - 9],"/CN=proxy",9))
 		{
-		      memset(&fqanlong[slen - 10],0,9);
+		      memset(&fqanlong[slen - 9],0,9);
 		      slen -=9;
 		}else
-		if (!strncmp(&fqanlong[slen - 18],"/CN=limited proxy",17))
+		if (!strncmp(&fqanlong[slen - 17],"/CN=limited proxy",17))
 		{
-		      memset(&fqanlong[slen - 18],0,17);
+		      memset(&fqanlong[slen - 17],0,17);
 		      slen -=17;
 		}else
 		          break;
 	}
 	strcpy(userDN,fqanlong);
-	if(userDN[slen - 1] == '/') userDN[slen - 1] = 0;
 	/* user'sFQAN detection */
 	fqanlong[0]=0;
 	memset(fqanlong,0,MAX_TEMP_ARRAY_SIZE);
