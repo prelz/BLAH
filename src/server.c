@@ -1600,6 +1600,7 @@ cmd_renew_proxy(void *args)
 				{
 					/* Not in GLEXEC mode */
 					limit_proxy(proxyFileName, old_proxy);
+					resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
 				}
 				else
 				{
@@ -1613,9 +1614,14 @@ cmd_renew_proxy(void *args)
 					/* FIXME: should not execute anything, just create the new copy of the proxy (not yet supported by glexec) */
 					command = make_message("%s /bin/pwd", gloc);
 					retcod = exe_getout(command, argv + CMD_RENEW_PROXY_ARGS + 1, &dummy_cmd_out);
+					if (retcod == 0)
+					{
+						resultLine = make_message("%s 0 Proxy\\ renewed\\ via\\ glexec", reqId);
+					} else {
+						resultLine = make_message("%s 1 glexec\\ failed\\ (exitcode==%d)", reqId, retcod);
+					}
 					free(command);
 				}
-				resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
 				if (dummy_cmd_out != NULL) free(dummy_cmd_out);
 				break;
 
