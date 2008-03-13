@@ -373,6 +373,7 @@ int AddToStruct(char *line, int flag){
 	char *	rex;
  
 	int id,realid;
+	int belongs_to_current_cycle;
  
 	int  maxtok,ii; 
 	char **tbuf;
@@ -442,6 +443,10 @@ int AddToStruct(char *line, int flag){
 	free(tbuf);
 
 	id=UpdatePtr(realid,rex,has_blah);
+	belongs_to_current_cycle = 0;
+	if((id >= 0) && ((reccnt[id]==recycled) || 
+	   ((id >= ptrcnt) && (reccnt[id]==(recycled-1)))))
+		belongs_to_current_cycle = 1;
  
 	if((id >= 0) && rex && (strcmp(rex,rex_queued)==0) && (has_blah)){
 
@@ -453,7 +458,7 @@ int AddToStruct(char *line, int flag){
 			NotifyCream(id, "1", j2bl[id], "NA", "NA", j2st[id], flag);
 		}
   
-	} else if((id >= 0) && (reccnt[id]==recycled) && ((strstr(j2bl[id],blahjob_string)!=NULL) || (strstr(j2bl[id],cream_string)!=NULL))){ 
+	} else if((id >= 0) && (belongs_to_current_cycle) && ((strstr(j2bl[id],blahjob_string)!=NULL) || (strstr(j2bl[id],cream_string)!=NULL))){ 
 
 		if(rex && strcmp(rex,rex_running)==0){
 

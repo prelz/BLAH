@@ -483,6 +483,7 @@ AddToStruct(char *line, int flag)
 	int id;
 	int is_queued=0;
 	int is_finished=0;
+	int belongs_to_current_cycle;
 
 	char *tjobid=NULL;
 	char *jobid=NULL;
@@ -634,7 +635,11 @@ AddToStruct(char *line, int flag)
 	} /* close rex_finished if */
  
 	id=UpdatePtr(atoi(jobid),tjobid,is_queued,has_blah);
-	
+	belongs_to_current_cycle = 0;
+	if((id >= 0) && ((reccnt[id]==recycled) ||
+	   ((id >= ptrcnt) && (reccnt[id]==(recycled-1)))))
+		belongs_to_current_cycle = 1;
+
 	if((id >= 0) && (is_queued==1) && (has_blah)){
 
 		InfoAdd(id,jobid,"JOBID");
@@ -645,7 +650,7 @@ AddToStruct(char *line, int flag)
 			NotifyCream(id, "1", j2bl[id], "NA", "NA", j2st[id], flag);
 		}  
 
-	} else if((id >= 0) && (reccnt[id]==recycled) && ((strstr(j2bl[id],blahjob_string)!=NULL)  || (strstr(j2bl[id],bl_string)!=NULL) || (strstr(j2bl[id],cream_string)!=NULL))){ 
+	} else if((id >= 0) && (belongs_to_current_cycle) && ((strstr(j2bl[id],blahjob_string)!=NULL)  || (strstr(j2bl[id],bl_string)!=NULL) || (strstr(j2bl[id],cream_string)!=NULL))){ 
  
 		if(rex && strstr(rex,rex_running)!=NULL){
 
