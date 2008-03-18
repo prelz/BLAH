@@ -250,7 +250,7 @@ daemonize()
 
 }
 
-void
+int
 writepid(char * pidfile)
 {
 	FILE *fpid;
