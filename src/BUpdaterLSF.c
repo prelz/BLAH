@@ -316,7 +316,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 		sysfatal("can't malloc token %r");
 	}
 	if((command_string=calloc(STR_CHARS,1)) == 0){
-		sysfatal("can't malloc token %r");
+		sysfatal("can't malloc command_string %r");
 	}
 	
 	sprintf(command_string,"%s/bjobs -u all -a -l",lsf_binpath);
@@ -417,7 +417,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 		sysfatal("can't malloc token %r");
 	}
 	if((command_string=calloc(NUM_CHARS+strlen(query),1)) == 0){
-		sysfatal("can't malloc token %r");
+		sysfatal("can't malloc command_string %r");
 	}
 
 	sprintf(command_string,"%s/bhist -u all -a -l",lsf_binpath);

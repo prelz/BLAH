@@ -289,7 +289,7 @@ IntStateQuery()
 		sysfatal("can't malloc token %r");
 	}
 	if((command_string=calloc(STR_CHARS,1)) == 0){
-		sysfatal("can't malloc token %r");
+		sysfatal("can't malloc command_string %r");
 	}
 	
 	sprintf(command_string,"%s/condor_q -constraint \"JobStatus != 1\" -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus|grep -v condorc-",condor_binpath);
@@ -375,7 +375,7 @@ FinalStateQuery(char *query)
 		sysfatal("can't malloc token %r");
 	}
 	if((command_string=calloc(NUM_CHARS+strlen(query),1)) == 0){
-		sysfatal("can't malloc token %r");
+		sysfatal("can't malloc command_string %r");
 	}
 
 	sprintf(command_string,"%s/condor_history -constraint \"%s\" -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus",condor_binpath,query);
