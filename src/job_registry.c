@@ -287,6 +287,7 @@ job_registry_init(const char *path,
   struct stat lst, dst;
   mode_t old_umask;
   const char *npu_tail="/npu";
+  int cfd;
   FILE *fd;
 
   rha = (job_registry_handle *)malloc(sizeof(job_registry_handle));
@@ -328,13 +329,14 @@ job_registry_init(const char *path,
       if (errno == ENOENT)
        {
         old_umask = umask(0);
-        if (creat(rha->lockfile,0666) < 0)
+        if ((cfd=creat(rha->lockfile,0666)) < 0)
          {
           umask(old_umask);
           free(rha->path);
           free(rha);
           return NULL;
          }
+	close(cfd);
         umask(old_umask);
        }
       else
