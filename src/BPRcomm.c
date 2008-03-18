@@ -346,7 +346,8 @@ gss_ctx_id_t initiate_context(gss_cred_id_t credential_handle, const char *serve
       			credential_handle,
 			&context_handle,
 			(char *) server_name,
-			GSS_C_MUTUAL_FLAG | GSS_C_CONF_FLAG ,
+			GSS_C_MUTUAL_FLAG | GSS_C_CONF_FLAG |
+			GSS_C_GLOBUS_ACCEPT_PROXY_SIGNED_BY_LIMITED_PROXY_FLAG,
 			&ret_flags,
 			&token_status,
 			get_token,
