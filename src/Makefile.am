@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.22 2007/12/17 10:30:28 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.23 2008/03/18 15:28:45 mezzadri Exp $ 
 #
 # File:           Makefile.am
 #
@@ -18,7 +18,7 @@ INCLUDES = -I. $(CLASSAD_CFLAGS) $(GLOBUS_NOTHR_CFLAGS)
 
 SUBDIRS = scripts
 
-bin_PROGRAMS = blahpd blahpd_daemon BPRclient BPRserver BLClient BLParserLSF BLParserPBS BAParser BAClient BDlogger test_condor_logger blah_job_registry_add blah_job_registry_lkup BUpdaterCondor BNotifierCondor
+bin_PROGRAMS = blahpd blahpd_daemon BPRclient BPRserver BLClient BLParserLSF BLParserPBS BAParser BAClient BDlogger test_condor_logger blah_job_registry_add blah_job_registry_lkup BUpdaterCondor BNotifierCondor BUpdaterLSF
 noinst_PROGRAMS = test_job_registry_create test_job_registry_purge test_job_registry_update test_job_registry_access
 
 common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C mtsafe_popen.c proxy_hashcontainer.c config.c job_registry.c Bfunctions.c
@@ -94,7 +94,10 @@ BUpdaterCondor_LDADD = -lpopt -lpthread
 BNotifierCondor_SOURCES = BNotifierCondor.c Bfunctions.c job_registry.c config.c
 BNotifierCondor_LDADD = -lpopt -lpthread
 
-noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h mtsafe_popen.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h BAParser.h condor_create_log.h proxy_hashcontainer.h job_registry.h config.h BUpdaterCondor.h Bfunctions.h BNotifierCondor.h
+BUpdaterLSF_SOURCES = BUpdaterLSF.c Bfunctions.c job_registry.c config.c
+BUpdaterLSF_LDADD = -lpopt -lpthread
+
+noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h mtsafe_popen.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h BAParser.h condor_create_log.h proxy_hashcontainer.h job_registry.h config.h BUpdaterCondor.h Bfunctions.h BNotifierCondor.h BUpdaterLSF.h
 
 #bin_SCRIPTS = pbs_cancel.sh pbs_status.sh pbs_submit.sh lsf_cancel.sh lsf_status.sh lsf_submit.sh
 
