@@ -5,7 +5,6 @@ int main(int argc, char *argv[]){
 	FILE *fd;
 	job_registry_entry *en;
 	time_t now;
-	char *path=NULL;
 	char *constraint=NULL;
 	char *query=NULL;
 	char *q=NULL;
@@ -38,11 +37,10 @@ int main(int argc, char *argv[]){
 		exit(EXIT_SUCCESS);
 	}   
 
-	path=getenv("BLAHPD_CONFIG_LOCATION");
 	cha = config_read(NULL);
 	if (cha == NULL)
 	{
-		fprintf(stderr,"Error reading config from %s: ",path);
+		fprintf(stderr,"Error reading config: ");
 		perror("");
 		return -1;
 	}

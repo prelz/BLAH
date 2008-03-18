@@ -13,7 +13,6 @@ main(int argc, char *argv[])
 	pthread_t PollThd;
 	config_handle *cha;
 	config_entry *ret;
-	char *path=NULL;
 	char *pidfile=NULL;
 	
 	poptContext poptcon;
@@ -46,11 +45,10 @@ main(int argc, char *argv[])
 	}   
 
 	/* Reading configuration */
-	path=getenv("BLAHPD_CONFIG_LOCATION");
 	cha = config_read(NULL);
 	if (cha == NULL)
 	{
-		fprintf(stderr,"Error reading config from %s: ",path);
+		fprintf(stderr,"Error reading config: ");
 		perror("");
 		exit(EXIT_FAILURE);
 	}
