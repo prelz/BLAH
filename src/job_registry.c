@@ -1608,6 +1608,8 @@ job_registry_entry_as_classad(const job_registry_entry *entry)
  *  - lrms: the part up to and excluding the first slash ('/')
  *  - script_id: the part following and excluding the first slash 
  *  - proxy_id: the part between the first and the second slash 
+ *              for the 'lrms==condor' case. After the last
+ *              slash otherwise.
  *
  * @param id BLAH job ID string.
  *
