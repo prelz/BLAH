@@ -14,6 +14,7 @@ void *cmd_cancel_job(void *args);
 void *cmd_status_job(void *args);
 void *cmd_status_job_all(void *args);
 void *cmd_renew_proxy(void *args);
+void *cmd_send_proxy_to_worker_node(void *args);
 void *cmd_quit(void *args);
 void *cmd_version(void *args);
 void *cmd_commands(void *args);

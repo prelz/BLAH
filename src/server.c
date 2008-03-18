@@ -1572,7 +1572,7 @@ cmd_renew_proxy(void *args)
 	char *old_proxy = NULL;
 	char *dummy_cmd_out = NULL;
 	
-	int jobStatus, retcod, count;
+	int i, jobStatus, retcod, count;
 	char *cmd_out;
 	char *error_string = NULL;
 	char *proxyFileNameNew = NULL;
@@ -1628,38 +1628,25 @@ cmd_renew_proxy(void *args)
 			case 2: /* job running: send the proxy to remote host */
 				if (workernode != NULL && strcmp(workernode, ""))
 				{
-					if(argv[CMD_RENEW_PROXY_ARGS + 1] == NULL)
-					{
-						proxyFileNameNew = make_message("%s.lmt", proxyFileName);
-						limit_proxy(proxyFileName, proxyFileNameNew);
-					}
-					else
-						proxyFileNameNew = strdup(argv[CMD_RENEW_PROXY_ARGS + GLEXEC_SOURCE_PROXY_IDX + 1] + 
-						                           strlen(glexec_env_name[GLEXEC_SOURCE_PROXY_IDX]) + 1);
-
-					/* Add the globus library path */
+					/* Add the worker node argument to argv and invoke cmd_send_proxy_to_worker_node */
 					for(count = CMD_RENEW_PROXY_ARGS + 1; argv[count]; count++);
 					argv = (char **)realloc(argv, sizeof(char *) * (count + 2));
-					argv[count] = make_message("LD_LIBRARY_PATH=%s/lib",
-					                           getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus");
-					argv[count + 1] = NULL;
-
-					command = make_message("%s/BPRclient %s %s %s",
-					                       blah_script_location, proxyFileNameNew, jobDescr, workernode); 
-					free(proxyFileNameNew);
-
-					retcod = exe_getout(command, argv + CMD_RENEW_PROXY_ARGS + 1, &cmd_out);
-					if (cmd_out)
+					if (argv != NULL)
 					{
-						error_string = escape_spaces(cmd_out);
-						free(cmd_out);
+						/* Make room for the workernode argument at i==CMD_RENEW_PROXY_ARGS+1. */
+						argv[count+1] = 0;
+						for(i = count; i > (CMD_RENEW_PROXY_ARGS+1); i--) argv[i] = argv[i-1];
+						/* workernode will be freed inside cmd_send_proxy_to_worker_node */
+						argv[CMD_RENEW_PROXY_ARGS+1] = workernode;
+						cmd_send_proxy_to_worker_node((void *)argv);
+						if (old_proxy != NULL) free(old_proxy);
+						return;
 					}
 					else
-						error_string = strdup("Cannot\\ execute\\ BPRclient");
-
-					resultLine = make_message("%s %d %s", reqId, retcod, error_string);
-					free(error_string);
-					free(command);
+					{
+						fprintf(stderr, "blahpd: out of memory! Exiting...\n");
+						exit(MALLOC_ERROR);
+					}
 				}
 				else
 				{
@@ -1683,6 +1670,84 @@ cmd_renew_proxy(void *args)
 		}
 		if (old_proxy != NULL) free(old_proxy);
 		if (workernode != NULL) free(workernode);
+	}
+		
+	if (resultLine)
+	{
+		enqueue_result(resultLine);
+		free(resultLine);
+	}
+	else
+	{
+		fprintf(stderr, "blahpd: out of memory! Exiting...\n");
+		exit(MALLOC_ERROR);
+	}
+	
+	/* Free up all arguments */
+	free_args(argv);
+	return;
+}
+
+#define CMD_SEND_PROXY_TO_WORKER_NODE_ARGS 4
+void *
+cmd_send_proxy_to_worker_node(void *args)
+{
+	char *resultLine;
+	char **argv = (char **)args;
+	char *reqId = argv[1];
+	char *jobDescr = argv[2];
+	char *proxyFileName = argv[3];
+	char *workernode = argv[4];
+	char *command = NULL;
+	int count,retcod;
+	
+	char *cmd_out;
+	char *error_string = NULL;
+	char *proxyFileNameNew = NULL;
+
+	if (workernode != NULL && strcmp(workernode, ""))
+	{
+		if(argv[CMD_SEND_PROXY_TO_WORKER_NODE_ARGS + 1] == NULL)
+		{
+			proxyFileNameNew = make_message("%s.lmt", proxyFileName);
+			limit_proxy(proxyFileName, proxyFileNameNew);
+		}
+		else
+			proxyFileNameNew = strdup(argv[CMD_SEND_PROXY_TO_WORKER_NODE_ARGS + GLEXEC_SOURCE_PROXY_IDX + 1] + 
+			                           strlen(glexec_env_name[GLEXEC_SOURCE_PROXY_IDX]) + 1);
+
+		/* Add the globus library path */
+		for(count = CMD_SEND_PROXY_TO_WORKER_NODE_ARGS + 1; argv[count]; count++);
+		argv = (char **)realloc(argv, sizeof(char *) * (count + 2));
+		if (argv == NULL)
+		{
+			fprintf(stderr, "blahpd: out of memory! Exiting...\n");
+			exit(MALLOC_ERROR);
+		}
+		argv[count] = make_message("LD_LIBRARY_PATH=%s/lib",
+		                           getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus");
+		argv[count + 1] = NULL;
+
+		command = make_message("%s/BPRclient %s %s %s",
+		                       blah_script_location, proxyFileNameNew, jobDescr, workernode); 
+		free(proxyFileNameNew);
+
+		retcod = exe_getout(command, argv + CMD_RENEW_PROXY_ARGS + 1, &cmd_out);
+		if (cmd_out)
+		{
+			error_string = escape_spaces(cmd_out);
+			free(cmd_out);
+		}
+		else
+			error_string = strdup("Cannot\\ execute\\ BPRclient");
+
+		resultLine = make_message("%s %d %s", reqId, retcod, error_string);
+		free(error_string);
+		free(command);
+	}
+	else
+	{
+		resultLine = make_message("%s 1 Worker\\ node\\ empty.", reqId);
 	}
 		
 	if (resultLine)

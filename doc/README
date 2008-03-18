@@ -815,7 +815,61 @@ BLAHPD README and command documentation : Version 0.4 - 20080123
                 * error-string = description of error
 
         Example:
-                S: BLAH_JOB_REFRESH 1 123.proxy
+                S: BLAH_JOB_REFRESH_PROXY 1 lsf/123 123.proxy
+                R: S
+                R: R
+                S: RESULTS
+                R: S 1
+                R: 1 0 No\ Error
+
+
+        -----------------------------------------------
+
+        BLAH_JOB_SEND_PROXY_TO_WORKER_NODE
+
+        Renew the proxy of a BLAH job that is *running* on a *known*
+	worker node.
+
+        + Request Line:
+
+                BLAH_JOB_SEND_PROXY_TO_WORKER_NODE <SP> <reqid> <SP> <job_local_id> <SP>
+                        <proxy_file> <SP> <worker_node><CRLF>
+
+                * reqid = non-zero integer Request ID
+
+                * job_local_id = job_local_id (as returned from
+                    BLAH_JOB_SUBMIT) of the job whose proxy has to be
+                    renewed.
+
+                * proxy_file = path to the fresh proxy file.
+
+                * worker_node = FQDN of the worker node where the
+				job is running.
+
+        + Return Line:
+
+                <result> <CRLF>
+
+                * result = the character "S" (no quotes) for successful
+                    submission of the request (meaning that the request is
+                    now pending), or an "E" for error on the
+                    parse of the request or its arguments (e.g. an
+                    unrecognized or unsupported command, or for missing or
+                    malformed arguments).
+
+        + Result Line:
+
+                <reqid> <SP> <result-code> <SP> <error-string> <CRLF>
+
+                * reqid = integer Request ID, set to the value specified in
+                    the corresponding Request Line.
+
+                * result-code = integer equal to 0 on success, or an error code
+
+                * error-string = description of error
+
+        Example:
+                S: BLAH_JOB_SEND_PROXY_TO_WORKER_NODE 1 lsf/123 123.proxy worker.node.domain
                 R: S
                 R: R
                 S: RESULTS

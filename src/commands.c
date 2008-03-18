@@ -40,6 +40,7 @@ command_t commands_array[] = {
 	{ "BLAH_JOB_HOLD",                2, 1, cmd_hold_job },
 	{ "BLAH_JOB_REFRESH_PROXY",       3, 2, cmd_renew_proxy },
 	{ "BLAH_JOB_RESUME",              2, 1, cmd_resume_job },
+	{ "BLAH_JOB_SEND_PROXY_TO_WORKER_NODE", 4, 2, cmd_send_proxy_to_worker_node },
 	{ "BLAH_JOB_STATUS",              2, 1, cmd_status_job },
 	{ "BLAH_JOB_STATUS_ALL",          1, 1, cmd_unknown },
 	{ "BLAH_JOB_STATUS_SELECT",       2, 1, cmd_unknown },
