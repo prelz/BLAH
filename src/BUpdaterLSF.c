@@ -5,6 +5,7 @@ int main(int argc, char *argv[]){
 	FILE *fd;
 	job_registry_entry *en;
 	time_t now;
+	time_t purge_time=0;
 	char *constraint=NULL;
 	char *query=NULL;
 	char *q=NULL;
@@ -87,7 +88,7 @@ int main(int argc, char *argv[]){
 	ret = config_get("purge_interval",cha);
 	if (ret == NULL){
                 if(debug){
-			fprintf(debuglogfile, "%s: key purge_interval not found\n",argv0);
+			fprintf(debuglogfile, "%s: key purge_interval not found using the default:%s\n",argv0,purge_interval);
 			fflush(debuglogfile);
 		}
 	} else {
@@ -137,16 +138,20 @@ int main(int argc, char *argv[]){
 	for(;;){
 		/* Purge old entries from registry */
 		now=time(0);
-		if(job_registry_purge(registry_file, now-purge_interval,0)<0){
+		if(now - purge_time > 86400){
+			if(job_registry_purge(registry_file, now-purge_interval,0)<0){
 
-			if(debug){
-				fprintf(debuglogfile, "%s: Error purging job registry %s\n",argv0,registry_file);
-				fflush(debuglogfile);
+				if(debug){
+					fprintf(debuglogfile, "%s: Error purging job registry %s\n",argv0,registry_file);
+					fflush(debuglogfile);
+				}
+                	        fprintf(stderr,"%s: Error purging job registry %s :",argv0,registry_file);
+                	        perror("");
+				sleep(2);
+
+			}else{
+				purge_time=time(0);
 			}
-                        fprintf(stderr,"%s: Error purging job registry %s :",argv0,registry_file);
-                        perror("");
-			sleep(2);
-
 		}
 	       
 		rha=job_registry_init(registry_file, BY_BATCH_ID);

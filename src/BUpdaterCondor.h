@@ -14,7 +14,7 @@ int runfinal=FALSE;
 char *command_string;
 char *condor_binpath;
 char *registry_file;
-int purge_interval=0;
+int purge_interval=864000;
 int finalstate_query_interval=0;
 int alldone_interval=0;
 int debug=0;
