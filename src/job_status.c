@@ -19,6 +19,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -36,6 +38,58 @@ extern int  glexec_mode;
 extern char *gloc;
 extern job_registry_handle *blah_jr_handle;
 #define TSF_DEBUG
+
+int unlink_proxy_symlink(const char *jobDesc, classad_context *cad, char **environment)
+{
+	job_registry_split_id *spid;
+	int job_status;
+	char *proxy_link, *command;
+	int retcod=-2;
+	char *cmd_out;
+
+	if((spid = job_registry_split_blah_id(jobDesc)) != NULL)
+	{
+		if (classad_get_int_attribute(cad, "JobStatus", &job_status) == C_CLASSAD_NO_ERROR)
+		{
+			if (job_status == (int)REMOVED || job_status == (int)COMPLETED )
+			{
+				if (*environment) /* GLEXEC Mode ? */
+				{
+					command = make_message("%s /bin/rm .blah_jobproxy_dir/%s.proxy", gloc, spid->proxy_id);
+				}
+				else
+				{
+					command = make_message("/bin/rm %s/.blah_jobproxy_dir/%s.proxy", getenv("HOME"), spid->proxy_id);
+				}
+				if (command != NULL)
+				{	
+					retcod = exe_getout(command, environment, &cmd_out);
+					if (cmd_out) free (cmd_out);
+					free(command);
+				}
+				if (retcod != 0) /* Try the '.norenew' file in case of failure. */
+				{
+					if (*environment) /* GLEXEC Mode ? */
+					{
+						command = make_message("%s /bin/rm .blah_jobproxy_dir/%s.proxy.norenew", gloc, spid->proxy_id);
+					}
+					else
+					{
+						command = make_message("/bin/rm %s/.blah_jobproxy_dir/%s.proxy.norenew", getenv("HOME"), spid->proxy_id);
+					}
+					if (command != NULL)
+					{	
+						retcod = exe_getout(command, environment, &cmd_out);
+						if (cmd_out) free (cmd_out);
+						free(command);
+					}
+				}
+			}
+		}
+		job_registry_free_split_id(spid);
+	}
+	return(retcod);
+}
 
 int get_status(const char *jobDesc, classad_context *cad, char **environment, char error_str[][ERROR_MAX_LEN], int get_workernode, int *job_nr)
 {
@@ -71,6 +125,10 @@ int get_status(const char *jobDesc, classad_context *cad, char **environment, ch
 						free(cadstr);
 						if (tmpcad != NULL)
 						{
+							/* Need to undo the proxy symlink as the status scripts do. */
+							/* FIXME: This can be removed when the proxy file is moved */
+							/* FIXME: into the registry. */
+							unlink_proxy_symlink(jobDesc, tmpcad, environment);					
 							*job_nr = 1;
 							strcpy(error_str[0],"No Error");
 							cad[0] = tmpcad;
