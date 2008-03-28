@@ -1705,6 +1705,8 @@ cmd_send_proxy_to_worker_node(void *args)
 	char *error_string = NULL;
 	char *proxyFileNameNew = NULL;
 
+	char *delegate_switch;
+
 	if (workernode != NULL && strcmp(workernode, ""))
 	{
 		if(argv[CMD_SEND_PROXY_TO_WORKER_NODE_ARGS + 1] == NULL)
@@ -1728,8 +1730,12 @@ cmd_send_proxy_to_worker_node(void *args)
 		                           getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus");
 		argv[count + 1] = NULL;
 
-		command = make_message("%s/BPRclient %s %s %s",
-		                       blah_script_location, proxyFileNameNew, jobDescr, workernode); 
+		delegate_switch = "";
+		if (config_test_boolean(config_get("blah_delegate_renewed_proxies",blah_config_handle)))
+			delegate_switch = "delegate_proxy";
+
+		command = make_message("%s/BPRclient %s %s %s %s",
+		                       blah_script_location, proxyFileNameNew, jobDescr, workernode, delegate_switch); 
 		free(proxyFileNameNew);
 
 		retcod = exe_getout(command, argv + CMD_RENEW_PROXY_ARGS + 1, &cmd_out);

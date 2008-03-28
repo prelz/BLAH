@@ -4,6 +4,12 @@ supported_lrms=pbs,lsf
 #DGAS logfile 
 BLAHPD_ACCOUNTING_INFO_LOG=
 
+#Set to yes to enable delegation (instead of copy) of renewed proxies
+#to worker nodes. NOTE: limited *and* delegated proxes are not 
+#accepted for default GSI authentication as of VDT 1.2, so this should
+#be enabled only if non-limited proxies are used for proxy renewal.
+blah_delegate_renewed_proxies=no
+
 #Path where PBS executables are located 
 pbs_binpath=/usr/pbs/bin
 
