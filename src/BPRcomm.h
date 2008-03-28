@@ -4,14 +4,26 @@
 #define PORT_RANGE_FROM   20001
 #define PORT_RANGE_TO     20100
 
+#define BPR_SEND_PROXY_OK 0
+#define BPR_SEND_PROXY_ERROR -1
+#define BPR_RECEIVE_PROXY_OK 0
+#define BPR_RECEIVE_PROXY_ERROR -1
+
 #define BPR_DELEGATE_PROXY_OK 0
 #define BPR_DELEGATE_PROXY_ERROR -1
 #define BPR_RECEIVE_DELEGATED_PROXY_OK 0
 #define BPR_RECEIVE_DELEGATED_PROXY_ERROR -1
 
+#define BPR_OP_WILLDELEGATE "OP:DELE"
+#define BPR_OP_WILLSEND     "OP:SEND"
+#define BPR_OP_ACKNOWLEDGE  "OP:OKOK"
+#define BPR_OP_ERROR        "OP:ERRR"
+#define BPR_OP_WRONGJOB     "OP:WJOB"
+#define BPR_OPLEN 8
+
 /* Transmission functions */
-int send_string(const char *s, gss_ctx_id_t gss_context, int sck);
-int receive_string(char **s, gss_ctx_id_t gss_context, int sck);
+int send_proxy(const char *s, gss_ctx_id_t gss_context, int sck);
+int receive_proxy(char **s, gss_ctx_id_t gss_context, int sck);
 int delegate_proxy(const char *proxy_file, gss_cred_id_t cred_handle, gss_ctx_id_t gss_context, int sck);
 int receive_delegated_proxy(char **s, gss_ctx_id_t gss_context, int sck);
 

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <errno.h>
 #include <netdb.h>
 #include <fcntl.h>
@@ -40,6 +41,9 @@ main(int argc, char **argv)
 	struct stat proxy_stat;
 	char buffer[8192];
 	char *globus_location;
+	int delegation = 0;
+	char *the_proxy;
+	const char *deleg_prefix="deleg";
 
 	OM_uint32	major_status;
 	OM_uint32	minor_status;
@@ -68,6 +72,12 @@ main(int argc, char **argv)
 		exit(1);
 	}
 	workernode = argv[3];
+
+	if (argc > 4 && 
+	    strncasecmp(argv[4],deleg_prefix,strlen(deleg_prefix)) == 0)
+	{
+		delegation = 1;
+	}
 
 	setenv("X509_USER_PROXY", proxy_filename, 1);
 
@@ -123,6 +133,7 @@ main(int argc, char **argv)
 		*/
 		if (strcmp(pre_chop(chop(buffer)), pre_chop(chop(jobId))) != 0)
 		{
+			send(fd_socket, BPR_OP_WRONGJOB, BPR_OPLEN, 0);
 			close(fd_socket);
 			continue;
 		}
@@ -135,6 +146,15 @@ main(int argc, char **argv)
 		exit(1);
 	}
 	
+	/* Negotiate the sending method (copy vs. delegation) */
+	send(fd_socket, delegation ? BPR_OP_WILLDELEGATE : BPR_OP_WILLSEND, BPR_OPLEN, 0);
+	recv(fd_socket, buffer, sizeof(buffer), 0);
+	if (strcmp(buffer, BPR_OP_ACKNOWLEDGE) != 0)
+	{
+		printf("%s: unable to negotiate the sending method", argv[0]);
+		exit(1);
+	}
+
 	if ((context_handle = initiate_context(credential_handle, "GSI-NO-TARGET", fd_socket)) == GSS_C_NO_CONTEXT)
 	{
 		printf("%s: cannot initiate security context", argv[0]);
@@ -155,15 +175,53 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
-	if (delegate_proxy(proxy_filename, credential_handle, context_handle, fd_socket) != BPR_DELEGATE_PROXY_OK)
+	if (delegation)
 	{
-		printf("%s: unable to delegate proxy file %s", argv[0], proxy_filename);
-		close(fd_socket);
-		exit(1);
+		if (delegate_proxy(proxy_filename, credential_handle, context_handle, fd_socket) != BPR_DELEGATE_PROXY_OK)
+		{
+			printf("%s: unable to delegate proxy file %s", argv[0], proxy_filename);
+			close(fd_socket);
+			exit(1);
+		}
+	}
+	else /* send the proxy over a GSI encrypted channel */
+	{
+		if ((proxy_file = open(proxy_filename, O_RDONLY)) == -1)
+		{
+			printf("%s: unable to open proxy file %s", argv[0], proxy_filename);
+			close(fd_socket);
+			exit(1);
+		}
+		
+		if ((the_proxy = (char *)malloc(proxy_stat.st_size + 1)) == NULL)
+		{
+			printf("%s: unable to allocate read buffer (%d bytes)", argv[0], proxy_stat.st_size + 1);
+			close(fd_socket);
+			exit(1);
+		}
+
+		if (read(proxy_file, the_proxy, proxy_stat.st_size) != proxy_stat.st_size)
+		{
+			printf("%s: unable to read proxy file %s", argv[0], proxy_filename);
+			close(proxy_file);
+			free(the_proxy);
+			close(fd_socket);
+			exit(1);
+		}
+		close(proxy_file);
+		the_proxy[proxy_stat.st_size] = 0;
+
+		if (send_proxy(the_proxy, context_handle, fd_socket) != BPR_SEND_PROXY_OK)
+		{
+			printf("%s: unable to send proxy file %s", argv[0], proxy_filename);
+			free(the_proxy);
+			close(fd_socket);
+			exit(1);
+		}
+		free(the_proxy);
 	}
 
 	close(fd_socket);
-
 	exit(0);
 }
 

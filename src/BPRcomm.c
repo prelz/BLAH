@@ -203,9 +203,9 @@ receive_delegated_proxy(char **s, gss_ctx_id_t gss_context, int sck)
 }
 
 int
-send_string(const char *s, gss_ctx_id_t gss_context, int sck)
+send_proxy(const char *s, gss_ctx_id_t gss_context, int sck)
 {
-	int return_status = 2;
+	int return_status = BPR_SEND_PROXY_ERROR;
 	gss_buffer_desc  input_token;
 	gss_buffer_desc  output_token;
 	OM_uint32        maj_stat, min_stat;
@@ -227,7 +227,8 @@ send_string(const char *s, gss_ctx_id_t gss_context, int sck)
 
 		if (!GSS_ERROR(maj_stat))
 		{
-			return_status = send_token((void*)&sck, output_token.value, output_token.length);
+			if (send_token((void*)&sck, output_token.value, output_token.length) >= 0)
+				return_status = BPR_SEND_PROXY_OK;
 		}
 						        
 		gss_release_buffer(&min_stat, &output_token);
@@ -236,10 +237,10 @@ send_string(const char *s, gss_ctx_id_t gss_context, int sck)
 }
 
 int
-receive_string(char **s, gss_ctx_id_t gss_context, int sck)
+receive_proxy(char **s, gss_ctx_id_t gss_context, int sck)
 {
 	char             *buf;
-	int              return_status = 2;
+	int              return_status = BPR_RECEIVE_PROXY_ERROR;
 	gss_buffer_desc  input_token;
 	gss_buffer_desc  output_token;
 	OM_uint32        maj_stat, min_stat;
@@ -256,16 +257,15 @@ receive_string(char **s, gss_ctx_id_t gss_context, int sck)
 
 		if (!GSS_ERROR(maj_stat))
 		{
-			return_status = 1;
 			if ((buf = (char *)malloc(output_token.length + 1)) == NULL)
 			{
 				fprintf(stderr, "Error allocating buffer...\n");
 				return(return_status);
 			}
-			memset(buf, 0, output_token.length + 1);
 			memcpy(buf, output_token.value, output_token.length);
+			buf[output_token.length] = 0;
 			*s = buf;
-			return_status = 0;
+			return_status = BPR_RECEIVE_PROXY_OK;
 		}
 		gss_release_buffer(&min_stat, &output_token);
 		gss_release_buffer(&min_stat, &input_token);
@@ -467,7 +467,11 @@ int verify_context(gss_ctx_id_t context_handle)
 	major_status = gss_release_name(&minor_status, &target_name);
 	major_status = gss_release_buffer(&minor_status, &name_buffer);
 
-	/* Strip trailing CNs */
+	/* Strip trailing (limited) proxy CNs */
+	/* This is only needed (and effective) with very old */
+	/* versions of Globus. More recent versions return the */
+        /* pruned 'globusid' base name, making this stripping */
+        /* both useless and harmless. */
         while (!DN_cleaned)
 	{
 		DN_cleaned = 1;

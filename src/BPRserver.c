@@ -42,6 +42,9 @@ main(int argc, char **argv)
 	int proxy_file;
 	int poll_interval = 0;
 	int min_proxy_lifetime = 0;
+	int delegation = 0;
+	int error;
+	char buffer[BPR_OPLEN];
 						    
 	gss_cred_id_t	credential_handle = GSS_C_NO_CREDENTIAL;
 	gss_ctx_id_t	context_handle = GSS_C_NO_CONTEXT;
@@ -142,18 +145,74 @@ main(int argc, char **argv)
 
 				/* Don't forget to terminate the string... */
 				send(read_socket, jobId, strlen(jobId)+1, 0);
+
 				
 				FD_ZERO(&masterfs);
 				FD_SET(read_socket, &masterfs);
 
-				fprintf(stderr, "Entering select...\n");
+				fprintf(stderr, "Negotiating protocol...\n");
+				tv.tv_sec = 15;
+				tv.tv_usec = 0;
+				readfs = masterfs;
+				if (retcod = select(FD_SETSIZE, &readfs, (fd_set *)NULL, (fd_set *)NULL, &tv) <= 0)
+				{
+					fprintf(stderr, "Nothing received.\n");
+					fprintf(stderr, "Listening for further connections...\n");
+					close(read_socket);
+					continue;
+				}
+
+				/* Negotiate the receiving method (copy vs. delegation) */
+				delegation = -1;
+				if (recv(read_socket, buffer, sizeof(buffer), MSG_NOSIGNAL) > 0)
+				{
+					if (strncmp(buffer, BPR_OP_WRONGJOB, BPR_OPLEN - 1) == 0)
+					{
+						fprintf(stderr, "Client was not looking for us. Continuing...\n");
+						close(read_socket);
+						continue;
+					}
+					if (strncmp(buffer, BPR_OP_WILLDELEGATE, BPR_OPLEN - 1) == 0)
+					{
+						delegation = 1;
+					}
+					else if (strncmp(buffer, BPR_OP_WILLSEND, BPR_OPLEN - 1) == 0)
+					{
+						delegation = 0;
+					}
+				}
+				buffer[BPR_OPLEN - 1] = '\000'; /* To be safe */
+
+				if (delegation == -1)
+				{
+					send(read_socket, BPR_OP_ERROR, BPR_OPLEN, 0);
+					fprintf(stderr, "Unknown protocol in negotiation phase.\n");
+					fprintf(stderr, "Listening for further connections...\n");
+					close(read_socket);
+					continue;
+				}
+				else
+				{
+					if (delegation)
+						fprintf(stderr, "%s: Will receive proxy via delegation. ",buffer);
+					else
+						fprintf(stderr, "%s: Will receive proxy via file transfer. ",buffer);
+				}
+				send(read_socket, BPR_OP_ACKNOWLEDGE, BPR_OPLEN, 0);
+
+				FD_ZERO(&masterfs);
+				FD_SET(read_socket, &masterfs);
+
+				fprintf(stderr, "Waiting for the proxy...\n");
 				tv.tv_sec = 15;
 				tv.tv_usec = 0;
 				readfs = masterfs;
 				if (select(FD_SETSIZE, &readfs, (fd_set *)NULL, (fd_set *)NULL, &tv) <= 0)
 				{
-					perror("Select error");
-					exit(1);
+					fprintf(stderr, "Nothing received.\n");
+					fprintf(stderr, "Listening for further connections...\n");
+					close(read_socket);
+					continue;
 				}
 
 				fprintf(stderr, "Acquiring credentials...\n");
@@ -166,7 +225,7 @@ main(int argc, char **argv)
 				fprintf(stderr, "Accepting security context...\n");
 				if ((context_handle = accept_context(credential_handle, &client_name, read_socket)) == GSS_C_NO_CONTEXT)
 				{
-					fprintf(stderr, "Cannot accept security context...\n");
+					fprintf(stderr, "Cannot accept security context.\n");
 					fprintf(stderr, "Listening for further connections...\n");
 					gss_release_cred(&major_status, &credential_handle);
 					close(read_socket);
@@ -175,8 +234,17 @@ main(int argc, char **argv)
 				{
 					fprintf(stderr, "Security context accepted\n");
 					fprintf(stderr, "Client name: %s\n", client_name);
-					fprintf(stderr, "Receiving new delegated proxy...\n");
-					if (receive_delegated_proxy(&message, context_handle, read_socket) == BPR_RECEIVE_DELEGATED_PROXY_OK)
+					if (delegation)
+					{
+						fprintf(stderr, "Receiving new delegated proxy...\n");
+						error = receive_delegated_proxy(&message, context_handle, read_socket);
+					}
+					else
+					{
+						fprintf(stderr, "Receiving new proxy...\n");
+						error = receive_proxy(&message, context_handle, read_socket);
+					}
+					if (!error)
 					{
 						proxy_file_name_copy = strdup(proxy_file_name);
 						proxy_dir = dirname(proxy_file_name_copy); /* Use a copy as dirname can change the argument */
