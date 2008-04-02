@@ -246,8 +246,8 @@ function bls_setup_all_files ()
           fi 
           bls_tmp_file="$bls_opt_temp_dir/$bls_tmp_name"
       else
-          rand=$RANDOM$RANDOM$RANDOM$RANDOM
-          bls_tmp_name=bl_${rand:0:12}
+          rand=`od -A n -t xC -N 6 /dev/urandom`
+          bls_tmp_name=bl_${rand// /}
           bls_tmp_file="$bls_opt_temp_dir/$bls_tmp_name"
           `touch $bls_tmp_file;chmod 600 $bls_tmp_file`
       fi
