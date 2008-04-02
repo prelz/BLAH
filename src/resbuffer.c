@@ -7,6 +7,9 @@
 #
 #  Revision history:
 #   23 Mar 2004 - Original release
+#   31 Mar 2008 - Switched from linked list to single string buffer
+#                 Dropped support for persistent (file) buffer
+#                 Async mode handled internally (no longer in server.c)
 #
 #  Description:
 #   Mantain the result line buffer
@@ -25,168 +28,140 @@
 #include "blahpd.h"
 #include "resbuffer.h"
 
-/* These are global variables since
+/* These are global variables as
  * they have to be shared among all threads
  * */
-FILE *buffer_file;
-static t_resline *first_entry = NULL;
-static t_resline *last_entry = NULL;
-static int static_num_lines = 0;
-static pthread_mutex_t resbuffer_lock  = PTHREAD_MUTEX_INITIALIZER;
+static char* resbuffer_result_string = NULL; /* the result lines */
+static int   resbuffer_num_lines = 0;        /* the number of the result lines */
+static int   resbuffer_current_bufsize = 0;  /* the currently allocated buffer size */
+static int   resbuffer_current_ressize = 0;  /* the current length of the results */
+static int   resbuffer_async_mode = 0;       /* current async mode (0 = off) */ 
+static int   resbuffer_async_notify = 0;     /* set to 1 if a new result has been enqueued */
+                                             /* since the last buffer flush                */
+static pthread_mutex_t resbuffer_lock = PTHREAD_MUTEX_INITIALIZER;
+const char line_sep[] = BLAHPD_CRLF;
 
-/* Init the buffer, load unsent lines from
- * prevoius sessions
- * */
+
 int
 init_resbuffer(void)
+/* Init the buffer
+ * */
 {
-	char resultLine[RESLN_MAX_LEN];
-	char *allLines;
-	
 	pthread_mutex_init(&resbuffer_lock, NULL);
-
-	/* Recover sent but not flushed results */
-	if (buffer_file = fopen(FLUSHED_BUFFER, "r"))
-	{
-		while (fgets(resultLine, RESLN_MAX_LEN, buffer_file))
-		{
-			while((resultLine[strlen(resultLine)-1] == '\n') || (resultLine[strlen(resultLine)-1] == '\r'))
-				resultLine[strlen(resultLine)-1] = '\0';
-			push_result(resultLine, BUFFER_DONT_SAVE);
-		}
-		fclose(buffer_file);
-	}
-	
-	/* Recover unset results */
-	if (buffer_file = fopen(BUFFER_FILE, "r"))
-	{
-		while (fgets(resultLine, RESLN_MAX_LEN, buffer_file))
-		{
-			while((resultLine[strlen(resultLine)-1] == '\n') || (resultLine[strlen(resultLine)-1] == '\r'))
-				resultLine[strlen(resultLine)-1] = '\0';
-			push_result(resultLine, BUFFER_DONT_SAVE);
-		}
-		fclose(buffer_file);
-	}
-
-	/* Make current buffer persistent */
-	if (allLines = get_lines(BUFFER_DONT_FLUSH))
-	{
-		if (buffer_file = fopen(BUFFER_FILE, "w"))
-		{
-			fprintf(buffer_file, "%s\n", allLines);
-			fclose(buffer_file);
-		}
-		free(allLines);
-	}
-
-	remove(FLUSHED_BUFFER);
+	return (0);
 }
-	
-/* Clean up the result buffer
- * */
+
+
 int
-flush_buffer(void)
+set_async_mode(int mode)
+/* Set the async mode on or off
+ * Return 1 if the required mode was already set
+ * */
 {
-	while(first_entry)
-	{
-		last_entry = first_entry->next;
-		free(first_entry->text);
-		free(first_entry);
-		first_entry = last_entry;
-	}
-	static_num_lines = 0;
-	rename(BUFFER_FILE, FLUSHED_BUFFER);
+	if (resbuffer_async_mode == mode) return(1);
+
+	/* Acquire lock */
+	pthread_mutex_lock(&resbuffer_lock);
+
+	resbuffer_async_mode = mode;
+	resbuffer_async_notify = mode;
+
+	/* Release lock */
+	pthread_mutex_unlock(&resbuffer_lock);
+	return(0);
 }
 
+
+int
+push_result(const char *res)
 /* Push a new result line into result buffer
+ * allocate memory in chunks, in order to reduce the number of realloc
+ * Return 1 if the "R" (async notification) has to be printed out, 0 otherwise
  * */
-int
-push_result(const char *res, const int save)
 {
-	FILE *buffer_file;
-	t_resline *new_entry;
+	int reslen;
+	int required_bytes;
+	int required_chunks;
+	int async_notify = 0;
 
-	/* fprintf(stderr, "DEBUG: pushing '%s'\n", res); */
-	/* Allocate and init a new result line
-	 * */
-	if ((new_entry = (t_resline *) malloc (sizeof(t_resline))) == NULL)
-		return(MALLOC_ERROR);
-	new_entry->next = NULL;
-	if ((new_entry->text = (char *) malloc (strlen(res) + 1)) == NULL)
-		return(MALLOC_ERROR);
-	strcpy(new_entry->text, res);
+	reslen = strlen(res) + sizeof(line_sep) - 1;
 
-	/* Don't let other threads modify the pointers
-	 * while adding the new entry to the list
-	 * */
+	/* Acquire lock */
 	pthread_mutex_lock(&resbuffer_lock);
-	/* Add the new entry to the list
-	 * */
-	if (!first_entry) first_entry = new_entry;
-	if (last_entry) last_entry->next = new_entry;
-	last_entry = new_entry;
-	static_num_lines++;
-	if (save)
+
+	/* Add the new entry */
+	if ((required_bytes = (reslen + resbuffer_current_ressize - resbuffer_current_bufsize)) > 0)
 	{
-		if (buffer_file = fopen(BUFFER_FILE, "a"))
+		required_chunks = required_bytes / ALLOC_CHUNKS + 1;
+		resbuffer_result_string = (char *)realloc(resbuffer_result_string, resbuffer_current_bufsize + ALLOC_CHUNKS * required_chunks);
+		if (resbuffer_result_string == NULL)
 		{
-			fprintf(buffer_file, "%s\n", res);
-			fclose(buffer_file);
+			fprintf(stderr, "Out of memory! Cannot allocate result buffer\n");
+			exit(MALLOC_ERROR);
 		}
+		resbuffer_current_bufsize += (ALLOC_CHUNKS * required_chunks);
 	}
-	/* Green light for other threads
-	 * */
-	pthread_mutex_unlock(&resbuffer_lock);
-}
-
-int
-num_results(void)
-{
-	int result;
+	memcpy(resbuffer_result_string + resbuffer_current_ressize, line_sep, sizeof(line_sep) - 1);
+	strcpy(resbuffer_result_string + resbuffer_current_ressize + sizeof(line_sep) - 1, res);
 	
-	pthread_mutex_lock(&resbuffer_lock);
-	result = static_num_lines;
+	resbuffer_current_ressize += reslen;
+
+	resbuffer_num_lines++;
+
+	/* Notify caller if it has to print the async 'R' notification */
+	if (resbuffer_async_notify == ASYNC_MODE_ON && resbuffer_async_mode == ASYNC_MODE_ON)
+	{
+		async_notify = 1;
+		resbuffer_async_notify = ASYNC_MODE_OFF;
+	}
+
+	/* Release lock */
 	pthread_mutex_unlock(&resbuffer_lock);
-	return(result);
+	return(async_notify);
 }
 
-/* Join all the result lines in a single string
- * and flush the buffer
- * */
 
 char *
-get_lines(const int flush_bf)
+get_lines(void)
+/* Return the number n of result lines and the
+ * whole buffer, in the form:
+ *
+ * S <n>
+ * <line 1>
+ * <line 2>
+ * ...
+ * <line n>
+ *
+ * Finally flush the buffer
+ * */
 {
 	char *res_lines = NULL;
 	char *reallocated;
-	t_resline *line;
-	int last_size = 0;
 
-	/* Don't let other threads modify the pointers
-	 * while we are reading or flushing the buffer
-	 * */
+	/* Acquire lock */
 	pthread_mutex_lock(&resbuffer_lock);
-	for(line = first_entry; line != NULL; line = line->next)
+
+	/* Allocate the result string */
+	res_lines = (char *)malloc(resbuffer_current_ressize + 16);
+	if (res_lines == NULL)
 	{
-		reallocated = (char *) realloc (res_lines, last_size + strlen(line->text)+ strlen(BLAHPD_CRLF) + 1);
-		if (!reallocated)
-		{
-			if (res_lines) free (res_lines);
-			return(NULL);
-		}
-		else
-			res_lines = reallocated;
-		if (line != first_entry)
-			strcat(res_lines, BLAHPD_CRLF);
-		else
-			res_lines[0] = '\000';
-		strcat(res_lines, line->text);
-		last_size += strlen(res_lines);
+		fprintf(stderr, "Out of memory! Cannot allocate result buffer\n");
+		exit(MALLOC_ERROR);
 	}
-	if (flush_bf) flush_buffer();
-	/* Green light for other threads
-	 * */
+
+	sprintf(res_lines, "S %d", resbuffer_num_lines);
+	if (resbuffer_result_string)
+	{
+		strcat(res_lines, resbuffer_result_string);
+		free(resbuffer_result_string);
+		resbuffer_result_string = NULL;
+		resbuffer_num_lines = 0;
+		resbuffer_current_ressize = 0;
+		resbuffer_current_bufsize = 0;
+		resbuffer_async_notify = resbuffer_async_mode;
+	}
+
+	/* Release lock */
 	pthread_mutex_unlock(&resbuffer_lock);
 	return(res_lines);
 }

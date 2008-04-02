@@ -7,7 +7,7 @@
 
 #include "config.h"
 
-#define RCSID_VERSION		"$GahpVersion: %s Nov 30 2006 INFN\\ blahpd\\ (%s) $"
+#define RCSID_VERSION		"$GahpVersion: %s Mar 31 2008 INFN\\ blahpd\\ (%s) $"
 #define BUFFER_FILE		"/tmp/blahp_result_buffer"
 #define FLUSHED_BUFFER		"/tmp/blahp_result_buffer.flushed"
 

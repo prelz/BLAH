@@ -1,12 +1,10 @@
-#define BUFFER_SAVE       1
-#define BUFFER_DONT_SAVE  0
-#define BUFFER_FLUSH      1
-#define BUFFER_DONT_FLUSH 0 
+#define ALLOC_CHUNKS 32768
+#define ASYNC_MODE_OFF 0
+#define ASYNC_MODE_ON  1
 
 /* Exported functions */
 
 int init_resbuffer(void);
-char* get_lines(const int flush_bf);
-int num_results(void);
-int push_result(const char* s, const int save);
+int push_result(const char* s);
+char* get_lines(void);
 

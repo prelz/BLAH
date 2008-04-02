@@ -23,6 +23,8 @@
 #   23 Nov 2007 - (prelz@mi.infn.it). Access blah.config via config API.
 #   31 Jan 2008 - (prelz@mi.infn.it). Add watches on a few needed processes
 #                                     (bupdater and bnotifier for starters)
+#   31 Mar 2007 - (rebatto@mi.infn.it) Async mode handling moved to resbuffer.c
+#                                      Adapted to new resbuffer functions
 #
 #  Description:
 #   Serve a connection to a blahp client, performing appropriate
@@ -133,11 +135,8 @@ static int blah_children_count=0;
 config_handle *blah_config_handle = NULL;
 job_registry_handle *blah_jr_handle = NULL;
 static int server_socket;
-static int async_mode = 0;
-static int async_notice = 0;
 static int exit_program = 0;
 static pthread_mutex_t send_lock  = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t async_lock  = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t bfork_lock  = PTHREAD_MUTEX_INITIALIZER;
 char *blah_script_location;
 char *blah_version;
@@ -735,9 +734,7 @@ cmd_async_on(void *args)
 {
 	char *result;
 
-	pthread_mutex_lock(&async_lock);
-	async_mode = async_notice = 1;
-	pthread_mutex_unlock(&async_lock);
+	set_async_mode(ASYNC_MODE_ON);
 	result = strdup("S Async\\ mode\\ on");
 	return(result);
 }
@@ -747,9 +744,7 @@ cmd_async_off(void *args)
 {
 	char *result;
 
-	pthread_mutex_lock(&async_lock);
-	async_mode = async_notice = 0;
-	pthread_mutex_unlock(&async_lock);
+	set_async_mode(ASYNC_MODE_OFF);
 	result = strdup("S Async\\ mode\\ off");
 	return(result);
 }
@@ -758,34 +753,8 @@ void *
 cmd_results(void *args)
 {
 	char *result;
-	char *res_lines;
-	char *tmp_realloc;
 
-	if (result = (char *) malloc (15)) /* hope 10 digits suffice*/
-	{
-		pthread_mutex_lock(&async_lock);
-		snprintf(result, 12, "S %d", num_results());
-		if(num_results())
-		{
-			strcat(result, "\r\n");
-			res_lines = get_lines(BUFFER_FLUSH);
-			if ((tmp_realloc = (char *)realloc(result, strlen(result) + strlen(res_lines) + 2)) == NULL)
-			{
-				free(result);
-				free(res_lines);
-				return(NULL);
-			}
-			result = tmp_realloc;
-			strcat(result, res_lines);
-			free(res_lines);
-		}
-
-		/* From now on, send 'R' when a new resline is enqueued */
-		async_notice = async_mode;
-		pthread_mutex_unlock(&async_lock);
-	}
-	
-	/* If malloc has failed, return NULL to notify error */
+	result = get_lines();
 	return(result);
 }
 
@@ -2159,17 +2128,12 @@ get_command(int s)
 int
 enqueue_result(char *res)
 {
-	pthread_mutex_lock(&async_lock);
-	push_result(res, PERSISTENT_BUFFER);
-	if (async_notice)
+	if (push_result(res))
 	{
 		pthread_mutex_lock(&send_lock);
 		write(server_socket, "R\r\n", 3);
 		pthread_mutex_unlock(&send_lock);
-		/* Don't send it again until a RESULT command is received */
-		async_notice = 0;
 	}
-	pthread_mutex_unlock(&async_lock);
 }
 
 int
