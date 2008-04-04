@@ -128,3 +128,5 @@ alldone_interval=1800
 #path to condor_config
 export CONDOR_CONFIG="/opt/condor-c/etc/condor_config"
 
+#max number of concurrent threads to serve commands (default = 500)
+#blah_max_threaded_cmds=100

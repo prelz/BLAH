@@ -23,7 +23,7 @@
 #   23 Nov 2007 - (prelz@mi.infn.it). Access blah.config via config API.
 #   31 Jan 2008 - (prelz@mi.infn.it). Add watches on a few needed processes
 #                                     (bupdater and bnotifier for starters)
-#   31 Mar 2007 - (rebatto@mi.infn.it) Async mode handling moved to resbuffer.c
+#   31 Mar 2008 - (rebatto@mi.infn.it) Async mode handling moved to resbuffer.c
 #                                      Adapted to new resbuffer functions
 #
 #  Description:
@@ -50,6 +50,7 @@
 #include <sys/select.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <semaphore.h>
 #include <pthread.h>
 #include <stdarg.h>
 #include <sys/stat.h>
@@ -76,12 +77,9 @@
 #define MAX_CERT_SIZE		100000
 #define MAX_TEMP_ARRAY_SIZE              1000
 #define MAX_FILE_LIST_BUFFER_SIZE        10000
+#define MAX_PENDING_COMMANDS             500
 #define DEFAULT_TEMP_DIR                 "/tmp"
  
-t_resline *first_job = NULL;
-t_resline *last_job = NULL;
-int num_jobs = 0;
-
 #define NO_QUOTE     0
 #define SINGLE_QUOTE 1
 #define DOUBLE_QUOTE 2
@@ -138,6 +136,10 @@ static int server_socket;
 static int exit_program = 0;
 static pthread_mutex_t send_lock  = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t bfork_lock  = PTHREAD_MUTEX_INITIALIZER;
+pthread_attr_t cmd_threads_attr;
+
+sem_t sem_total_commands;
+
 char *blah_script_location;
 char *blah_version;
 static char lrmslist[MAX_LRMS_NUMBER][MAX_LRMS_NAME_SIZE];
@@ -288,6 +290,8 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	char **child_prefix;
 	char *child_exe_conf, *child_pid_conf;
         config_entry *child_config_exe, *child_config_pid;
+	int max_threaded_cmds = MAX_PENDING_COMMANDS;
+	config_entry *max_threaded_conf;
 
 	blah_config_handle = config_read(NULL);
 	if (blah_config_handle == NULL)
@@ -296,6 +300,9 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 		perror("");
 		exit(MALLOC_ERROR);
 	}
+
+	max_threaded_conf = config_get("blah_max_threaded_cmds",blah_config_handle);
+	if (max_threaded_conf != NULL) max_threaded_cmds = atoi(max_threaded_conf->value);
 
 	for (i = 0; i < GLEXEC_ENV_TOTAL; i++)
 		glexec_env_var[i] = NULL;
@@ -452,6 +459,11 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 
 	if (blah_children_count>0) check_on_children(blah_children, blah_children_count);
 
+	pthread_attr_init(&cmd_threads_attr);
+	pthread_attr_setdetachstate(&cmd_threads_attr, PTHREAD_CREATE_DETACHED);
+
+	sem_init(&sem_total_commands, 0, max_threaded_cmds);
+	
 	write(server_socket, blah_version, strlen(blah_version));
 	write(server_socket, "\r\n", 2);
 	while(!exit_program)
@@ -471,7 +483,7 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 			{
 				if (argc != (command->required_params + 1))
 				{
-					reply = make_message("E expected\\ %d\\ parameters,\\ %d\\ found\\r\n", command->required_params, argc -1);
+					reply = make_message("E expected\\ %d\\ parameters,\\ %d\\ found\\r\n", command->required_params, argc-1);
 				}
 				else
 				{
@@ -488,21 +500,24 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 							argv[argc + GLEXEC_ENV_TOTAL] = NULL;
 						}
 
-						if (pthread_create(&task_tid, NULL, command->cmd_handler, (void *)argv))
+						if (sem_trywait(&sem_total_commands))
+						{
+							reply = make_message("F Threads\\ limit\\ reached\r\n");
+						}
+						else if (pthread_create(&task_tid, &cmd_threads_attr, command->cmd_handler, (void *)argv))
 						{
 							reply = make_message("F Cannot\\ start\\ thread\r\n");
 						}
 						else
 						{
 							reply = make_message("S\r\n");
-							pthread_detach(task_tid);
 						}
 						/* free argv in threaded function */
 					}
 					else
 					{
 						cmd_result = (char *)command->cmd_handler(argv);
-						reply = make_message("%s\r\n",cmd_result);
+						reply = make_message("%s\r\n", cmd_result);
 						free(cmd_result);
 						free_args(argv);
 					}
@@ -1138,6 +1153,7 @@ cleanup_argv:
 		fprintf(stderr, "blahpd: out of memory! Exiting...\n");
 		exit(MALLOC_ERROR);
 	}
+	sem_post(&sem_total_commands);
 	return;
 }
 
@@ -1209,6 +1225,7 @@ cleanup_argv:
 		enqueue_result(resultLine);
 		free (resultLine);
 	}
+	sem_post(&sem_total_commands);
 	return;
 }
 
@@ -1274,6 +1291,7 @@ cmd_status_job(void *args)
 
 	/* Free up all arguments */
 	free_args(argv);
+	sem_post(&sem_total_commands);
 	return;
 }
 
@@ -1382,6 +1400,7 @@ wrap_up:
 		enqueue_result(resultLine);
 		free (resultLine);
 	}
+	sem_post(&sem_total_commands);
 	return;
 }
 
@@ -1606,6 +1625,7 @@ cmd_renew_proxy(void *args)
 						argv[count+1] = 0;
 						for(i = count; i > (CMD_RENEW_PROXY_ARGS+1); i--) argv[i] = argv[i-1];
 						/* workernode will be freed inside cmd_send_proxy_to_worker_node */
+						/* also the semaphore will be released there */
 						argv[CMD_RENEW_PROXY_ARGS+1] = workernode;
 						cmd_send_proxy_to_worker_node((void *)argv);
 						if (old_proxy != NULL) free(old_proxy);
@@ -1654,6 +1674,7 @@ cmd_renew_proxy(void *args)
 	
 	/* Free up all arguments */
 	free_args(argv);
+	sem_post(&sem_total_commands);
 	return;
 }
 
@@ -1738,6 +1759,7 @@ cmd_send_proxy_to_worker_node(void *args)
 	
 	/* Free up all arguments */
 	free_args(argv);
+	sem_post(&sem_total_commands);
 	return;
 }
 
@@ -1939,6 +1961,7 @@ void *
 cmd_hold_job(void* args)
 {
 	hold_resume(args,HOLD_JOB);
+	sem_post(&sem_total_commands);
 	return;
 }
 
@@ -1946,6 +1969,7 @@ void *
 cmd_resume_job(void* args)
 {
 	hold_resume(args,RESUME_JOB);
+	sem_post(&sem_total_commands);
 	return;
 }
 
@@ -1960,7 +1984,7 @@ cmd_get_hostport(void *args)
 	int  retcode;
 	int i;
 
-        if (blah_children_count>0) check_on_children(blah_children, blah_children_count);
+	if (blah_children_count>0) check_on_children(blah_children, blah_children_count);
 
 	if (lrms_counter)
 	{
@@ -1992,6 +2016,7 @@ cmd_get_hostport(void *args)
 	enqueue_result(resultLine);
 	free(resultLine);
 	free_args(argv);
+	sem_post(&sem_total_commands);
 	return ;
 }
 
