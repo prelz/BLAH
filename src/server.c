@@ -337,7 +337,7 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	 	 setenv("LD_LIBRARY_PATH",needed_libs,1);
 	
 	blah_script_location = strdup(blah_config_handle->bin_path);
-	blah_version = make_message(RCSID_VERSION, VERSION, "poly");
+	blah_version = make_message(RCSID_VERSION, VERSION, "poly,new_esc_format");
 	if ((gloc=getenv("GLEXEC_COMMAND")) == NULL)
 	{
 		gloc = DEFAULT_GLEXEC_COMMAND;
