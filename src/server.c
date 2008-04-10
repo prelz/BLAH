@@ -2327,6 +2327,8 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 	char *cmd_out;
 	int res;
 	char* globuslocation;
+	char *limit_command_output;
+	int tmpfd;
 
 	globuslocation = (getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus");
 	timeleftcommand = make_message("%s/bin/grid-proxy-info -timeleft -file %s",
@@ -2339,30 +2341,62 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 		free(cmd_out);
 	}
 
+	limit_command_output = make_message("%s_XXXXXX", limited_proxy_name);
+	if (limit_command_output != NULL)
+	{
+		tmpfd = mkstemp(limit_command_output);
+		if (tmpfd < 0)
+		{
+			/* Fall back to direct file creation - it may work */
+			free(limit_command_output);
+			limit_command_output = limited_proxy_name;
+		}
+		else
+		{
+			close(tmpfd);
+		}
+	}
+        
 	if (seconds_left <= 0) {
-		/* Something's wrong - use defaults */
+		/* Something's wrong with the current proxy - use defaults */
 		limcommand = make_message("%s/bin/grid-proxy-init -old -limited -cert %s -key %s -out %s",
-	                          globuslocation, proxy_name, proxy_name, limited_proxy_name);
+	                          globuslocation, proxy_name, proxy_name, limit_command_output);
 	} else {
 		hours_left = (int)(seconds_left/3600);
 		minutes_left = (int)((seconds_left%3600)/60) + 1;
 		limcommand = make_message("%s/bin/grid-proxy-init -old -limited -valid %d:%d -cert %s -key %s -out %s",
-	                          globuslocation, hours_left, minutes_left, proxy_name, proxy_name, limited_proxy_name);
+	                          globuslocation, hours_left, minutes_left, proxy_name, proxy_name, limit_command_output);
 	}
 	res = exe_getout(limcommand, NULL, &cmd_out);
 	free(limcommand);
-	if (!cmd_out) return -1;
+	if (!cmd_out) 
+	{
+		if (limit_command_output != limited_proxy_name)
+			free(limit_command_output);
+		return -1;
+	}
 	else free(cmd_out);
 
 	/* If exitcode != 0 there may be a problem due to a warning by grid-proxy-init but */
 	/* the call may have been successful. We just check the temporary proxy  */
 	if (res)
 	{
-		limcommand = make_message("%s/bin/grid-proxy-info -f %s", globuslocation, limited_proxy_name);
+		limcommand = make_message("%s/bin/grid-proxy-info -f %s", globuslocation, limit_command_output);
 		res = exe_getout(limcommand, NULL, &cmd_out);
 		free(limcommand);
-		if (!cmd_out) return -1;
+		if (!cmd_out) 
+		{
+			if (limit_command_output != limited_proxy_name)
+				free(limit_command_output);
+			return -1;
+		}
 		else free(cmd_out);
+	}
+	if (limit_command_output != limited_proxy_name)
+	{
+		/* Rotate limited proxy in place via atomic rename */
+		res = rename(limit_command_output, limited_proxy_name);
+		free(limit_command_output);
 	}
 	return res;
 }
