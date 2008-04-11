@@ -1353,9 +1353,14 @@ NotifyFromDate(char *in_buf)
 
 	if(notstr && strcmp(notstr,"CREAMFILTER")==0){
 		cream_string=strdup(notdate);
-                cream_string[6]='\000';
 		jcount=0;
 		nti[0]=0;
+                if ((cp = strrchr (cream_string, '\n')) != NULL){
+                        *cp = '\0';
+                }
+                if ((cp = strrchr (cream_string, '\r')) != NULL){
+                        *cp = '\0';
+                }
 		if(cream_string!=NULL){
 			sprintf(out_buf,"CREAMFILTER set to %s\n",cream_string);
 		}else{

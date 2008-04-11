@@ -206,6 +206,7 @@ follow(char *infile, char *line)
 	char *ts;
 	
 	for(;;){
+	
 		if((fp=fopen((char *)infile, "r")) == 0){
 			syserror("error opening %s: %r", infile);
 			sleep(1);
@@ -443,6 +444,7 @@ int AddToStruct(char *line, int flag){
 	free(tbuf);
 
 	id=UpdatePtr(realid,rex,has_blah);
+	
 	belongs_to_current_cycle = 0;
 	if((id >= 0) && ((reccnt[id]==recycled) || 
 	   ((id >= ptrcnt) && (reccnt[id]==(recycled-1)))))
@@ -1486,9 +1488,14 @@ NotifyFromDate(char *in_buf)
 
 	if(notstr && strcmp(notstr,"CREAMFILTER")==0){
 		cream_string=strdup(notdate);
-                cream_string[6]='\000';
 		jcount=0;
 		nti[0]=0;
+                if ((cp = strrchr (cream_string, '\n')) != NULL){
+                        *cp = '\0';
+                }
+                if ((cp = strrchr (cream_string, '\r')) != NULL){
+                        *cp = '\0';
+                }
 		if(cream_string!=NULL){
 			sprintf(out_buf,"CREAMFILTER set to %s\n",cream_string);
 		}else{
