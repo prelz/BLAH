@@ -247,7 +247,7 @@ END {
 
 job_data=`grep "$requested" $logs`
 
-result=`echo $job_data | awk -v jobId=$requested -v proxyDir=$proxy_dir '
+result=`echo "$job_data" | awk -v jobId=$requested -v proxyDir=$proxy_dir '
 BEGIN {
 	rex_queued   = "\"JOB_NEW\" \"[0-9\.]+\" [0-9]+ " jobId
 	rex_running  = "\"JOB_START\" \"[0-9\.]+\" [0-9]+ " jobId

@@ -38,8 +38,9 @@ srvfound=""
 
 BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 
-qstatcache=/tmp/qstatcache.txt
-qstattmp=/tmp/qstattmp.txt
+qstatuser=`whoami`
+qstatcache=/tmp/qstatcache_${qstatuser}.txt
+qstattmp=/tmp/qstattmp_${qstatuser}.txt
 
 ############################
 #functions
@@ -235,14 +236,16 @@ END {
 		result=""
 		usedBLParser="no"
 		logs="$logpath/$logfile `find $logpath -type f -newer $logpath/$logfile`"
-		job_data=`grep "$reqjob" $logs`
-		result=`echo $job_data | awk -v jobId="$reqjob" -v wn="$workernode" -v proxyDir="$proxy_dir" '
+		log_data=`grep "$reqjob" $logs`
+		result=`echo "$log_data" | awk -v jobId="$reqjob" -v wn="$workernode" -v proxyDir="$proxy_dir" '
 BEGIN {
 	rex_queued   = jobId ";Job Queued "
 	rex_running  = jobId ";Job Run "
 	rex_deleted  = jobId ";Job deleted "
 	rex_finished = jobId ";Exit_status="
-	rex_hold     = jobId ";Holds "
+	rex_hold     = jobId ";Holds .* set"
+	rex_released = jobId ";Holds .* released"
+	saved_jobstatus = -1
 
 	print "["
 	print "BatchjobId = \"" jobId "\";"
@@ -270,7 +273,15 @@ $0 ~ rex_finished {
 }
 
 $0 ~ rex_hold {
+	saved_jobstatus = jobstatus
 	jobstatus = 5
+}
+
+$0 ~ rex_released {
+	if (saved_jobstatus > 0) {
+		jobstatus = saved_jobstatus
+	}
+	saved_jobstatus = -1
 }
 
 END {
