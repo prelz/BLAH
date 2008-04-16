@@ -2354,6 +2354,8 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 		else
 		{
 			close(tmpfd);
+			/* Make sure file gets created by grid-proxy-init */
+			unlink(limit_command_output);
 		}
 	}
         
@@ -2384,7 +2386,7 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 		limcommand = make_message("%s/bin/grid-proxy-info -f %s", globuslocation, limit_command_output);
 		res = exe_getout(limcommand, NULL, &cmd_out);
 		free(limcommand);
-		if (!cmd_out) 
+		if (res != 0 || !cmd_out) 
 		{
 			if (limit_command_output != limited_proxy_name)
 				free(limit_command_output);
