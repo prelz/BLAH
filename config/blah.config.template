@@ -83,6 +83,11 @@ lsf_BLPserver2=
 lsf_BLPport2=
 
 #
+#LSF Updater
+#
+#number of logs to be read by bhist (default:3)
+bhist_logs_to_read=
+#
 # Condor
 #
 

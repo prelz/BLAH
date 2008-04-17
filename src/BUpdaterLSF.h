@@ -7,7 +7,7 @@
 #endif
 
 int IntStateQuery();
-int FinalStateQuery(char *query);
+int FinalStateQuery();
 int AssignFinalState(char *batchid);
 
 int runfinal=FALSE;
@@ -17,6 +17,7 @@ char *registry_file;
 int purge_interval=864000;
 int finalstate_query_interval=0;
 int alldone_interval=0;
+int bhist_logs_to_read=3;
 int debug=0;
 int nodmn=0;
 

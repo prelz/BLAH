@@ -7,7 +7,6 @@ int main(int argc, char *argv[]){
 	time_t now;
 	time_t purge_time=0;
 	char *constraint=NULL;
-	char *query=NULL;
 	char *q=NULL;
 	char *pidfile=NULL;
 	
@@ -115,6 +114,16 @@ int main(int argc, char *argv[]){
 		alldone_interval=atoi(ret->value);
 	}
 	
+	ret = config_get("bhist_logs_to_read",cha);
+	if (ret == NULL){
+                if(debug){
+			fprintf(debuglogfile, "%s: key bhist_logs_to_read not found using the default:%s\n",argv0,bhist_logs_to_read);
+			fflush(debuglogfile);
+		}
+	} else {
+		bhist_logs_to_read=atoi(ret->value);
+	}
+	
 	ret = config_get("bupdater_pidfile",cha);
 	if (ret == NULL){
                 if(debug){
@@ -196,10 +205,6 @@ int main(int argc, char *argv[]){
 		if((constraint=calloc(STR_CHARS,1)) == 0){
 			sysfatal("can't malloc constraint %r");
         	}
-		if((query=calloc(CSTR_CHARS,1)) == 0){
-			sysfatal("can't malloc query %r");
-        	}
-		query[0]='\0';
 		first=TRUE;
 		
 		while ((en = job_registry_get_next(rha, fd)) != NULL)
@@ -213,36 +218,16 @@ int main(int argc, char *argv[]){
 			
 			if((now-en->mdate>finalstate_query_interval) && en->status!=3 && en->status!=4)
 			{
-				/* create the constraint that will be used in condor_history command in FinalStateQuery*/
-				if(!first) strcat(query," ||");	
-				if(first) first=FALSE;
-				sprintf(constraint," ClusterId==%s",en->batch_id);
-				
-				q=realloc(query,strlen(query)+strlen(constraint)+4);
-				if(q != NULL){
-					query=q;	
-				}else{
-					if(debug){
-						fprintf(debuglogfile, "can't realloc query\n");
-						fflush(debuglogfile);
-					}
-                			fprintf(stderr,"%s: can't realloc query: ",argv[0]);
-					perror("");
-					sleep(2);
-					continue;			
-				}
-				strcat(query,constraint);
 				runfinal=TRUE;
 			}
 			free(en);
 		}
 		
 		if(runfinal){
-			FinalStateQuery(query);
+			FinalStateQuery();
 			runfinal=FALSE;
 		}
 		free(constraint);		
-		free(query);
 		fclose(fd);		
 		job_registry_destroy(rha);
 		sleep(2);
@@ -256,25 +241,6 @@ int main(int argc, char *argv[]){
 int
 IntStateQuery()
 {
-/*
- Output format for status query for unfinished jobs for condor:
- batch_id   user      status     executable     exitcode   udate(timestamp_for_current_status)
- 22018     gliteuser  2          /bin/sleep     0          1202288920
-
- Filled entries:
- batch_id
- status
- exitcode
- udate
- 
- Filled by suhmit script:
- blah_id 
- 
- Unfilled entries:
- wn_addr
- exitreason
-*/
-
 /*
  bjobs -u all -a -l 
  In the first 2 lines:
@@ -302,6 +268,22 @@ udate for the final state (Tue Mar 18 13:47:32):
 exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 */
 
+/*
+ Filled entries:
+ batch_id
+ wn_addr
+ status
+ exitcode
+ udate
+ 
+ Filled by suhmit script:
+ blah_id 
+ 
+ Unfilled entries:
+ exitreason
+*/
+
+
 	char *output;
         FILE *file_output;
 	int len;
@@ -310,6 +292,10 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	int maxtok_l=0,maxtok_t=0,i,j;
 	job_registry_entry en;
 	int ret;
+	char *timestamp;
+	int tmstampepoch;
+	char *batch_str;
+	char *wn_str; 
 
         if((output=calloc(STR_CHARS,1)) == 0){
                 printf("can't malloc output\n");
@@ -336,25 +322,80 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
         pclose(file_output);
 	
 	maxtok_l = strtoken(output, '\n', line);
+
 	for(i=0;i<maxtok_l;i++){
-		maxtok_t = strtoken(line[i], ' ', token);
-		
-		JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,token[0]);
-		en.status=atoi(token[2]);
-		en.exitcode=atoi(token[4]);
-		en.udate=atoi(token[5]);
-		JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
-		JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				
-		if ((ret=job_registry_update(rha, &en)) < 0)
-		{
-			fprintf(stderr,"Append of record returns %d: ",ret);
-			perror("");
+		if(line[i] && strstr(line[i],"Job <")){	
+			maxtok_t = strtoken(line[i], ',', token);
+			batch_str=strdel(token[0],"Job <");
+			batch_str=strdel(batch_str,">");
+			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
+			for(j=0;j<maxtok_t;j++){
+				free(token[j]);
+			}
+		}
+		if(line[i] && strstr(line[i]," Started")){	
+			maxtok_t = strtoken(line[i], ' ', token);
+			if((timestamp=calloc(STR_CHARS,1)) == 0){
+				sysfatal("can't malloc wn in PollDB: %r");
+			}
+			sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
+			timestamp[strlen(timestamp)-1]='\0';
+			tmstampepoch=str2epoch(timestamp,"W");
+			en.udate=tmstampepoch;
+			en.status=2;
+			free(timestamp);
+			wn_str=strdel(token[6],"<");
+			wn_str=strdel(wn_str,">");
+			wn_str=strdel(wn_str,",");
+			JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
+			for(j=0;j<maxtok_t;j++){
+				free(token[j]);
+			}
+		}
+		if(line[i] && strstr(line[i]," Exited with exit code")){	
+			maxtok_t = strtoken(line[i], ' ', token);
+			if((timestamp=calloc(STR_CHARS,1)) == 0){
+				sysfatal("can't malloc wn in PollDB: %r");
+			}
+			sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
+			timestamp[strlen(timestamp)-1]='\0';
+			tmstampepoch=str2epoch(timestamp,"W");
+			en.udate=tmstampepoch;
+			en.status=4;
+			free(timestamp);
+			token[8]=strdel(token[8],".");
+			en.exitcode=atoi(token[8]);
+			JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+			for(j=0;j<maxtok_t;j++){
+				free(token[j]);
+			}
+		}
+		if(line[i] && strstr(line[i]," Done successfully")){	
+			maxtok_t = strtoken(line[i], ' ', token);
+			if((timestamp=calloc(STR_CHARS,1)) == 0){
+				sysfatal("can't malloc wn in PollDB: %r");
+			}
+			sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
+			timestamp[strlen(timestamp)-1]='\0';
+			tmstampepoch=str2epoch(timestamp,"W");
+			en.udate=tmstampepoch;
+			en.status=4;
+			free(timestamp);
+			en.exitcode=0;
+			JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+			for(j=0;j<maxtok_t;j++){
+				free(token[j]);
+			}
+		}
+		if(line[i] && strstr(line[i],"------------------------------------------------------------------------------")){
+			if ((ret=job_registry_update(rha, &en)) < 0)
+			{
+				fprintf(stderr,"Append of record returns %d: ",ret);
+				perror("");
+			}
 		}
 		
-		for(j=0;j<maxtok_t;j++){
-			free(token[j]);
-		}
 	}
 
 	for(i=0;i<maxtok_l;i++){
@@ -368,27 +409,8 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 }
 
 int
-FinalStateQuery(char *query)
+FinalStateQuery()
 {
-/*
- Output format for status query for finished jobs for condor:
- batch_id   user      status     executable     exitcode   udate(timestamp_for_current_status)
- 22018     gliteuser  4          /bin/sleep     0          1202288920
-
- Filled entries:
- batch_id
- status
- exitcode
- udate
- 
- Filled by suhmit script:
- blah_id 
- 
- Unfilled entries:
- wn_addr
- exitreason
-*/
-
 /*
 bhist -u all -a -l
 In line:
@@ -403,7 +425,22 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 
 */
 
- 	char *output;
+/*
+ Filled entries:
+ batch_id
+ status
+ exitcode
+ wn_addr
+ udate
+ 
+ Filled by suhmit script:
+ blah_id 
+ 
+ Unfilled entries:
+ exitreason
+*/
+
+	char *output;
         FILE *file_output;
 	int len;
 	char **line;
@@ -421,11 +458,11 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	if((token=calloc(100 * sizeof *token,1)) == 0){
 		sysfatal("can't malloc token %r");
 	}
-	if((command_string=calloc(NUM_CHARS+strlen(query),1)) == 0){
+	if((command_string=calloc(STR_CHARS,1)) == 0){
 		sysfatal("can't malloc command_string %r");
 	}
 
-	sprintf(command_string,"%s/bhist -u all -a -l",lsf_binpath);
+	sprintf(command_string,"%s/bhist -u all -a -l -n %s",lsf_binpath,bhist_logs_to_read);
 	file_output = popen(command_string,"r");
 
         if (file_output != NULL){
