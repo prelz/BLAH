@@ -253,6 +253,7 @@ BEGIN {
 	rex_running  = "\"JOB_START\" \"[0-9\.]+\" [0-9]+ " jobId
 	rex_deleted  = "\"JOB_SIGNAL\" \"[0-9\.]+\" [0-9]+ " jobId " [0-9]+ [0-9]+ \"KILL\""
 	rex_done     = "\"JOB_STATUS\" \"[0-9\.]+\" [0-9]+ " jobId " 192 "
+	rex_pperr    = "\"JOB_STATUS\" \"[0-9\.]+\" [0-9]+ " jobId " 320 "
 	rex_finished = "\"JOB_STATUS\" \"[0-9\.]+\" [0-9]+ " jobId " 32 "
 	rex_phold    = "\"JOB_STATUS\" \"[0-9\.]+\" [0-9]+ " jobId " 2 "
         rex_shold    = "\"JOB_STATUS\" \"[0-9\.]+\" [0-9]+ " jobId " 8 "
@@ -285,6 +286,12 @@ $0 ~ rex_deleted {
 $0 ~ rex_done {
 	jobstatus = 4
 	exitcode = 0
+	exit
+}
+
+$0 ~ rex_pperr {
+	jobstatus = 4
+	exitcode = -1
 	exit
 }
 
