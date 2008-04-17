@@ -448,6 +448,10 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	int maxtok_l=0,maxtok_t=0,i,j;
 	job_registry_entry en;
 	int ret;
+	char *timestamp;
+	int tmstampepoch;
+	char *batch_str;
+	char *wn_str; 
 
         if((output=calloc(STR_CHARS,1)) == 0){
                 printf("can't malloc output\n");
@@ -473,27 +477,83 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
         }
         pclose(file_output);
 	
-	maxtok_l = strtoken(output, '\n', line);   
+	maxtok_l = strtoken(output, '\n', line);
+	 
 	for(i=0;i<maxtok_l;i++){
-		maxtok_t = strtoken(line[i], ' ', token);
-		
-		JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,token[0]);
-		en.status=atoi(token[2]);
-		en.exitcode=atoi(token[4]);
-		en.udate=atoi(token[5]);
-                JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
-                JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
-		
-		if ((ret=job_registry_update(rha, &en)) < 0)
-		{
-			fprintf(stderr,"Append of record %d returns %d: ",i,ret);
-			perror("");
+				
+		if(line[i] && strstr(line[i],"Job <")){	
+			maxtok_t = strtoken(line[i], ',', token);
+			batch_str=strdel(token[0],"Job <");
+			batch_str=strdel(batch_str,">");
+			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
+			for(j=0;j<maxtok_t;j++){
+				free(token[j]);
+			}
+		}
+		if(line[i] && strstr(line[i]," Started")){	
+			maxtok_t = strtoken(line[i], ' ', token);
+			if((timestamp=calloc(STR_CHARS,1)) == 0){
+				sysfatal("can't malloc wn in PollDB: %r");
+			}
+			sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
+			timestamp[strlen(timestamp)-1]='\0';
+			tmstampepoch=str2epoch(timestamp,"W");
+			en.udate=tmstampepoch;
+			en.status=2;
+			free(timestamp);
+			wn_str=strdel(token[6],"<");
+			wn_str=strdel(wn_str,">");
+			wn_str=strdel(wn_str,",");
+			JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
+			for(j=0;j<maxtok_t;j++){
+				free(token[j]);
+			}
+		}
+		if(line[i] && strstr(line[i]," Exited with exit code")){	
+			maxtok_t = strtoken(line[i], ' ', token);
+			if((timestamp=calloc(STR_CHARS,1)) == 0){
+				sysfatal("can't malloc wn in PollDB: %r");
+			}
+			sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
+			timestamp[strlen(timestamp)-1]='\0';
+			tmstampepoch=str2epoch(timestamp,"W");
+			en.udate=tmstampepoch;
+			en.status=4;
+			free(timestamp);
+			token[8]=strdel(token[8],".");
+			en.exitcode=atoi(token[8]);
+			JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+			for(j=0;j<maxtok_t;j++){
+				free(token[j]);
+			}
+		}
+		if(line[i] && strstr(line[i]," Done successfully")){	
+			maxtok_t = strtoken(line[i], ' ', token);
+			if((timestamp=calloc(STR_CHARS,1)) == 0){
+				sysfatal("can't malloc wn in PollDB: %r");
+			}
+			sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
+			timestamp[strlen(timestamp)-1]='\0';
+			tmstampepoch=str2epoch(timestamp,"W");
+			en.udate=tmstampepoch;
+			en.status=4;
+			free(timestamp);
+			en.exitcode=0;
+			JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+			for(j=0;j<maxtok_t;j++){
+				free(token[j]);
+			}
+		}
+		if(line[i] && strstr(line[i],"------------------------------------------------------------------------------")){
+			if ((ret=job_registry_update(rha, &en)) < 0)
+			{
+				fprintf(stderr,"Append of record returns %d: ",ret);
+				perror("");
+			}
 		}
 		
-		for(j=0;j<maxtok_t;j++){
-			free(token[j]);
-		}
 	}
+
 	for(i=0;i<maxtok_l;i++){
 		free(line[i]);
 	}
