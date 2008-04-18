@@ -501,6 +501,18 @@ int AddToStruct(char *line, int flag){
 					}
 				}
 
+			}  else if(j_status && strcmp(j_status,"320")==0){
+			
+				if(j2js[id] && strcmp(j2js[id],"3")!=0){
+					InfoAdd(id,"4","JOBSTATUS");
+					InfoAdd(id,"-1","EXITCODE");
+					InfoAdd(id,j_time,"COMPLTIME");
+    
+					if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
+						NotifyCream(id, "4", j2bl[id], j2wn[id], "-1", j2ct[id], flag);
+					}
+				}
+			
 			}  else if(j_status && strcmp(j_status,"32")==0){
 
 				if(j2js[id] && strcmp(j2js[id],"3")!=0){
