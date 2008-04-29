@@ -276,7 +276,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
  exitcode
  udate
  
- Filled by suhmit script:
+ Filled by submit script:
  blah_id 
  
  Unfilled entries:
@@ -433,7 +433,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
  wn_addr
  udate
  
- Filled by suhmit script:
+ Filled by submit script:
  blah_id 
  
  Unfilled entries:
