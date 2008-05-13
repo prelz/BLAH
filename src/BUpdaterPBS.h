@@ -7,7 +7,7 @@
 #endif
 
 int IntStateQuery();
-int FinalStateQuery();
+int FinalStateQuery(char *input_string);
 int AssignFinalState(char *batchid);
 
 int runfinal=FALSE;

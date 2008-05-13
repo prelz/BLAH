@@ -300,10 +300,10 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
         if((output=calloc(STR_CHARS,1)) == 0){
                 printf("can't malloc output\n");
         }
-	if((line=calloc(100 * sizeof *line,1)) == 0){
+	if((line=calloc(10000 * sizeof *line,1)) == 0){
 		sysfatal("can't malloc line %r");
 	}
-	if((token=calloc(100 * sizeof *token,1)) == 0){
+	if((token=calloc(10000 * sizeof *token,1)) == 0){
 		sysfatal("can't malloc token %r");
 	}
 	if((command_string=calloc(STR_CHARS,1)) == 0){
@@ -456,10 +456,10 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
         if((output=calloc(STR_CHARS,1)) == 0){
                 printf("can't malloc output\n");
         }
-	if((line=calloc(100 * sizeof *line,1)) == 0){
+	if((line=calloc(10000 * sizeof *line,1)) == 0){
 		sysfatal("can't malloc line %r");
 	}
-	if((token=calloc(100 * sizeof *token,1)) == 0){
+	if((token=calloc(10000 * sizeof *token,1)) == 0){
 		sysfatal("can't malloc token %r");
 	}
 	if((command_string=calloc(STR_CHARS,1)) == 0){

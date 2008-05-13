@@ -6,9 +6,9 @@ int main(int argc, char *argv[]){
 	job_registry_entry *en;
 	time_t now;
 	time_t purge_time=0;
-	char *constraint=NULL;
 	char *q=NULL;
 	char *pidfile=NULL;
+	char *final_string=NULL;
 	
 	poptContext poptcon;
 	int rc=0;			     
@@ -192,7 +192,7 @@ int main(int argc, char *argv[]){
 			continue;
 		}
 
-		if((constraint=calloc(STR_CHARS,1)) == 0){
+		if((final_string=calloc(STR_CHARS,1)) == 0){
 			sysfatal("can't malloc constraint %r");
         	}
 		first=TRUE;
@@ -208,16 +208,18 @@ int main(int argc, char *argv[]){
 			
 			if((now-en->mdate>finalstate_query_interval) && en->status!=3 && en->status!=4)
 			{
+				strcat(final_string,en->batch_id);
+				strcat(final_string,":");
 				runfinal=TRUE;
 			}
 			free(en);
 		}
 		
 		if(runfinal){
-			FinalStateQuery();
+			FinalStateQuery(final_string);
 			runfinal=FALSE;
 		}
-		free(constraint);		
+		free(final_string);		
 		fclose(fd);		
 		job_registry_destroy(rha);
 		sleep(2);
@@ -232,30 +234,13 @@ int
 IntStateQuery()
 {
 /*
- bjobs -u all -a -l 
- In the first 2 lines:
-Job <939297>, Job Name <cre02_199385905>, User <infngrid010>, Project <default>
-                     , Status <EXIT>, Queue <creamtest2>, Command <#!/bin/bash;
-there are:
-batch_id (Job <939297>)
-eventually  blah_id (Job Name <cre02_199385905>)
-status (Status <EXIT>)
+qstat -f
 
-In line:
-Tue Mar 18 13:30:36: Started on <cream-wn-024>, Execution Home </home/infngrid0
-
-there are:
-udate for the state running(Tue Mar 18 13:30:36)
-wn_addr (Started on <cream-wn-024>)
-
-in line:
-Tue Mar 18 13:47:32: Exited with exit code 2. The CPU time used is 1.8 seconds.
-or
-Tue Mar 18 12:48:25: Done successfully. The CPU time used is 2.1 seconds.
-
-there are:
-udate for the final state (Tue Mar 18 13:47:32):
-exitcode (=0 if Done successfully) or (from Exited with exit code 2)
+Job Id: 11.cream-12.pd.infn.it
+    Job_Name = cream_579184706
+    job_state = R
+    ctime = Wed Apr 23 11:39:55 2008
+    exec_host = cream-wn-029.pn.pd.infn.it/0
 */
 
 /*
@@ -266,7 +251,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
  exitcode
  udate
  
- Filled by suhmit script:
+ Filled by submit script:
  blah_id 
  
  Unfilled entries:
@@ -286,21 +271,23 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	int tmstampepoch;
 	char *batch_str;
 	char *wn_str; 
+        char *twn_str;
+        char *status_str;
 
         if((output=calloc(STR_CHARS,1)) == 0){
                 printf("can't malloc output\n");
         }
-	if((line=calloc(100 * sizeof *line,1)) == 0){
+	if((line=calloc(10000 * sizeof *line,1)) == 0){
 		sysfatal("can't malloc line %r");
 	}
-	if((token=calloc(100 * sizeof *token,1)) == 0){
+	if((token=calloc(10000 * sizeof *token,1)) == 0){
 		sysfatal("can't malloc token %r");
 	}
 	if((command_string=calloc(STR_CHARS,1)) == 0){
 		sysfatal("can't malloc command_string %r");
 	}
 	
-	sprintf(command_string,"%s/",pbs_binpath);
+	sprintf(command_string,"%s/qstat -f",pbs_binpath);
 	file_output = popen(command_string,"r");
 
         if (file_output != NULL){
@@ -314,7 +301,63 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	maxtok_l = strtoken(output, '\n', line);
 
 	for(i=0;i<maxtok_l;i++){
-				
+		if(line[i] && strstr(line[i],"Job Id: ")){
+                        maxtok_t = strtoken(line[i], ':', token);
+			batch_str=strdel(token[1]," ");
+			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
+                        for(j=0;j<maxtok_t;j++){
+                                free(token[j]);
+                        }
+		}
+		if(line[i] && strstr(line[i],"job_state = ")){	
+			maxtok_t = strtoken(line[i], '=', token);
+			status_str=strdel(token[1]," ");
+			if(status_str && strcmp(status_str,"Q")==0){ 
+				en.status=1;
+			}
+			if(status_str && strcmp(status_str,"R")==0){ 
+				en.status=2;
+			}
+			if(status_str && strcmp(status_str,"H")==0){ 
+				en.status=5;
+			}
+                        for(j=0;j<maxtok_t;j++){
+                                free(token[j]);
+                        }
+		}
+		if(line[i] && strstr(line[i],"exec_host = ")){	
+			maxtok_t = strtoken(line[i], '=', token);
+			twn_str=strdup(token[1]);
+                        for(j=0;j<maxtok_t;j++){
+                                free(token[j]);
+                        }
+			maxtok_t = strtoken(twn_str, '/', token);
+			wn_str=strdel(token[0]," ");
+			wn_str=strdup(wn_str);
+			JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
+                        for(j=0;j<maxtok_t;j++){
+                                free(token[j]);
+                        }
+		}
+		if(line[i] && strstr(line[i],"ctime = ")){	
+                        maxtok_t = strtoken(line[i], ' ', token);
+                        if((timestamp=calloc(STR_CHARS,1)) == 0){
+                                sysfatal("can't malloc wn in PollDB: %r");
+                        }
+                        sprintf(timestamp,"%s %s %s %s %s",token[2],token[3],token[4],token[5],token[6]);
+                        tmstampepoch=str2epoch(timestamp,"L");
+			en.udate=tmstampepoch;
+                        for(j=0;j<maxtok_t;j++){
+                                free(token[j]);
+                        }
+		}
+		if(line[i] && strstr(line[i],"etime = ")){	
+                        if ((ret=job_registry_update(rha, &en)) < 0)
+                        {
+                                fprintf(stderr,"Append of record returns %d: ",ret);
+                                perror("");
+                        }
+		}				
 	}
 
 	for(i=0;i<maxtok_l;i++){
@@ -328,85 +371,135 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 }
 
 int
-FinalStateQuery()
+FinalStateQuery(char *input_string)
 {
 /*
-bhist -u all -a -l
+tracejob -m -l -a <jobid>
 In line:
 
-Tue Mar 18 13:47:32: Exited with exit code 2. The CPU time used is 1.8 seconds;
-or
-Tue Mar 18 12:48:24: Done successfully. The CPU time used is 2.1 seconds;
+04/23/2008 11:50:43  S    Exit_status=0 resources_used.cput=00:00:01 resources_used.mem=11372kb resources_used.vmem=52804kb
+                          resources_used.walltime=00:10:15
 
 there are:
-udate for the final state (Tue Mar 18 13:47:32):
-exitcode (=0 if Done successfully) or (from Exited with exit code 2)
+udate for the final state (04/23/2008 11:50:43):
+exitcode Exit_status=
 
 */
 
 /*
  Filled entries:
- batch_id
- status
+ batch_id (a list of jobid is given, one for each tracejob call)
+ status (always a final state 3 or 4)
  exitcode
- wn_addr
  udate
  
- Filled by suhmit script:
+ Filled by submit script:
  blah_id 
  
  Unfilled entries:
  exitreason
 */
+/*
+[root@cream-12 server_logs]# tracejob -m -l -a 13
 
+Job: 13.cream-12.pd.infn.it
+
+04/23/2008 11:40:27  S    enqueuing into cream_1, state 1 hop 1
+04/23/2008 11:40:27  S    Job Queued at request of infngrid002@cream-12.pd.infn.it, owner = infngrid002@cream-12.pd.infn.it, job name =
+                          cream_365713239, queue = cream_1
+04/23/2008 11:40:28  S    Job Modified at request of root@cream-12.pd.infn.it
+04/23/2008 11:40:28  S    Job Run at request of root@cream-12.pd.infn.it
+04/23/2008 11:50:43  S    Exit_status=0 resources_used.cput=00:00:01 resources_used.mem=11372kb resources_used.vmem=52804kb
+                          resources_used.walltime=00:10:15
+04/23/2008 11:50:44  S    dequeuing from cream_1, state COMPLETE
+*/
 	char *output;
         FILE *file_output;
 	int len;
 	char **line;
 	char **token;
-	int maxtok_l=0,maxtok_t=0,i,j;
+	char **jobid;
+	int maxtok_l=0,maxtok_t=0,maxtok_j=0,i,j;
 	job_registry_entry en;
 	int ret;
 	char *timestamp;
 	int tmstampepoch;
 	char *batch_str;
 	char *wn_str; 
+	char *exit_str; 
 
         if((output=calloc(STR_CHARS,1)) == 0){
                 printf("can't malloc output\n");
         }
-	if((line=calloc(100 * sizeof *line,1)) == 0){
+	if((line=calloc(10000 * sizeof *line,1)) == 0){
 		sysfatal("can't malloc line %r");
 	}
-	if((token=calloc(100 * sizeof *token,1)) == 0){
+	if((token=calloc(10000 * sizeof *token,1)) == 0){
 		sysfatal("can't malloc token %r");
+	}
+	if((jobid=calloc(10000 * sizeof *jobid,1)) == 0){
+		sysfatal("can't malloc jobid %r");
 	}
 	if((command_string=calloc(STR_CHARS,1)) == 0){
 		sysfatal("can't malloc command_string %r");
 	}
-
-	sprintf(command_string,"%s/",pbs_binpath);
-	file_output = popen(command_string,"r");
-
-        if (file_output != NULL){
-                len = fread(output, sizeof(char), STR_CHARS - 1 , file_output);
-                if (len>0){
-                        output[len-1]='\000';
-                }
-        }
-        pclose(file_output);
 	
-	maxtok_l = strtoken(output, '\n', line);
-	 
-	for(i=0;i<maxtok_l;i++){
-				
-	}
+	maxtok_j = strtoken(input_string, ':', jobid);
+	
+	for(i=0;i<maxtok_j;i++){
+	
+		sprintf(command_string,"%s/tracejob -m -l -a %s",pbs_binpath,jobid[i]);
+		file_output = popen(command_string,"r");
 
-	for(i=0;i<maxtok_l;i++){
-		free(line[i]);
+        	if (file_output != NULL){
+          	      len = fread(output, sizeof(char), STR_CHARS - 1 , file_output);
+          	      if (len>0){
+          	              output[len-1]='\000';
+          	      }
+		}
+		pclose(file_output);
+	
+		maxtok_l = strtoken(output, '\n', line);
+	 
+		for(i=0;i<maxtok_l;i++){
+			if(line[i] && strstr(line[i],"Job: ")){
+                	        maxtok_t = strtoken(line[i], ':', token);
+				batch_str=strdel(token[1]," ");
+				JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
+                	        for(j=0;j<maxtok_t;j++){
+                	                free(token[j]);
+                	        }
+			}
+			if(line[i] && strstr(line[i],"Exit_status=")){	
+				maxtok_t = strtoken(line[i], ' ', token);
+                        	if((timestamp=calloc(STR_CHARS,1)) == 0){
+                        	        sysfatal("can't malloc wn in PollDB: %r");
+                        	}
+                        	sprintf(timestamp,"%s %s",token[0],token[1]);
+				tmstampepoch=str2epoch(timestamp,"A");
+				exit_str=strdup(token[3]);
+                        	for(j=0;j<maxtok_t;j++){
+					free(token[j]);
+                        	}
+				maxtok_t = strtoken(exit_str, '=', token);
+				en.udate=tmstampepoch;
+                        	en.exitcode=atoi(token[1]);
+				en.status=4;
+				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+                        	for(j=0;j<maxtok_t;j++){
+                                	free(token[j]);
+                        	}
+			}
+				
+		}
+
+		for(i=0;i<maxtok_l;i++){
+			free(line[i]);
+		}
 	}
 	free(line);
 	free(token);
+	free(jobid);
 	free(output);
 	free(command_string);
 	return(0);

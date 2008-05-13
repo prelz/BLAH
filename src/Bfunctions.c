@@ -189,7 +189,6 @@ int
 str2epoch(char *str, char * f)
 {
   
-	char *dateout;
 	char *strtmp;
 	int idate;
 	time_t now;
@@ -206,6 +205,8 @@ str2epoch(char *str, char * f)
 		strptime(str,"%Y-%m-%d %T",tm);
 	}else if(strcmp(f,"L")==0){
 		strptime(str,"%a %b %d %T %Y",tm);
+        }else if(strcmp(f,"A")==0){
+                strptime(str,"%m/%d/%Y %T",tm);
 	}else if(strcmp(f,"W")==0){
 		
 	/* If do not have the year in the date we compare day and month and set the year */
@@ -231,16 +232,10 @@ str2epoch(char *str, char * f)
 	        free(strtmp);
         }
  
-	if((dateout=calloc(NUM_CHARS,1)) == 0){
-		sysfatal("can't malloc dateout in str2epoch: %r");
-	}
- 
-	strftime(dateout,NUM_CHARS,"%s",tm);
+	tm->tm_isdst=-1;
+	idate=mktime(tm);
  
 	free(tm);
- 
-	idate=atoi(dateout);
-	free(dateout);
  
 	return idate;
  

@@ -12,7 +12,7 @@
 #include <sys/stat.h>
 #include <popt.h>
 
-#define STR_CHARS          5000
+#define STR_CHARS          5000000
 #define NUM_CHARS          300
 #define CSTR_CHARS         25
 #define ERRMAX             80
