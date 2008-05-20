@@ -493,6 +493,12 @@ Job: 13.cream-12.pd.infn.it
 				
 		}
 
+		if ((ret=job_registry_update(rha, &en)) < 0)
+		{
+			fprintf(stderr,"Append of record returns %d: ",ret);
+			perror("");
+		}
+		
 		for(i=0;i<maxtok_l;i++){
 			free(line[i]);
 		}
