@@ -490,7 +490,20 @@ Job: 13.cream-12.pd.infn.it
                                 	free(token[j]);
                         	}
 			}
-				
+			if(line[i] && strstr(line[i],"Job deleted")){	
+				maxtok_t = strtoken(line[i], ' ', token);
+                        	if((timestamp=calloc(STR_CHARS,1)) == 0){
+                        	        sysfatal("can't malloc wn in PollDB: %r");
+                        	}
+                        	sprintf(timestamp,"%s %s",token[0],token[1]);
+				tmstampepoch=str2epoch(timestamp,"A");
+				exit_str=strdup(token[3]);
+                        	for(j=0;j<maxtok_t;j++){
+					free(token[j]);
+                        	}
+				en.udate=tmstampepoch;
+				en.status=3;
+			}
 		}
 
 		if ((ret=job_registry_update(rha, &en)) < 0)
