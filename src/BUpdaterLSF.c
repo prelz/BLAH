@@ -313,13 +313,13 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	sprintf(command_string,"%s/bjobs -u all -a -l",lsf_binpath);
 	file_output = popen(command_string,"r");
 
-        if (file_output != NULL){
+	if (file_output != NULL){
                 len = fread(output, sizeof(char), STR_CHARS - 1 , file_output);
                 if (len>0){
                         output[len-1]='\000';
                 }
+		pclose(file_output);
         }
-        pclose(file_output);
 	
 	maxtok_l = strtoken(output, '\n', line);
 
@@ -474,8 +474,8 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
                 if (len>0){
                         output[len-1]='\000';
                 }
-        }
-        pclose(file_output);
+		pclose(file_output);
+	}
 	
 	maxtok_l = strtoken(output, '\n', line);
 	 
