@@ -46,12 +46,12 @@ int main(int argc, char *argv[]){
 		return -1;
 	}
 
-	ret = config_get("debug_level",cha);
+	ret = config_get("bupdater_debug_level",cha);
 	if (ret != NULL){
 		debug=atoi(ret->value);
 	}
 	
-	ret = config_get("debug_logfile",cha);
+	ret = config_get("bupdater_debug_logfile",cha);
 	if (ret != NULL){
 		debuglogname=strdup(ret->value);
 	}
@@ -88,7 +88,7 @@ int main(int argc, char *argv[]){
 	ret = config_get("purge_interval",cha);
 	if (ret == NULL){
                 if(debug){
-			fprintf(debuglogfile, "%s: key purge_interval not found using the default:%s\n",argv0,purge_interval);
+			fprintf(debuglogfile, "%s: key purge_interval not found using the default:%d\n",argv0,purge_interval);
 			fflush(debuglogfile);
 		}
 	} else {
@@ -98,7 +98,7 @@ int main(int argc, char *argv[]){
 	ret = config_get("finalstate_query_interval",cha);
 	if (ret == NULL){
                 if(debug){
-			fprintf(debuglogfile, "%s: key finalstate_query_interval not found\n",argv0);
+			fprintf(debuglogfile, "%s: key finalstate_query_interval not found using the default:%d\n",argv0,finalstate_query_interval);
 			fflush(debuglogfile);
 		}
 	} else {
@@ -108,7 +108,7 @@ int main(int argc, char *argv[]){
 	ret = config_get("alldone_interval",cha);
 	if (ret == NULL){
                 if(debug){
-			fprintf(debuglogfile, "%s: key alldone_interval not found\n",argv0);
+			fprintf(debuglogfile, "%s: key alldone_interval not found using the default:%d\n",argv0,alldone_interval);
 			fflush(debuglogfile);
 		}
 	} else {
@@ -287,10 +287,10 @@ IntStateQuery()
         if((output=calloc(STR_CHARS,1)) == 0){
                 printf("can't malloc output\n");
         }
-	if((line=calloc(100 * sizeof *line,1)) == 0){
+	if((line=calloc(10000 * sizeof *line,1)) == 0){
 		sysfatal("can't malloc line %r");
 	}
-	if((token=calloc(100 * sizeof *token,1)) == 0){
+	if((token=calloc(10000 * sizeof *token,1)) == 0){
 		sysfatal("can't malloc token %r");
 	}
 	if((command_string=calloc(STR_CHARS,1)) == 0){
@@ -301,12 +301,12 @@ IntStateQuery()
 	file_output = popen(command_string,"r");
 
         if (file_output != NULL){
-                len = fread(output, sizeof(char), STR_CHARS - 1 , file_output);
+		len = fread(output, sizeof(char), STR_CHARS - 1 , file_output);
                 if (len>0){
                         output[len-1]='\000';
                 }
+		pclose(file_output);
         }
-        pclose(file_output);
 	
 	maxtok_l = strtoken(output, '\n', line);
 	for(i=0;i<maxtok_l;i++){
@@ -373,10 +373,10 @@ FinalStateQuery(char *query)
         if((output=calloc(STR_CHARS,1)) == 0){
                 printf("can't malloc output\n");
         }
-	if((line=calloc(100 * sizeof *line,1)) == 0){
+	if((line=calloc(10000 * sizeof *line,1)) == 0){
 		sysfatal("can't malloc line %r");
 	}
-	if((token=calloc(100 * sizeof *token,1)) == 0){
+	if((token=calloc(10000 * sizeof *token,1)) == 0){
 		sysfatal("can't malloc token %r");
 	}
 	if((command_string=calloc(NUM_CHARS+strlen(query),1)) == 0){
@@ -391,8 +391,8 @@ FinalStateQuery(char *query)
                 if (len>0){
                         output[len-1]='\000';
                 }
+		pclose(file_output);
         }
-        pclose(file_output);
 	
 	maxtok_l = strtoken(output, '\n', line);   
 	for(i=0;i<maxtok_l;i++){
