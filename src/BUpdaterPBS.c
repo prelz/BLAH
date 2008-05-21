@@ -290,13 +290,13 @@ Job Id: 11.cream-12.pd.infn.it
 	sprintf(command_string,"%s/qstat -f",pbs_binpath);
 	file_output = popen(command_string,"r");
 
-        if (file_output != NULL){
-                len = fread(output, sizeof(char), STR_CHARS - 1 , file_output);
-                if (len>0){
-                        output[len-1]='\000';
-                }
-        }
-        pclose(file_output);
+	if (file_output != NULL){
+		len = fread(output, sizeof(char), STR_CHARS - 1 , file_output);
+		if (len>0){
+			output[len-1]='\000';
+		}
+		pclose(file_output);
+	}
 	
 	maxtok_l = strtoken(output, '\n', line);
 
@@ -419,7 +419,7 @@ Job: 13.cream-12.pd.infn.it
 	char **line;
 	char **token;
 	char **jobid;
-	int maxtok_l=0,maxtok_t=0,maxtok_j=0,i,j;
+	int maxtok_l=0,maxtok_t=0,maxtok_j=0,i,j,k;
 	job_registry_entry en;
 	int ret;
 	char *timestamp;
@@ -445,31 +445,31 @@ Job: 13.cream-12.pd.infn.it
 	}
 	
 	if(debug>1){
-		fprintf(debuglogfile, "%s: jobid string in FinalStateQuery is:%sX\n",argv0,input_string);
+		fprintf(debuglogfile, "%s: jobid string in FinalStateQuery is:%s\n",argv0,input_string);
 		fflush(debuglogfile);
 	}
 	
 	maxtok_j = strtoken(input_string, ':', jobid);
 	
-	for(i=0;i<maxtok_j;i++){
-		if(strlen(jobid[i])==0){
+	for(k=0;k<maxtok_j;k++){
+		if(strlen(jobid[k])==0){
 			continue;
 		}
-		sprintf(command_string,"%s/tracejob -m -l -a %s",pbs_binpath,jobid[i]);
+		sprintf(command_string,"%s/tracejob -m -l -a %s",pbs_binpath,jobid[k]);
 		file_output = popen(command_string,"r");
 		
 		if(debug>1){
-			fprintf(debuglogfile, "%s: command_string in FinalStateQuery is:%sX\n",argv0,command_string);
+			fprintf(debuglogfile, "%s: command_string in FinalStateQuery is:%s\n",argv0,command_string);
 			fflush(debuglogfile);
 		}
 
-        	if (file_output != NULL){
-          	      len = fread(output, sizeof(char), STR_CHARS - 1 , file_output);
-          	      if (len>0){
-          	              output[len-1]='\000';
-          	      }
+		if (file_output != NULL){
+			len = fread(output, sizeof(char), STR_CHARS - 1 , file_output);
+			if (len>0){
+				output[len-1]='\000';
+			}
+			pclose(file_output);
 		}
-		pclose(file_output);
 	
 		maxtok_l = strtoken(output, '\n', line);
 	 
@@ -532,6 +532,9 @@ Job: 13.cream-12.pd.infn.it
 		for(i=0;i<maxtok_l;i++){
 			free(line[i]);
 		}
+	}
+	for(k=0;k<maxtok_j;k++){
+		free(jobid[k]);
 	}
 	free(line);
 	free(token);
