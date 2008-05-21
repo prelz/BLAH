@@ -97,7 +97,7 @@ int main(int argc, char *argv[]){
 	ret = config_get("finalstate_query_interval",cha);
 	if (ret == NULL){
                 if(debug){
-			fprintf(debuglogfile, "%s: key finalstate_query_interval not found\n",argv0);
+			fprintf(debuglogfile, "%s: key finalstate_query_interval not found using the default:%s\n",argv0,finalstate_query_interval);
 			fflush(debuglogfile);
 		}
 	} else {
@@ -107,7 +107,7 @@ int main(int argc, char *argv[]){
 	ret = config_get("alldone_interval",cha);
 	if (ret == NULL){
                 if(debug){
-			fprintf(debuglogfile, "%s: key alldone_interval not found\n",argv0);
+			fprintf(debuglogfile, "%s: key alldone_interval not found using the default:%s\n",argv0,alldone_interval);
 			fflush(debuglogfile);
 		}
 	} else {
@@ -476,22 +476,16 @@ Job: 13.cream-12.pd.infn.it
 			}
 			pclose(file_output);
 		}
-	
+		
+		/* en.status is set =0 here and it is tested if it is !=0 before the registry update: the update is done only if en.status is !=0*/
+		en.status=0;
+		
 		JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,jobid[k]);
 
 		maxtok_l = strtoken(output, '\n', line);
 	 
 		for(i=0;i<maxtok_l;i++){
-/*			
-			if(line[i] && strstr(line[i],"Job: ")){
-                	        maxtok_t = strtoken(line[i], ':', token);
-				batch_str=strdel(token[1]," ");
-				JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
-                	        for(j=0;j<maxtok_t;j++){
-                	                free(token[j]);
-                	        }
-			}
-*/
+
 			if(line[i] && strstr(line[i],"Exit_status=")){	
 				maxtok_t = strtoken(line[i], ' ', token);
                         	if((timestamp=calloc(STR_CHARS,1)) == 0){
@@ -536,11 +530,12 @@ Job: 13.cream-12.pd.infn.it
 			fprintf(debuglogfile, "%s: registry update in FinalStateQuery for: jobid=%s exitcode=%d exitstatus=%d\n",argv0,en.batch_id,en.exitcode,en.status);
 			fflush(debuglogfile);
 		}
-
-		if ((ret=job_registry_update(rha, &en)) < 0)
-		{
-			fprintf(stderr,"Append of record returns %d: ",ret);
-			perror("");
+		
+		if(en.status !=0){
+			if ((ret=job_registry_update(rha, &en)) < 0){
+				fprintf(stderr,"Append of record returns %d: ",ret);
+				perror("");
+			}
 		}
 		
 		for(i=0;i<maxtok_l;i++){

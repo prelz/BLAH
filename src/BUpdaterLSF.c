@@ -97,7 +97,7 @@ int main(int argc, char *argv[]){
 	ret = config_get("finalstate_query_interval",cha);
 	if (ret == NULL){
                 if(debug){
-			fprintf(debuglogfile, "%s: key finalstate_query_interval not found\n",argv0);
+			fprintf(debuglogfile, "%s: key finalstate_query_interval not found using the default:%s\n",argv0,finalstate_query_interval);
 			fflush(debuglogfile);
 		}
 	} else {
@@ -107,7 +107,7 @@ int main(int argc, char *argv[]){
 	ret = config_get("alldone_interval",cha);
 	if (ret == NULL){
                 if(debug){
-			fprintf(debuglogfile, "%s: key alldone_interval not found\n",argv0);
+			fprintf(debuglogfile, "%s: key alldone_interval not found using the default:%s\n",argv0,alldone_interval);
 			fflush(debuglogfile);
 		}
 	} else {
