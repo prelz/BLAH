@@ -452,7 +452,9 @@ Job: 13.cream-12.pd.infn.it
 	maxtok_j = strtoken(input_string, ':', jobid);
 	
 	for(i=0;i<maxtok_j;i++){
-	
+		if(strlen(jobid[i])==0){
+			continue;
+		}
 		sprintf(command_string,"%s/tracejob -m -l -a %s",pbs_binpath,jobid[i]);
 		file_output = popen(command_string,"r");
 		
