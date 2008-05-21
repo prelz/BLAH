@@ -1563,7 +1563,7 @@ job_registry_entry_as_classad(const job_registry_entry *entry)
    { 
     JOB_REGISTRY_APPEND_ATTRIBUTE("WorkerNode=\"%s\"; ",entry->wn_addr);
    }
-  if (entry->exitcode > 0)
+  if (entry->status == COMPLETED)
    {
     JOB_REGISTRY_APPEND_ATTRIBUTE("ExitCode=%d; ",entry->exitcode);
    }
