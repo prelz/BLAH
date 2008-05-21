@@ -30,7 +30,7 @@
 int
 main(int argc, char *argv[])
 {
-  char *registry_file = NULL;
+  char *registry_file = NULL, *registry_file_env = NULL;
   int need_to_free_registry_file = FALSE;
   const char *default_registry_file = "blah_job_registry.bjr";
   char *my_home;
@@ -69,7 +69,11 @@ main(int argc, char *argv[])
     rge = config_get("job_registry", cha);
     if (rge != NULL) registry_file = rge->value;
    }
-  if (registry_file == NULL) registry_file = getenv("BLAH_JOB_REGISTRY_FILE");
+
+  /* Env variable takes precedence */
+  registry_file_env = getenv("BLAH_JOB_REGISTRY_FILE");
+  if (registry_file_env != NULL) registry_file = registry_file_env;
+
   if (registry_file == NULL)
    {
     my_home = getenv("HOME");
