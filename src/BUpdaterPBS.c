@@ -444,12 +444,22 @@ Job: 13.cream-12.pd.infn.it
 		sysfatal("can't malloc command_string %r");
 	}
 	
+	if(debug>1){
+		fprintf(debuglogfile, "%s: jobid string in FinalStateQuery is:%sX\n",argv0,input_string);
+		fflush(debuglogfile);
+	}
+	
 	maxtok_j = strtoken(input_string, ':', jobid);
 	
 	for(i=0;i<maxtok_j;i++){
 	
 		sprintf(command_string,"%s/tracejob -m -l -a %s",pbs_binpath,jobid[i]);
 		file_output = popen(command_string,"r");
+		
+		if(debug>1){
+			fprintf(debuglogfile, "%s: command_string in FinalStateQuery is:%sX\n",argv0,command_string);
+			fflush(debuglogfile);
+		}
 
         	if (file_output != NULL){
           	      len = fread(output, sizeof(char), STR_CHARS - 1 , file_output);
@@ -504,6 +514,11 @@ Job: 13.cream-12.pd.infn.it
 				en.udate=tmstampepoch;
 				en.status=3;
 			}
+		}
+		
+		if(debug>1){
+			fprintf(debuglogfile, "%s: registry update in FinalStateQuery for: jobid=%s exitcode=%d exitstatus=%d\n",argv0,en.batch_id,en.exitcode,en.status);
+			fflush(debuglogfile);
 		}
 
 		if ((ret=job_registry_update(rha, &en)) < 0)
