@@ -330,6 +330,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			batch_str=strdel(token[0],"Job <");
 			batch_str=strdel(batch_str,">");
 			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
+			free(batch_str);
 			for(j=0;j<maxtok_t;j++){
 				free(token[j]);
 			}
@@ -349,6 +350,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			wn_str=strdel(wn_str,">");
 			wn_str=strdel(wn_str,",");
 			JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
+			free(wn_str);
 			for(j=0;j<maxtok_t;j++){
 				free(token[j]);
 			}
@@ -486,6 +488,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			batch_str=strdel(token[0],"Job <");
 			batch_str=strdel(batch_str,">");
 			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
+			free(batch_str);
 			for(j=0;j<maxtok_t;j++){
 				free(token[j]);
 			}
@@ -505,6 +508,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			wn_str=strdel(wn_str,">");
 			wn_str=strdel(wn_str,",");
 			JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
+			free(wn_str);
 			for(j=0;j<maxtok_t;j++){
 				free(token[j]);
 			}

@@ -305,6 +305,7 @@ Job Id: 11.cream-12.pd.infn.it
                         maxtok_t = strtoken(line[i], ':', token);
 			batch_str=strdel(token[1]," ");
 			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
+			free(batch_str);
                         for(j=0;j<maxtok_t;j++){
                                 free(token[j]);
                         }
@@ -321,6 +322,7 @@ Job Id: 11.cream-12.pd.infn.it
 			if(status_str && strcmp(status_str,"H")==0){ 
 				en.status=5;
 			}
+			free(status_str);
                         for(j=0;j<maxtok_t;j++){
                                 free(token[j]);
                         }
@@ -335,7 +337,9 @@ Job Id: 11.cream-12.pd.infn.it
 			wn_str=strdel(token[0]," ");
 			wn_str=strdup(wn_str);
 			JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
-                        for(j=0;j<maxtok_t;j++){
+			free(twn_str);
+ 			free(wn_str);
+                       for(j=0;j<maxtok_t;j++){
                                 free(token[j]);
                         }
 		}
@@ -346,6 +350,7 @@ Job Id: 11.cream-12.pd.infn.it
                         }
                         sprintf(timestamp,"%s %s %s %s %s",token[2],token[3],token[4],token[5],token[6]);
                         tmstampepoch=str2epoch(timestamp,"L");
+			free(timestamp);
 			en.udate=tmstampepoch;
                         for(j=0;j<maxtok_t;j++){
                                 free(token[j]);
@@ -495,6 +500,8 @@ Job: 13.cream-12.pd.infn.it
                         	sprintf(timestamp,"%s %s",token[0],token[1]);
 				tmstampepoch=str2epoch(timestamp,"A");
 				exit_str=strdup(token[3]);
+				free(exit_str);
+				free(timestamp);
                         	for(j=0;j<maxtok_t;j++){
 					free(token[j]);
                         	}
@@ -515,6 +522,8 @@ Job: 13.cream-12.pd.infn.it
                         	sprintf(timestamp,"%s %s",token[0],token[1]);
 				tmstampepoch=str2epoch(timestamp,"A");
 				exit_str=strdup(token[3]);
+				free(exit_str);
+				free(timestamp);
                         	for(j=0;j<maxtok_t;j++){
 					free(token[j]);
                         	}
