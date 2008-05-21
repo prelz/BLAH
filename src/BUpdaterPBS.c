@@ -452,6 +452,7 @@ Job: 13.cream-12.pd.infn.it
 	maxtok_j = strtoken(input_string, ':', jobid);
 	
 	for(k=0;k<maxtok_j;k++){
+	
 		if(strlen(jobid[k])==0){
 			continue;
 		}
@@ -471,9 +472,12 @@ Job: 13.cream-12.pd.infn.it
 			pclose(file_output);
 		}
 	
+		JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,jobid[k]);
+
 		maxtok_l = strtoken(output, '\n', line);
 	 
 		for(i=0;i<maxtok_l;i++){
+/*			
 			if(line[i] && strstr(line[i],"Job: ")){
                 	        maxtok_t = strtoken(line[i], ':', token);
 				batch_str=strdel(token[1]," ");
@@ -482,6 +486,7 @@ Job: 13.cream-12.pd.infn.it
                 	                free(token[j]);
                 	        }
 			}
+*/
 			if(line[i] && strstr(line[i],"Exit_status=")){	
 				maxtok_t = strtoken(line[i], ' ', token);
                         	if((timestamp=calloc(STR_CHARS,1)) == 0){
