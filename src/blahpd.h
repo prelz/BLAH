@@ -38,7 +38,7 @@
 /* Job states
  * */
 typedef enum job_states {
-	UNEFINED,
+	UNDEFINED,
 	IDLE,
 	RUNNING,
 	REMOVED,
