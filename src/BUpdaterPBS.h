@@ -1,6 +1,7 @@
 #include "job_registry.h"
 #include "Bfunctions.h"
 #include "config.h"
+#include "mtsafe_popen.h"
 
 #ifndef VERSION
 #define VERSION            "1.8.0"

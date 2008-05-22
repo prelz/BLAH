@@ -267,6 +267,7 @@ Job Id: 11.cream-12.pd.infn.it
 	int maxtok_l=0,maxtok_t=0,i,j;
 	job_registry_entry en;
 	int ret;
+	int retcode;
 	char *timestamp;
 	int tmstampepoch;
 	char *batch_str;
@@ -274,9 +275,11 @@ Job Id: 11.cream-12.pd.infn.it
         char *twn_str;
         char *status_str;
 
+/*
         if((output=calloc(STR_CHARS,1)) == 0){
                 printf("can't malloc output\n");
         }
+*/
 	if((line=calloc(10000 * sizeof *line,1)) == 0){
 		sysfatal("can't malloc line %r");
 	}
@@ -286,8 +289,11 @@ Job Id: 11.cream-12.pd.infn.it
 	if((command_string=calloc(STR_CHARS,1)) == 0){
 		sysfatal("can't malloc command_string %r");
 	}
-	
+		
 	sprintf(command_string,"%s/qstat -f",pbs_binpath);
+	retcode = exe_getout(command_string, NULL, &output);
+	
+	/*
 	file_output = popen(command_string,"r");
 
 	if (file_output != NULL){
@@ -297,10 +303,12 @@ Job Id: 11.cream-12.pd.infn.it
 		}
 		pclose(file_output);
 	}
-	
+	*/
 	en.status=UNDEFINED;
 
 	maxtok_l = strtoken(output, '\n', line);
+	
+	if(output)free(output);
 
 	for(i=0;i<maxtok_l;i++){
 		if(line[i] && strstr(line[i],"Job Id: ")){
@@ -377,7 +385,6 @@ Job Id: 11.cream-12.pd.infn.it
 	}
 	free(line);
 	free(token);
-	free(output);
 	free(command_string);
 	return(0);
 }

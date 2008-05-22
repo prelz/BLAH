@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.24 2008/04/17 15:29:19 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.25 2008/05/22 12:25:02 mezzadri Exp $ 
 #
 # File:           Makefile.am
 #
@@ -97,7 +97,7 @@ BNotifierCondor_LDADD = -lpopt -lpthread
 BUpdaterLSF_SOURCES = BUpdaterLSF.c Bfunctions.c job_registry.c config.c
 BUpdaterLSF_LDADD = -lpopt -lpthread
 
-BUpdaterPBS_SOURCES = BUpdaterPBS.c Bfunctions.c job_registry.c config.c
+BUpdaterPBS_SOURCES = BUpdaterPBS.c Bfunctions.c job_registry.c config.c mtsafe_popen.c
 BUpdaterPBS_LDADD = -lpopt -lpthread
 
 noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h mtsafe_popen.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h BAParser.h condor_create_log.h proxy_hashcontainer.h job_registry.h config.h BUpdaterCondor.h Bfunctions.h BNotifierCondor.h BUpdaterLSF.h BUpdaterPBS.h
