@@ -298,10 +298,18 @@ Job Id: 11.cream-12.pd.infn.it
 		pclose(file_output);
 	}
 	
+	en.status=UNDEFINED;
+
 	maxtok_l = strtoken(output, '\n', line);
 
 	for(i=0;i<maxtok_l;i++){
 		if(line[i] && strstr(line[i],"Job Id: ")){
+			if(en.status!=UNDEFINED){	
+                        	if ((ret=job_registry_update(rha, &en)) < 0){
+                	                fprintf(stderr,"Append of record returns %d: ",ret);
+					perror("");
+				}
+			}				
                         maxtok_t = strtoken(line[i], ':', token);
 			batch_str=strdel(token[1]," ");
 			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
@@ -314,13 +322,13 @@ Job Id: 11.cream-12.pd.infn.it
 			maxtok_t = strtoken(line[i], '=', token);
 			status_str=strdel(token[1]," ");
 			if(status_str && strcmp(status_str,"Q")==0){ 
-				en.status=1;
+				en.status=IDLE;
 			}
 			if(status_str && strcmp(status_str,"R")==0){ 
-				en.status=2;
+				en.status=RUNNING;
 			}
 			if(status_str && strcmp(status_str,"H")==0){ 
-				en.status=5;
+				en.status=HELD;
 			}
 			free(status_str);
                         for(j=0;j<maxtok_t;j++){
@@ -356,14 +364,13 @@ Job Id: 11.cream-12.pd.infn.it
                                 free(token[j]);
                         }
 		}
-		if(line[i] && strstr(line[i],"etime = ")){	
-                        if ((ret=job_registry_update(rha, &en)) < 0)
-                        {
-                                fprintf(stderr,"Append of record returns %d: ",ret);
-                                perror("");
-                        }
-		}				
 	}
+	if(en.status!=UNDEFINED){	
+		if ((ret=job_registry_update(rha, &en)) < 0){
+			fprintf(stderr,"Append of record returns %d: ",ret);
+			perror("");
+		}
+	}				
 
 	for(i=0;i<maxtok_l;i++){
 		free(line[i]);
@@ -477,8 +484,8 @@ Job: 13.cream-12.pd.infn.it
 			pclose(file_output);
 		}
 		
-		/* en.status is set =0 here and it is tested if it is !=0 before the registry update: the update is done only if en.status is !=0*/
-		en.status=0;
+		/* en.status is set =0 (UNDEFINED) here and it is tested if it is !=0 before the registry update: the update is done only if en.status is !=0*/
+		en.status=UNDEFINED;
 		
 		JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,jobid[k]);
 
@@ -502,7 +509,7 @@ Job: 13.cream-12.pd.infn.it
 				maxtok_t = strtoken(exit_str, '=', token);
 				en.udate=tmstampepoch;
                         	en.exitcode=atoi(token[1]);
-				en.status=4;
+				en.status=COMPLETED;
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
                         	for(j=0;j<maxtok_t;j++){
                                 	free(token[j]);
@@ -522,16 +529,16 @@ Job: 13.cream-12.pd.infn.it
 					free(token[j]);
                         	}
 				en.udate=tmstampepoch;
-				en.status=3;
+				en.status=REMOVED;
 			}
 		}
 		
 		if(debug>1){
-			fprintf(debuglogfile, "%s: registry update in FinalStateQuery for: jobid=%s exitcode=%d exitstatus=%d\n",argv0,en.batch_id,en.exitcode,en.status);
+			fprintf(debuglogfile, "%s: registry update in FinalStateQuery for: jobid=%s exitcode=%d status=%d\n",argv0,en.batch_id,en.exitcode,en.status);
 			fflush(debuglogfile);
 		}
 		
-		if(en.status !=0){
+		if(en.status !=UNDEFINED){
 			if ((ret=job_registry_update(rha, &en)) < 0){
 				fprintf(stderr,"Append of record returns %d: ",ret);
 				perror("");
@@ -562,7 +569,7 @@ int AssignFinalState(char *batchid){
 	now=time(0);
 	
 	JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batchid);
-	en.status=4;
+	en.status=COMPLETED;
 	en.exitcode=-1;
 	en.udate=now;
 	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");

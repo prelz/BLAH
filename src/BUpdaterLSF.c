@@ -321,11 +321,19 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 		pclose(file_output);
         }
 	
+	en.status=UNDEFINED;
+
 	maxtok_l = strtoken(output, '\n', line);
 
 	for(i=0;i<maxtok_l;i++){
 				
 		if(line[i] && strstr(line[i],"Job <")){	
+			if(en.status!=UNDEFINED){	
+                        	if ((ret=job_registry_update(rha, &en)) < 0){
+                	                fprintf(stderr,"Append of record returns %d: ",ret);
+					perror("");
+				}
+			}				
 			maxtok_t = strtoken(line[i], ',', token);
 			batch_str=strdel(token[0],"Job <");
 			batch_str=strdel(batch_str,">");
@@ -344,7 +352,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			timestamp[strlen(timestamp)-1]='\0';
 			tmstampepoch=str2epoch(timestamp,"W");
 			en.udate=tmstampepoch;
-			en.status=2;
+			en.status=RUNNING;
 			free(timestamp);
 			wn_str=strdel(token[6],"<");
 			wn_str=strdel(wn_str,">");
@@ -364,7 +372,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			timestamp[strlen(timestamp)-1]='\0';
 			tmstampepoch=str2epoch(timestamp,"W");
 			en.udate=tmstampepoch;
-			en.status=4;
+			en.status=COMPLETED;
 			free(timestamp);
 			token[8]=strdel(token[8],".");
 			en.exitcode=atoi(token[8]);
@@ -382,7 +390,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			timestamp[strlen(timestamp)-1]='\0';
 			tmstampepoch=str2epoch(timestamp,"W");
 			en.udate=tmstampepoch;
-			en.status=4;
+			en.status=COMPLETED;
 			free(timestamp);
 			en.exitcode=0;
 			JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
@@ -390,15 +398,13 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				free(token[j]);
 			}
 		}
-		if(line[i] && strstr(line[i],"------------------------------------------------------------------------------")){
-			if ((ret=job_registry_update(rha, &en)) < 0)
-			{
-				fprintf(stderr,"Append of record returns %d: ",ret);
-				perror("");
-			}
-		}
-		
 	}
+	if(en.status!=UNDEFINED){	
+		if ((ret=job_registry_update(rha, &en)) < 0){
+			fprintf(stderr,"Append of record returns %d: ",ret);
+			perror("");
+		}
+	}				
 
 	for(i=0;i<maxtok_l;i++){
 		free(line[i]);
@@ -502,7 +508,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			timestamp[strlen(timestamp)-1]='\0';
 			tmstampepoch=str2epoch(timestamp,"W");
 			en.udate=tmstampepoch;
-			en.status=2;
+			en.status=RUNNING;
 			free(timestamp);
 			wn_str=strdel(token[6],"<");
 			wn_str=strdel(wn_str,">");
@@ -522,7 +528,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			timestamp[strlen(timestamp)-1]='\0';
 			tmstampepoch=str2epoch(timestamp,"W");
 			en.udate=tmstampepoch;
-			en.status=4;
+			en.status=COMPLETED;
 			free(timestamp);
 			token[8]=strdel(token[8],".");
 			en.exitcode=atoi(token[8]);
@@ -540,7 +546,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			timestamp[strlen(timestamp)-1]='\0';
 			tmstampepoch=str2epoch(timestamp,"W");
 			en.udate=tmstampepoch;
-			en.status=4;
+			en.status=COMPLETED;
 			free(timestamp);
 			en.exitcode=0;
 			JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
@@ -577,7 +583,7 @@ int AssignFinalState(char *batchid){
 	now=time(0);
 	
 	JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batchid);
-	en.status=4;
+	en.status=COMPLETED;
 	en.exitcode=-1;
 	en.udate=now;
 	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");

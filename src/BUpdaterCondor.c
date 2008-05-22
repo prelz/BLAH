@@ -434,7 +434,7 @@ int AssignFinalState(char *batchid){
 	now=time(0);
 	
 	JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batchid);
-	en.status=4;
+	en.status=COMPLETED;
 	en.exitcode=-1;
 	en.udate=now;
 	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
