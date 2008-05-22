@@ -210,13 +210,13 @@ int main(int argc, char *argv[]){
 		while ((en = job_registry_get_next(rha, fd)) != NULL)
 		{
 
-			/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)  or in suspended state (5)*/
-			if((now-en->mdate>alldone_interval) && en->status!=3 && en->status!=4 && en->status!=5)
+			/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
+			if((now-en->mdate>alldone_interval) && en->status!=REMOVED && en->status!=COMPLETED)
 			{
 				AssignFinalState(en->batch_id);	
 			}
 			
-			if((now-en->mdate>finalstate_query_interval) && en->status!=3 && en->status!=4 && en->status!=5)
+			if((now-en->mdate>finalstate_query_interval) && en->status!=REMOVED && en->status!=COMPLETED)
 			{
 				runfinal=TRUE;
 			}
@@ -485,11 +485,19 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 		pclose(file_output);
 	}
 	
+	en.status=UNDEFINED;
+
 	maxtok_l = strtoken(output, '\n', line);
 	 
 	for(i=0;i<maxtok_l;i++){
 				
 		if(line[i] && strstr(line[i],"Job <")){	
+			if(en.status!=UNDEFINED){	
+                        	if ((ret=job_registry_update(rha, &en)) < 0){
+                	                fprintf(stderr,"Append of record returns %d: ",ret);
+					perror("");
+				}
+			}				
 			maxtok_t = strtoken(line[i], ',', token);
 			batch_str=strdel(token[0],"Job <");
 			batch_str=strdel(batch_str,">");
@@ -554,15 +562,13 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				free(token[j]);
 			}
 		}
-		if(line[i] && strstr(line[i],"------------------------------------------------------------------------------")){
-			if ((ret=job_registry_update(rha, &en)) < 0)
-			{
-				fprintf(stderr,"Append of record returns %d: ",ret);
-				perror("");
-			}
-		}
-		
 	}
+	if(en.status!=UNDEFINED){	
+		if ((ret=job_registry_update(rha, &en)) < 0){
+			fprintf(stderr,"Append of record returns %d: ",ret);
+			perror("");
+		}
+	}				
 
 	for(i=0;i<maxtok_l;i++){
 		free(line[i]);
