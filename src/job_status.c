@@ -37,6 +37,8 @@ extern char *blah_script_location;
 extern int  glexec_mode;
 extern char *gloc;
 extern job_registry_handle *blah_jr_handle;
+extern pthread_mutex_t blah_jr_lock;
+
 #define TSF_DEBUG
 
 int unlink_proxy_symlink(const char *jobDesc, classad_context *cad, char **environment)
@@ -105,43 +107,37 @@ int get_status(const char *jobDesc, classad_context *cad, char **environment, ch
 	char *begin_res;
 	char *end_res;
 	job_registry_entry *ren;
-	FILE *fd;
 
 	/* Look up job registry first, if configured. */
 	if (blah_jr_handle != NULL)
 	{
-		fd = job_registry_open(blah_jr_handle, "r");
-		if (fd != NULL)
-        	{
-        		if (job_registry_rdlock(blah_jr_handle, fd) >= 0)
+		/* File locking will not protect threads in the same */
+		/* process. */
+	 	pthread_mutex_lock(&blah_jr_lock);
+		if ((ren=job_registry_get(blah_jr_handle, jobDesc)) != NULL)
+		{
+			if (!get_workernode) ren->wn_addr[0]='\000';
+			cadstr = job_registry_entry_as_classad(ren);                       
+			if (cadstr != NULL)
 			{
-				if ((ren=job_registry_get(blah_jr_handle, jobDesc)) != NULL)
+				tmpcad=classad_parse(cadstr);
+				free(cadstr);
+				if (tmpcad != NULL)
 				{
-					if (!get_workernode) ren->wn_addr[0]='\000';
-					cadstr = job_registry_entry_as_classad(ren);                       
-					if (cadstr != NULL)
-					{
-						tmpcad=classad_parse(cadstr);
-						free(cadstr);
-						if (tmpcad != NULL)
-						{
-							/* Need to undo the proxy symlink as the status scripts do. */
-							/* FIXME: This can be removed when the proxy file is moved */
-							/* FIXME: into the registry. */
-							unlink_proxy_symlink(jobDesc, tmpcad, environment);					
-							*job_nr = 1;
-							strcpy(error_str[0],"No Error");
-							cad[0] = tmpcad;
-							fclose(fd);
-							return 0;
-						}
-					}
+					/* Need to undo the proxy symlink as the status scripts do. */
+					/* FIXME: This can be removed when the proxy file is moved */
+					/* FIXME: into the registry. */
+					unlink_proxy_symlink(jobDesc, tmpcad, environment);					
+					*job_nr = 1;
+					strcpy(error_str[0],"No Error");
+					cad[0] = tmpcad;
+	 				pthread_mutex_unlock(&blah_jr_lock);
+					return 0;
 				}
-        		}
-			fclose(fd);
+			}
 		}
-
-	}
+	 	pthread_mutex_unlock(&blah_jr_lock);
+        }
 
 	/* If we reach here, any of the above telescope went wrong and, for */
 	/* the time being, we fall back to the old script approach */

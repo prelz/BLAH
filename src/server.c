@@ -136,6 +136,7 @@ static int server_socket;
 static int exit_program = 0;
 static pthread_mutex_t send_lock  = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t bfork_lock  = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t blah_jr_lock  = PTHREAD_MUTEX_INITIALIZER;
 pthread_attr_t cmd_threads_attr;
 
 sem_t sem_total_commands;
@@ -1314,6 +1315,10 @@ cmd_status_job_all(void *args)
 
 	if (blah_children_count>0) check_on_children(blah_children, blah_children_count);
 
+	/* File locking will not protect threads in the same */
+	/* process. */
+	pthread_mutex_lock(&blah_jr_lock);
+
 	fd = job_registry_open(blah_jr_handle, "r");
 	if (fd == NULL)
 	{
@@ -1391,7 +1396,8 @@ cmd_status_job_all(void *args)
 
 wrap_up:
 	if (selecttr != NULL) classad_free_tree(selecttr);
-	fclose(fd);
+	if (fd != NULL) fclose(fd);
+	pthread_mutex_unlock(&blah_jr_lock);
 
 	/* Free up all arguments */
 	free_args(argv);
