@@ -351,7 +351,6 @@ Job Id: 11.cream-12.pd.infn.it
                         }
 			maxtok_t = strtoken(twn_str, '/', token);
 			wn_str=strdel(token[0]," ");
-			wn_str=strdup(wn_str);
 			JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
 			free(twn_str);
  			free(wn_str);
