@@ -1342,7 +1342,11 @@ job_registry_rdlock(const job_registry_handle *rha, FILE *sfd)
   tlock.l_start = 0;
   tlock.l_len = 0; /* Lock whole file */
 
-  if ((ret = fcntl(lfd, F_SETLKW, &tlock)) < 0)  return ret;
+  if ((ret = fcntl(lfd, F_SETLKW, &tlock)) < 0) 
+   {
+    close(lfd);
+    return ret;
+   }
 
   /* Close file immediately */
 
@@ -1395,7 +1399,11 @@ job_registry_wrlock(const job_registry_handle *rha, FILE *sfd)
   tlock.l_start = 0;
   tlock.l_len = 0; /* Lock whole file */
 
-  if ((ret = fcntl(lfd, F_SETLKW, &tlock)) < 0)  return ret;
+  if ((ret = fcntl(lfd, F_SETLKW, &tlock)) < 0)
+   {
+    close(lfd);
+    return ret;
+   }
 
   /* Now obtain the requested write lock */
 
