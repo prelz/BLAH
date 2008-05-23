@@ -514,6 +514,7 @@ job_registry_resync(job_registry_handle *rha, FILE *fd)
    {
     if (fseek(fd,0L,SEEK_SET) < 0) return JOB_REGISTRY_FSEEK_FAIL;
     if (rha->entries != NULL) free(rha->entries);
+    rha->entries = NULL;
     rha->firstrec = 0;
     rha->lastrec = 0;
     rha->n_entries = 0;
