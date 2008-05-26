@@ -175,39 +175,41 @@ exe_getout(char *const command, char *const environment[], char **cmd_output)
 			/* Free the wordexp'd args */
 			wordfree(&args);
 
-			/* Wait for the command to finish */
-			waitpid(pid, &status, 0);
-
-			if (WIFEXITED(status))
+			/* Initialise empty result */
+			if ((*cmd_output = (char *)malloc(sizeof(char))) == NULL)
 			{
-				/* Initialise empty result */
-				if ((*cmd_output = (char *)malloc(sizeof(char))) == NULL)
+				fprintf(stderr, "out of memory!\n");
+				exit(1);
+			}
+			*cmd_output[0] = '\000';
+
+			/* Read the command's output */
+			while((char_count = read(fdpipe[0], buffer, sizeof(buffer) - 1)) > 0)
+			{
+				buffer[char_count] = '\000';
+				if ((*cmd_output = (char *)realloc(*cmd_output, res_len + char_count + 1)) == NULL)
 				{
 					fprintf(stderr, "out of memory!\n");
 					exit(1);
 				}
-				*cmd_output[0] = '\000';
+				strcpy(*cmd_output + res_len, buffer);
+				res_len += char_count;
+			}
 
-				/* Read the command's output */
-				while((char_count = read(fdpipe[0], buffer, sizeof(buffer) - 1)) > 0)
-				{
-					buffer[char_count] = '\000';
-					if ((*cmd_output = (char *)realloc(*cmd_output, res_len + char_count + 1)) == NULL)
-					{
-						fprintf(stderr, "out of memory!\n");
-						exit(1);
-					}
-					strcpy(*cmd_output + res_len, buffer);
-					res_len += char_count;
-				}
+			/* reap child */
+			waitpid(pid, &status, 0);
 
+			close(fdpipe[0]);
+
+			if (WIFEXITED(status))
+			{
 				/* Close the pipe */
-				close(fdpipe[0]);
 				exitcode = WEXITSTATUS(status);
 			}
 			else if (WIFSIGNALED(status))
 			{
 				exitcode = WTERMSIG(status);
+				if (*cmd_output != NULL) free(*cmd_output);
 #ifdef _GNU_SOURCE
 				*cmd_output = strdup(strsignal(exitcode));
 #else
