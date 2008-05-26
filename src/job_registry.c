@@ -284,7 +284,9 @@ job_registry_init(const char *path,
                   job_registry_index_mode mode)
 {
   job_registry_handle *rha;
-  struct stat lst, dst;
+  struct stat fst, lst, dst;
+  char real_file_name[FILENAME_MAX];
+  int rlnk_status;
   mode_t old_umask;
   const char *npu_tail="/npu";
   int cfd;
@@ -302,6 +304,17 @@ job_registry_init(const char *path,
   rha->n_entries = 0;
   rha->n_alloc = 0;
   rha->mode = mode;
+
+  /* Resolve symbolic link, if any */
+  if (lstat(path, &fst) >= 0)
+   {
+    if (S_ISLNK(fst.st_mode))
+     {
+      rlnk_status = readlink(path, real_file_name, sizeof(real_file_name));
+      if (rlnk_status > 0 && rlnk_status < sizeof(real_file_name))
+        path = real_file_name;
+     }
+   }
 
   /* Copy path of file repository */
   rha->path = strdup(path);
@@ -1294,7 +1307,7 @@ job_registry_get(job_registry_handle *rha,
  */
 
 FILE *
-job_registry_open(const job_registry_handle *rha, const char *mode)
+job_registry_open(job_registry_handle *rha, const char *mode)
 {
   FILE *fd;
 
@@ -1630,7 +1643,7 @@ job_registry_entry_as_classad(const job_registry_entry *entry)
 job_registry_split_id *
 job_registry_split_blah_id(const char *bid)
  {
-  char *firsts, *seconds, *pstart;
+  const char *firsts, *seconds, *pstart;
   int fsl, ssl, psl;
   job_registry_split_id *ret;
 

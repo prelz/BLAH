@@ -156,7 +156,7 @@ int job_registry_update_op(job_registry_handle *rhandle,
                         job_registry_entry *entry, FILE *fd);
 job_registry_entry *job_registry_get(job_registry_handle *rhandle,
                                      const char *id);
-FILE *job_registry_open(const job_registry_handle *rhandle, const char *mode);
+FILE *job_registry_open(job_registry_handle *rhandle, const char *mode);
 int job_registry_rdlock(const job_registry_handle *rhandle, FILE *sfd);
 int job_registry_wrlock(const job_registry_handle *rhandle, FILE *sfd);
 job_registry_entry *job_registry_get_next(const job_registry_handle *rhandle,
