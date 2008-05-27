@@ -400,8 +400,10 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	}
 	if(en.status!=UNDEFINED){	
 		if ((ret=job_registry_update(rha, &en)) < 0){
+			/*
 			fprintf(stderr,"Append of record returns %d: ",ret);
 			perror("");
+			*/
 		}
 	}				
 
@@ -563,8 +565,10 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	}
 	if(en.status!=UNDEFINED){	
 		if ((ret=job_registry_update(rha, &en)) < 0){
+			/*
 			fprintf(stderr,"Append of record returns %d: ",ret);
 			perror("");
+			*/
 		}
 	}				
 
