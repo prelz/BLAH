@@ -1140,6 +1140,52 @@ job_registry_update_op(job_registry_handle *rha,
 }
 
 /*
+ * job_registry_get_recnum
+ *
+ * Binary search for an entry in the indexed, sorted job registry pointed to by
+ * rha. The record number in the current JR cache is returned.
+ * No file access is required.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
+ * @param id Job id key to be looked up 
+ *
+ * @return Record number of the found record, or 0 if the record was not found.
+ */
+
+job_registry_recnum_t 
+job_registry_get_recnum(const job_registry_handle *rha,
+                        const char *id)
+{
+  /* Binary search in entries */
+  int left,right,cur;
+  job_registry_recnum_t found=0;
+  int cmp;
+
+  left = 0;
+  right = rha->n_entries -1;
+
+  while (right >= left)
+   {
+    cur = (right + left) /2;
+    cmp = strcmp(rha->entries[cur].id,id);
+    if (cmp == 0)
+     {
+      found = rha->entries[cur].recnum;
+      break;
+     }
+    else if (cmp < 0)
+     {
+      left = cur+1;
+     }
+    else
+     {
+      right = cur-1;
+     }
+   }
+  return found;
+}
+
+/*
  * job_registry_lookup
  * job_registry_lookup_op
  *
@@ -1175,36 +1221,14 @@ job_registry_recnum_t
 job_registry_lookup_op(job_registry_handle *rha,
                        const char *id, FILE *fd)
 {
-  /* Binary search in entries */
-  int left,right,cur;
   job_registry_recnum_t found=0;
-  int cmp;
   int retry;
   int need_to_fclose = FALSE;
 
-  left = 0;
-  right = rha->n_entries -1;
-
   for (retry=0; retry < 2; retry++)
    {
-    while (right >= left)
-     {
-      cur = (right + left) /2;
-      cmp = strcmp(rha->entries[cur].id,id);
-      if (cmp == 0)
-       {
-        found = rha->entries[cur].recnum;
-        break;
-       }
-      else if (cmp < 0)
-       {
-        left = cur+1;
-       }
-      else
-       {
-        right = cur-1;
-       }
-     }
+    found = job_registry_get_recnum(rha, id); 
+
     /* If the entry was not found the first time around, try resyncing once */
     if (found == 0 && retry == 0)
      {

@@ -137,6 +137,8 @@ void job_registry_destroy(job_registry_handle *rhandle);
 job_registry_recnum_t job_registry_firstrec(FILE *fd);
 int job_registry_resync(job_registry_handle *rhandle, FILE *fd);
 int job_registry_sort(job_registry_handle *rhandle);
+job_registry_recnum_t job_registry_get_recnum(const job_registry_handle *rha,
+                                              const char *id);
 job_registry_recnum_t job_registry_lookup(job_registry_handle *rhandle,
                                           const char *id);
 job_registry_recnum_t job_registry_lookup_op(job_registry_handle *rhandle,
