@@ -296,6 +296,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	int tmstampepoch;
 	char *batch_str;
 	char *wn_str; 
+	char *ex_str; 
 
         if((output=calloc(STR_CHARS,1)) == 0){
                 printf("can't malloc output\n");
@@ -335,8 +336,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				}
 			}				
 			maxtok_t = strtoken(line[i], ',', token);
-			batch_str=strdel(token[0],"Job <");
-			batch_str=strdel(batch_str,">");
+			batch_str=strdel(token[0],"Job <>");
 			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
 			free(batch_str);
 			for(j=0;j<maxtok_t;j++){
@@ -354,9 +354,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			en.udate=tmstampepoch;
 			en.status=RUNNING;
 			free(timestamp);
-			wn_str=strdel(token[6],"<");
-			wn_str=strdel(wn_str,">");
-			wn_str=strdel(wn_str,",");
+			wn_str=strdel(token[6],"<>,");
 			JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
 			free(wn_str);
 			for(j=0;j<maxtok_t;j++){
@@ -374,8 +372,9 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			en.udate=tmstampepoch;
 			en.status=COMPLETED;
 			free(timestamp);
-			token[8]=strdel(token[8],".");
-			en.exitcode=atoi(token[8]);
+			ex_str=strdel(token[8],".");
+			en.exitcode=atoi(ex_str);
+			free(ex_str);
 			JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 			for(j=0;j<maxtok_t;j++){
 				free(token[j]);
@@ -460,6 +459,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	int tmstampepoch;
 	char *batch_str;
 	char *wn_str; 
+	char *ex_str; 
 
         if((output=calloc(STR_CHARS,1)) == 0){
                 printf("can't malloc output\n");
@@ -499,8 +499,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				}
 			}				
 			maxtok_t = strtoken(line[i], ',', token);
-			batch_str=strdel(token[0],"Job <");
-			batch_str=strdel(batch_str,">");
+			batch_str=strdel(token[0],"Job <>");
 			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
 			free(batch_str);
 			for(j=0;j<maxtok_t;j++){
@@ -518,9 +517,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			en.udate=tmstampepoch;
 			en.status=RUNNING;
 			free(timestamp);
-			wn_str=strdel(token[6],"<");
-			wn_str=strdel(wn_str,">");
-			wn_str=strdel(wn_str,",");
+			wn_str=strdel(token[6],"<>,");
 			JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
 			free(wn_str);
 			for(j=0;j<maxtok_t;j++){
@@ -538,8 +535,9 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			en.udate=tmstampepoch;
 			en.status=COMPLETED;
 			free(timestamp);
-			token[8]=strdel(token[8],".");
-			en.exitcode=atoi(token[8]);
+			ex_str=strdel(token[8],".");
+			en.exitcode=atoi(ex_str);
+			free(ex_str);
 			JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 			for(j=0;j<maxtok_t;j++){
 				free(token[j]);

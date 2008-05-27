@@ -507,12 +507,12 @@ Job: 13.cream-12.pd.infn.it
                         	sprintf(timestamp,"%s %s",token[0],token[1]);
 				tmstampepoch=str2epoch(timestamp,"A");
 				exit_str=strdup(token[3]);
-				free(exit_str);
 				free(timestamp);
                         	for(j=0;j<maxtok_t;j++){
 					free(token[j]);
                         	}
 				maxtok_t = strtoken(exit_str, '=', token);
+				free(exit_str);
 				en.udate=tmstampepoch;
                         	en.exitcode=atoi(token[1]);
 				en.status=COMPLETED;
@@ -528,8 +528,6 @@ Job: 13.cream-12.pd.infn.it
                         	}
                         	sprintf(timestamp,"%s %s",token[0],token[1]);
 				tmstampepoch=str2epoch(timestamp,"A");
-				exit_str=strdup(token[3]);
-				free(exit_str);
 				free(timestamp);
                         	for(j=0;j<maxtok_t;j++){
 					free(token[j]);
