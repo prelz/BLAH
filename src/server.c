@@ -923,7 +923,7 @@ cmd_submit_job(void *args)
 		proxynameNew = make_message("%s.glexec", proxyname);
 		free(proxyname);
 		proxyname = proxynameNew;
-                if (stat(proxynameNew, &buf) >= 0) unlink(proxynameNew);
+                /* Let glexec rotate the new proxy in place if (stat(proxynameNew, &buf) >= 0) unlink(proxynameNew); */
 
 		for(count = CMD_SUBMIT_JOB_ARGS + 2; argv[count]; count++);
 		argv = (char **)realloc(argv, sizeof(char *) * (count + 2));
