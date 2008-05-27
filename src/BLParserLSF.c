@@ -433,7 +433,7 @@ int AddToStruct(char *line, int flag){
 	}
 	if(maxtok>41){
 		j_blahjob=strdup(tbuf[41]);
-		if((strstr(j_blahjob,blahjob_string)!=NULL) || (strstr(j_blahjob,cream_string)!=NULL)){
+		if((strstr(j_blahjob,blahjob_string)!=NULL) || (strstr(j2bl[id],bl_string)!=NULL) || (strstr(j_blahjob,cream_string)!=NULL)){
 			has_blah=1;
 		}
 	}
@@ -460,7 +460,7 @@ int AddToStruct(char *line, int flag){
 			NotifyCream(id, "1", j2bl[id], "NA", "NA", j2st[id], flag);
 		}
   
-	} else if((id >= 0) && (belongs_to_current_cycle) && ((strstr(j2bl[id],blahjob_string)!=NULL) || (strstr(j2bl[id],cream_string)!=NULL))){ 
+	} else if((id >= 0) && (belongs_to_current_cycle) && ((strstr(j2bl[id],blahjob_string)!=NULL) || (strstr(j2bl[id],bl_string)!=NULL) || (strstr(j2bl[id],cream_string)!=NULL))){ 
 
 		if(rex && strcmp(rex,rex_running)==0){
 
