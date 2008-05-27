@@ -311,7 +311,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 		sysfatal("can't malloc command_string %r");
 	}
 	
-	sprintf(command_string,"%s/bjobs -u all -a -l",lsf_binpath);
+	sprintf(command_string,"%s/bjobs -a -l",lsf_binpath);
 	file_output = popen(command_string,"r");
 
 	if (file_output != NULL){
