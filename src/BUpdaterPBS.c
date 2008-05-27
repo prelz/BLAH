@@ -280,10 +280,10 @@ Job Id: 11.cream-12.pd.infn.it
                 printf("can't malloc output\n");
         }
 */
-	if((line=calloc(10000 * sizeof *line,1)) == 0){
+	if((line=calloc(100000 * sizeof *line,1)) == 0){
 		sysfatal("can't malloc line %r");
 	}
-	if((token=calloc(10000 * sizeof *token,1)) == 0){
+	if((token=calloc(200 * sizeof *token,1)) == 0){
 		sysfatal("can't malloc token %r");
 	}
 	if((command_string=calloc(STR_CHARS,1)) == 0){
@@ -330,6 +330,9 @@ Job Id: 11.cream-12.pd.infn.it
 			maxtok_t = strtoken(line[i], '=', token);
 			status_str=strdel(token[1]," ");
 			if(status_str && strcmp(status_str,"Q")==0){ 
+				en.status=IDLE;
+			}
+			if(status_str && strcmp(status_str,"W")==0){ 
 				en.status=IDLE;
 			}
 			if(status_str && strcmp(status_str,"R")==0){ 
@@ -449,10 +452,10 @@ Job: 13.cream-12.pd.infn.it
         if((output=calloc(STR_CHARS,1)) == 0){
                 printf("can't malloc output\n");
         }
-	if((line=calloc(10000 * sizeof *line,1)) == 0){
+	if((line=calloc(100000 * sizeof *line,1)) == 0){
 		sysfatal("can't malloc line %r");
 	}
-	if((token=calloc(10000 * sizeof *token,1)) == 0){
+	if((token=calloc(200 * sizeof *token,1)) == 0){
 		sysfatal("can't malloc token %r");
 	}
 	if((jobid=calloc(10000 * sizeof *jobid,1)) == 0){
