@@ -314,8 +314,10 @@ Job Id: 11.cream-12.pd.infn.it
 		if(line[i] && strstr(line[i],"Job Id: ")){
 			if(en.status!=UNDEFINED){	
                         	if ((ret=job_registry_update(rha, &en)) < 0){
-                	                fprintf(stderr,"Append of record returns %d: ",ret);
-					perror("");
+					if(ret != JOB_REGISTRY_NOT_FOUND){
+                	                	fprintf(stderr,"Append of record returns %d: ",ret);
+						perror("");
+					}
 				}
 			}				
                         maxtok_t = strtoken(line[i], ':', token);
@@ -377,8 +379,10 @@ Job Id: 11.cream-12.pd.infn.it
 	}
 	if(en.status!=UNDEFINED){	
 		if ((ret=job_registry_update(rha, &en)) < 0){
-			fprintf(stderr,"Append of record returns %d: ",ret);
-			perror("");
+			if(ret != JOB_REGISTRY_NOT_FOUND){
+				fprintf(stderr,"Append of record returns %d: ",ret);
+				perror("");
+			}
 		}
 	}				
 
@@ -546,9 +550,11 @@ Job: 13.cream-12.pd.infn.it
 		}
 		
 		if(en.status !=UNDEFINED){
-			if ((ret=job_registry_update(rha, &en)) < 0){
-				fprintf(stderr,"Append of record returns %d: ",ret);
-				perror("");
+			if(ret != JOB_REGISTRY_NOT_FOUND){
+				if ((ret=job_registry_update(rha, &en)) < 0){
+					fprintf(stderr,"Append of record returns %d: ",ret);
+					perror("");
+				}
 			}
 		}
 		
@@ -582,10 +588,11 @@ int AssignFinalState(char *batchid){
 	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 	JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 		
-	if ((ret=job_registry_update(rha, &en)) < 0)
-	{
-		fprintf(stderr,"Append of record %d returns %d: ",i,ret);
-		perror("");
+	if ((ret=job_registry_update(rha, &en)) < 0){
+		if(ret != JOB_REGISTRY_NOT_FOUND){
+			fprintf(stderr,"Append of record %d returns %d: ",i,ret);
+			perror("");
+		}
 	}
 	return(0);
 }
