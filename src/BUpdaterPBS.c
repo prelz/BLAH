@@ -295,6 +295,7 @@ Job Id: 11.cream-12.pd.infn.it
         char *twn_str;
         char *status_str;
 	time_t dgbtimestamp;
+	char *cp;
 
 	if((token=calloc(200 * sizeof *token,1)) == 0){
 		sysfatal("can't malloc token %r");
@@ -312,6 +313,9 @@ Job Id: 11.cream-12.pd.infn.it
 	if(fp!=NULL){
 		while(!feof(fp) && (line=get_line(fp))){
 			if(line && strlen(line)==0) continue;
+			if ((cp = strrchr (line, '\n')) != NULL){
+				*cp = '\0';
+			}
 			if(line && strstr(line,"Job Id: ")){
 				if(en.status!=UNDEFINED){	
 					if(debug>1){
@@ -469,6 +473,7 @@ Job: 13.cream-12.pd.infn.it
 	int time_to_add=0;
 	time_t now;
 	time_t dgbtimestamp;
+	char *cp;
 
 	if((token=calloc(200 * sizeof *token,1)) == 0){
 		sysfatal("can't malloc token %r");
@@ -509,6 +514,9 @@ Job: 13.cream-12.pd.infn.it
 		if(fp!=NULL){
 			while(!feof(fp) && (line=get_line(fp))){
 				if(line && strlen(line)==0) continue;
+				if ((cp = strrchr (line, '\n')) != NULL){
+					*cp = '\0';
+				}
 				if(line && strstr(line,"Exit_status=")){	
 					maxtok_t = strtoken(line, ' ', token);
                         		if((timestamp=calloc(STR_CHARS,1)) == 0){
