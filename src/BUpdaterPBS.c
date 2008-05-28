@@ -308,11 +308,15 @@ Job Id: 11.cream-12.pd.infn.it
 	fp = popen(command_string,"r");
 
 	en.status=UNDEFINED;
+	en.wn_addr[0]='\0';
 	bupdater_free_active_jobs(&bact);
 
 	if(fp!=NULL){
 		while(!feof(fp) && (line=get_line(fp))){
-			if(line && strlen(line)==0) continue;
+			if(line && strlen(line)==0){
+				free(line);
+				continue;
+			}
 			if ((cp = strrchr (line, '\n')) != NULL){
 				*cp = '\0';
 			}
@@ -388,9 +392,9 @@ Job Id: 11.cream-12.pd.infn.it
                         	        free(token[j]);
                         	}
 			}
+			free(line);
 		}
 		pclose(fp);
-		free(line);
 	}
 	
 	if(en.status!=UNDEFINED){	

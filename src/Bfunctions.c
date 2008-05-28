@@ -127,11 +127,13 @@ strdel(char *s, const char *delete)
 	char *tmp, *cptr, *sptr;
     
 	if(!delete || !strlen(delete)){
-		return s;
+		tmp = strndup(s, STR_CHARS);
+		return tmp;
 	}
         
 	if(!s || !strlen(s)){
-		return s;
+		tmp = strndup(s, STR_CHARS);
+		return tmp;
 	}
         
 	tmp = strndup(s, STR_CHARS);
