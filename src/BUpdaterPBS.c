@@ -14,6 +14,7 @@ int main(int argc, char *argv[]){
 	int rc=0;			     
 	int version=0;
 	int first=TRUE;
+	time_t dgbtimestamp;
 	
 	struct poptOption poptopt[] = {     
 		{ "nodaemon",      'o', POPT_ARG_NONE,   &nodmn, 	    0, "do not run as daemon",    NULL },
@@ -67,7 +68,8 @@ int main(int argc, char *argv[]){
         ret = config_get("pbs_binpath",cha);
         if (ret == NULL){
                 if(debug){
-			fprintf(debuglogfile, "%s: key pbs_binpath not found\n",argv0);
+			dgbtimestamp=time(0);
+			fprintf(debuglogfile, "%d %s: key pbs_binpath not found\n",iepoch2str(dgbtimestamp),argv0);
 			fflush(debuglogfile);
 		}
         } else {
@@ -77,7 +79,8 @@ int main(int argc, char *argv[]){
 	ret = config_get("job_registry",cha);
 	if (ret == NULL){
                 if(debug){
-			fprintf(debuglogfile, "%s: key job_registry not found\n",argv0);
+			dgbtimestamp=time(0);
+			fprintf(debuglogfile, "%d %s: key job_registry not found\n",iepoch2str(dgbtimestamp),argv0);
 			fflush(debuglogfile);
 		}
 	} else {
@@ -87,7 +90,8 @@ int main(int argc, char *argv[]){
 	ret = config_get("purge_interval",cha);
 	if (ret == NULL){
                 if(debug){
-			fprintf(debuglogfile, "%s: key purge_interval not found using the default:%d\n",argv0,purge_interval);
+			dgbtimestamp=time(0);
+			fprintf(debuglogfile, "%d %s: key purge_interval not found using the default:%d\n",iepoch2str(dgbtimestamp),argv0,purge_interval);
 			fflush(debuglogfile);
 		}
 	} else {
@@ -97,7 +101,8 @@ int main(int argc, char *argv[]){
 	ret = config_get("finalstate_query_interval",cha);
 	if (ret == NULL){
                 if(debug){
-			fprintf(debuglogfile, "%s: key finalstate_query_interval not found using the default:%d\n",argv0,finalstate_query_interval);
+			dgbtimestamp=time(0);
+			fprintf(debuglogfile, "%d %s: key finalstate_query_interval not found using the default:%d\n",iepoch2str(dgbtimestamp),argv0,finalstate_query_interval);
 			fflush(debuglogfile);
 		}
 	} else {
@@ -107,7 +112,8 @@ int main(int argc, char *argv[]){
 	ret = config_get("alldone_interval",cha);
 	if (ret == NULL){
                 if(debug){
-			fprintf(debuglogfile, "%s: key alldone_interval not found using the default:%d\n",argv0,alldone_interval);
+			dgbtimestamp=time(0);
+			fprintf(debuglogfile, "%d %s: key alldone_interval not found using the default:%d\n",iepoch2str(dgbtimestamp),argv0,alldone_interval);
 			fflush(debuglogfile);
 		}
 	} else {
@@ -117,7 +123,8 @@ int main(int argc, char *argv[]){
 	ret = config_get("loop_interval",cha);
 	if (ret == NULL){
                 if(debug){
-			fprintf(debuglogfile, "%s: key loop_interval not found using the default:%d\n",argv0,loop_interval);
+			dgbtimestamp=time(0);
+			fprintf(debuglogfile, "%d %s: key loop_interval not found using the default:%d\n",iepoch2str(dgbtimestamp),argv0,loop_interval);
 			fflush(debuglogfile);
 		}
 	} else {
@@ -127,7 +134,8 @@ int main(int argc, char *argv[]){
 	ret = config_get("bupdater_pidfile",cha);
 	if (ret == NULL){
                 if(debug){
-			fprintf(debuglogfile, "%s: key bupdater_pidfile not found\n",argv0);
+			dgbtimestamp=time(0);
+			fprintf(debuglogfile, "%d %s: key bupdater_pidfile not found\n",iepoch2str(dgbtimestamp),argv0);
 			fflush(debuglogfile);
 		}
 	} else {
@@ -151,7 +159,8 @@ int main(int argc, char *argv[]){
 			if(job_registry_purge(registry_file, now-purge_interval,0)<0){
 
 				if(debug){
-					fprintf(debuglogfile, "%s: Error purging job registry %s\n",argv0,registry_file);
+					dgbtimestamp=time(0);
+					fprintf(debuglogfile, "%d %s: Error purging job registry %s\n",iepoch2str(dgbtimestamp),argv0,registry_file);
 					fflush(debuglogfile);
 				}
                 	        fprintf(stderr,"%s: Error purging job registry %s :",argv0,registry_file);
@@ -164,10 +173,10 @@ int main(int argc, char *argv[]){
 		}
 	       
 		rha=job_registry_init(registry_file, BY_BATCH_ID);
-		if (rha == NULL)
-		{
+		if (rha == NULL){
 			if(debug){
-				fprintf(debuglogfile, "%s: Error initialising job registry %s\n",argv0,registry_file);
+				dgbtimestamp=time(0);
+				fprintf(debuglogfile, "%d %s: Error initialising job registry %s\n",iepoch2str(dgbtimestamp),argv0,registry_file);
 				fflush(debuglogfile);
 			}
 			fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
@@ -179,10 +188,10 @@ int main(int argc, char *argv[]){
 		IntStateQuery();
 		
 		fd = job_registry_open(rha, "r");
-		if (fd == NULL)
-		{
+		if (fd == NULL){
 			if(debug){
-				fprintf(debuglogfile, "%s: Error opening job registry %s\n",argv0,registry_file);
+				dgbtimestamp=time(0);
+				fprintf(debuglogfile, "%d %s: Error opening job registry %s\n",iepoch2str(dgbtimestamp),argv0,registry_file);
 				fflush(debuglogfile);
 			}
 			fprintf(stderr,"%s: Error opening job registry %s :",argv0,registry_file);
@@ -190,10 +199,10 @@ int main(int argc, char *argv[]){
 			sleep(2);
 			continue;
 		}
-		if (job_registry_rdlock(rha, fd) < 0)
-		{
+		if (job_registry_rdlock(rha, fd) < 0){
 			if(debug){
-				fprintf(debuglogfile, "%s: Error read locking job registry %s\n",argv0,registry_file);
+				dgbtimestamp=time(0);
+				fprintf(debuglogfile, "%d %s: Error read locking job registry %s\n",iepoch2str(dgbtimestamp),argv0,registry_file);
 				fflush(debuglogfile);
 			}
 			fprintf(stderr,"%s: Error read locking job registry %s :",argv0,registry_file);
@@ -203,7 +212,7 @@ int main(int argc, char *argv[]){
 		}
 
 		if((final_string=calloc(STR_CHARS,1)) == 0){
-			sysfatal("can't malloc constraint %r");
+			sysfatal("can't malloc final_string %r");
         	}
 		first=TRUE;
 		
@@ -269,15 +278,13 @@ Job Id: 11.cream-12.pd.infn.it
 */
 
 
-	char *output;
-        FILE *file_output;
+        FILE *fp;
 	int len;
-	char **line;
+	char *line;
 	char **token;
-	int maxtok_l=0,maxtok_t=0,i,j;
+	int maxtok_t=0,j;
 	job_registry_entry en;
 	int ret;
-	int retcode;
 	char *timestamp;
 	int tmstampepoch;
 	char *batch_str;
@@ -286,14 +293,6 @@ Job Id: 11.cream-12.pd.infn.it
         char *status_str;
 	time_t dgbtimestamp;
 
-/*
-        if((output=calloc(STR_CHARS,1)) == 0){
-                printf("can't malloc output\n");
-        }
-*/
-	if((line=calloc(100000 * sizeof *line,1)) == 0){
-		sysfatal("can't malloc line %r");
-	}
 	if((token=calloc(200 * sizeof *token,1)) == 0){
 		sysfatal("can't malloc token %r");
 	}
@@ -302,98 +301,89 @@ Job Id: 11.cream-12.pd.infn.it
 	}
 		
 	sprintf(command_string,"%s/qstat -f",pbs_binpath);
-	retcode = exe_getout(command_string, NULL, &output);
-	
-	/*
-	file_output = popen(command_string,"r");
+	fp = popen(command_string,"r");
 
-	if (file_output != NULL){
-		len = fread(output, sizeof(char), STR_CHARS - 1 , file_output);
-		if (len>0){
-			output[len-1]='\000';
-		}
-		pclose(file_output);
-	}
-	*/
 	en.status=UNDEFINED;
 
-	maxtok_l = strtoken(output, '\n', line);
-	
-	if(output)free(output);
-
-	for(i=0;i<maxtok_l;i++){
-		if(line[i] && strstr(line[i],"Job Id: ")){
-			if(en.status!=UNDEFINED){	
-				if(debug>1){
-					dgbtimestamp=time(0);
-					fprintf(debuglogfile, "%d %s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",iepoch2str(dgbtimestamp),argv0,en.batch_id,en.wn_addr,en.status);
-					fflush(debuglogfile);
-				}
-                        	if ((ret=job_registry_update(rha, &en)) < 0){
-					if(ret != JOB_REGISTRY_NOT_FOUND){
-                	                	fprintf(stderr,"Append of record returns %d: ",ret);
-						perror("");
+	if(fp!=NULL){
+		while(!feof(fp) && (line=get_line(fp))){
+			if(line && strlen(line)==0) continue;
+			if(line && strstr(line,"Job Id: ")){
+				if(en.status!=UNDEFINED){	
+					if(debug>1){
+						dgbtimestamp=time(0);
+						fprintf(debuglogfile, "%d %s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",iepoch2str(dgbtimestamp),argv0,en.batch_id,en.wn_addr,en.status);
+						fflush(debuglogfile);
 					}
+                        		if ((ret=job_registry_update(rha, &en)) < 0){
+						if(ret != JOB_REGISTRY_NOT_FOUND){
+                	                		fprintf(stderr,"Append of record returns %d: ",ret);
+							perror("");
+						}
+					}
+					en.status = UNDEFINED;
+				}				
+                        	maxtok_t = strtoken(line, ':', token);
+				batch_str=strdel(token[1]," ");
+				JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
+				free(batch_str);
+                        	for(j=0;j<maxtok_t;j++){
+                         	       free(token[j]);
+                        	}
+			}
+			if(line && strstr(line,"job_state = ")){	
+				maxtok_t = strtoken(line, '=', token);
+				status_str=strdel(token[1]," ");
+				if(status_str && strcmp(status_str,"Q")==0){ 
+					en.status=IDLE;
 				}
-				en.status = UNDEFINED;
-			}				
-                        maxtok_t = strtoken(line[i], ':', token);
-			batch_str=strdel(token[1]," ");
-			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
-			free(batch_str);
-                        for(j=0;j<maxtok_t;j++){
-                                free(token[j]);
-                        }
-		}
-		if(line[i] && strstr(line[i],"job_state = ")){	
-			maxtok_t = strtoken(line[i], '=', token);
-			status_str=strdel(token[1]," ");
-			if(status_str && strcmp(status_str,"Q")==0){ 
-				en.status=IDLE;
+				if(status_str && strcmp(status_str,"W")==0){ 
+					en.status=IDLE;
+				}
+				if(status_str && strcmp(status_str,"R")==0){ 
+					en.status=RUNNING;
+				}
+				if(status_str && strcmp(status_str,"H")==0){ 
+					en.status=HELD;
+				}
+				free(status_str);
+                        	for(j=0;j<maxtok_t;j++){
+                         	       free(token[j]);
+                        	}
 			}
-			if(status_str && strcmp(status_str,"W")==0){ 
-				en.status=IDLE;
+			if(line && strstr(line,"exec_host = ")){	
+				maxtok_t = strtoken(line, '=', token);
+				twn_str=strdup(token[1]);
+                        	for(j=0;j<maxtok_t;j++){
+                        	        free(token[j]);
+                        	}
+				maxtok_t = strtoken(twn_str, '/', token);
+				wn_str=strdel(token[0]," ");
+				JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
+				free(twn_str);
+ 				free(wn_str);
+				for(j=0;j<maxtok_t;j++){
+					free(token[j]);
+				}
 			}
-			if(status_str && strcmp(status_str,"R")==0){ 
-				en.status=RUNNING;
+			if(line && strstr(line,"ctime = ")){	
+                        	maxtok_t = strtoken(line, ' ', token);
+                        	if((timestamp=calloc(STR_CHARS,1)) == 0){
+                        	        sysfatal("can't malloc wn in PollDB: %r");
+                        	}
+                        	sprintf(timestamp,"%s %s %s %s %s",token[2],token[3],token[4],token[5],token[6]);
+                        	tmstampepoch=str2epoch(timestamp,"L");
+				free(timestamp);
+				en.udate=tmstampepoch;
+                        	for(j=0;j<maxtok_t;j++){
+                        	        free(token[j]);
+                        	}
 			}
-			if(status_str && strcmp(status_str,"H")==0){ 
-				en.status=HELD;
-			}
-			free(status_str);
-                        for(j=0;j<maxtok_t;j++){
-                                free(token[j]);
-                        }
 		}
-		if(line[i] && strstr(line[i],"exec_host = ")){	
-			maxtok_t = strtoken(line[i], '=', token);
-			twn_str=strdup(token[1]);
-                        for(j=0;j<maxtok_t;j++){
-                                free(token[j]);
-                        }
-			maxtok_t = strtoken(twn_str, '/', token);
-			wn_str=strdel(token[0]," ");
-			JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
-			free(twn_str);
- 			free(wn_str);
-                       for(j=0;j<maxtok_t;j++){
-                                free(token[j]);
-                        }
-		}
-		if(line[i] && strstr(line[i],"ctime = ")){	
-                        maxtok_t = strtoken(line[i], ' ', token);
-                        if((timestamp=calloc(STR_CHARS,1)) == 0){
-                                sysfatal("can't malloc wn in PollDB: %r");
-                        }
-                        sprintf(timestamp,"%s %s %s %s %s",token[2],token[3],token[4],token[5],token[6]);
-                        tmstampepoch=str2epoch(timestamp,"L");
-			free(timestamp);
-			en.udate=tmstampepoch;
-                        for(j=0;j<maxtok_t;j++){
-                                free(token[j]);
-                        }
-		}
+		pclose(fp);
+		free(line);
 	}
+	
 	if(en.status!=UNDEFINED){	
 		if(debug>1){
 			dgbtimestamp=time(0);
@@ -408,10 +398,6 @@ Job Id: 11.cream-12.pd.infn.it
 		}
 	}				
 
-	for(i=0;i<maxtok_l;i++){
-		free(line[i]);
-	}
-	free(line);
 	free(token);
 	free(command_string);
 	return(0);
@@ -460,13 +446,13 @@ Job: 13.cream-12.pd.infn.it
                           resources_used.walltime=00:10:15
 04/23/2008 11:50:44  S    dequeuing from cream_1, state COMPLETE
 */
-	char *output;
-        FILE *file_output;
+
+        FILE *fp;
 	int len;
-	char **line;
+	char *line;
 	char **token;
 	char **jobid;
-	int maxtok_l=0,maxtok_t=0,maxtok_j=0,i,j,k;
+	int maxtok_t=0,maxtok_j=0,j,k;
 	job_registry_entry en;
 	int ret;
 	char *timestamp;
@@ -479,12 +465,6 @@ Job: 13.cream-12.pd.infn.it
 	time_t now;
 	time_t dgbtimestamp;
 
-        if((output=calloc(STR_CHARS,1)) == 0){
-                printf("can't malloc output\n");
-        }
-	if((line=calloc(100000 * sizeof *line,1)) == 0){
-		sysfatal("can't malloc line %r");
-	}
 	if((token=calloc(200 * sizeof *token,1)) == 0){
 		sysfatal("can't malloc token %r");
 	}
@@ -497,7 +477,7 @@ Job: 13.cream-12.pd.infn.it
 	
 	if(debug>1){
 		dgbtimestamp=time(0);
-		fprintf(debuglogfile, "%d %s: jobid string in FinalStateQuery is:%s\n",iepoch2str(dgbtimestamp),argv0,input_string);
+		fprintf(debuglogfile, "%d %s: input_string in FinalStateQuery is:%s\n",iepoch2str(dgbtimestamp),argv0,input_string);
 		fflush(debuglogfile);
 	}
 	
@@ -505,11 +485,10 @@ Job: 13.cream-12.pd.infn.it
 	
 	for(k=0;k<maxtok_j;k++){
 	
-		if(strlen(jobid[k])==0){
-			continue;
-		}
+		if(jobid[k] && strlen(jobid[k])==0) continue;
+
 		sprintf(command_string,"%s/tracejob -m -l -a %s",pbs_binpath,jobid[k]);
-		file_output = popen(command_string,"r");
+		fp = popen(command_string,"r");
 		
 		if(debug>1){
 			dgbtimestamp=time(0);
@@ -517,59 +496,53 @@ Job: 13.cream-12.pd.infn.it
 			fflush(debuglogfile);
 		}
 
-		if (file_output != NULL){
-			len = fread(output, sizeof(char), STR_CHARS - 1 , file_output);
-			if (len>0){
-				output[len-1]='\000';
-			}
-			pclose(file_output);
-		}
-		
 		/* en.status is set =0 (UNDEFINED) here and it is tested if it is !=0 before the registry update: the update is done only if en.status is !=0*/
 		en.status=UNDEFINED;
 		
 		JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,jobid[k]);
 
-		maxtok_l = strtoken(output, '\n', line);
-	 
-		for(i=0;i<maxtok_l;i++){
-
-			if(line[i] && strstr(line[i],"Exit_status=")){	
-				maxtok_t = strtoken(line[i], ' ', token);
-                        	if((timestamp=calloc(STR_CHARS,1)) == 0){
-                        	        sysfatal("can't malloc wn in PollDB: %r");
-                        	}
-                        	sprintf(timestamp,"%s %s",token[0],token[1]);
-				tmstampepoch=str2epoch(timestamp,"A");
-				exit_str=strdup(token[3]);
-				free(timestamp);
-                        	for(j=0;j<maxtok_t;j++){
-					free(token[j]);
-                        	}
-				maxtok_t = strtoken(exit_str, '=', token);
-				free(exit_str);
-				en.udate=tmstampepoch;
-                        	en.exitcode=atoi(token[1]);
-				en.status=COMPLETED;
-				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
-                        	for(j=0;j<maxtok_t;j++){
-                                	free(token[j]);
-                        	}
+		if(fp!=NULL){
+			while(!feof(fp) && (line=get_line(fp))){
+				if(line && strlen(line)==0) continue;
+				if(line && strstr(line,"Exit_status=")){	
+					maxtok_t = strtoken(line, ' ', token);
+                        		if((timestamp=calloc(STR_CHARS,1)) == 0){
+                        		        sysfatal("can't malloc timestamp in FinalStateQuery: %r");
+                        		}
+                        		sprintf(timestamp,"%s %s",token[0],token[1]);
+					tmstampepoch=str2epoch(timestamp,"A");
+					exit_str=strdup(token[3]);
+					free(timestamp);
+                        		for(j=0;j<maxtok_t;j++){
+						free(token[j]);
+                        		}
+					maxtok_t = strtoken(exit_str, '=', token);
+					free(exit_str);
+					en.udate=tmstampepoch;
+                        		en.exitcode=atoi(token[1]);
+					en.status=COMPLETED;
+					JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+                        		for(j=0;j<maxtok_t;j++){
+                                		free(token[j]);
+                        		}
+				}
+				if(line && strstr(line,"Job deleted")){	
+					maxtok_t = strtoken(line, ' ', token);
+                        		if((timestamp=calloc(STR_CHARS,1)) == 0){
+                        		        sysfatal("can't malloc timestamp in FinalStateQuery: %r");
+                        		}
+                        		sprintf(timestamp,"%s %s",token[0],token[1]);
+					tmstampepoch=str2epoch(timestamp,"A");
+					free(timestamp);
+                        		for(j=0;j<maxtok_t;j++){
+						free(token[j]);
+                        		}
+					en.udate=tmstampepoch;
+					en.status=REMOVED;
+				}
 			}
-			if(line[i] && strstr(line[i],"Job deleted")){	
-				maxtok_t = strtoken(line[i], ' ', token);
-                        	if((timestamp=calloc(STR_CHARS,1)) == 0){
-                        	        sysfatal("can't malloc wn in PollDB: %r");
-                        	}
-                        	sprintf(timestamp,"%s %s",token[0],token[1]);
-				tmstampepoch=str2epoch(timestamp,"A");
-				free(timestamp);
-                        	for(j=0;j<maxtok_t;j++){
-					free(token[j]);
-                        	}
-				en.udate=tmstampepoch;
-				en.status=REMOVED;
-			}
+			pclose(fp);
+			free(line);
 		}
 		
 		if(en.status !=UNDEFINED){
@@ -586,11 +559,7 @@ Job: 13.cream-12.pd.infn.it
 			}
 		}else{
 			failed_count++;
-		}
-		
-		for(i=0;i<maxtok_l;i++){
-			free(line[i]);
-		}
+		}		
 	}
 	
 	now=time(0);
@@ -605,10 +574,8 @@ Job: 13.cream-12.pd.infn.it
 	for(k=0;k<maxtok_j;k++){
 		free(jobid[k]);
 	}
-	free(line);
 	free(token);
 	free(jobid);
-	free(output);
 	free(command_string);
 	return(0);
 }

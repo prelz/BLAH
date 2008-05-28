@@ -20,6 +20,7 @@
 
 ssize_t Readline(int fd, void *vptr, size_t maxlen);
 ssize_t Writeline(int fc, const void *vptr, size_t maxlen);
+char *get_line(FILE * f);
 int strtoken(const char *s, char delim, char **token);
 char *strdel(char *s, const char *delete);
 char *epoch2str(char *epoch);

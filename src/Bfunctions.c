@@ -59,6 +59,23 @@ Writeline(int sockd, const void *vptr, size_t n)
 	return n;
 }
 
+char *get_line(FILE * f)
+{
+    size_t size = 0;
+    size_t len  = 0;
+    size_t last = 0;
+    char * buf  = NULL;
+
+    do {
+        size += BUFSIZ;
+        buf = realloc(buf,size);           
+	fgets(buf+last,size-last,f);
+        len = strlen(buf);
+        last = len - 1;
+    } while (!feof(f) && buf[last]!='\n');
+    return buf;
+}	
+
 int
 strtoken(const char *s, char delim, char **token)
 {
