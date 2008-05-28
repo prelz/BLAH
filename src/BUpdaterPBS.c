@@ -318,6 +318,7 @@ Job Id: 11.cream-12.pd.infn.it
                 	                	fprintf(stderr,"Append of record returns %d: ",ret);
 						perror("");
 					}
+					en.status = UNDEFINED;
 				}
 			}				
                         maxtok_t = strtoken(line[i], ':', token);

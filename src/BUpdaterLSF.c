@@ -335,6 +335,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
                 	                	fprintf(stderr,"Append of record returns %d: ",ret);
 						perror("");
 					}
+					en.status = UNDEFINED;
 				}
 			}				
 			maxtok_t = strtoken(line[i], ',', token);
@@ -502,6 +503,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
                 	                	fprintf(stderr,"Append of record returns %d: ",ret);
 						perror("");
 					}
+					en.status = UNDEFINED;
 				}
 			}				
 			maxtok_t = strtoken(line[i], ',', token);
