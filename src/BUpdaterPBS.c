@@ -228,7 +228,7 @@ int main(int argc, char *argv[]){
 				AssignFinalState(en->batch_id);	
 			}
 			
-			if((bupdater_lookup_active_jobs(&bact, id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && (now-en->mdate>finalstate_query_interval) && now > next_finalstatequery && en->status!=REMOVED && en->status!=COMPLETED)
+			if((bupdater_lookup_active_jobs(&bact, en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && (now-en->mdate>finalstate_query_interval) && now > next_finalstatequery && en->status!=REMOVED && en->status!=COMPLETED)
 			{
 				strcat(final_string,en->batch_id);
 				strcat(final_string,":");
