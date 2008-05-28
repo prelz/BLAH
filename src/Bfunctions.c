@@ -481,6 +481,7 @@ bupdater_free_active_jobs(bupdater_active_jobs *bact)
     if (bact->jobs[i] != NULL) free(bact->jobs[i]);
 
   free(bact->jobs); 
+  bact->jobs = NULL;
   bact->njobs = 0;
 }
 
