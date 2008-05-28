@@ -357,3 +357,128 @@ sysfatal(char *fmt, ...)
 	exit(EXIT_FAILURE);
 }
 
+int
+bupdater_push_active_job(bupdater_active_jobs *bact, const char *job_id)
+{
+  char **new_jobs;
+
+  new_jobs = (char **) realloc(bact->jobs, (bact->njobs+1) * sizeof(char *));
+  if (new_jobs == NULL) return BUPDATER_ACTIVE_JOBS_FAILURE;
+
+  bact->jobs = new_jobs;
+  bact->jobs[bact->njobs] = strdup(job_id);
+  if (bact->jobs[bact->njobs] == NULL) return BUPDATER_ACTIVE_JOBS_FAILURE;
+  bact->njobs++;
+
+  bact->is_sorted = 0;
+
+  return BUPDATER_ACTIVE_JOBS_SUCCESS;
+}
+
+void
+bupdater_sort_active_jobs(bupdater_active_jobs *bact, int left, int right)
+{
+  int psize;
+  int mother = 0;
+  char *max, *median, *min, *pick, *swap;
+  int i,k;
+
+  if (left == 0 && right == bact->njobs-1) mother = 1;
+  if (mother != 0)
+   {
+    if (bact->is_sorted != 0) return;
+    if (bact->njobs < 2) return;
+    srand(time(0));
+   }
+
+  /* Singly-recursive quicksort of job entries  */
+
+  while (left < right)
+   {
+    psize = right - left + 1;
+
+    /* Choose a partition value with the "median-of-three" method. */
+    max = min = bact->jobs[left + rand()%psize];
+
+    pick = bact->jobs[left + rand()%psize];
+    if (strcmp(pick, max) > 0) max = pick;
+    else if (strcmp (pick, min) < 0) min = pick;
+
+    pick = bact->jobs[left + rand()%psize];
+    if (strcmp(pick, max) > 0) median = max;
+    else if (strcmp(pick, min) < 0) median = min;
+    else median = pick;
+
+    for (i = left, k = right; ; i++,k--)
+     {
+      while (strcmp(bact->jobs[i], median) < 0) i++;
+      while (strcmp(bact->jobs[k], median) > 0) k--;
+
+      /* Now stop if indexes crossed. This way we are sure that k is the
+      /* last element of the left partition. */
+      if (i>=k) break;
+
+      /* We found a pair that's out of order. Let's swap them. */
+      swap = bact->jobs[i];
+      bact->jobs[i] = bact->jobs[k];
+      bact->jobs[k] = swap;
+     }
+
+    /* Operate on the left and right sub-partitions. */
+    bupdater_sort_active_jobs(bact,left,k);
+
+    /* Do the right partition on the next while loop iteration */
+    left = k+1;
+   }
+
+  if (mother != 0)
+   {
+    bact->is_sorted = 1;
+   }
+  return;
+}
+
+int
+bupdater_lookup_active_jobs(bupdater_active_jobs *bact, 
+                            const char *job_id)
+{
+  int left, right, cur, cmp;
+  if (bact->is_sorted == 0) bupdater_sort_active_jobs(bact,0,bact->njobs-1);
+
+  /* Binary search of needed entry */
+  left = 0; right = bact->njobs-1;
+
+  while (right >= left)
+   {
+    cur = (right + left) /2;
+    cmp = strcmp(bact->jobs[cur],job_id);
+    if (cmp == 0)
+     {
+      return BUPDATER_ACTIVE_JOBS_SUCCESS;
+     }
+    else if (cmp < 0)
+     {
+      left = cur+1;
+     }
+    else
+     {
+      right = cur-1;
+     }
+   }
+
+  return BUPDATER_ACTIVE_JOBS_FAILURE;
+}
+
+void
+bupdater_free_active_jobs(bupdater_active_jobs *bact)
+{
+  int i;
+  if (bact->jobs == NULL) return;
+
+  for (i=0; i<bact->njobs; i++)
+    if (bact->jobs[i] != NULL) free(bact->jobs[i]);
+
+  free(bact->jobs); 
+  bact->njobs = 0;
+}
+

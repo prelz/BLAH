@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <popt.h>
 #include <math.h>
+#include "blahpd.h"
 
 #define STR_CHARS          5000000
 #define NUM_CHARS          300
@@ -34,3 +35,19 @@ void syserror(char *fmt, ...);
 void sysfatal(char *fmt, ...);
 
 char *argv0;
+
+#define BUPDATER_ACTIVE_JOBS_FAILURE -1
+#define BUPDATER_ACTIVE_JOBS_SUCCESS 0
+
+typedef struct bupdater_active_jobs_t
+ {
+  int    njobs;
+  int    is_sorted;
+  char **jobs;
+ } bupdater_active_jobs;
+
+int bupdater_push_active_job(bupdater_active_jobs *bact, const char *job_id);
+void bupdater_sort_active_jobs(bupdater_active_jobs *bact, int left, int right);
+int bupdater_lookup_active_jobs(bupdater_active_jobs *bact,
+                                const char *job_id);
+void bupdater_free_active_jobs(bupdater_active_jobs *bact);
