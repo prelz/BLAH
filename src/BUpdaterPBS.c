@@ -113,6 +113,16 @@ int main(int argc, char *argv[]){
 	} else {
 		alldone_interval=atoi(ret->value);
 	}
+
+	ret = config_get("loop_interval",cha);
+	if (ret == NULL){
+                if(debug){
+			fprintf(debuglogfile, "%s: key loop_interval not found using the default:%d\n",argv0,loop_interval);
+			fflush(debuglogfile);
+		}
+	} else {
+		loop_interval=atoi(ret->value);
+	}
 	
 	ret = config_get("bupdater_pidfile",cha);
 	if (ret == NULL){
