@@ -24,6 +24,8 @@ int next_finalstatequery=0;
 int debug=0;
 int nodmn=0;
 
+bupdater_active_jobs bact;
+
 FILE *debuglogfile;
 char *debuglogname;
 

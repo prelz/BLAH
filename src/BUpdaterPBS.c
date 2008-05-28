@@ -16,6 +16,9 @@ int main(int argc, char *argv[]){
 	int first=TRUE;
 	time_t dgbtimestamp;
 	
+	bact.njobs = 0;
+	bact.jobs = NULL;
+	
 	struct poptOption poptopt[] = {     
 		{ "nodaemon",      'o', POPT_ARG_NONE,   &nodmn, 	    0, "do not run as daemon",    NULL },
 		{ "version",       'v', POPT_ARG_NONE,   &version,	    0, "print version and exit",  NULL },
@@ -225,7 +228,7 @@ int main(int argc, char *argv[]){
 				AssignFinalState(en->batch_id);	
 			}
 			
-			if((now-en->mdate>finalstate_query_interval) && now > next_finalstatequery && en->status!=REMOVED && en->status!=COMPLETED)
+			if((bupdater_lookup_active_jobs(&bact, id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && (now-en->mdate>finalstate_query_interval) && now > next_finalstatequery && en->status!=REMOVED && en->status!=COMPLETED)
 			{
 				strcat(final_string,en->batch_id);
 				strcat(final_string,":");
@@ -304,6 +307,7 @@ Job Id: 11.cream-12.pd.infn.it
 	fp = popen(command_string,"r");
 
 	en.status=UNDEFINED;
+	bupdater_free_active_jobs(&bact);
 
 	if(fp!=NULL){
 		while(!feof(fp) && (line=get_line(fp))){
@@ -326,6 +330,7 @@ Job Id: 11.cream-12.pd.infn.it
                         	maxtok_t = strtoken(line, ':', token);
 				batch_str=strdel(token[1]," ");
 				JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
+				bupdater_push_active_job(&bact, en.batch_id);
 				free(batch_str);
                         	for(j=0;j<maxtok_t;j++){
                          	       free(token[j]);
