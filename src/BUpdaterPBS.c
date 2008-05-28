@@ -206,7 +206,7 @@ int main(int argc, char *argv[]){
 				AssignFinalState(en->batch_id);	
 			}
 			
-			if((now-en->mdate>finalstate_query_interval) && en->status!=REMOVED && en->status!=COMPLETED)
+			if((now-en->mdate>finalstate_query_interval) && now > next_finalstatequery && en->status!=REMOVED && en->status!=COMPLETED)
 			{
 				strcat(final_string,en->batch_id);
 				strcat(final_string,":");
@@ -222,7 +222,7 @@ int main(int argc, char *argv[]){
 		free(final_string);		
 		fclose(fd);		
 		job_registry_destroy(rha);
-		sleep(2);
+		sleep(loop_interval);
 	}
 	
 	return(0);
@@ -452,7 +452,11 @@ Job: 13.cream-12.pd.infn.it
 	int tmstampepoch;
 	char *batch_str;
 	char *wn_str; 
-	char *exit_str; 
+	char *exit_str;
+	int failed_count=0;
+	int time_to_add=0;
+	time_t now;
+	time_t dgbtimestamp;
 
         if((output=calloc(STR_CHARS,1)) == 0){
                 printf("can't malloc output\n");
@@ -471,7 +475,8 @@ Job: 13.cream-12.pd.infn.it
 	}
 	
 	if(debug>1){
-		fprintf(debuglogfile, "%s: jobid string in FinalStateQuery is:%s\n",argv0,input_string);
+		dgbtimestamp=time(0);
+		fprintf(debuglogfile, "%d %s: jobid string in FinalStateQuery is:%s\n",iepoch2str(dgbtimestamp),argv0,input_string);
 		fflush(debuglogfile);
 	}
 	
@@ -486,7 +491,8 @@ Job: 13.cream-12.pd.infn.it
 		file_output = popen(command_string,"r");
 		
 		if(debug>1){
-			fprintf(debuglogfile, "%s: command_string in FinalStateQuery is:%s\n",argv0,command_string);
+			dgbtimestamp=time(0);
+			fprintf(debuglogfile, "%d %s: command_string in FinalStateQuery is:%s\n",iepoch2str(dgbtimestamp),argv0,command_string);
 			fflush(debuglogfile);
 		}
 
@@ -546,7 +552,8 @@ Job: 13.cream-12.pd.infn.it
 		}
 		
 		if(debug>1){
-			fprintf(debuglogfile, "%s: registry update in FinalStateQuery for: jobid=%s exitcode=%d status=%d\n",argv0,en.batch_id,en.exitcode,en.status);
+			dgbtimestamp=time(0);
+			fprintf(debuglogfile, "%d %s: registry update in FinalStateQuery for: jobid=%s exitcode=%d status=%d\n",iepoch2str(dgbtimestamp),argv0,en.batch_id,en.exitcode,en.status);
 			fflush(debuglogfile);
 		}
 		
@@ -557,12 +564,24 @@ Job: 13.cream-12.pd.infn.it
 					perror("");
 				}
 			}
+		}else{
+			failed_count++;
 		}
 		
 		for(i=0;i<maxtok_l;i++){
 			free(line[i]);
 		}
 	}
+	
+	now=time(0);
+	time_to_add=pow(failed_count,1.5);
+	next_finalstatequery=now+time_to_add;
+	if(debug>1){
+		dgbtimestamp=time(0);
+		fprintf(debuglogfile, "%d %s: next FinalStatequery will be in %d seconds\n",iepoch2str(dgbtimestamp),argv0,time_to_add);
+		fflush(debuglogfile);
+	}
+	
 	for(k=0;k<maxtok_j;k++){
 		free(jobid[k]);
 	}

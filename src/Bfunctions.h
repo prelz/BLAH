@@ -11,6 +11,7 @@
 #include <sys/types.h> 
 #include <sys/stat.h>
 #include <popt.h>
+#include <math.h>
 
 #define STR_CHARS          5000000
 #define NUM_CHARS          300
