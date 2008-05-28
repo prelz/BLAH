@@ -284,6 +284,7 @@ Job Id: 11.cream-12.pd.infn.it
 	char *wn_str; 
         char *twn_str;
         char *status_str;
+	time_t dgbtimestamp;
 
 /*
         if((output=calloc(STR_CHARS,1)) == 0){
@@ -323,13 +324,18 @@ Job Id: 11.cream-12.pd.infn.it
 	for(i=0;i<maxtok_l;i++){
 		if(line[i] && strstr(line[i],"Job Id: ")){
 			if(en.status!=UNDEFINED){	
+				if(debug>1){
+					dgbtimestamp=time(0);
+					fprintf(debuglogfile, "%d %s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",iepoch2str(dgbtimestamp),argv0,en.batch_id,en.wn_addr,en.status);
+					fflush(debuglogfile);
+				}
                         	if ((ret=job_registry_update(rha, &en)) < 0){
 					if(ret != JOB_REGISTRY_NOT_FOUND){
                 	                	fprintf(stderr,"Append of record returns %d: ",ret);
 						perror("");
 					}
-					en.status = UNDEFINED;
 				}
+				en.status = UNDEFINED;
 			}				
                         maxtok_t = strtoken(line[i], ':', token);
 			batch_str=strdel(token[1]," ");
@@ -389,6 +395,11 @@ Job Id: 11.cream-12.pd.infn.it
 		}
 	}
 	if(en.status!=UNDEFINED){	
+		if(debug>1){
+			dgbtimestamp=time(0);
+			fprintf(debuglogfile, "%d %s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",iepoch2str(dgbtimestamp),argv0,en.batch_id,en.wn_addr,en.status);
+			fflush(debuglogfile);
+		}
 		if ((ret=job_registry_update(rha, &en)) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
 				fprintf(stderr,"Append of record returns %d: ",ret);
@@ -561,13 +572,12 @@ Job: 13.cream-12.pd.infn.it
 			}
 		}
 		
-		if(debug>1){
-			dgbtimestamp=time(0);
-			fprintf(debuglogfile, "%d %s: registry update in FinalStateQuery for: jobid=%s exitcode=%d status=%d\n",iepoch2str(dgbtimestamp),argv0,en.batch_id,en.exitcode,en.status);
-			fflush(debuglogfile);
-		}
-		
 		if(en.status !=UNDEFINED){
+			if(debug>1){
+				dgbtimestamp=time(0);
+				fprintf(debuglogfile, "%d %s: registry update in FinalStateQuery for: jobid=%s exitcode=%d status=%d\n",iepoch2str(dgbtimestamp),argv0,en.batch_id,en.exitcode,en.status);
+				fflush(debuglogfile);
+			}
 			if(ret != JOB_REGISTRY_NOT_FOUND){
 				if ((ret=job_registry_update(rha, &en)) < 0){
 					fprintf(stderr,"Append of record returns %d: ",ret);
