@@ -344,10 +344,13 @@ IntStateQuery()
 				en.status=RUNNING;
 			}
 			
-			sprintf(timestamp,"%s %s %s",token[7],token[8],token[9]);
-			tmstampepoch=str2epoch(timestamp,"V");
-			free(timestamp);
-			en.udate=tmstampepoch;
+			timestamp = (char *)malloc(strlen(token[7]) + strlen(token[8]) + strlen(token[9]) + 4);
+			if (timestamp != NULL){
+				sprintf(timestamp,"%s %s %s",token[7],token[8],token[9]);
+				tmstampepoch=str2epoch(timestamp,"V");
+				free(timestamp);
+				en.udate=tmstampepoch;
+			}
 		
 			for(i=0;i<maxtok_l;i++){
 				free(token[i]);
