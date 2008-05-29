@@ -17,7 +17,7 @@ char *registry_file;
 int purge_interval=864000;
 int finalstate_query_interval=30;
 int alldone_interval=600;
-int bhist_logs_to_read=3;
+int bhist_logs_to_read=1;
 int debug=0;
 int nodmn=0;
 

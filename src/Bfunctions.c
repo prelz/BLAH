@@ -249,6 +249,30 @@ str2epoch(char *str, char * f)
 		}
 		
 	        free(strtmp);
+        }else if(strcmp(f,"V")==0){
+
+        /* If do not have the year in the date we compare day and month and set the year */
+
+                if((strtmp=calloc(STR_CHARS,1)) == 0){
+                        sysfatal("can't malloc strtmp in str2epoch: %r");
+                }
+
+                sprintf(strtmp,"%s 2000",str);
+                strptime(strtmp,"%b %d %H:%M %Y",tm);
+                
+                now=time(0);
+                tmnow=localtime(&now);
+
+                mdlog=(tm->tm_mon)*100+tm->tm_mday;
+                mdnow=(tmnow->tm_mon)*100+tmnow->tm_mday;
+                if(mdlog > mdnow){
+                        tm->tm_year=tmnow->tm_year-1;
+                }else{
+                        tm->tm_year=tmnow->tm_year;
+                }
+
+                free(strtmp);
+
         }
  
 	tm->tm_isdst=-1;
