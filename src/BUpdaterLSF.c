@@ -345,7 +345,9 @@ IntStateQuery()
 			}
 			
 			timestamp = (char *)malloc(strlen(token[7]) + strlen(token[8]) + strlen(token[9]) + 4);
-			if (timestamp != NULL){
+			if (timestamp == NULL){
+				sysfatal("can't malloc timestamp: %r");
+			} else {
 				sprintf(timestamp,"%s %s %s",token[7],token[8],token[9]);
 				tmstampepoch=str2epoch(timestamp,"V");
 				free(timestamp);
