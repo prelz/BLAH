@@ -226,7 +226,7 @@ PollDB()
 				free(strudate);
 
 				if (strlen(en->wn_addr) > 0){
-					if((wn=calloc(STR_CHARS,1)) == 0){
+					if((wn=malloc(strlen(en->wn_addr) + 22)) == 0){
 						sysfatal("can't malloc wn in PollDB: %r");
 					}
 					sprintf(wn," WorkerNode=\"%s\";",en->wn_addr);
@@ -234,7 +234,7 @@ PollDB()
 					free(wn);
 				}
 				if (en->status == 3 || en->status == 4){
-					if((excode=calloc(STR_CHARS,1)) == 0){
+					if((excode=malloc(NUM_CHARS + 45)) == 0){
 						sysfatal("can't malloc excode in PollDB: %r");
 					}
 					sprintf(excode," ExitCode=%d; Reason=\"condor_reason=%d\";", en->exitcode, en->exitcode);
@@ -242,7 +242,7 @@ PollDB()
 					free(excode);
 				}
 				if (strlen(en->exitreason) > 0){
-					if((exreas=calloc(STR_CHARS,1)) == 0){
+					if((exreas=malloc(strlen(en->exitreason) + 20)) == 0){
 						sysfatal("can't malloc exreas in PollDB: %r");
 					}
 					sprintf(exreas," ExitReason=\"%s\";", en->exitreason);

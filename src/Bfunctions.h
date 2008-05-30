@@ -16,7 +16,6 @@
 
 #define STR_CHARS          50000
 #define NUM_CHARS          300
-#define CSTR_CHARS         25
 #define ERRMAX             80
 
 ssize_t Readline(int fd, void *vptr, size_t maxlen);
