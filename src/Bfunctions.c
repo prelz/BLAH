@@ -414,7 +414,6 @@ bupdater_sort_active_jobs(bupdater_active_jobs *bact, int left, int right)
    {
     if (bact->is_sorted != 0) return;
     if (bact->njobs < 2) return;
-    srand(time(0));
    }
 
   /* Singly-recursive quicksort of job entries  */
@@ -422,6 +421,9 @@ bupdater_sort_active_jobs(bupdater_active_jobs *bact, int left, int right)
   while (left < right)
    {
     psize = right - left + 1;
+
+    /* Shortcut for trivial case. */
+    if (psize == 2 && (strcmp(bact->jobs[left], bact->jobs[right]) < 0)) return;
 
     /* Choose a partition value with the "median-of-three" method. */
     max = min = bact->jobs[left + rand()%psize];
