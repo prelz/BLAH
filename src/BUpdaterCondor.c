@@ -239,7 +239,13 @@ int main(int argc, char *argv[]){
 			FinalStateQuery(query);
 			runfinal=FALSE;
 		}
-		free(query);
+		if (query != NULL){
+			free(query);
+			query = NULL;
+		}
+		if (q != NULL){
+			free(q);
+		}
 		fclose(fd);		
 		job_registry_destroy(rha);
 		sleep(2);
