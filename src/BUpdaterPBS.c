@@ -242,7 +242,10 @@ int main(int argc, char *argv[]){
 			FinalStateQuery(final_string);
 			runfinal=FALSE;
 		}
-		free(final_string);		
+		if (final_string != NULL){
+			free(final_string);		
+			final_string = NULL;
+		}
 		fclose(fd);		
 		job_registry_destroy(rha);
 		sleep(loop_interval);
