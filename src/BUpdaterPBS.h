@@ -19,7 +19,6 @@ int purge_interval=864000;
 int finalstate_query_interval=30;
 int alldone_interval=600;
 int loop_interval=2;
-int bhist_logs_to_read=3;
 int next_finalstatequery=0;
 int debug=0;
 int nodmn=0;

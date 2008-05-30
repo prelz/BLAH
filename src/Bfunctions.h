@@ -14,7 +14,7 @@
 #include <math.h>
 #include "blahpd.h"
 
-#define STR_CHARS          5000000
+#define STR_CHARS          50000
 #define NUM_CHARS          300
 #define CSTR_CHARS         25
 #define ERRMAX             80

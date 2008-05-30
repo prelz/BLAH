@@ -230,7 +230,7 @@ str2epoch(char *str, char * f)
 		
 	/* If do not have the year in the date we compare day and month and set the year */
 		
-		if((strtmp=calloc(STR_CHARS,1)) == 0){
+		if((strtmp=malloc(strlen(str) + 6)) == 0){
 			sysfatal("can't malloc strtmp in str2epoch: %r");
 		}
 	
@@ -253,7 +253,7 @@ str2epoch(char *str, char * f)
 
         /* If do not have the year in the date we compare day and month and set the year */
 
-                if((strtmp=calloc(STR_CHARS,1)) == 0){
+                if((strtmp=malloc(strlen(str) + 6)) == 0){
                         sysfatal("can't malloc strtmp in str2epoch: %r");
                 }
 

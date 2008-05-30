@@ -15,6 +15,7 @@ int main(int argc, char *argv[]){
 	int version=0;
 	int first=TRUE;
 	time_t dgbtimestamp;
+	int finstr_len=0;
 	
 	bact.njobs = 0;
 	bact.jobs = NULL;
@@ -214,9 +215,6 @@ int main(int argc, char *argv[]){
 			continue;
 		}
 
-		if((final_string=calloc(STR_CHARS,1)) == 0){
-			sysfatal("can't malloc final_string %r");
-        	}
 		first=TRUE;
 		
 		while ((en = job_registry_get_next(rha, fd)) != NULL)
@@ -230,8 +228,10 @@ int main(int argc, char *argv[]){
 			
 			if((bupdater_lookup_active_jobs(&bact, en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && (now-en->mdate>finalstate_query_interval) && now > next_finalstatequery && en->status!=REMOVED && en->status!=COMPLETED)
 			{
+				realloc(finstr_len,strlen(en->batch_id) + 1);
 				strcat(final_string,en->batch_id);
 				strcat(final_string,":");
+				finstr_len=strlen(final_string);
 				runfinal=TRUE;
 			}
 			free(en);
@@ -300,7 +300,7 @@ Job Id: 11.cream-12.pd.infn.it
 	if((token=calloc(200 * sizeof *token,1)) == 0){
 		sysfatal("can't malloc token %r");
 	}
-	if((command_string=calloc(STR_CHARS,1)) == 0){
+	if((command_string=malloc(strlen(pbs_binpath) + 10)) == 0){
 		sysfatal("can't malloc command_string %r");
 	}
 		
@@ -349,14 +349,11 @@ Job Id: 11.cream-12.pd.infn.it
 				status_str=strdel(token[1]," ");
 				if(status_str && strcmp(status_str,"Q")==0){ 
 					en.status=IDLE;
-				}
-				if(status_str && strcmp(status_str,"W")==0){ 
+				}else if(status_str && strcmp(status_str,"W")==0){ 
 					en.status=IDLE;
-				}
-				if(status_str && strcmp(status_str,"R")==0){ 
+				}else if(status_str && strcmp(status_str,"R")==0){ 
 					en.status=RUNNING;
-				}
-				if(status_str && strcmp(status_str,"H")==0){ 
+				}else if(status_str && strcmp(status_str,"H")==0){ 
 					en.status=HELD;
 				}
 				free(status_str);
@@ -381,7 +378,7 @@ Job Id: 11.cream-12.pd.infn.it
 			}
 			if(line && strstr(line,"ctime = ")){	
                         	maxtok_t = strtoken(line, ' ', token);
-                        	if((timestamp=calloc(STR_CHARS,1)) == 0){
+                        	if((timestamp=malloc(strlen(token[2]) + strlen(token[3]) + strlen(token[4]) + strlen(token[5]) + strlen(token[6]) + 6)) == 0){
                         	        sysfatal("can't malloc wn in PollDB: %r");
                         	}
                         	sprintf(timestamp,"%s %s %s %s %s",token[2],token[3],token[4],token[5],token[6]);
@@ -485,9 +482,6 @@ Job: 13.cream-12.pd.infn.it
 	if((jobid=calloc(10000 * sizeof *jobid,1)) == 0){
 		sysfatal("can't malloc jobid %r");
 	}
-	if((command_string=calloc(STR_CHARS,1)) == 0){
-		sysfatal("can't malloc command_string %r");
-	}
 	
 	if(debug>1){
 		dgbtimestamp=time(0);
@@ -501,6 +495,10 @@ Job: 13.cream-12.pd.infn.it
 	
 		if(jobid[k] && strlen(jobid[k])==0) continue;
 
+		if((command_string=malloc(strlen(pbs_binpath) + strlen(jobid[k]) + 20)) == 0){
+			sysfatal("can't malloc command_string %r");
+		}
+		
 		sprintf(command_string,"%s/tracejob -m -l -a %s",pbs_binpath,jobid[k]);
 		fp = popen(command_string,"r");
 		
@@ -523,7 +521,7 @@ Job: 13.cream-12.pd.infn.it
 				}
 				if(line && strstr(line,"Exit_status=")){	
 					maxtok_t = strtoken(line, ' ', token);
-                        		if((timestamp=calloc(STR_CHARS,1)) == 0){
+ 					if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + 4)) == 0){
                         		        sysfatal("can't malloc timestamp in FinalStateQuery: %r");
                         		}
                         		sprintf(timestamp,"%s %s",token[0],token[1]);
@@ -545,7 +543,7 @@ Job: 13.cream-12.pd.infn.it
 				}
 				if(line && strstr(line,"Job deleted")){	
 					maxtok_t = strtoken(line, ' ', token);
-                        		if((timestamp=calloc(STR_CHARS,1)) == 0){
+ 					if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + 4)) == 0){
                         		        sysfatal("can't malloc timestamp in FinalStateQuery: %r");
                         		}
                         		sprintf(timestamp,"%s %s",token[0],token[1]);
@@ -577,6 +575,7 @@ Job: 13.cream-12.pd.infn.it
 		}else{
 			failed_count++;
 		}		
+		free(command_string);
 	}
 	
 	now=time(0);
@@ -593,7 +592,6 @@ Job: 13.cream-12.pd.infn.it
 	}
 	free(token);
 	free(jobid);
-	free(command_string);
 	return(0);
 }
 

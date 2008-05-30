@@ -6,8 +6,6 @@ int main(int argc, char *argv[]){
 	job_registry_entry *en;
 	time_t now;
 	time_t purge_time=0;
-	char *constraint=NULL;
-	char *q=NULL;
 	char *pidfile=NULL;
 	
 	poptContext poptcon;
@@ -214,9 +212,6 @@ int main(int argc, char *argv[]){
 			continue;
 		}
 
-		if((constraint=calloc(STR_CHARS,1)) == 0){
-			sysfatal("can't malloc constraint %r");
-        	}
 		first=TRUE;
 		
 		while ((en = job_registry_get_next(rha, fd)) != NULL)
@@ -239,7 +234,6 @@ int main(int argc, char *argv[]){
 			FinalStateQuery();
 			runfinal=FALSE;
 		}
-		free(constraint);		
 		fclose(fd);		
 		job_registry_destroy(rha);
 		sleep(2);
@@ -286,7 +280,7 @@ IntStateQuery()
 	if((token=calloc(200 * sizeof *token,1)) == 0){
 		sysfatal("can't malloc token %r");
 	}
-	if((command_string=calloc(STR_CHARS,1)) == 0){
+	if((command_string=malloc(strlen(lsf_binpath) + 17)) == 0){
 		sysfatal("can't malloc command_string %r");
 	}
 	
@@ -344,15 +338,13 @@ IntStateQuery()
 				en.status=RUNNING;
 			}
 			
-			timestamp = (char *)malloc(strlen(token[7]) + strlen(token[8]) + strlen(token[9]) + 4);
-			if (timestamp == NULL){
+			if((timestamp=malloc(strlen(token[7]) + strlen(token[8]) + strlen(token[9]) + 4)) == 0){
 				sysfatal("can't malloc timestamp: %r");
-			} else {
-				sprintf(timestamp,"%s %s %s",token[7],token[8],token[9]);
-				tmstampepoch=str2epoch(timestamp,"V");
-				free(timestamp);
-				en.udate=tmstampepoch;
 			}
+			sprintf(timestamp,"%s %s %s",token[7],token[8],token[9]);
+			tmstampepoch=str2epoch(timestamp,"V");
+			free(timestamp);
+			en.udate=tmstampepoch;
 		
 			for(i=0;i<maxtok_l;i++){
 				free(token[i]);
@@ -431,7 +423,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	if((token=calloc(200 * sizeof *token,1)) == 0){
 		sysfatal("can't malloc token %r");
 	}
-	if((command_string=calloc(STR_CHARS,1)) == 0){
+	if((command_string=malloc(strlen(lsf_binpath) + NUM_CHARS + 24)) == 0){
 		sysfatal("can't malloc command_string %r");
 	}
 
@@ -470,7 +462,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			}
 			if(line && strstr(line," Started")){	
 				maxtok_t = strtoken(line, ' ', token);
-				if((timestamp=calloc(STR_CHARS,1)) == 0){
+                        	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
 					sysfatal("can't malloc wn in PollDB: %r");
 				}
 				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
@@ -488,7 +480,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			}
 			if(line && strstr(line," Exited with exit code")){	
 				maxtok_t = strtoken(line, ' ', token);
-				if((timestamp=calloc(STR_CHARS,1)) == 0){
+                        	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
 					sysfatal("can't malloc wn in PollDB: %r");
 				}
 				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
@@ -507,7 +499,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			}
 			if(line && strstr(line," Done successfully")){	
 				maxtok_t = strtoken(line, ' ', token);
-				if((timestamp=calloc(STR_CHARS,1)) == 0){
+                        	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
 					sysfatal("can't malloc wn in PollDB: %r");
 				}
 				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
