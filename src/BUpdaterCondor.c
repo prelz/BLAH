@@ -243,9 +243,6 @@ int main(int argc, char *argv[]){
 			free(query);
 			query = NULL;
 		}
-		if (q != NULL){
-			free(q);
-		}
 		fclose(fd);		
 		job_registry_destroy(rha);
 		sleep(2);
