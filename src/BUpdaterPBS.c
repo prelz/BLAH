@@ -218,7 +218,6 @@ int main(int argc, char *argv[]){
 		first=TRUE;
 		
 		while ((en = job_registry_get_next(rha, fd)) != NULL){
-
 			if((bupdater_lookup_active_jobs(&bact, en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && en->status!=REMOVED && en->status!=COMPLETED){
 				/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
 				if(now-en->mdate>alldone_interval){
@@ -226,8 +225,10 @@ int main(int argc, char *argv[]){
 				}
 			
 				if((now-en->mdate>finalstate_query_interval) && (now > next_finalstatequery)){
-					if((final_string=realloc(final_string,finstr_len + strlen(en->batch_id) + 1)) == 0){
+					if((final_string=realloc(final_string,finstr_len + strlen(en->batch_id) + 2)) == 0){
                        	        		sysfatal("can't malloc final_string: %r");
+					} else {
+						if (finstr_len == 0) final_string[0] = '\000';
 					}
  					strcat(final_string,en->batch_id);
 					strcat(final_string,":");
@@ -245,6 +246,7 @@ int main(int argc, char *argv[]){
 		if (final_string != NULL){
 			free(final_string);		
 			final_string = NULL;
+			finstr_len = 0;
 		}
 		fclose(fd);		
 		job_registry_destroy(rha);
