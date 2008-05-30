@@ -218,12 +218,12 @@ int main(int argc, char *argv[]){
 		{
 
 			/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
-			if((now-en->mdate>alldone_interval) && en->status!=REMOVED && en->status!=COMPLETED)
+			if((bupdater_lookup_active_jobs(&bact, en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && (now-en->mdate>alldone_interval) && en->status!=REMOVED && en->status!=COMPLETED)
 			{
 				AssignFinalState(en->batch_id);	
 			}
 			
-			if((now-en->mdate>finalstate_query_interval) && en->status!=REMOVED && en->status!=COMPLETED)
+			if((bupdater_lookup_active_jobs(&bact, en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && (now-en->mdate>finalstate_query_interval) && en->status!=REMOVED && en->status!=COMPLETED)
 			{
 				runfinal=TRUE;
 			}
@@ -288,6 +288,7 @@ IntStateQuery()
 	fp = popen(command_string,"r");
 
 	en.status=UNDEFINED;
+	bupdater_free_active_jobs(&bact);
 	
 	if(fp!=NULL){
 		while(!feof(fp) && (line=get_line(fp))){
@@ -324,6 +325,7 @@ IntStateQuery()
 			}
 				
 			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,tmp);
+			bupdater_push_active_job(&bact, en.batch_id);
 			free(tmp);
 			
 			maxtok_l = strtoken(line, ' ', token);

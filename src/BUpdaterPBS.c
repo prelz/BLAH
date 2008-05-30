@@ -221,15 +221,17 @@ int main(int argc, char *argv[]){
 		{
 
 			/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
-			if((now-en->mdate>alldone_interval) && en->status!=REMOVED && en->status!=COMPLETED)
+			if((bupdater_lookup_active_jobs(&bact, en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && (now-en->mdate>alldone_interval) && en->status!=REMOVED && en->status!=COMPLETED)
 			{
 				AssignFinalState(en->batch_id);	
 			}
 			
 			if((bupdater_lookup_active_jobs(&bact, en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && (now-en->mdate>finalstate_query_interval) && now > next_finalstatequery && en->status!=REMOVED && en->status!=COMPLETED)
 			{
-				realloc(finstr_len,strlen(en->batch_id) + 1);
-				strcat(final_string,en->batch_id);
+				if((final_string=realloc(final_string,finstr_len + strlen(en->batch_id) + 1)) == 0){
+                       	        	sysfatal("can't malloc final_string: %r");
+				}
+ 				strcat(final_string,en->batch_id);
 				strcat(final_string,":");
 				finstr_len=strlen(final_string);
 				runfinal=TRUE;
@@ -379,7 +381,7 @@ Job Id: 11.cream-12.pd.infn.it
 			if(line && strstr(line,"ctime = ")){	
                         	maxtok_t = strtoken(line, ' ', token);
                         	if((timestamp=malloc(strlen(token[2]) + strlen(token[3]) + strlen(token[4]) + strlen(token[5]) + strlen(token[6]) + 6)) == 0){
-                        	        sysfatal("can't malloc wn in PollDB: %r");
+                        	        sysfatal("can't malloc timestamp in IntStateQuery: %r");
                         	}
                         	sprintf(timestamp,"%s %s %s %s %s",token[2],token[3],token[4],token[5],token[6]);
                         	tmstampepoch=str2epoch(timestamp,"L");

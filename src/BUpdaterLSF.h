@@ -21,6 +21,8 @@ int bhist_logs_to_read=1;
 int debug=0;
 int nodmn=0;
 
+bupdater_active_jobs bact;
+
 FILE *debuglogfile;
 char *debuglogname;
 
