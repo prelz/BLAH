@@ -217,26 +217,25 @@ int main(int argc, char *argv[]){
 
 		first=TRUE;
 		
-		while ((en = job_registry_get_next(rha, fd)) != NULL)
-		{
+		while ((en = job_registry_get_next(rha, fd)) != NULL){
 
-			/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
-			if((bupdater_lookup_active_jobs(&bact, en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && (now-en->mdate>alldone_interval) && en->status!=REMOVED && en->status!=COMPLETED)
-			{
-				AssignFinalState(en->batch_id);	
-			}
-			
-			if((bupdater_lookup_active_jobs(&bact, en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && (now-en->mdate>finalstate_query_interval) && now > next_finalstatequery && en->status!=REMOVED && en->status!=COMPLETED)
-			{
-				if((final_string=realloc(final_string,finstr_len + strlen(en->batch_id) + 1)) == 0){
-                       	        	sysfatal("can't malloc final_string: %r");
+			if((bupdater_lookup_active_jobs(&bact, en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && en->status!=REMOVED && en->status!=COMPLETED){
+				/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
+				if(now-en->mdate>alldone_interval){
+					AssignFinalState(en->batch_id);	
 				}
- 				strcat(final_string,en->batch_id);
-				strcat(final_string,":");
-				finstr_len=strlen(final_string);
-				runfinal=TRUE;
+			
+				if((now-en->mdate>finalstate_query_interval) && (now > next_finalstatequery)){
+					if((final_string=realloc(final_string,finstr_len + strlen(en->batch_id) + 1)) == 0){
+                       	        		sysfatal("can't malloc final_string: %r");
+					}
+ 					strcat(final_string,en->batch_id);
+					strcat(final_string,":");
+					finstr_len=strlen(final_string);
+					runfinal=TRUE;
+				}
+				free(en);
 			}
-			free(en);
 		}
 		
 		if(runfinal){

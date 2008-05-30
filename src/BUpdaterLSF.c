@@ -171,8 +171,7 @@ int main(int argc, char *argv[]){
 		}
 	       
 		rha=job_registry_init(registry_file, BY_BATCH_ID);
-		if (rha == NULL)
-		{
+		if (rha == NULL){
 			if(debug){
 				dgbtimestamp=time(0);
 				fprintf(debuglogfile, "%s %s: Error initialising job registry %s\n",iepoch2str(dgbtimestamp),argv0,registry_file);
@@ -187,8 +186,7 @@ int main(int argc, char *argv[]){
 		IntStateQuery();
 		
 		fd = job_registry_open(rha, "r");
-		if (fd == NULL)
-		{
+		if (fd == NULL){
 			if(debug){
 				dgbtimestamp=time(0);
 				fprintf(debuglogfile, "%s %s: Error opening job registry %s\n",iepoch2str(dgbtimestamp),argv0,registry_file);
@@ -199,8 +197,7 @@ int main(int argc, char *argv[]){
 			sleep(2);
 			continue;
 		}
-		if (job_registry_rdlock(rha, fd) < 0)
-		{
+		if (job_registry_rdlock(rha, fd) < 0){
 			if(debug){
 				dgbtimestamp=time(0);
 				fprintf(debuglogfile, "%s %s: Error read locking job registry %s\n",iepoch2str(dgbtimestamp),argv0,registry_file);
@@ -214,18 +211,17 @@ int main(int argc, char *argv[]){
 
 		first=TRUE;
 		
-		while ((en = job_registry_get_next(rha, fd)) != NULL)
-		{
+		while ((en = job_registry_get_next(rha, fd)) != NULL){
 
-			/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
-			if((bupdater_lookup_active_jobs(&bact, en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && (now-en->mdate>alldone_interval) && en->status!=REMOVED && en->status!=COMPLETED)
-			{
-				AssignFinalState(en->batch_id);	
-			}
+			if((bupdater_lookup_active_jobs(&bact,en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && en->status!=REMOVED && en->status!=COMPLETED){
+				/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
+				if(now-en->mdate>alldone_interval){
+					AssignFinalState(en->batch_id);	
+				}
 			
-			if((bupdater_lookup_active_jobs(&bact, en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && (now-en->mdate>finalstate_query_interval) && en->status!=REMOVED && en->status!=COMPLETED)
-			{
-				runfinal=TRUE;
+				if(now-en->mdate>finalstate_query_interval){
+					runfinal=TRUE;
+				}
 			}
 			free(en);
 		}
