@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <sys/poll.h>
 #include <globus_gss_assist.h>
 #include <globus_gsi_credential.h>
 #include <globus_gsi_proxy.h>
@@ -44,6 +45,9 @@ main(int argc, char **argv)
 	int delegation = 0;
 	char *the_proxy;
 	const char *deleg_prefix="deleg";
+	int connection_poll_timeout=3000;
+	char *connection_poll_timeout_env;
+	struct pollfd connpoll;
 
 	OM_uint32	major_status;
 	OM_uint32	minor_status;
@@ -78,6 +82,10 @@ main(int argc, char **argv)
 	{
 		delegation = 1;
 	}
+
+	connection_poll_timeout_env = getenv("BPRCLIENT_CONNECTION_POLL_TIMEOUT");
+	if (connection_poll_timeout_env != NULL)
+		connection_poll_timeout = atoi(connection_poll_timeout_env);
 
 	setenv("X509_USER_PROXY", proxy_filename, 1);
 
@@ -120,6 +128,14 @@ main(int argc, char **argv)
 
 		servAddr.sin_port = htons(server_port);
 		if (connect(fd_socket, (struct sockaddr *) &servAddr, sizeof(servAddr)) == -1)
+		{
+			continue;
+		}
+
+		connpoll.fd = fd_socket;
+		connpoll.events = (POLLIN|POLLPRI);
+		connpoll.revents = 0;
+		if (poll(&connpoll, 1, connection_poll_timeout) <= 0)
 		{
 			continue;
 		}
