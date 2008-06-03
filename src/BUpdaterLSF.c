@@ -415,7 +415,6 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	char *timestamp;
 	int tmstampepoch;
 	char *batch_str;
-	char *wn_str; 
 	char *ex_str; 
 	char *cp; 
 	time_t dgbtimestamp;
@@ -459,27 +458,10 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				for(j=0;j<maxtok_t;j++){
 					free(token[j]);
 				}
-			}else if(line && strstr(line," Started")){	
-				maxtok_t = strtoken(line, ' ', token);
-                        	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
-					sysfatal("can't malloc wn in PollDB: %r");
-				}
-				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
-				timestamp[strlen(timestamp)-1]='\0';
-				tmstampepoch=str2epoch(timestamp,"W");
-				en.udate=tmstampepoch;
-				en.status=RUNNING;
-				free(timestamp);
-				wn_str=strdel(token[6],"<>,");
-				JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
-				free(wn_str);
-				for(j=0;j<maxtok_t;j++){
-					free(token[j]);
-				}
 			}else if(line && strstr(line," Exited with exit code")){	
 				maxtok_t = strtoken(line, ' ', token);
                         	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
-					sysfatal("can't malloc wn in PollDB: %r");
+					sysfatal("can't malloc timestamp in FinalStateQuery: %r");
 				}
 				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
 				timestamp[strlen(timestamp)-1]='\0';
@@ -497,7 +479,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			}else if(line && strstr(line," Done successfully")){	
 				maxtok_t = strtoken(line, ' ', token);
                         	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
-					sysfatal("can't malloc wn in PollDB: %r");
+					sysfatal("can't malloc timestamp in FinalStateQuery: %r");
 				}
 				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
 				timestamp[strlen(timestamp)-1]='\0';
@@ -513,7 +495,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			}else if(line && strstr(line," Signal <KILL>")){	
 				maxtok_t = strtoken(line, ' ', token);
                         	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
-					sysfatal("can't malloc wn in PollDB: %r");
+					sysfatal("can't malloc timestamp in FinalStateQuery: %r");
 				}
 				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
 				timestamp[strlen(timestamp)-1]='\0';
