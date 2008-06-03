@@ -284,6 +284,7 @@ IntStateQuery()
 	fp = popen(command_string,"r");
 
 	en.status=UNDEFINED;
+	en.wn_addr[0]='\0';
 	bupdater_free_active_jobs(&bact);
 	
 	if(fp!=NULL){
@@ -417,6 +418,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	char *wn_str; 
 	char *ex_str; 
 	char *cp; 
+	time_t dgbtimestamp;
 
 	if((token=calloc(200 * sizeof *token,1)) == 0){
 		sysfatal("can't malloc token %r");
@@ -425,7 +427,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 		sysfatal("can't malloc command_string %r");
 	}
 
-	sprintf(command_string,"%s/bhist -u all -a -l -n %d",lsf_binpath,bhist_logs_to_read);
+	sprintf(command_string,"%s/bhist -u all -d -e -l -n %d",lsf_binpath,bhist_logs_to_read);
 	fp = popen(command_string,"r");
 
 	en.status=UNDEFINED;
@@ -457,8 +459,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				for(j=0;j<maxtok_t;j++){
 					free(token[j]);
 				}
-			}
-			if(line && strstr(line," Started")){	
+			}else if(line && strstr(line," Started")){	
 				maxtok_t = strtoken(line, ' ', token);
                         	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
 					sysfatal("can't malloc wn in PollDB: %r");
@@ -475,8 +476,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				for(j=0;j<maxtok_t;j++){
 					free(token[j]);
 				}
-			}
-			if(line && strstr(line," Exited with exit code")){	
+			}else if(line && strstr(line," Exited with exit code")){	
 				maxtok_t = strtoken(line, ' ', token);
                         	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
 					sysfatal("can't malloc wn in PollDB: %r");
@@ -494,8 +494,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				for(j=0;j<maxtok_t;j++){
 					free(token[j]);
 				}
-			}
-			if(line && strstr(line," Done successfully")){	
+			}else if(line && strstr(line," Done successfully")){	
 				maxtok_t = strtoken(line, ' ', token);
                         	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
 					sysfatal("can't malloc wn in PollDB: %r");
@@ -511,6 +510,21 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				for(j=0;j<maxtok_t;j++){
 					free(token[j]);
 				}
+			}else if(line && strstr(line," Signal <KILL>")){	
+				maxtok_t = strtoken(line, ' ', token);
+                        	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
+					sysfatal("can't malloc wn in PollDB: %r");
+				}
+				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp[strlen(timestamp)-1]='\0';
+				tmstampepoch=str2epoch(timestamp,"W");
+				en.udate=tmstampepoch;
+				en.status=REMOVED;
+				free(timestamp);
+				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+				for(j=0;j<maxtok_t;j++){
+					free(token[j]);
+				}
 			}
 			free(line);
 		}
@@ -518,6 +532,11 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	}
 	
 	if(en.status!=UNDEFINED){	
+		if(debug>1){
+			dgbtimestamp=time(0);
+			fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s wn=%s status=%d\n",iepoch2str(dgbtimestamp),argv0,en.batch_id,en.wn_addr,en.status);
+			fflush(debuglogfile);
+		}
 		if ((ret=job_registry_update(rha, &en)) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
 				fprintf(stderr,"Append of record returns %d: ",ret);

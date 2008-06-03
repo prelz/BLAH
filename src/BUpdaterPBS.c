@@ -349,8 +349,7 @@ Job Id: 11.cream-12.pd.infn.it
                         	for(j=0;j<maxtok_t;j++){
                          	       free(token[j]);
                         	}
-			}
-			if(line && strstr(line,"job_state = ")){	
+			}else if(line && strstr(line,"job_state = ")){	
 				maxtok_t = strtoken(line, '=', token);
 				status_str=strdel(token[1]," ");
 				if(status_str && strcmp(status_str,"Q")==0){ 
@@ -366,8 +365,7 @@ Job Id: 11.cream-12.pd.infn.it
                         	for(j=0;j<maxtok_t;j++){
                          	       free(token[j]);
                         	}
-			}
-			if(line && strstr(line,"exec_host = ")){	
+			}else if(line && strstr(line,"exec_host = ")){	
 				maxtok_t = strtoken(line, '=', token);
 				twn_str=strdup(token[1]);
                         	for(j=0;j<maxtok_t;j++){
@@ -381,8 +379,7 @@ Job Id: 11.cream-12.pd.infn.it
 				for(j=0;j<maxtok_t;j++){
 					free(token[j]);
 				}
-			}
-			if(line && strstr(line,"ctime = ")){	
+			}else if(line && strstr(line,"ctime = ")){	
                         	maxtok_t = strtoken(line, ' ', token);
                         	if((timestamp=malloc(strlen(token[2]) + strlen(token[3]) + strlen(token[4]) + strlen(token[5]) + strlen(token[6]) + 6)) == 0){
                         	        sysfatal("can't malloc timestamp in IntStateQuery: %r");
@@ -546,8 +543,7 @@ Job: 13.cream-12.pd.infn.it
                         		for(j=0;j<maxtok_t;j++){
                                 		free(token[j]);
                         		}
-				}
-				if(line && strstr(line,"Job deleted")){	
+				}else if(line && strstr(line,"Job deleted")){	
 					maxtok_t = strtoken(line, ' ', token);
  					if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + 4)) == 0){
                         		        sysfatal("can't malloc timestamp in FinalStateQuery: %r");
