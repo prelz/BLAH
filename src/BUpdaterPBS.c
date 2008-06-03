@@ -222,6 +222,8 @@ int main(int argc, char *argv[]){
 				/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
 				if(now-en->mdate>alldone_interval){
 					AssignFinalState(en->batch_id);	
+					free(en);
+					continue;
 				}
 			
 				if((now-en->mdate>finalstate_query_interval) && (now > next_finalstatequery)){

@@ -216,7 +216,9 @@ int main(int argc, char *argv[]){
 			if((bupdater_lookup_active_jobs(&bact,en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && en->status!=REMOVED && en->status!=COMPLETED){
 				/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
 				if(now-en->mdate>alldone_interval){
-					AssignFinalState(en->batch_id);	
+					AssignFinalState(en->batch_id);
+					free(en);
+					continue;
 				}
 			
 				if(now-en->mdate>finalstate_query_interval){
