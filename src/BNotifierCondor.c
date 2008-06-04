@@ -354,7 +354,7 @@ CreamConnection(int c_sock)
 	struct   pollfd fds[2];
 	struct   pollfd *pfds;
 	int      nfds = 1;
-	int      timeout= 5;
+	int      timeout= 5000;
     
 	fds[0].fd = c_sock;
 	fds[0].events = 0;
@@ -550,7 +550,7 @@ NotifyCream(char *buffer)
 	struct   pollfd fds[2];
 	struct   pollfd *pfds;
 	int      nfds = 1;
-	int      timeout= 1;
+	int      timeout= 5000;
     
 	time_t   now;
 	char     *nowtm;
