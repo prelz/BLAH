@@ -256,10 +256,10 @@ PollDB()
 					if((clientid=calloc(STR_CHARS,1)) == 0){
 						sysfatal("can't malloc clientid in PollDB: %r");
 					}
-                                        if((tbuf=calloc(10 * sizeof *tbuf,1)) == 0){
+                                        if((tbuf=calloc(NUMTOK * sizeof *tbuf,1)) == 0){
                                                 sysfatal("can't malloc tbuf: %r");
                                         }
-                                        maxtok=strtoken(en->user_prefix,'_',tbuf);
+                                        maxtok=strtoken(en->user_prefix,'_',tbuf, NUMTOK);
 					if(tbuf[1]){
 						if ((cp = strrchr (tbuf[1], '\n')) != NULL){
 							*cp = '\0';
@@ -465,11 +465,11 @@ int GetFilter(char *buffer){
                 sysfatal("can't malloc out_buf: %r");
         }
 	
-        if((tbuf=calloc(10 * sizeof *tbuf,1)) == 0){
+        if((tbuf=calloc(NUMTOK * sizeof *tbuf,1)) == 0){
                 sysfatal("can't malloc tbuf: %r");
         }
 
-        maxtok=strtoken(buffer,'/',tbuf);
+        maxtok=strtoken(buffer,'/',tbuf, NUMTOK);
 
         if(tbuf[1]){
                 creamfilter=strdup(tbuf[1]);
@@ -510,11 +510,11 @@ int NotifyStart(char *buffer){
 	char *notifdate;
         int   notifepoch;
 	
-        if((tbuf=calloc(10 * sizeof *tbuf,1)) == 0){
+        if((tbuf=calloc(NUMTOK * sizeof *tbuf,1)) == 0){
                 sysfatal("can't malloc tbuf: %r");
         }
 
-        maxtok=strtoken(buffer,'/',tbuf);
+        maxtok=strtoken(buffer,'/',tbuf, NUMTOK);
 
         if(tbuf[1]){
                 notifdate=strdup(tbuf[1]);

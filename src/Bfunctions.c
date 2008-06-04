@@ -77,11 +77,13 @@ char *get_line(FILE * f)
 }	
 
 int
-strtoken(const char *s, char delim, char **token)
+strtoken(const char *s, char delim, char **tok, int numtok)
 {
 	char *tmp;
 	char *ptr, *dptr;
 	int i = 0;
+	char **t=NULL;
+	char **token;
     
 	if((tmp = calloc(1 + strlen(s),1)) == 0){
 		sysfatal("can't malloc tmp: %r");
@@ -89,7 +91,18 @@ strtoken(const char *s, char delim, char **token)
 	assert(tmp);
 	strcpy(tmp, s);
 	ptr = tmp;
+	token=*tok;
+	
 	while(1) {
+		if(i >=numtok-1){
+			numtok*=2;
+			t=realloc(token,numtok*sizeof(char *));
+			if(t != NULL){
+				token=t;
+			}else{
+				sysfatal("can't realloc token: %r");
+			}
+		}
 		if((dptr = strchr(ptr, delim)) != NULL) {
 			*dptr = '\0';
 			if((token[i] = calloc(1 + strlen(ptr),1)) == 0){
@@ -117,6 +130,7 @@ strtoken(const char *s, char delim, char **token)
 	}
     
 	token[i] = NULL;
+	*tok=token;
 	free(tmp);
 	return i;
 }

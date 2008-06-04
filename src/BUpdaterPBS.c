@@ -305,7 +305,7 @@ Job Id: 11.cream-12.pd.infn.it
 	time_t dgbtimestamp;
 	char *cp;
 
-	if((token=calloc(200 * sizeof *token,1)) == 0){
+	if((token=calloc(NUMTOK * sizeof *token,1)) == 0){
 		sysfatal("can't malloc token %r");
 	}
 	if((command_string=malloc(strlen(pbs_binpath) + 10)) == 0){
@@ -343,7 +343,7 @@ Job Id: 11.cream-12.pd.infn.it
 					}
 					en.status = UNDEFINED;
 				}				
-                        	maxtok_t = strtoken(line, ':', token);
+                        	maxtok_t = strtoken(line, ':', token, NUMTOK);
 				batch_str=strdel(token[1]," ");
 				JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
 				bupdater_push_active_job(&bact, en.batch_id);
@@ -352,7 +352,7 @@ Job Id: 11.cream-12.pd.infn.it
                          	       free(token[j]);
                         	}
 			}else if(line && strstr(line,"job_state = ")){	
-				maxtok_t = strtoken(line, '=', token);
+				maxtok_t = strtoken(line, '=', token, NUMTOK);
 				status_str=strdel(token[1]," ");
 				if(status_str && strcmp(status_str,"Q")==0){ 
 					en.status=IDLE;
@@ -368,12 +368,12 @@ Job Id: 11.cream-12.pd.infn.it
                          	       free(token[j]);
                         	}
 			}else if(line && strstr(line,"exec_host = ")){	
-				maxtok_t = strtoken(line, '=', token);
+				maxtok_t = strtoken(line, '=', token, NUMTOK);
 				twn_str=strdup(token[1]);
                         	for(j=0;j<maxtok_t;j++){
                         	        free(token[j]);
                         	}
-				maxtok_t = strtoken(twn_str, '/', token);
+				maxtok_t = strtoken(twn_str, '/', token, NUMTOK);
 				wn_str=strdel(token[0]," ");
 				JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
 				free(twn_str);
@@ -382,7 +382,7 @@ Job Id: 11.cream-12.pd.infn.it
 					free(token[j]);
 				}
 			}else if(line && strstr(line,"ctime = ")){	
-                        	maxtok_t = strtoken(line, ' ', token);
+                        	maxtok_t = strtoken(line, ' ', token, NUMTOK);
                         	if((timestamp=malloc(strlen(token[2]) + strlen(token[3]) + strlen(token[4]) + strlen(token[5]) + strlen(token[6]) + 6)) == 0){
                         	        sysfatal("can't malloc timestamp in IntStateQuery: %r");
                         	}
@@ -481,10 +481,10 @@ Job: 13.cream-12.pd.infn.it
 	time_t dgbtimestamp;
 	char *cp;
 
-	if((token=calloc(200 * sizeof *token,1)) == 0){
+	if((token=calloc(NUMTOK * sizeof *token,1)) == 0){
 		sysfatal("can't malloc token %r");
 	}
-	if((jobid=calloc(10000 * sizeof *jobid,1)) == 0){
+	if((jobid=calloc(NUMTOK * sizeof *jobid,1)) == 0){
 		sysfatal("can't malloc jobid %r");
 	}
 	
@@ -494,7 +494,7 @@ Job: 13.cream-12.pd.infn.it
 		fflush(debuglogfile);
 	}
 	
-	maxtok_j = strtoken(input_string, ':', jobid);
+	maxtok_j = strtoken(input_string, ':', jobid, NUMTOK);
 	
 	for(k=0;k<maxtok_j;k++){
 	
@@ -525,7 +525,7 @@ Job: 13.cream-12.pd.infn.it
 					*cp = '\0';
 				}
 				if(line && strstr(line,"Exit_status=")){	
-					maxtok_t = strtoken(line, ' ', token);
+					maxtok_t = strtoken(line, ' ', token, NUMTOK);
  					if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + 4)) == 0){
                         		        sysfatal("can't malloc timestamp in FinalStateQuery: %r");
                         		}
@@ -536,7 +536,7 @@ Job: 13.cream-12.pd.infn.it
                         		for(j=0;j<maxtok_t;j++){
 						free(token[j]);
                         		}
-					maxtok_t = strtoken(exit_str, '=', token);
+					maxtok_t = strtoken(exit_str, '=', token, NUMTOK);
 					free(exit_str);
 					en.udate=tmstampepoch;
                         		en.exitcode=atoi(token[1]);
@@ -546,7 +546,7 @@ Job: 13.cream-12.pd.infn.it
                                 		free(token[j]);
                         		}
 				}else if(line && strstr(line,"Job deleted")){	
-					maxtok_t = strtoken(line, ' ', token);
+					maxtok_t = strtoken(line, ' ', token, NUMTOK);
  					if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + 4)) == 0){
                         		        sysfatal("can't malloc timestamp in FinalStateQuery: %r");
                         		}
