@@ -279,14 +279,11 @@ IntStateQuery()
 	int len;
 	char *line;
 	char **token;
-	int maxtok_t=0,j;
+	int maxtok_t=0;
 	job_registry_entry en;
 	int ret;
 	char *cp; 
 
-	if((token=calloc(NUMTOK * sizeof *token,1)) == 0){
-		sysfatal("can't malloc token %r");
-	}
 	if((command_string=malloc(strlen(condor_binpath) + NUM_CHARS)) == 0){
 		sysfatal("can't malloc command_string %r");
 	}
@@ -304,7 +301,7 @@ IntStateQuery()
 				*cp = '\0';
 			}
 	
-			maxtok_t = strtoken(line, ' ', token, NUMTOK);
+			maxtok_t = strtoken(line, ' ', &token);
 		
 			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,token[0]);
 			en.status=atoi(token[2]);
@@ -320,15 +317,12 @@ IntStateQuery()
 				}
 			}
 		
-			for(j=0;j<maxtok_t;j++){
-				free(token[j]);
-			}
+			freetoken(&token,maxtok_t);
 			free(line);
 		}
 		pclose(fp);
 	}
 
-	free(token);
 	free(command_string);
 	return(0);
 }
@@ -358,14 +352,11 @@ FinalStateQuery(char *query)
 	int len;
 	char *line;
 	char **token;
-	int maxtok_l=0,maxtok_t=0,i,j;
+	int maxtok_t=0;
 	job_registry_entry en;
 	int ret;
 	char *cp; 
 
-	if((token=calloc(NUMTOK * sizeof *token,1)) == 0){
-		sysfatal("can't malloc token %r");
-	}
 	if((command_string=malloc(NUM_CHARS + strlen(query) +strlen(condor_binpath))) == 0){
 		sysfatal("can't malloc command_string %r");
 	}
@@ -383,7 +374,7 @@ FinalStateQuery(char *query)
 				*cp = '\0';
 			}
 			
-			maxtok_t = strtoken(line, ' ', token, NUMTOK);
+			maxtok_t = strtoken(line, ' ', &token);
 		
 			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,token[0]);
 			en.status=atoi(token[2]);
@@ -394,18 +385,15 @@ FinalStateQuery(char *query)
 		
 			if ((ret=job_registry_update(rha, &en)) < 0){
 				if(ret != JOB_REGISTRY_NOT_FOUND){
-					fprintf(stderr,"Append of record %d returns %d: ",i,ret);
+					fprintf(stderr,"Append of record returns %d: ",ret);
 					perror("");
 				}
 			}
 		
-			for(j=0;j<maxtok_t;j++){
-				free(token[j]);
-			}
+			freetoken(&token,maxtok_t);
 		}
 	}
 
-	free(token);
 	free(command_string);
 	return(0);
 }

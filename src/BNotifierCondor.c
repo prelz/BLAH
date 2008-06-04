@@ -256,10 +256,7 @@ PollDB()
 					if((clientid=calloc(STR_CHARS,1)) == 0){
 						sysfatal("can't malloc clientid in PollDB: %r");
 					}
-                                        if((tbuf=calloc(NUMTOK * sizeof *tbuf,1)) == 0){
-                                                sysfatal("can't malloc tbuf: %r");
-                                        }
-                                        maxtok=strtoken(en->user_prefix,'_',tbuf, NUMTOK);
+					maxtok=strtoken(en->user_prefix,'_',&tbuf);
 					if(tbuf[1]){
 						if ((cp = strrchr (tbuf[1], '\n')) != NULL){
 							*cp = '\0';
@@ -272,10 +269,7 @@ PollDB()
 					sprintf(blahid,"%s BlahJobName=\"%s\";",clientid, en->user_prefix);
 					strcat(buffer,blahid);
 					free(blahid);
-                                        for(i=0;i<maxtok;i++){
-                                                free(tbuf[i]);
-                                        }
-                                        free(tbuf);
+					freetoken(&tbuf,maxtok);
                                         free(clientid);
 				}
 				strcat(buffer,"]\n");
@@ -465,11 +459,7 @@ int GetFilter(char *buffer){
                 sysfatal("can't malloc out_buf: %r");
         }
 	
-        if((tbuf=calloc(NUMTOK * sizeof *tbuf,1)) == 0){
-                sysfatal("can't malloc tbuf: %r");
-        }
-
-        maxtok=strtoken(buffer,'/',tbuf, NUMTOK);
+        maxtok=strtoken(buffer,'/',&tbuf);
 
         if(tbuf[1]){
                 creamfilter=strdup(tbuf[1]);
@@ -492,10 +482,7 @@ int GetFilter(char *buffer){
 		fflush(debuglogfile);
 	}
 
-        for(i=0;i<maxtok;i++){
-                free(tbuf[i]);
-        }
-        free(tbuf);
+	freetoken(&tbuf,maxtok);
         free(out_buf);
 	
         return(0);
@@ -510,11 +497,7 @@ int NotifyStart(char *buffer){
 	char *notifdate;
         int   notifepoch;
 	
-        if((tbuf=calloc(NUMTOK * sizeof *tbuf,1)) == 0){
-                sysfatal("can't malloc tbuf: %r");
-        }
-
-        maxtok=strtoken(buffer,'/',tbuf, NUMTOK);
+        maxtok=strtoken(buffer,'/',&tbuf);
 
         if(tbuf[1]){
                 notifdate=strdup(tbuf[1]);
@@ -526,10 +509,7 @@ int NotifyStart(char *buffer){
                 }
         }
 
-        for(i=0;i<maxtok;i++){
-                free(tbuf[i]);
-        }
-        free(tbuf);
+	freetoken(&tbuf,maxtok);
 
 	notifepoch=str2epoch(notifdate,"S");
 	free(notifdate);

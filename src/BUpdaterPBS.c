@@ -293,7 +293,7 @@ Job Id: 11.cream-12.pd.infn.it
 	int len;
 	char *line;
 	char **token;
-	int maxtok_t=0,j;
+	int maxtok_t=0;
 	job_registry_entry en;
 	int ret;
 	char *timestamp;
@@ -305,9 +305,6 @@ Job Id: 11.cream-12.pd.infn.it
 	time_t dgbtimestamp;
 	char *cp;
 
-	if((token=calloc(NUMTOK * sizeof *token,1)) == 0){
-		sysfatal("can't malloc token %r");
-	}
 	if((command_string=malloc(strlen(pbs_binpath) + 10)) == 0){
 		sysfatal("can't malloc command_string %r");
 	}
@@ -343,16 +340,14 @@ Job Id: 11.cream-12.pd.infn.it
 					}
 					en.status = UNDEFINED;
 				}				
-                        	maxtok_t = strtoken(line, ':', token, NUMTOK);
+                        	maxtok_t = strtoken(line, ':', &token);
 				batch_str=strdel(token[1]," ");
 				JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
 				bupdater_push_active_job(&bact, en.batch_id);
 				free(batch_str);
-                        	for(j=0;j<maxtok_t;j++){
-                         	       free(token[j]);
-                        	}
+				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line,"job_state = ")){	
-				maxtok_t = strtoken(line, '=', token, NUMTOK);
+				maxtok_t = strtoken(line, '=', &token);
 				status_str=strdel(token[1]," ");
 				if(status_str && strcmp(status_str,"Q")==0){ 
 					en.status=IDLE;
@@ -364,25 +359,19 @@ Job Id: 11.cream-12.pd.infn.it
 					en.status=HELD;
 				}
 				free(status_str);
-                        	for(j=0;j<maxtok_t;j++){
-                         	       free(token[j]);
-                        	}
+				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line,"exec_host = ")){	
-				maxtok_t = strtoken(line, '=', token, NUMTOK);
+				maxtok_t = strtoken(line, '=', &token);
 				twn_str=strdup(token[1]);
-                        	for(j=0;j<maxtok_t;j++){
-                        	        free(token[j]);
-                        	}
-				maxtok_t = strtoken(twn_str, '/', token, NUMTOK);
+				freetoken(&token,maxtok_t);
+				maxtok_t = strtoken(twn_str, '/', &token);
 				wn_str=strdel(token[0]," ");
 				JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
 				free(twn_str);
  				free(wn_str);
-				for(j=0;j<maxtok_t;j++){
-					free(token[j]);
-				}
+				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line,"ctime = ")){	
-                        	maxtok_t = strtoken(line, ' ', token, NUMTOK);
+                        	maxtok_t = strtoken(line, ' ', &token);
                         	if((timestamp=malloc(strlen(token[2]) + strlen(token[3]) + strlen(token[4]) + strlen(token[5]) + strlen(token[6]) + 6)) == 0){
                         	        sysfatal("can't malloc timestamp in IntStateQuery: %r");
                         	}
@@ -390,9 +379,7 @@ Job Id: 11.cream-12.pd.infn.it
                         	tmstampepoch=str2epoch(timestamp,"L");
 				free(timestamp);
 				en.udate=tmstampepoch;
-                        	for(j=0;j<maxtok_t;j++){
-                        	        free(token[j]);
-                        	}
+				freetoken(&token,maxtok_t);
 			}
 			free(line);
 		}
@@ -413,7 +400,6 @@ Job Id: 11.cream-12.pd.infn.it
 		}
 	}				
 
-	free(token);
 	free(command_string);
 	return(0);
 }
@@ -467,7 +453,7 @@ Job: 13.cream-12.pd.infn.it
 	char *line;
 	char **token;
 	char **jobid;
-	int maxtok_t=0,maxtok_j=0,j,k;
+	int maxtok_t=0,maxtok_j=0,k;
 	job_registry_entry en;
 	int ret;
 	char *timestamp;
@@ -481,20 +467,13 @@ Job: 13.cream-12.pd.infn.it
 	time_t dgbtimestamp;
 	char *cp;
 
-	if((token=calloc(NUMTOK * sizeof *token,1)) == 0){
-		sysfatal("can't malloc token %r");
-	}
-	if((jobid=calloc(NUMTOK * sizeof *jobid,1)) == 0){
-		sysfatal("can't malloc jobid %r");
-	}
-	
 	if(debug>1){
 		dgbtimestamp=time(0);
 		fprintf(debuglogfile, "%s %s: input_string in FinalStateQuery is:%s\n",iepoch2str(dgbtimestamp),argv0,input_string);
 		fflush(debuglogfile);
 	}
 	
-	maxtok_j = strtoken(input_string, ':', jobid, NUMTOK);
+	maxtok_j = strtoken(input_string, ':', &jobid);
 	
 	for(k=0;k<maxtok_j;k++){
 	
@@ -525,7 +504,7 @@ Job: 13.cream-12.pd.infn.it
 					*cp = '\0';
 				}
 				if(line && strstr(line,"Exit_status=")){	
-					maxtok_t = strtoken(line, ' ', token, NUMTOK);
+					maxtok_t = strtoken(line, ' ', &token);
  					if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + 4)) == 0){
                         		        sysfatal("can't malloc timestamp in FinalStateQuery: %r");
                         		}
@@ -533,29 +512,23 @@ Job: 13.cream-12.pd.infn.it
 					tmstampepoch=str2epoch(timestamp,"A");
 					exit_str=strdup(token[3]);
 					free(timestamp);
-                        		for(j=0;j<maxtok_t;j++){
-						free(token[j]);
-                        		}
-					maxtok_t = strtoken(exit_str, '=', token, NUMTOK);
+					freetoken(&token,maxtok_t);
+					maxtok_t = strtoken(exit_str, '=', &token);
 					free(exit_str);
 					en.udate=tmstampepoch;
                         		en.exitcode=atoi(token[1]);
 					en.status=COMPLETED;
 					JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
-                        		for(j=0;j<maxtok_t;j++){
-                                		free(token[j]);
-                        		}
+					freetoken(&token,maxtok_t);
 				}else if(line && strstr(line,"Job deleted")){	
-					maxtok_t = strtoken(line, ' ', token, NUMTOK);
+					maxtok_t = strtoken(line, ' ', &token);
  					if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + 4)) == 0){
                         		        sysfatal("can't malloc timestamp in FinalStateQuery: %r");
                         		}
                         		sprintf(timestamp,"%s %s",token[0],token[1]);
 					tmstampepoch=str2epoch(timestamp,"A");
 					free(timestamp);
-                        		for(j=0;j<maxtok_t;j++){
-						free(token[j]);
-                        		}
+					freetoken(&token,maxtok_t);
 					en.udate=tmstampepoch;
 					en.status=REMOVED;
 				}
@@ -591,11 +564,7 @@ Job: 13.cream-12.pd.infn.it
 		fflush(debuglogfile);
 	}
 	
-	for(k=0;k<maxtok_j;k++){
-		free(jobid[k]);
-	}
-	free(token);
-	free(jobid);
+	freetoken(&jobid,maxtok_j);
 	return(0);
 }
 

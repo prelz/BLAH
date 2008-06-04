@@ -275,9 +275,6 @@ IntStateQuery()
 	char *tmp; 
 	char *cp; 
 
-	if((token=calloc(NUMTOK * sizeof *token,1)) == 0){
-		sysfatal("can't malloc token %r");
-	}
 	if((command_string=malloc(strlen(lsf_binpath) + 17)) == 0){
 		sysfatal("can't malloc command_string %r");
 	}
@@ -327,7 +324,7 @@ IntStateQuery()
 			bupdater_push_active_job(&bact, en.batch_id);
 			free(tmp);
 			
-			maxtok_l = strtoken(line, ' ', token, NUMTOK);
+			maxtok_l = strtoken(line, ' ', &token);
 			
 			JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,token[5]);
 			
@@ -347,9 +344,7 @@ IntStateQuery()
 			free(timestamp);
 			en.udate=tmstampepoch;
 		
-			for(i=0;i<maxtok_l;i++){
-				free(token[i]);
-			}
+			freetoken(&token,maxtok_l);
 			
 			free(line);
 		}
@@ -370,7 +365,6 @@ IntStateQuery()
 		}
 	}				
 
-	free(token);
 	free(command_string);
 	return(0);
 }
@@ -411,7 +405,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	int len;
 	char *line;
 	char **token;
-	int maxtok_t=0,j;
+	int maxtok_t=0;
 	job_registry_entry en;
 	int ret;
 	char *timestamp;
@@ -421,9 +415,6 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	char *cp; 
 	time_t dgbtimestamp;
 
-	if((token=calloc(NUMTOK * sizeof *token,1)) == 0){
-		sysfatal("can't malloc token %r");
-	}
 	if((command_string=malloc(strlen(lsf_binpath) + NUM_CHARS + 24)) == 0){
 		sysfatal("can't malloc command_string %r");
 	}
@@ -453,15 +444,13 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 						en.status = UNDEFINED;
 					}
 				}				
-				maxtok_t = strtoken(line, ',', token, NUMTOK);
+				maxtok_t = strtoken(line, ',', &token);
 				batch_str=strdel(token[0],"Job <>");
 				JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
 				free(batch_str);
-				for(j=0;j<maxtok_t;j++){
-					free(token[j]);
-				}
+				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line," Exited with exit code")){	
-				maxtok_t = strtoken(line, ' ', token, NUMTOK);
+				maxtok_t = strtoken(line, ' ', &token);
                         	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
 					sysfatal("can't malloc timestamp in FinalStateQuery: %r");
 				}
@@ -475,11 +464,9 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				en.exitcode=atoi(ex_str);
 				free(ex_str);
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
-				for(j=0;j<maxtok_t;j++){
-					free(token[j]);
-				}
+				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line," Done successfully")){	
-				maxtok_t = strtoken(line, ' ', token, NUMTOK);
+				maxtok_t = strtoken(line, ' ', &token);
                         	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
 					sysfatal("can't malloc timestamp in FinalStateQuery: %r");
 				}
@@ -491,11 +478,9 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				free(timestamp);
 				en.exitcode=0;
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
-				for(j=0;j<maxtok_t;j++){
-					free(token[j]);
-				}
+				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line," Signal <KILL>")){	
-				maxtok_t = strtoken(line, ' ', token, NUMTOK);
+				maxtok_t = strtoken(line, ' ', &token);
                         	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
 					sysfatal("can't malloc timestamp in FinalStateQuery: %r");
 				}
@@ -506,9 +491,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				en.status=REMOVED;
 				free(timestamp);
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
-				for(j=0;j<maxtok_t;j++){
-					free(token[j]);
-				}
+				freetoken(&token,maxtok_t);
 			}
 			free(line);
 		}
@@ -529,7 +512,6 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 		}
 	}				
 
-	free(token);
 	free(command_string);
 	return(0);
 }

@@ -16,13 +16,14 @@
 
 #define STR_CHARS          50000
 #define NUM_CHARS          300
-#define NUMTOK             200 
+#define NUMTOK             20
 #define ERRMAX             80
 
 ssize_t Readline(int fd, void *vptr, size_t maxlen);
 ssize_t Writeline(int fc, const void *vptr, size_t maxlen);
 char *get_line(FILE * f);
-int strtoken(const char *s, char delim, char **tok, int numtok);
+int freetoken(char ***token, int maxtok);
+int strtoken(const char *s, char delim, char ***token);
 char *strdel(char *s, const char *delete);
 char *epoch2str(char *epoch);
 char *iepoch2str(int epoch);

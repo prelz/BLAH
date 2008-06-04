@@ -74,65 +74,82 @@ char *get_line(FILE * f)
         last = len - 1;
     } while (!feof(f) && buf[last]!='\n');
     return buf;
-}	
+}
 
 int
-strtoken(const char *s, char delim, char **tok, int numtok)
+freetoken(char ***token, int maxtok)
 {
-	char *tmp;
-	char *ptr, *dptr;
-	int i = 0;
-	char **t=NULL;
-	char **token;
-    
-	if((tmp = calloc(1 + strlen(s),1)) == 0){
-		sysfatal("can't malloc tmp: %r");
-	}
-	assert(tmp);
-	strcpy(tmp, s);
-	ptr = tmp;
-	token=*tok;
+	int i;
 	
-	while(1) {
+	for(i=0;i<maxtok;i++){
+		free((*token)[i]);
+	}
+	free(*token);
+	
+	return(0);
+}
+
+int
+strtoken(const char *s, char delim, char ***token)
+{
+        char *tmp;
+        char *ptr, *dptr;
+	char **t=NULL;
+        int i = 0;
+	int numtok=0;
+	
+	
+        if((tmp = calloc(1 + strlen(s),1)) == 0){
+                sysfatal("can't malloc tmp: %r");
+        }
+        assert(tmp);
+        strcpy(tmp, s);
+        ptr = tmp;
+	
+	*token=NULL;
+	
+        while(1) {
+	
 		if(i >=numtok-1){
-			numtok*=2;
-			t=realloc(token,numtok*sizeof(char *));
+			numtok+=NUMTOK;
+			t=realloc(*token,numtok*sizeof(char *));
 			if(t != NULL){
-				token=t;
+				*token=t;
 			}else{
 				sysfatal("can't realloc token: %r");
 			}
 		}
-		if((dptr = strchr(ptr, delim)) != NULL) {
-			*dptr = '\0';
-			if((token[i] = calloc(1 + strlen(ptr),1)) == 0){
-				sysfatal("can't malloc token[i]: %r");
-			}
-			assert(token[i]);
-			strcpy(token[i], ptr);
-			ptr = dptr + 1;
-			if (strlen(token[i]) != 0){
-				i++;
-			}
-		} else {
-			if(strlen(ptr)) {
-				if((token[i] = calloc(1 + strlen(ptr),1)) == 0){
-					sysfatal("can't malloc token[i]: %r");
-				}
-				assert(token[i]);
-				strcpy(token[i], ptr);
-				i++;
-				break;
-			} else{
-				break;
-			}
-		}
-	}
-    
-	token[i] = NULL;
-	*tok=token;
-	free(tmp);
-	return i;
+				
+                if((dptr = strchr(ptr, delim)) != NULL) {
+                        *dptr = '\0';
+                        if(((*token)[i] = calloc(1 + strlen(ptr),1)) == 0){
+                                sysfatal("can't malloc (*token)[i]: %r");
+                        }
+                        assert((*token)[i]);
+                        strcpy((*token)[i], ptr);
+                        ptr = dptr + 1;
+                        if (strlen((*token)[i]) != 0){
+                                i++;
+                        }
+                } else {
+                        if(strlen(ptr)) {
+                                if(((*token)[i] = calloc(1 + strlen(ptr),1)) == 0){
+                                        sysfatal("can't malloc (*token)[i]: %r");
+                                }
+                                assert((*token)[i]);
+                                strcpy((*token)[i], ptr);
+                                i++;
+                                break;
+                        } else{
+                                break;
+                        }
+                }
+        }
+
+        (*token)[i] = NULL;
+        free(tmp);
+        return i;
+
 }
 
 char *
