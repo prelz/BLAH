@@ -2,11 +2,11 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.27 2008/05/28 13:04:30 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.28 2008/06/05 08:58:10 fprelz Exp $ 
 #
 # File:           Makefile.am
 #
-# Author(s):      Francesco Prelz ($Author: mezzadri $)
+# Author(s):      Francesco Prelz ($Author: fprelz $)
 #        e-mail: "Francesco.Prelz@mi.infn.it"
 #
 # Revision history:
@@ -37,6 +37,8 @@ BPRclient_LDADD = \
 $(GLOBUS_GSS_NOTHR_LIBS) $(GLOBUS_SSL_NOTHR_LIBS)
 
 BPRserver_SOURCES = BPRserver.c BPRcomm.c tokens.c
+
+BPRserver_LDFLAGS = -static
 
 BPRserver_LDADD = \
 $(GLOBUS_GSS_NOTHR_LIBS) $(GLOBUS_SSL_NOTHR_LIBS)
