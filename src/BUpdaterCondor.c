@@ -218,29 +218,33 @@ int main(int argc, char *argv[]){
 		
 		while ((en = job_registry_get_next(rha, fd)) != NULL){
 
-			/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
-			if((now-en->mdate>alldone_interval) && en->status!=REMOVED && en->status!=COMPLETED){
-				AssignFinalState(en->batch_id);	
-			}
-			
-			if((now-en->mdate>finalstate_query_interval) && en->status!=REMOVED && en->status!=COMPLETED){
-				/* create the constraint that will be used in condor_history command in FinalStateQuery*/
-				if(!first) strcat(query," ||");	
-				if(first) first=FALSE;
-				if((constraint=malloc(strlen(en->batch_id) + 14)) == 0){
-					sysfatal("can't malloc constraint %r");
-        			}
-				sprintf(constraint," ClusterId==%s",en->batch_id);
-				
-				q=realloc(query,strlen(query)+strlen(constraint)+4);
-				if(q != NULL){
-					query=q;	
-				}else{
-					sysfatal("can't realloc query: %r");
+			if(en->status!=REMOVED && en->status!=COMPLETED){
+				/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
+				if(now-en->mdate>alldone_interval){
+					AssignFinalState(en->batch_id);	
+					free(en);
+					continue;
 				}
-				strcat(query,constraint);
-				free(constraint);
-				runfinal=TRUE;
+			
+				if(now-en->mdate>finalstate_query_interval){
+					/* create the constraint that will be used in condor_history command in FinalStateQuery*/
+					if(!first) strcat(query," ||");	
+					if(first) first=FALSE;
+					if((constraint=malloc(strlen(en->batch_id) + 14)) == 0){
+						sysfatal("can't malloc constraint %r");
+        				}
+					sprintf(constraint," ClusterId==%s",en->batch_id);
+					
+					q=realloc(query,strlen(query)+strlen(constraint)+4);
+					if(q != NULL){
+						query=q;	
+					}else{
+						sysfatal("can't realloc query: %r");
+					}
+					strcat(query,constraint);
+					free(constraint);
+					runfinal=TRUE;
+				}
 			}
 			free(en);
 		}
