@@ -547,9 +547,9 @@ Job: 13.cream-12.pd.infn.it
 					en.udate=tmstampepoch;
 					en.status=REMOVED;
 				}
+				free(line);
 			}
 			pclose(fp);
-			free(line);
 		}
 		
 		if(en.status !=UNDEFINED){
