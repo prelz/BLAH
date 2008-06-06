@@ -248,8 +248,8 @@ int main(int argc, char *argv[]){
 					finstr_len=strlen(final_string);
 					runfinal=TRUE;
 				}
-				free(en);
 			}
+			free(en);
 		}
 		
 		if(runfinal){
