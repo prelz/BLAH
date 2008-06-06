@@ -645,6 +645,7 @@ LookupAndSend(int m_sock)
 	char      *irptr;
 	int       listcnt=0;
 	int       listbeg=0;
+	char      *buftmp;
     
 	while ( 1 ) {
 	
@@ -660,8 +661,10 @@ LookupAndSend(int m_sock)
 	
 		Readline(conn_s, buffer, STR_CHARS-1);	
 		if(debug){
-			fprintf(debuglogfile, "Received:%s",buffer);
+			buftmp=strdel(buffer,"\n");
+			fprintf(debuglogfile, "Received:%s",buftmp);
 			fflush(debuglogfile);
+			free(buftmp);
 		}
 	
 		/* printf("thread/0x%08lx\n",pthread_self()); */
@@ -1353,6 +1356,7 @@ CreamConnection(int c_sock)
 	struct   pollfd *pfds;
 	int      nfds = 1;
 	int      timeout= 5000;
+	char    *buftmp;
     
 	fds[0].fd = c_sock;
 	fds[0].events = 0;
@@ -1435,8 +1439,10 @@ write_c:
 			Readline(conn_c, buffer, STR_CHARS-1);
 			if(strlen(buffer)>0){
 				if(debug){
-					fprintf(debuglogfile, "Received for Cream:%s\n",buffer);
+					buftmp=strdel(buffer,"\n");
+					fprintf(debuglogfile, "Received for Cream:%s\n",buftmp);
 					fflush(debuglogfile);
+					free(buftmp);
 				}
 				if(buffer && ((strstr(buffer,"STARTNOTIFY")!=NULL) ||(strstr(buffer,"CREAMFILTER")!=NULL))){
 					NotifyFromDate(buffer);

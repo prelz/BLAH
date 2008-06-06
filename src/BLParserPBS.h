@@ -58,6 +58,7 @@ int GetRdxId(int cnt);
 int GetBlahNameId(char *blahstr);
 int strtoken(const char *s, char delim, char **token);
 char *convdate(char *date);
+char *strdel(char *s, const char *delete);
 char *iepoch2str(int epoch, char *f);
 int str2epoch(char *str, char *f);
 void daemonize();
