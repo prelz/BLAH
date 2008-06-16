@@ -146,9 +146,17 @@ job_registry_purge(const char *path, time_t oldest_creation_date,
   job_registry_recnum_t first_recnum, last_recnum;
   int ret;
   mode_t old_umask;
+  job_registry_handle *jra;
 
-  fd = fopen(path,"r+");
-  if (fd == NULL) return JOB_REGISTRY_FOPEN_FAIL;
+  jra = job_registry_init(path, NAMES_ONLY);
+  if (jra == NULL) return -1;
+
+  fd = fopen(jra->path,"r+");
+  if (fd == NULL) 
+   {
+    job_registry_destroy(jra);
+    return JOB_REGISTRY_FOPEN_FAIL;
+   }
 
   /* Now obtain the requested write lock */
 
@@ -160,6 +168,7 @@ job_registry_purge(const char *path, time_t oldest_creation_date,
   if (fcntl(fileno(fd), F_SETLKW, &wlock) < 0) 
    {
     fclose(fd);
+    job_registry_destroy(jra);
     return JOB_REGISTRY_FLOCK_FAIL;
    }
 
@@ -167,12 +176,14 @@ job_registry_purge(const char *path, time_t oldest_creation_date,
    {
     if (force_rewrite) ftruncate(fileno(fd), 0);
     fclose(fd);
+    job_registry_destroy(jra);
     return JOB_REGISTRY_NO_VALID_RECORD;
    }
   if (ret == 0)
    {
     /* End of file. */
     fclose(fd);
+    job_registry_destroy(jra);
     return JOB_REGISTRY_SUCCESS;
    }
   
@@ -181,6 +192,7 @@ job_registry_purge(const char *path, time_t oldest_creation_date,
    {
     errno = ENOMSG;
     fclose(fd);
+    job_registry_destroy(jra);
     return JOB_REGISTRY_CORRUPT_RECORD;
    }
 
@@ -190,13 +202,19 @@ job_registry_purge(const char *path, time_t oldest_creation_date,
    {
     /* Nothing to purge. Go home. */
     fclose(fd);
+    job_registry_destroy(jra);
     return JOB_REGISTRY_SUCCESS;
    }
 
   /* Create purged registry file that will be rotated in place */
   /* of the current registry. */
-  newreg_path = jobregistry_construct_path("%s/%s.new.%d", path, getpid());
-  if (newreg_path == NULL) return JOB_REGISTRY_MALLOC_FAIL;
+  newreg_path = jobregistry_construct_path("%s/%s.new.%d", jra->path, getpid());
+  if (newreg_path == NULL) 
+   {
+    fclose(fd);
+    job_registry_destroy(jra);
+    return JOB_REGISTRY_MALLOC_FAIL;
+   }
   
   /* Make sure the file is group writable. */
   old_umask=umask(S_IWOTH);
@@ -206,20 +224,23 @@ job_registry_purge(const char *path, time_t oldest_creation_date,
    {
     fclose(fd);
     free(newreg_path);
+    job_registry_destroy(jra);
     return JOB_REGISTRY_FOPEN_FAIL;
    }
 
-  if (force_rewrite && (first.cdate >= oldest_creation_date))
+  if (first.cdate >= oldest_creation_date)
    {
-    /* Write out the first record if needed */
+    /* force_rewrite must be on. Write out the first record if needed */
     if (fwrite(&first,sizeof(job_registry_entry),1,fdw) < 1)
      {
       fclose(fd);
       fclose(fdw);
       free(newreg_path);
+      job_registry_destroy(jra);
       return JOB_REGISTRY_FWRITE_FAIL;
      }
    }
+  else job_registry_unlink_proxy(jra, &first);
 
   while (!feof(fd))
    {
@@ -228,6 +249,7 @@ job_registry_purge(const char *path, time_t oldest_creation_date,
       fclose(fd);
       fclose(fdw);
       free(newreg_path);
+      job_registry_destroy(jra);
       return JOB_REGISTRY_NO_VALID_RECORD;
      }
     if (ret == 0) break;
@@ -235,21 +257,29 @@ job_registry_purge(const char *path, time_t oldest_creation_date,
     /* Sanitize sequence numbers */
     if (cur.recnum != (last_recnum+1)) cur.recnum = last_recnum + 1;
     last_recnum = cur.recnum;
-    if (cur.cdate < oldest_creation_date) continue;
+    if (cur.cdate < oldest_creation_date)
+     {
+      job_registry_unlink_proxy(jra, &cur);
+      continue;
+     }
 
     if (fwrite(&cur,sizeof(job_registry_entry),1,fdw) < 1)
      {
       fclose(fd);
       fclose(fdw);
       free(newreg_path);
+      job_registry_destroy(jra);
       return JOB_REGISTRY_FWRITE_FAIL;
      }
    }
 
   fclose(fdw);
 
-  if (rename(newreg_path, path) < 0)
+  if (rename(newreg_path, jra->path) < 0)
    {
+    fclose(fd);
+    free(newreg_path);
+    job_registry_destroy(jra);
     return JOB_REGISTRY_RENAME_FAIL;
    }
 
@@ -258,7 +288,81 @@ job_registry_purge(const char *path, time_t oldest_creation_date,
 
   free(newreg_path);
 
+  job_registry_destroy(jra);
+
   return JOB_REGISTRY_SUCCESS;
+}
+
+/*
+ * job_registry_update_reg
+ *
+ * Converts an old registry to a newer format. This assumes
+ * The registry entry structure is always expanded at the tail,
+ * before the final magic number, and that zeroing out the new
+ * part is OK.
+ *
+ * @param old_path Pathname of the old job registry file.
+ * @param new_path Pathname of the new job registry file.
+ *
+ */
+
+int
+job_registry_update_reg(const char *old_path, const char *new_path)
+{
+  FILE *of, *nf;
+  job_registry_entry en;
+  unsigned char *enendp;
+  int encount;
+  int rret, wret;
+  int i;
+
+  of = fopen(old_path,"r");
+  if (of == NULL) return -1;
+
+  nf = fopen(new_path,"w");
+  if (nf == NULL)
+   {
+    fclose(of);
+    return -1;
+   }
+
+  encount = 0;
+  while (!feof(of))
+   {
+    wret = 0;
+    if ((rret=fread(&en, 1, sizeof(en), of)) < sizeof(en.magic_start)) break;
+    if (en.magic_start != JOB_REGISTRY_MAGIC_START)
+     {
+      fseek(of, -rret+1, SEEK_CUR);
+      continue;
+     }
+    for(i=sizeof(en.magic_start), enendp = (unsigned char *)(&en) + i;
+        i <= (rret - sizeof(en.magic_start)) && 
+            (*(uint32_t *)(enendp)) != JOB_REGISTRY_MAGIC_END;
+        i++, enendp++) /*Empty loop - scan to end of record magic */ ;
+    if ((*(uint32_t *)(enendp)) != JOB_REGISTRY_MAGIC_END)
+     {
+      fseek(of, -rret+1, SEEK_CUR);
+      continue;
+     }
+    fseek(of, -sizeof(en)+i+sizeof(en.magic_end), SEEK_CUR);
+    /* Zero out tail of record and set new magic end */
+    for (;i<sizeof(en);i++,enendp++) *enendp = 0;
+    en.magic_end = JOB_REGISTRY_MAGIC_END;
+    if ((wret = fwrite(&en, sizeof(en), 1, nf)) < 1) break;
+    else encount++;
+   }
+
+  fclose(of);
+  fclose(nf);
+
+  if (wret < 0 || rret < 0)
+   {
+    unlink(new_path);
+    return -1;
+   }
+
+  return encount;
 }
 
 /*
@@ -291,18 +395,19 @@ job_registry_init(const char *path,
   const char *npu_tail="/npu";
   int cfd;
   FILE *fd;
+  char *old_lockfile, *old_npudir, *old_path=NULL;
+  int need_to_create_regdir = FALSE;
+  char *dircreat[3];
+  char **dir;
+  int stret;
 
-  rha = (job_registry_handle *)malloc(sizeof(job_registry_handle));
+  rha = (job_registry_handle *)calloc(1, sizeof(job_registry_handle));
   if (rha == NULL) 
    {
     errno = ENOMEM;
     return NULL;
    }
 
-  rha->firstrec = rha->lastrec = 0;
-  rha->entries = NULL;
-  rha->n_entries = 0;
-  rha->n_alloc = 0;
   rha->mode = mode;
 
   /* Resolve symbolic link, if any */
@@ -316,21 +421,98 @@ job_registry_init(const char *path,
      }
    }
 
-  /* Copy path of file repository */
-  rha->path = strdup(path);
+  rha->path = (char *)malloc(strlen(path) + strlen(JOB_REGISTRY_REGISTRY_NAME) + 2);
   if (rha->path == NULL)
    {
-    free(rha);
+    job_registry_destroy(rha);
     errno = ENOMEM;
     return NULL;
    }
-  
+  sprintf(rha->path, "%s/%s", path, JOB_REGISTRY_REGISTRY_NAME);
+
+  rha->npudir = jobregistry_construct_path("%s/%s.npudir",rha->path,0);
+  if (rha->npudir == NULL)
+   {
+    job_registry_destroy(rha);
+    errno = ENOMEM;
+    return NULL;
+   }
+
+  /* Check for reg dir existance, and convert from simple-file format */
+  /* in a backwards-compatible fashion */
+  if (mode != NAMES_ONLY)
+   {
+    stret = lstat(path, &fst);
+    if (stret < 0 && errno == ENOENT) need_to_create_regdir = TRUE;
+    if (stret >= 0)
+     {
+      if (!S_ISDIR(fst.st_mode))
+       {
+        old_lockfile = jobregistry_construct_path("%s/.%s.locktest",path,0);
+        old_npudir = jobregistry_construct_path("%s/.%s.npudir",path,0);
+        if (old_lockfile == NULL || old_npudir == NULL)
+         {
+          if (old_lockfile != NULL) free(old_lockfile);
+          if (old_npudir != NULL) free(old_npudir);
+          job_registry_destroy(rha);
+          errno = ENOMEM;
+          return NULL;
+         }
+        old_path = jobregistry_construct_path("%s/%s-OLD",path,0);
+        if (old_path == NULL)
+         {
+          free(old_lockfile); free(old_npudir);
+          job_registry_destroy(rha);
+          errno = ENOMEM;
+          return NULL;
+         }
+        if (rename(path, old_path) < 0)
+         {
+          free(old_lockfile); free(old_npudir); free(old_path);
+          job_registry_destroy(rha);
+          return NULL; /* keep the rename errno */
+         }
+        need_to_create_regdir = TRUE;
+       }
+     }
+    if (need_to_create_regdir)
+     {
+      old_umask = umask(0);
+      if (mkdir(path,01777) < 0)
+       {
+        if (old_path != NULL) 
+         {
+          free(old_lockfile); free(old_npudir); free(old_path);
+         }
+        umask(old_umask);
+        job_registry_destroy(rha);
+        return NULL;
+       }
+      umask(old_umask);
+      if (old_path != NULL)
+       {
+        rename(old_npudir, rha->npudir); /* An error here would deserve a
+                                            warning, but there's no
+                                            way to feed it back */
+        free(old_npudir);
+        unlink(old_lockfile); /* No real worry if this fails */
+        free(old_lockfile);
+        if (job_registry_update_reg(old_path, rha->path) < 0)
+         {
+          free(old_path);
+          job_registry_destroy(rha);
+          return NULL; /* keep the rename errno */
+         }
+        unlink(old_path); /* No more worry if this fails */
+       }
+     }
+   }
+
   /* Create path for lock test file */
-  rha->lockfile = jobregistry_construct_path("%s/.%s.locktest",path,0);
+  rha->lockfile = jobregistry_construct_path("%s/%s.locktest",rha->path,0);
   if (rha->lockfile == NULL)
    {
-    free(rha->path);
-    free(rha);
+    job_registry_destroy(rha);
     errno = ENOMEM;
     return NULL;
    }
@@ -345,8 +527,7 @@ job_registry_init(const char *path,
         if ((cfd=creat(rha->lockfile,0666)) < 0)
          {
           umask(old_umask);
-          free(rha->path);
-          free(rha);
+          job_registry_destroy(rha);
           return NULL;
          }
 	close(cfd);
@@ -354,16 +535,15 @@ job_registry_init(const char *path,
        }
       else
        {
-        free(rha->path);
-        free(rha);
+        job_registry_destroy(rha);
         return NULL;
        }
      }
    }
 
-  /* Create path and dir for NPU storage */
-  rha->npudir = jobregistry_construct_path("%s/.%s.npudir",path,0);
-  if (rha->npudir == NULL)
+  /* Create path and dir for NPU and proxy storage */
+  rha->proxydir = jobregistry_construct_path("%s/%s.proxydir",rha->path,0);
+  if (rha->proxydir == NULL)
    {
     job_registry_destroy(rha);
     errno = ENOMEM;
@@ -372,32 +552,39 @@ job_registry_init(const char *path,
 
   if (mode != NAMES_ONLY)
    {
-    if (stat(rha->npudir, &dst) < 0)
+    dircreat[0] = rha->npudir;
+    dircreat[1] = rha->proxydir;
+    dircreat[2] = NULL;
+
+    for(dir = dircreat; *dir != NULL; dir++)
      {
-      if (errno == ENOENT)
+      if (stat(*dir, &dst) < 0)
        {
-        old_umask = umask(0);
-        if (mkdir(rha->npudir,01777) < 0)
+        if (errno == ENOENT)
          {
+          old_umask = umask(0);
+          if (mkdir(*dir,01777) < 0)
+           {
+            umask(old_umask);
+            job_registry_destroy(rha);
+            return NULL;
+           }
           umask(old_umask);
+         }
+        else
+         {
           job_registry_destroy(rha);
           return NULL;
          }
-        umask(old_umask);
        }
       else
        {
-        job_registry_destroy(rha);
-        return NULL;
-       }
-     }
-    else
-     {
-      if (!S_ISDIR(dst.st_mode))
-       {
-        job_registry_destroy(rha);
-        errno = ENOTDIR;
-        return NULL;
+        if (!S_ISDIR(dst.st_mode))
+         {
+          job_registry_destroy(rha);
+          errno = ENOTDIR;
+          return NULL;
+         }
        }
      }
    }
@@ -451,6 +638,7 @@ job_registry_destroy(job_registry_handle *rha)
    if (rha->path != NULL) free(rha->path);
    if (rha->lockfile != NULL) free(rha->lockfile);
    if (rha->npudir != NULL) free(rha->npudir);
+   if (rha->proxydir != NULL) free(rha->proxydir);
    rha->n_entries = rha->n_alloc = 0;
    if (rha->entries != NULL) free(rha->entries);
    free(rha);
@@ -1745,3 +1933,185 @@ job_registry_free_split_id(job_registry_split_id *spid)
 
    free(spid);
  }
+
+/*
+ * job_registry_set_proxy
+ *
+ * Add a proxy link to the current entry.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
+ * @param en Pointer to a job registry entry.
+ * @param proxy Path to the proxy to be registered
+ *
+ * @return Numeric status. < 0 in case of failure.
+ */
+
+int
+job_registry_set_proxy(const job_registry_handle *rha,
+                       job_registry_entry *en,
+                       char *proxy)
+{
+  const char *proxylink_fmt="proxy_XXXXXX";
+  const char *proxylink_id_fmt="proxy_%*s_XXXXXX";
+  char *fullpath;
+  int idlen;
+  int spret = -1;
+  int syret;
+  int lfd;
+  int i,j;
+
+  if ((idlen = strlen(en->batch_id)) > 0)
+   {
+     if (idlen > 20) idlen = 20;
+     spret = snprintf(en->proxy_link, sizeof(en->proxy_link), 
+                      proxylink_id_fmt, idlen, en->batch_id);
+     /* No slashes allowed here */
+     for(i=0; i<strlen(en->proxy_link); i++)
+      {
+       if (en->proxy_link[i] == '/') en->proxy_link[i] = '_';
+      }
+   }
+
+  if (spret < 0)
+   {
+     strncpy(en->proxy_link, proxylink_fmt, sizeof(en->proxy_link));
+   }
+  en->proxy_link[sizeof(en->proxy_link)-1] = '\000';
+
+  fullpath = (char *)malloc(strlen(en->proxy_link) + strlen(rha->proxydir) + 2);
+  if (fullpath == NULL)
+   {
+    en->proxy_link[0]='\000';
+    errno = ENOMEM;
+    return -1;
+   }
+  
+  sprintf(fullpath, "%s/%s", rha->proxydir, en->proxy_link);
+
+  if (lfd = mkstemp(fullpath) < 0)
+   {
+    free(fullpath);
+    return lfd;
+   }
+   
+  unlink(fullpath);
+  syret = symlink(proxy, fullpath);
+
+  close(lfd);
+
+  if (syret >= 0)
+   {
+    /* Copy the unique part of the file into the entry */
+    for (i = strlen(fullpath) - 6, j = strlen(en->proxy_link) - 6;
+         i < strlen(fullpath); i++, j++)
+     {
+      en->proxy_link[j] = fullpath[i];
+     }
+   }
+  else
+   {
+    en->proxy_link[0]='\000';
+   }
+  
+  free(fullpath);
+  return syret;
+}
+
+/*
+ * job_registry_get_proxy
+ *
+ * Get the full pathname of the proxy linked to the current entry, if any.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
+ * @param en Pointer to a job registry entry.
+ *
+ * @return Dynamically allocated path to the proxy (needs to be freed)
+ *         or NULL in case of failure.
+ */
+
+char *
+job_registry_get_proxy(const job_registry_handle *rha,
+                       const job_registry_entry *en)
+{
+  char *fullpath;
+  char *retl = NULL;
+  char *new_retl;
+  int retll;
+  int rlret;
+
+  fullpath = (char *)malloc(strlen(en->proxy_link) + strlen(rha->proxydir) + 2);
+  if (fullpath == NULL)
+   {
+    errno = ENOMEM;
+    return NULL;
+   }
+  
+  sprintf(fullpath, "%s/%s", rha->proxydir, en->proxy_link);
+
+  for (retll = 256; ;retll += 128)
+   {
+    new_retl = (char *)realloc(retl, retll);
+    if (new_retl == NULL)
+     {
+      errno = ENOMEM;
+      free(retl);
+      retl = NULL;
+      break;
+     }
+
+    retl = new_retl;
+    rlret = readlink(fullpath, retl, retll); 
+    if (rlret < 0)
+     {
+      free(retl);
+      retl = NULL;
+      break;
+     }  
+    if (rlret < retll)
+     {
+      retl[rlret]='\000'; /* readlink does not NULL-terminate */
+      break;
+     }
+   }
+
+  free(fullpath);
+  return retl;
+}
+
+/*
+ * job_registry_unlink_proxy
+ *
+ * Unlink and remove the proxy linked to the current entry, if any.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
+ * @param en Pointer to a job registry entry.
+ *
+ * @return Numeric status: < 0 in case of failure. errno is set accordingly.
+ */
+
+int
+job_registry_unlink_proxy(const job_registry_handle *rha,
+                          job_registry_entry *en)
+{
+  char *fullpath;
+  int unret;
+
+  fullpath = (char *)malloc(strlen(en->proxy_link) + strlen(rha->proxydir) + 2);
+  if (fullpath == NULL)
+   {
+    errno = ENOMEM;
+    return NULL;
+   }
+  
+  sprintf(fullpath, "%s/%s", rha->proxydir, en->proxy_link);
+
+  unret = unlink(fullpath);
+
+  if (unret >= 0)
+   {
+    en->proxy_link[0]='\000';
+   }
+
+  free(fullpath);
+  return unret;
+}

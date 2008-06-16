@@ -30,6 +30,7 @@ main(int argc, char *argv[])
   char *test_registry_file = JOB_REGISTRY_TEST_FILE;
   char *test_blahid_format="conlrms/%c%c%c_blahid_%05d/stuff";
   char *test_batchid_format="%c%c%c_batchid_%05d";
+  char *test_proxy;
   job_registry_entry en;
   struct timeval tm_start, tm_end;
   int n_entries = 10000;
@@ -53,6 +54,9 @@ main(int argc, char *argv[])
     return 1;
    }
 
+  test_proxy = getenv("X509_USER_PROXY");
+  if (test_proxy == NULL) test_proxy = "/tmp/jrtest.proxy";
+
   gettimeofday(&tm_start, NULL);
   /* Create and append n_entries entries */
   for(i=0;i<n_entries;i++)
@@ -73,6 +77,9 @@ main(int argc, char *argv[])
      }
     else                   en.user_prefix[0] = '\000';
     
+    if ((rand()%100) > 70) job_registry_set_proxy(rha, &en, test_proxy);
+    else                   en.proxy_link[0]='\000';
+
     if ((ret=job_registry_append(rha, &en)) < 0)
      {
       fprintf(stderr,"%s: Append of record #%05d returns %d: ",argv[0],i,ret);

@@ -39,17 +39,18 @@ main(int argc, char *argv[])
   int exitcode = -1; 
   char *exitreason = "";
   char *user_prefix = "";
+  char *user_proxy = "";
   char *wn_addr = "";
   time_t udate=0;
   char *blah_id, *batch_id;
-  int ret;
+  int ret, prret;
   config_handle *cha;
   config_entry *rge;
   job_registry_handle *rha, *rhano;
 
   if (argc < 3)
    {
-    fprintf(stderr,"Usage: %s <BLAH id> <batch id> [job status] [udate] [user prefix] [worker node] [exit code] [exit reason]\n",argv[0]);
+    fprintf(stderr,"Usage: %s <BLAH id> <batch id> [job status] [udate] [user prefix] [user proxy] [worker node] [exit code] [exit reason]\n",argv[0]);
     return 1;
    }
 
@@ -59,9 +60,10 @@ main(int argc, char *argv[])
   if (argc > 3) status = atoi(argv[3]);
   if (argc > 4) udate = atol(argv[4]);
   if (argc > 5) user_prefix = argv[5];
-  if (argc > 6) wn_addr = argv[6];
-  if (argc > 7) exitcode = atoi(argv[7]);
-  if (argc > 8) exitreason = argv[8];
+  if (argc > 6) user_proxy = argv[6];
+  if (argc > 7) wn_addr = argv[7];
+  if (argc > 8) exitcode = atoi(argv[8]);
+  if (argc > 9) exitreason = argv[9];
    
   cha = config_read(NULL); /* Read config from default locations. */
   if (cha != NULL)
@@ -101,6 +103,7 @@ main(int argc, char *argv[])
   en.submitter = geteuid();
   JOB_REGISTRY_ASSIGN_ENTRY(en.user_prefix,user_prefix); 
     
+
   rha=job_registry_init(registry_file, BY_BLAH_ID);
 
   if (rha == NULL)
@@ -113,6 +116,15 @@ main(int argc, char *argv[])
       if (need_to_free_registry_file) free(registry_file);
       if (rhano != NULL)
        {
+        if (strlen(user_proxy) > 0)
+         {
+          prret = job_registry_set_proxy(rhano, &en, user_proxy);
+          if (prret < 0)
+           {
+            fprintf(stderr,"%s: warning: setting proxy to %s: ",argv[0],user_proxy);
+            perror("");
+           }
+         }
         ret=job_registry_append_nonpriv(rhano, &en);
         job_registry_destroy(rhano);
         if (ret < 0)
@@ -135,6 +147,16 @@ main(int argc, char *argv[])
   /* Filename is stored in job registry handle. - Don't need these anymore */
   if (cha != NULL) config_free(cha);
   if (need_to_free_registry_file) free(registry_file);
+
+  if (strlen(user_proxy) > 0)
+   {
+    prret = job_registry_set_proxy(rha, &en, user_proxy);
+    if (prret < 0)
+     {
+      fprintf(stderr,"%s: warning: setting proxy to %s: ",argv[0],user_proxy);
+      perror("");
+     }
+   }
 
   if ((ret=job_registry_append(rha, &en)) < 0)
    {

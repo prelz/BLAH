@@ -22,6 +22,10 @@
 #include <string.h>
 #include <time.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include "job_registry.h"
 
 int
@@ -34,6 +38,8 @@ main(int argc, char *argv[])
   int pick;
   int n_read_tests;
   struct timeval tm_start, tm_end;
+  char *pname;
+  struct stat pstat;
   float elapsed_secs;
   int i;
 
@@ -83,6 +89,24 @@ main(int argc, char *argv[])
               argv[0], rha->entries[pick].id);
       job_registry_destroy(rha);
       return 1;
+     }
+    if (strlen(en->proxy_link) > 0)
+     {
+      pname = job_registry_get_proxy(rha, en);
+      if (pname == NULL)
+       {
+        fprintf(stderr,"%s: Unable to resolve proxy link %s: ",
+              argv[0], en->proxy_link);
+        perror("");
+       }
+      else 
+       {
+        if (stat(pname, &pstat) < 0)
+         {
+          fprintf(stderr,"%s: stat of %s fails: ", argv[0], pstat);
+          perror("");
+         }
+       }
      }
     if ((spid = job_registry_split_blah_id(en->blah_id)) == NULL)
      {

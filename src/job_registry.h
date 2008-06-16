@@ -41,6 +41,7 @@ typedef uint32_t job_registry_recnum_t;
 
 #define JOB_REGISTRY_MAX_EXITREASON 120
 #define JOB_REGISTRY_MAX_USER_PREFIX 32
+#define JOB_REGISTRY_MAX_PROXY_LINK  40
 
 typedef struct job_registry_entry_s
  {
@@ -58,6 +59,7 @@ typedef struct job_registry_entry_s
    char         exitreason[JOB_REGISTRY_MAX_EXITREASON];
    char         wn_addr[40]; /* Accommodates IPV6 addresses */
    char         user_prefix[JOB_REGISTRY_MAX_USER_PREFIX];
+   char         proxy_link[JOB_REGISTRY_MAX_PROXY_LINK];
    uint32_t     magic_end; 
  } job_registry_entry;
 
@@ -86,6 +88,7 @@ typedef struct job_registry_handle_s
    char *path;
    char *lockfile;
    char *npudir;
+   char *proxydir;
    job_registry_index *entries;
    int n_entries;
    int n_alloc;
@@ -125,6 +128,7 @@ typedef struct job_registry_split_id_s
 #define JOB_REGISTRY_OPENDIR_FAIL    -15 
 
 #define JOB_REGISTRY_TEST_FILE "/tmp/test_reg.bjr"
+#define JOB_REGISTRY_REGISTRY_NAME "registry"
 #define JOB_REGISTRY_ALLOC_CHUNK     20
 
 char *jobregistry_construct_path(const char *format, const char *path,
@@ -167,6 +171,12 @@ int job_registry_seek_next(FILE *fd, job_registry_entry *result);
 char *job_registry_entry_as_classad(const job_registry_entry *entry);
 job_registry_split_id *job_registry_split_blah_id(const char *bid);
 void job_registry_free_split_id(job_registry_split_id *spid);
+int job_registry_set_proxy(const job_registry_handle *rha,
+                           job_registry_entry *en, char *proxy);
+char *job_registry_get_proxy(const job_registry_handle *rha,
+                             const job_registry_entry *en);
+int job_registry_unlink_proxy(const job_registry_handle *rha,
+                              job_registry_entry *en);
 
 #ifndef TRUE
 #define TRUE 1
