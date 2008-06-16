@@ -40,6 +40,7 @@ main(int argc, char *argv[])
   char *exitreason = "";
   char *user_prefix = "";
   char *user_proxy = "";
+  int  renew_proxy = 0;
   char *wn_addr = "";
   time_t udate=0;
   char *blah_id, *batch_id;
@@ -50,7 +51,7 @@ main(int argc, char *argv[])
 
   if (argc < 3)
    {
-    fprintf(stderr,"Usage: %s <BLAH id> <batch id> [job status] [udate] [user prefix] [user proxy] [worker node] [exit code] [exit reason]\n",argv[0]);
+    fprintf(stderr,"Usage: %s <BLAH id> <batch id> [job status] [udate] [user prefix] [user proxy] [renew proxy] [worker node] [exit code] [exit reason]\n",argv[0]);
     return 1;
    }
 
@@ -61,9 +62,10 @@ main(int argc, char *argv[])
   if (argc > 4) udate = atol(argv[4]);
   if (argc > 5) user_prefix = argv[5];
   if (argc > 6) user_proxy = argv[6];
-  if (argc > 7) wn_addr = argv[7];
-  if (argc > 8) exitcode = atoi(argv[8]);
-  if (argc > 9) exitreason = argv[9];
+  if (argc > 7) renew_proxy = atoi(argv[7]);
+  if (argc > 8) wn_addr = argv[8];
+  if (argc > 9) exitcode = atoi(argv[9]);
+  if (argc > 10) exitreason = argv[10];
    
   cha = config_read(NULL); /* Read config from default locations. */
   if (cha != NULL)
@@ -102,7 +104,7 @@ main(int argc, char *argv[])
   JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,exitreason); 
   en.submitter = geteuid();
   JOB_REGISTRY_ASSIGN_ENTRY(en.user_prefix,user_prefix); 
-    
+  en.renew_proxy = renew_proxy;
 
   rha=job_registry_init(registry_file, BY_BLAH_ID);
 

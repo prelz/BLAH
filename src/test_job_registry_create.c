@@ -77,7 +77,11 @@ main(int argc, char *argv[])
      }
     else                   en.user_prefix[0] = '\000';
     
-    if ((rand()%100) > 70) job_registry_set_proxy(rha, &en, test_proxy);
+    if ((rand()%100) > 70)
+     {
+      job_registry_set_proxy(rha, &en, test_proxy);
+      en.renew_proxy = 1;
+     }
     else                   en.proxy_link[0]='\000';
 
     if ((ret=job_registry_append(rha, &en)) < 0)

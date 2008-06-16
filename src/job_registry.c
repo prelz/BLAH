@@ -2100,7 +2100,7 @@ job_registry_unlink_proxy(const job_registry_handle *rha,
   if (fullpath == NULL)
    {
     errno = ENOMEM;
-    return NULL;
+    return -1;
    }
   
   sprintf(fullpath, "%s/%s", rha->proxydir, en->proxy_link);

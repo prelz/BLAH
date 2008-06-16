@@ -60,6 +60,7 @@ typedef struct job_registry_entry_s
    char         wn_addr[40]; /* Accommodates IPV6 addresses */
    char         user_prefix[JOB_REGISTRY_MAX_USER_PREFIX];
    char         proxy_link[JOB_REGISTRY_MAX_PROXY_LINK];
+   int          renew_proxy; 
    uint32_t     magic_end; 
  } job_registry_entry;
 
