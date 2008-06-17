@@ -105,7 +105,7 @@ main(int argc, char *argv[])
   en.submitter = geteuid();
   JOB_REGISTRY_ASSIGN_ENTRY(en.user_prefix,user_prefix); 
   en.proxy_link[0] = '\000'; /* Start with a valid string */
-  en.renew_proxy = renew_proxy;
+  en.renew_proxy = 0; /* Enable renewal only if a proxy is found */
 
   rha=job_registry_init(registry_file, BY_BLAH_ID);
 
@@ -127,6 +127,7 @@ main(int argc, char *argv[])
             fprintf(stderr,"%s: warning: setting proxy to %s: ",argv[0],user_proxy);
             perror("");
            }
+          else en.renew_proxy = renew_proxy;
          }
         ret=job_registry_append_nonpriv(rhano, &en);
         job_registry_destroy(rhano);
@@ -159,6 +160,7 @@ main(int argc, char *argv[])
       fprintf(stderr,"%s: warning: setting proxy to %s: ",argv[0],user_proxy);
       perror("");
      }
+    else en.renew_proxy = renew_proxy;
    }
 
   if ((ret=job_registry_append(rha, &en)) < 0)
