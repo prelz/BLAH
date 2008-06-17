@@ -104,6 +104,7 @@ main(int argc, char *argv[])
   JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,exitreason); 
   en.submitter = geteuid();
   JOB_REGISTRY_ASSIGN_ENTRY(en.user_prefix,user_prefix); 
+  en.proxy_link[0] = '\000'; /* Start with a valid string */
   en.renew_proxy = renew_proxy;
 
   rha=job_registry_init(registry_file, BY_BLAH_ID);
