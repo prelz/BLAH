@@ -132,9 +132,11 @@ int get_status(const char *jobDesc, classad_context *cad, char **environment, ch
 					strcpy(error_str[0],"No Error");
 					cad[0] = tmpcad;
 	 				pthread_mutex_unlock(&blah_jr_lock);
+					free(ren);
 					return 0;
 				}
 			}
+			free(ren);
 		}
 	 	pthread_mutex_unlock(&blah_jr_lock);
         }
