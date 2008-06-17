@@ -214,6 +214,14 @@ function bls_parse_submit_options ()
       echo $usage_string
       exit 1
   fi
+
+# Make sure we can survive without a proxy
+  if [ "x$bls_opt_proxy_string" == "x" ]
+  then
+      bls_opt_proxyrenew="no"
+      bls_opt_stgproxy="no"
+  fi
+
   shift `expr $OPTIND - 1`
   bls_arguments=$*
 }
