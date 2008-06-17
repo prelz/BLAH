@@ -220,7 +220,7 @@ blahp_jobID="lsf/${datenow}/$jobID"
 
 if [ "x$job_registry" != "x" ]; then
   now=`date +%s`
-  `dirname $0`/blah_job_registry_add "$blahp_jobID" "$jobID" 1 $now-1 "$bls_opt_creamjobid"
+  `dirname $0`/blah_job_registry_add "$blahp_jobID" "$jobID" 1 $now-1 "$bls_opt_creamjobid" "$bls_proxy_local_file" 1
 fi
 
 echo ""

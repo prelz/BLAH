@@ -201,7 +201,7 @@ blahp_jobID="pbs/`basename $logfile`/$jobID"
 
 if [ "x$job_registry" != "x" ]; then
   now=`date +%s`
-  `dirname $0`/blah_job_registry_add "$blahp_jobID" "$jobID" 1 $now-1 "$bls_opt_creamjobid"
+  `dirname $0`/blah_job_registry_add "$blahp_jobID" "$jobID" 1 $now-1 "$bls_opt_creamjobid" "$bls_proxy_local_file" 1
 fi
 
 echo "BLAHP_JOBID_PREFIX$blahp_jobID"
