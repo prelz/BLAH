@@ -1761,6 +1761,7 @@ job_registry_seek_next(FILE *fd, job_registry_entry *result)
  * Create a classad (in standard string representation)
  * including the attributes of the supplied registry entry.
  *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
  * @param entry Job registry entry to be formatted as classad.
  *
  * @return Dynamically-allocated string containing the classad
@@ -1782,7 +1783,8 @@ job_registry_seek_next(FILE *fd, job_registry_entry *result)
     extra_attrs_size += (esiz-1); 
 
 char *
-job_registry_entry_as_classad(const job_registry_entry *entry)
+job_registry_entry_as_classad(const job_registry_handle *rha,
+                              const job_registry_entry *entry)
 {
   char *fmt_base = "[ BatchJobId=\"%s\"; JobStatus=%d; BlahJobId=\"%s\"; "
                    "CreateTime=%u; ModifiedTime=%u; UserTime=%u; "
@@ -1792,10 +1794,20 @@ job_registry_entry_as_classad(const job_registry_entry *entry)
   int extra_attrs_size = 0;
   int need_to_free_extra_attrs = FALSE;
   int esiz,fsiz;
+  char *proxypath;
 
   if ((entry->wn_addr != NULL) && (strlen(entry->wn_addr) > 0)) 
    { 
     JOB_REGISTRY_APPEND_ATTRIBUTE("WorkerNode=\"%s\"; ",entry->wn_addr);
+   }
+  if ((entry->proxy_link != NULL) && (strlen(entry->proxy_link) > 0)) 
+   { 
+    proxypath = job_registry_get_proxy(rha, entry);
+    if (proxypath != NULL)
+     {
+      JOB_REGISTRY_APPEND_ATTRIBUTE("X509UserProxy=\"%s\"; ",proxypath);
+      free(proxypath);
+     }
    }
   if (entry->status == COMPLETED)
    {

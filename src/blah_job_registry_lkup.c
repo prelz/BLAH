@@ -44,13 +44,14 @@ main(int argc, char *argv[])
   config_entry *rge,*anpe,*anhe;
   job_registry_handle *rha;
   int opt_worker_node = FALSE;
+  int opt_user_proxy = FALSE;
   int opt_get_port = FALSE;
   char *anhname;
   struct utsname ruts;
  
   if (argc < 2)
    {
-    fprintf(stdout,"1ERROR Usage: %s [-w (get worker node)] [-n (get parser host:port)] [-b (look up for batch IDs)] <id>\n",argv[0]);
+    fprintf(stdout,"1ERROR Usage: %s [-w (get worker node)] [-p (get user proxy)] [-n (get parser host:port)] [-b (look up for batch IDs)] <id>\n",argv[0]);
     return 1;
    }
 
@@ -68,6 +69,9 @@ main(int argc, char *argv[])
         break;
       case 'w':
         opt_worker_node = TRUE;
+        break;
+      case 'p':
+        opt_user_proxy = TRUE;
         break;
      }
    }
@@ -161,7 +165,13 @@ main(int argc, char *argv[])
     ren->wn_addr[0]='\000';
    }
 
-  cad = job_registry_entry_as_classad(ren);
+  if (!opt_user_proxy)
+   {
+    /* User proxy not needed. Truncate it to 0. */
+    ren->proxy_link[0]='\000';
+   }
+
+  cad = job_registry_entry_as_classad(rha, ren);
   if (cad != NULL) printf("0%s\n",cad);
   else 
    {

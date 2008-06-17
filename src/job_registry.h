@@ -169,7 +169,8 @@ int job_registry_wrlock(const job_registry_handle *rhandle, FILE *sfd);
 job_registry_entry *job_registry_get_next(const job_registry_handle *rhandle,
                                           FILE *fd);
 int job_registry_seek_next(FILE *fd, job_registry_entry *result);
-char *job_registry_entry_as_classad(const job_registry_entry *entry);
+char *job_registry_entry_as_classad(const job_registry_handle *rha,
+                                    const job_registry_entry *entry);
 job_registry_split_id *job_registry_split_blah_id(const char *bid);
 void job_registry_free_split_id(job_registry_split_id *spid);
 int job_registry_set_proxy(const job_registry_handle *rha,

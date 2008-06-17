@@ -117,7 +117,7 @@ int get_status(const char *jobDesc, classad_context *cad, char **environment, ch
 		if ((ren=job_registry_get(blah_jr_handle, jobDesc)) != NULL)
 		{
 			if (!get_workernode) ren->wn_addr[0]='\000';
-			cadstr = job_registry_entry_as_classad(ren);                       
+			cadstr = job_registry_entry_as_classad(blah_jr_handle, ren);                       
 			if (cadstr != NULL)
 			{
 				tmpcad=classad_parse(cadstr);

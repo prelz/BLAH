@@ -1344,7 +1344,7 @@ cmd_status_job_all(void *args)
 
 	while ((en = job_registry_get_next(blah_jr_handle, fd)) != NULL)
 	{
-		en_cad = job_registry_entry_as_classad(en);
+		en_cad = job_registry_entry_as_classad(blah_jr_handle, en);
 		if (en_cad != NULL)
 		{
 			if (selecttr != NULL)
