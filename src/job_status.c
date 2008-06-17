@@ -57,11 +57,11 @@ int unlink_proxy_symlink(const char *jobDesc, classad_context *cad, char **envir
 			{
 				if (*environment) /* GLEXEC Mode ? */
 				{
-					command = make_message("%s /bin/rm .blah_jobproxy_dir/%s.proxy", gloc, spid->proxy_id);
+					command = make_message("%s /bin/rm .blah_jobproxy_dir/%s.proxy 2>/dev/null", gloc, spid->proxy_id);
 				}
 				else
 				{
-					command = make_message("/bin/rm %s/.blah_jobproxy_dir/%s.proxy", getenv("HOME"), spid->proxy_id);
+					command = make_message("/bin/rm %s/.blah_jobproxy_dir/%s.proxy 2>/dev/null", getenv("HOME"), spid->proxy_id);
 				}
 				if (command != NULL)
 				{	
@@ -73,11 +73,11 @@ int unlink_proxy_symlink(const char *jobDesc, classad_context *cad, char **envir
 				{
 					if (*environment) /* GLEXEC Mode ? */
 					{
-						command = make_message("%s /bin/rm .blah_jobproxy_dir/%s.proxy.norenew", gloc, spid->proxy_id);
+						command = make_message("%s /bin/rm .blah_jobproxy_dir/%s.proxy.norenew 2>/dev/null", gloc, spid->proxy_id);
 					}
 					else
 					{
-						command = make_message("/bin/rm %s/.blah_jobproxy_dir/%s.proxy.norenew", getenv("HOME"), spid->proxy_id);
+						command = make_message("/bin/rm %s/.blah_jobproxy_dir/%s.proxy.norenew 2>/dev/null", getenv("HOME"), spid->proxy_id);
 					}
 					if (command != NULL)
 					{	
