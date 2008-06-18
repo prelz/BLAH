@@ -193,7 +193,14 @@ fi
 cat > $submit_file << EOF
 universe = vanilla
 executable = $command
-x509userproxy = $proxy_file
+EOF
+
+if [ "x$proxy_file" != "x" ]
+then
+  echo "x509userproxy = $proxy_file" >> $submit_file
+fi
+
+cat >> $submit_file << EOF
 # We insist on new style quoting in Condor
 arguments = $arguments
 input = $stdin
