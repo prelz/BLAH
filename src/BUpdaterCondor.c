@@ -14,6 +14,7 @@ int main(int argc, char *argv[]){
 	poptContext poptcon;
 	int rc=0;			     
 	int version=0;
+	int qlen;
 	int first=TRUE;
 	char *dgbtimestamp;
 	
@@ -235,13 +236,17 @@ int main(int argc, char *argv[]){
         				}
 					sprintf(constraint," ClusterId==%s",en->batch_id);
 					
-					q=realloc(query,strlen(query)+strlen(constraint)+4);
+					if (query != NULL) qlen = strlen(query);
+					else               qlen = 0;
+					q=realloc(query,qlen+strlen(constraint)+4);
+					
 					if(q != NULL){
+						if (query != NULL) strcat(q,constraint);
+						else               strcpy(q,constraint);
 						query=q;	
 					}else{
 						sysfatal("can't realloc query: %r");
 					}
-					strcat(query,constraint);
 					free(constraint);
 					runfinal=TRUE;
 				}
@@ -316,6 +321,11 @@ IntStateQuery()
 			}
 	
 			maxtok_t = strtoken(line, ' ', &token);
+			if (maxtok_t < 6){
+				freetoken(&token,maxtok_t);
+				free(line);
+				continue;
+			}
 		
 			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,token[0]);
 			en.status=atoi(token[2]);
@@ -389,6 +399,11 @@ FinalStateQuery(char *query)
 			}
 			
 			maxtok_t = strtoken(line, ' ', &token);
+			if (maxtok_t < 6){
+				freetoken(&token,maxtok_t);
+				free(line);
+				continue;
+			}
 		
 			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,token[0]);
 			en.status=atoi(token[2]);
@@ -405,7 +420,9 @@ FinalStateQuery(char *query)
 			}
 		
 			freetoken(&token,maxtok_t);
+			free(line);
 		}
+		pclose(fp);
 	}
 
 	free(command_string);
