@@ -129,6 +129,7 @@ main(int argc, char **argv)
 		servAddr.sin_port = htons(server_port);
 		if (connect(fd_socket, (struct sockaddr *) &servAddr, sizeof(servAddr)) == -1)
 		{
+			close(fd_socket);
 			continue;
 		}
 
@@ -137,6 +138,7 @@ main(int argc, char **argv)
 		connpoll.revents = 0;
 		if (poll(&connpoll, 1, connection_poll_timeout) <= 0)
 		{
+			close(fd_socket);
 			continue;
 		}
 	
