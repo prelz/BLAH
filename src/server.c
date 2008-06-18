@@ -25,6 +25,9 @@
 #                                     (bupdater and bnotifier for starters)
 #   31 Mar 2008 - (rebatto@mi.infn.it) Async mode handling moved to resbuffer.c
 #                                      Adapted to new resbuffer functions
+#   17 Jun 2008 - (prelz@mi.infn.it). Add access to the job proxy stored
+#                                     in the job registry.
+#                                     Make job proxy optional.
 #
 #  Description:
 #   Serve a connection to a blahp client, performing appropriate
@@ -151,6 +154,7 @@ struct stat tmp_stat;
 char *bssp = NULL;
 char *gloc = NULL;
 int enable_condor_glexec = FALSE;
+int require_proxy_on_submit = FALSE;
 
 /* GLEXEC ENVIRONMENT VARIABLES */
 #define GLEXEC_MODE_IDX         0
@@ -343,6 +347,7 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	{
 		gloc = DEFAULT_GLEXEC_COMMAND;
 	}
+	require_proxy_on_submit = config_test_boolean(config_get("require_proxy_on_submit",blah_config_handle));
 	enable_condor_glexec = config_test_boolean(config_get("enable_glexec_from_condor",blah_config_handle));
 				
 	if (enable_condor_glexec)
@@ -911,27 +916,35 @@ cmd_submit_job(void *args)
 	/* Get the proxy name from classad attribute "X509UserProxy" */
 	if (classad_get_dstring_attribute(cad, "x509UserProxy", &proxyname) != C_CLASSAD_NO_ERROR)
 	{
-		/* PUSH A FAILURE */
-		resultLine = make_message("%s 1 Missing\\ x509UserProxy\\ in\\ submission\\ classAd N/A", reqId);
-		goto cleanup_lrms;
+		if (require_proxy_on_submit)
+		{
+			/* PUSH A FAILURE */
+			resultLine = make_message("%s 1 Missing\\ x509UserProxy\\ in\\ submission\\ classAd N/A", reqId);
+			goto cleanup_lrms;
+		} else {
+			proxyname = NULL;
+		}
 	}
 
 	/* If there are additional arguments, we are in glexec mode */
 	if(argv[CMD_SUBMIT_JOB_ARGS + 1] != NULL)
 	{
-		/* Add the target proxy - cause glexec to move it to another file */
-		proxynameNew = make_message("%s.glexec", proxyname);
-		free(proxyname);
-		proxyname = proxynameNew;
-                /* Savannah #37003: Let glexec rotate the new proxy in place if (stat(proxynameNew, &buf) >= 0) unlink(proxynameNew); */
+		if (proxyname != NULL)
+		{
+			/* Add the target proxy - cause glexec to move it to another file */
+			proxynameNew = make_message("%s.glexec", proxyname);
+			free(proxyname);
+			proxyname = proxynameNew;
+                	/* Savannah #37003: Let glexec rotate the new proxy in place if (stat(proxynameNew, &buf) >= 0) unlink(proxynameNew); */
 
-		for(count = CMD_SUBMIT_JOB_ARGS + 2; argv[count]; count++);
-		argv = (char **)realloc(argv, sizeof(char *) * (count + 2));
-		argv[count] = make_message("GLEXEC_TARGET_PROXY=%s", proxyname);
-		argv[count + 1] = NULL;
-		log_proxy = argv[CMD_SUBMIT_JOB_ARGS + 1 + GLEXEC_SOURCE_PROXY_IDX] + strlen(glexec_env_name[GLEXEC_SOURCE_PROXY_IDX]) + 1;
+			for(count = CMD_SUBMIT_JOB_ARGS + 2; argv[count]; count++);
+			argv = (char **)realloc(argv, sizeof(char *) * (count + 2));
+			argv[count] = make_message("GLEXEC_TARGET_PROXY=%s", proxyname);
+			argv[count + 1] = NULL;
+			log_proxy = argv[CMD_SUBMIT_JOB_ARGS + 1 + GLEXEC_SOURCE_PROXY_IDX] + strlen(glexec_env_name[GLEXEC_SOURCE_PROXY_IDX]) + 1;
+		}
 	}
-	else
+	else if (proxyname != NULL)
 	{
 		/* not in glexec mode: need to limit the proxy */
 		proxynameNew = make_message("%s.lmt", proxyname);
@@ -947,22 +960,40 @@ cmd_submit_job(void *args)
 		log_proxy = proxynameNew;
 	}
 
-	/* DGAS accounting */
-	if (getProxyInfo(log_proxy, fqan, userDN))
+	if (proxyname != NULL)
 	{
-		/* PUSH A FAILURE */
-		resultLine = make_message("%s 1 Credentials\\ not\\ valid N/A", reqId);
-		goto cleanup_command;
+		/* DGAS accounting */
+		if (getProxyInfo(log_proxy, fqan, userDN))
+		{
+			/* PUSH A FAILURE */
+			resultLine = make_message("%s 1 Credentials\\ not\\ valid N/A", reqId);
+			goto cleanup_command;
+		}
+		if (userDN) enable_log=1;
 	}
-	if (userDN) enable_log=1;
 
-	command = make_message("%s %s/%s_submit.sh -x %s", argv[CMD_SUBMIT_JOB_ARGS + 1] ? gloc : "",
-	                        blah_script_location, server_lrms, proxyname);
+	command = make_message("%s %s/%s_submit.sh", argv[CMD_SUBMIT_JOB_ARGS + 1] ? gloc : "",
+	                        blah_script_location, server_lrms);
 	if (command == NULL)
 	{
 		/* PUSH A FAILURE */
 		resultLine = make_message("%s 1 Out\\ of\\ Memory N/A", reqId);
 		goto cleanup_proxyname;
+	}
+
+        /* add proxy name if present */
+	if (proxyname != NULL)
+	{
+		command_ext = make_message("%s -x %s", command, proxyname);
+		if (command_ext == NULL)
+		{
+			/* PUSH A FAILURE */
+			resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
+			goto cleanup_command;
+		}
+		/* Swap new command in */
+		free(command);
+		command = command_ext;
 	}
 
 	/* Cmd attribute is mandatory: stop on any error */
@@ -1137,7 +1168,7 @@ cleanup_cmd_out:
 cleanup_command:
 	free(command);
 cleanup_proxyname:
-	free(proxyname);
+	if (proxyname != NULL) free(proxyname);
 cleanup_lrms:
 	free(server_lrms);
 cleanup_cad:
@@ -1424,6 +1455,7 @@ get_status_and_old_proxy(int use_glexec, char *jobDescr,
 	char *command, *escaped_command;
 	char error_buffer[ERROR_MAX_LEN];
 	job_registry_split_id *spid;
+	job_registry_entry *ren;
 	int i;
 
 	if (old_proxy == NULL) return(-1);
@@ -1431,6 +1463,34 @@ get_status_and_old_proxy(int use_glexec, char *jobDescr,
 	if (workernode == NULL) return(-1);
 	*workernode = NULL;
 	if (error_string != NULL) *error_string = NULL;
+
+	/* Look up job registry first, if configured. */
+	if (blah_jr_handle != NULL)
+	{
+		/* File locking will not protect threads in the same */
+		/* process. */
+		pthread_mutex_lock(&blah_jr_lock);
+		if ((ren=job_registry_get(blah_jr_handle, jobDescr)) != NULL)
+		{
+			*old_proxy = job_registry_get_proxy(blah_jr_handle, ren);
+			if (*old_proxy != NULL && ren->renew_proxy == 0)
+			{
+				free(ren);
+				pthread_mutex_unlock(&blah_jr_lock);
+				return 1; /* 'local' state */
+			} 
+			jobStatus = ren->status;
+			*workernode = strdup(ren->wn_addr);
+			free(ren);
+			pthread_mutex_unlock(&blah_jr_lock);
+			return jobStatus;	
+		}
+		pthread_mutex_unlock(&blah_jr_lock);
+	}
+
+	/* FIXMEPRREG: this entire, complex recipe to retrieve */
+	/* FIXMEPRREG: the job proxy and status can be removed once */
+	/* FIXMEPRREG: the job registry is used throughout. */
 
 	spid = job_registry_split_blah_id(jobDescr);
 	if (spid == NULL) return(-1); /* Error */
