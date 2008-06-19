@@ -1,4 +1,4 @@
-#include "BNotifierCondor.h"
+#include "BNotifier.h"
 
 int
 main(int argc, char *argv[])

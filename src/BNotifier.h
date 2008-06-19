@@ -29,7 +29,7 @@ int NotifyCream(char *buffer);
 
 /* Variables initialization */
 
-char *progname="BNotifierCondor";
+char *progname="BNotifier";
 
 char *notiffile="/tmp/.notiftime.txt";
 
