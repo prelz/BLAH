@@ -12,13 +12,13 @@
 #       Council for the Central Laboratory of the Research Councils (CCLRC), United Kingdom
 #
 #       Authors: Francesco Prelz <francesco.prelz@mi.infn.it>
-#       Version info: $Id: configure.ac,v 1.37 2008/06/30 15:29:54 fprelz Exp $
+#       Version info: $Id: configure.ac,v 1.38 2008/06/30 15:54:16 fprelz Exp $
 #       Release: $Name:  $
 #
 #       Revision history:
 #       $Log: configure.ac,v $
-#       Revision 1.37  2008/06/30 15:29:54  fprelz
-#       Increased version to 1.11.1
+#       Revision 1.38  2008/06/30 15:54:16  fprelz
+#       Rolled back version temporarily. Added automake conditional for Globus.
 #
 #       Revision 1.36  2008/02/05 14:31:57  fprelz
 #       Bump up version for ANT builds.
@@ -113,7 +113,7 @@
 #
 
 AC_PREREQ(2.57)
-AC_INIT([GLite CE blahp], [1.11.1])
+AC_INIT([GLite CE blahp], [1.11.0])
 AC_CONFIG_AUX_DIR([./project])
 AM_INIT_AUTOMAKE([1.6.3 subdir-objects])
 AC_CONFIG_SRCDIR([src/main.c])
@@ -156,6 +156,8 @@ AC_GLOBUS([], have_globus=yes, have_globus=no)
 
 AC_MSG_RESULT(["CLASSADS found $have_classads"])
 AC_MSG_RESULT(["GLOBUS found $have_globus"])
+
+AM_CONDITIONAL([HAVE_GLOBUS], [test x$have_globus = xyes])
 
 dnl Temporarily built with no optimisation
 
