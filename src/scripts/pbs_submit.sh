@@ -82,6 +82,17 @@ cat > $bls_tmp_file << end_of_preamble
 #PBS -S /bin/bash
 end_of_preamble
 
+#storage of std files
+if [ "x$pbs_std_storage" == "x" ]
+then
+  pbs_std_storage=$bls_opt_temp_dir
+fi
+if [ "x$pbs_std_storage" != "x" ]
+then
+  echo "#PBS -o $pbs_std_storage" >> $bls_tmp_file
+  echo "#PBS -e $pbs_std_storage" >> $bls_tmp_file
+fi
+
 #local batch system-specific file output must be added to the submit file
 if [ ! -z $bls_opt_req_file ] ; then
     echo \#\!/bin/sh >> ${bls_opt_req_file}-temp_req_script
