@@ -90,8 +90,8 @@ mtsafe_pclose(FILE *stream)
 int
 merciful_kill(pid_t pid)
 {
-	int graceful_timeout = 10; /* Default value - overridden by config */
-	int status=-1;
+	int graceful_timeout = 20; /* Default value - overridden by config */
+	int status=0;
 	config_entry *config_timeout;
 	int tmp_timeout;
 	int tsl;
@@ -103,28 +103,24 @@ merciful_kill(pid_t pid)
 		if (tmp_timeout > 0) graceful_timeout = tmp_timeout;
 	}
 
-	if (waitpid(pid, &status, WNOHANG) == 0)
+	/* verify that child is dead */
+	for(tsl = 0; (waitpid(pid, &status, WNOHANG) == 0) &&
+	              tsl < graceful_timeout; tsl++)
 	{
-		if (kill(pid, SIGTERM) == 0)
-		{
-			/* verify that child is dead */
-			for(tsl = 0; (waitpid(pid, &status, WNOHANG) == 0) &&
-			              tsl < graceful_timeout; tsl++)
-			{
-				/* still alive, allow a few seconds 
-				   than use brute force */
-				sleep(1);
-			}
-			if ((waitpid(pid, &status, WNOHANG) == 0) && tsl >= graceful_timeout)
-			{
-				if (kill(pid, SIGKILL) == 0)
-				{
-					waitpid(pid, &status, 0);
-				}
-			}
+		/* still alive, allow a few seconds 
+		   than use brute force */
+		sleep(1);
+		if (tsl > (graceful_timeout/2)) kill(pid, SIGTERM);
+	}
 
+	if (tsl >= graceful_timeout && (waitpid(pid, &status, WNOHANG) == 0))
+	{
+		if (kill(pid, SIGKILL) == 0)
+		{
+			waitpid(pid, &status, 0);
 		}
 	}
+
 	return(status);
 }
 
