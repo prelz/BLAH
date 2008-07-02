@@ -155,6 +155,7 @@ char *bssp = NULL;
 char *gloc = NULL;
 int enable_condor_glexec = FALSE;
 int require_proxy_on_submit = FALSE;
+static char *blah_omem_msg="Out\\ of\\ memory";
 
 /* GLEXEC ENVIRONMENT VARIABLES */
 #define GLEXEC_MODE_IDX         0
@@ -208,7 +209,7 @@ check_on_children(const struct blah_managed_child *children, const int count)
 				fclose(pid);
 				continue;
 			}
-			if (kill(ch_pid, SIGCONT) < 0)
+			if (kill(ch_pid, 0) < 0)
 			{
 				/* The child process disappeared. */
 				if (errno == ESRCH) try_to_restart = 1;
@@ -862,6 +863,8 @@ void *
 cmd_submit_job(void *args)
 {
 	char *cmd_out = NULL;
+	char *cmd_err = NULL;
+	char *escpd_cmd_out, *escpd_cmd_err;
 	int retcod;
 	char *command;
 	char jobId[JOBID_MAX_LEN];
@@ -1125,15 +1128,24 @@ cmd_submit_job(void *args)
 	}
 
 	/* Execute the submission command */
-	retcod = exe_getout(command, argv + CMD_SUBMIT_JOB_ARGS + 1, &cmd_out);
+	retcod = exe_getouterr(command, argv + CMD_SUBMIT_JOB_ARGS + 1, &cmd_out, &cmd_err);
 
 	if (retcod != 0)
 	{
 		/* PUSH A FAILURE */
-		resultLine = make_message("%s %d submission\\ command\\ failed\\ (exit\\ code\\ =\\ %d) N/A", reqId, retcod, retcod);
+		escpd_cmd_out = escape_spaces(cmd_out);
+		if (escpd_cmd_out == NULL) escpd_cmd_out = blah_omem_msg;
+		escpd_cmd_err = escape_spaces(cmd_err);
+		if (escpd_cmd_err == NULL) escpd_cmd_err = blah_omem_msg;
+		resultLine = make_message("%s %d submission\\ command\\ failed\\ (exit\\ code\\ =\\ %d)\\ (stdout:%s)\\ (stderr:%s) N/A", reqId, retcod, retcod, escpd_cmd_out, escpd_cmd_err);
+		if (escpd_cmd_out != blah_omem_msg) free(escpd_cmd_out);
+		if (escpd_cmd_err != blah_omem_msg) free(escpd_cmd_err);
 		if (cmd_out) free(cmd_out);
+		if (cmd_err) free(cmd_err);
 		goto cleanup_command;
 	}
+
+	if (cmd_err) free(cmd_err);
 
 	if (regcomp(&regbuf, JOBID_REGEXP, REG_EXTENDED) != 0)
 	{
@@ -1194,7 +1206,8 @@ void *
 cmd_cancel_job(void* args)
 {
 	int retcod;
-	char *cmd_out;
+	char *cmd_out, *cmd_err;
+	char *escpd_cmd_out, *escpd_cmd_err;
 	char *begin_res;
 	char *end_res;
 	int res_length;
@@ -1225,10 +1238,16 @@ cmd_cancel_job(void* args)
 	}
 
 	/* Execute the command */
-	if (retcod = exe_getout(command, argv + CMD_CANCEL_JOB_ARGS + 1, &cmd_out))
+	if (retcod = exe_getouterr(command, argv + CMD_CANCEL_JOB_ARGS + 1, &cmd_out, &cmd_err))
 	{
 		/* PUSH A FAILURE */
-		resultLine = make_message("%s %d Cancellation\\ command\\ failed", reqId, retcod);
+		escpd_cmd_out = escape_spaces(cmd_out);
+		if (escpd_cmd_out == NULL) escpd_cmd_out = blah_omem_msg;
+		escpd_cmd_err = escape_spaces(cmd_err);
+		if (escpd_cmd_err == NULL) escpd_cmd_err = blah_omem_msg;
+		resultLine = make_message("%s %d Cancellation\\ command\\ failed\\ (stdout:%s)\\ (stderr:%s)", reqId, retcod, escpd_cmd_out, escpd_cmd_err);
+		if (escpd_cmd_out != blah_omem_msg) free(escpd_cmd_out);
+		if (escpd_cmd_err != blah_omem_msg) free(escpd_cmd_err);
 		goto cleanup_command;
 	}	
 
@@ -1247,6 +1266,7 @@ cmd_cancel_job(void* args)
 	   pointing to last successfully allocated variable) */
 cleanup_command:
 	if (cmd_out) free(cmd_out);
+	if (cmd_err) free(cmd_err);
 	free(command);
 cleanup_lrms:
 	job_registry_free_split_id(spid);
@@ -1833,7 +1853,8 @@ void
 hold_res_exec(char* jobdescr, char* reqId, char* action, int status, char **environment )
 {
 	int retcod;
-	char *cmd_out;
+	char *cmd_out, *cmd_err;
+	char *escpd_cmd_out, *escpd_cmd_err;
 	char *command;
 	char *resultLine = NULL;
 	job_registry_split_id *spid;
@@ -1875,17 +1896,26 @@ hold_res_exec(char* jobdescr, char* reqId, char* action, int status, char **envi
 	}
 
 	/* Execute the command */
-	retcod = exe_getout(command, environment, &cmd_out);
+	retcod = exe_getouterr(command, environment, &cmd_out, &cmd_err);
 	if(cmd_out == NULL)
 	{
-		resultLine = make_message("%s 1 Cannot\\ execute\\ %s\\ script", reqId, retcod, spid->lrms);
+		resultLine = make_message("%s 1 Cannot\\ execute\\ %s\\ script", reqId, command);
 		goto cleanup_command;
 	}
 	if(retcod)
 	{
-		resultLine = make_message("%s %d Job\\ %s:\\ %s\\ not\\ supported\\ by\\ %s", reqId, retcod, statusstring[status - 1], action, spid->lrms);
+		escpd_cmd_out = escape_spaces(cmd_out);
+		if (escpd_cmd_out == NULL) escpd_cmd_out = blah_omem_msg;
+		escpd_cmd_err = escape_spaces(cmd_err);
+		if (escpd_cmd_err == NULL) escpd_cmd_err = blah_omem_msg;
+		resultLine = make_message("%s %d Job\\ %s:\\ %s\\ not\\ supported\\ by\\ %s\\ (stdout:%s)\\ (stderr:%s)", reqId, retcod, statusstring[status - 1], action, spid->lrms, escpd_cmd_out, escpd_cmd_err);
+		if (escpd_cmd_out != blah_omem_msg) free(escpd_cmd_out);
+		if (escpd_cmd_err != blah_omem_msg) free(escpd_cmd_err);
 	}else
 		resultLine = make_message("%s %d No\\ error", reqId, retcod);
+
+	if (cmd_out != NULL) free(cmd_out);
+	if (cmd_err != NULL) free(cmd_err);
 
 	/* Free up all arguments and exit (exit point in case of error is the label
 	   pointing to last successfully allocated variable) */
@@ -2093,6 +2123,7 @@ char
 *escape_spaces(const char *str)
 {
 	char *buffer;
+	char cur;
 	int i, j;
 
 	if ((buffer = (char *) malloc (strlen(str) * 2 + 1)) == NULL)
@@ -2103,8 +2134,13 @@ char
 
 	for (i = 0, j = 0; i <= strlen(str); i++, j++)
 	{
-		if (str[i] == ' ') buffer[j++] = '\\';
-		buffer[j] = str[i];
+		cur = str[i];
+		if (cur == '\r') cur = '-';
+		else if (cur == '\n') cur = '-';
+		else if (cur == '\t') cur = ' ';
+
+		if (cur == ' ') buffer[j++] = '\\';
+		buffer[j] = cur;
 	}
 	/* FIXME 24-11-06 what is this realloc for??????? */
 	/* realloc(buffer, strlen(buffer) + 1); */

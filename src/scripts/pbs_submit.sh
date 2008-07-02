@@ -117,7 +117,7 @@ sleep 1
 ###############################################################
 
 datenow=`date +%Y%m%d`
-jobID=`${pbs_binpath}/qsub $bls_tmp_file 2> /dev/null` # actual submission
+jobID=`${pbs_binpath}/qsub $bls_tmp_file` # actual submission
 retcode=$?
 if [ "$retcode" != "0" ] ; then
 	rm -f $bls_tmp_file
