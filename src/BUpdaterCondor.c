@@ -1,5 +1,7 @@
 #include "BUpdaterCondor.h"
 
+extern int bfunctions_poll_timeout;
+
 int main(int argc, char *argv[]){
 
 	FILE *fd;
@@ -16,6 +18,7 @@ int main(int argc, char *argv[]){
 	int version=0;
 	int qlen;
 	int first=TRUE;
+        int tmptim;
 	char *dgbtimestamp;
 	
 	struct poptOption poptopt[] = {     
@@ -46,6 +49,12 @@ int main(int argc, char *argv[]){
 		fprintf(stderr,"Error reading config: ");
 		perror("");
 		return -1;
+	}
+
+	ret = config_get("bupdater_child_poll_timeout",cha);
+	if (ret != NULL){
+		tmptim=atoi(ret->value);
+		if (tmptim > 0) bfunctions_poll_timeout = tmptim*1000;
 	}
 
 	ret = config_get("bupdater_debug_level",cha);

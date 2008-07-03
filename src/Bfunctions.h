@@ -10,6 +10,7 @@
 #include <time.h>
 #include <sys/types.h> 
 #include <sys/stat.h>
+#include <sys/poll.h>
 #include <popt.h>
 #include <math.h>
 #include "blahpd.h"

@@ -1,5 +1,7 @@
 #include "Bfunctions.h"
 
+int bfunctions_poll_timeout = 600000; /* Default 10 minutes */
+
 ssize_t
 Readline(int sockd, void *vptr, size_t maxlen)
 {
@@ -65,8 +67,16 @@ char *get_line(FILE * f)
     size_t len  = 0;
     size_t last = 0;
     char * buf  = NULL;
+    struct pollfd pfd;
+    int rpoll;
+
 
     do {
+        pfd.fd = fileno(f);
+        pfd.events = ( POLLIN | POLLERR | POLLHUP | POLLNVAL );
+        pfd.revents = 0;
+        rpoll = poll(&pfd, 1, bfunctions_poll_timeout);
+        if (rpoll <= 0 || ((pfd.revents & POLLIN) == 0 ) ) break;
         size += BUFSIZ;
         buf = realloc(buf,size);           
 	fgets(buf+last,size-last,f);
