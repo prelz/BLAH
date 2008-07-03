@@ -1142,10 +1142,9 @@ cmd_submit_job(void *args)
 		if (escpd_cmd_err != blah_omem_msg) free(escpd_cmd_err);
 		if (cmd_out) free(cmd_out);
 		if (cmd_err) free(cmd_err);
-		goto cleanup_command;
+		goto cleanup_cmd_out;
 	}
 
-	if (cmd_err) free(cmd_err);
 
 	if (regcomp(&regbuf, JOBID_REGEXP, REG_EXTENDED) != 0)
 	{
@@ -1157,8 +1156,13 @@ cmd_submit_job(void *args)
 	if (regexec(&regbuf, cmd_out, 3, pmatch, 0) != 0)
 	{
 		/* PUSH A FAILURE */
-		resultLine = make_message("%s 8 no\\ jobId\\ in\\ submission\\ script's\\ output N/A", reqId);
-		BLAHDBG("DEBUG: cmd_job_submit: cannot find jobId in this string: <%s>\n", cmd_out);
+		escpd_cmd_out = escape_spaces(cmd_out);
+		if (escpd_cmd_out == NULL) escpd_cmd_out = blah_omem_msg;
+		escpd_cmd_err = escape_spaces(cmd_err);
+		if (escpd_cmd_err == NULL) escpd_cmd_err = blah_omem_msg;
+		resultLine = make_message("%s 8 no\\ jobId\\ in\\ submission\\ script's\\ output\\ (stdout:%s)\\ (stderr:%s) N/A", reqId, escpd_cmd_out, escpd_cmd_err);
+		if (escpd_cmd_out != blah_omem_msg) free(escpd_cmd_out);
+		if (escpd_cmd_err != blah_omem_msg) free(escpd_cmd_err);
 		goto cleanup_cmd_out;
 	}
 
@@ -1176,6 +1180,7 @@ cmd_submit_job(void *args)
 	   pointing to last successfully allocated variable) */
 cleanup_cmd_out:
 	free(cmd_out);
+	if (cmd_err) free(cmd_err);
 	regfree(&regbuf);
 cleanup_command:
 	free(command);
