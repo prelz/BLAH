@@ -299,7 +299,9 @@ exe_getouterr(char *const command, char *const environment[], char **cmd_output,
 				{
 					case -1: /* poll error */
 						perror("poll()");
-						exit(1);
+						status = merciful_kill(pid);
+						child_running = 0;
+						break;
 					case 0: /* timeout occurred */
 						/* kill the child process */
 						status = merciful_kill(pid);
@@ -360,7 +362,7 @@ exe_getouterr(char *const command, char *const environment[], char **cmd_output,
 			else
 			{
 				fprintf(stderr, "exe_getout: Child process terminated abnormally\n");
-				exit(1);
+				return -1;
 			}
 			return(exitcode);	
 	}
