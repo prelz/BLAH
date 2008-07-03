@@ -85,7 +85,7 @@ end_of_preamble
 #storage of std files
 if [ "x$pbs_std_storage" == "x" ]
 then
-  pbs_std_storage=$bls_opt_temp_dir
+  pbs_std_storage=/dev/null
 fi
 if [ "x$pbs_std_storage" != "x" ]
 then
