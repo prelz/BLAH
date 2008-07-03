@@ -1140,8 +1140,6 @@ cmd_submit_job(void *args)
 		resultLine = make_message("%s %d submission\\ command\\ failed\\ (exit\\ code\\ =\\ %d)\\ (stdout:%s)\\ (stderr:%s) N/A", reqId, retcod, retcod, escpd_cmd_out, escpd_cmd_err);
 		if (escpd_cmd_out != blah_omem_msg) free(escpd_cmd_out);
 		if (escpd_cmd_err != blah_omem_msg) free(escpd_cmd_err);
-		if (cmd_out) free(cmd_out);
-		if (cmd_err) free(cmd_err);
 		goto cleanup_cmd_out;
 	}
 
