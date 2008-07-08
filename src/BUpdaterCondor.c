@@ -20,6 +20,7 @@ int main(int argc, char *argv[]){
 	int first=TRUE;
         int tmptim;
 	char *dgbtimestamp;
+	int loop_interval=5;
 	
 	struct poptOption poptopt[] = {     
 		{ "nodaemon",      'o', POPT_ARG_NONE,   &nodmn, 	    0, "do not run as daemon",    NULL },
@@ -136,6 +137,18 @@ int main(int argc, char *argv[]){
 		alldone_interval=atoi(ret->value);
 	}
 	
+	ret = config_get("bupdater_loop_interval",cha);
+	if (ret == NULL){
+		if(debug){
+			dgbtimestamp=iepoch2str(time(0));
+			fprintf(debuglogfile, "%s %s: key bupdater_loop_interval not found using the default:%d\n",dgbtimestamp,argv0,loop_interval);
+			fflush(debuglogfile);
+			free(dgbtimestamp);
+		}
+	} else {
+		loop_interval=atoi(ret->value);
+	}
+
 	ret = config_get("bupdater_pidfile",cha);
 	if (ret == NULL){
                 if(debug){
@@ -172,7 +185,6 @@ int main(int argc, char *argv[]){
 				}
                         	fprintf(stderr,"%s: Error purging job registry %s :",argv0,registry_file);
                         	perror("");
-				sleep(2);
 
 			}else{
 				purge_time=time(0);
@@ -190,7 +202,7 @@ int main(int argc, char *argv[]){
 			}
 			fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
 			perror("");
-			sleep(2);
+			sleep(loop_interval);
 			continue;
 		}
 
@@ -207,7 +219,7 @@ int main(int argc, char *argv[]){
 			}
 			fprintf(stderr,"%s: Error opening job registry %s :",argv0,registry_file);
 			perror("");
-			sleep(2);
+			sleep(loop_interval);
 			continue;
 		}
 		if (job_registry_rdlock(rha, fd) < 0)
@@ -220,7 +232,7 @@ int main(int argc, char *argv[]){
 			}
 			fprintf(stderr,"%s: Error read locking job registry %s :",argv0,registry_file);
 			perror("");
-			sleep(2);
+			sleep(loop_interval);
 			continue;
 		}
 
@@ -273,7 +285,7 @@ int main(int argc, char *argv[]){
 		}
 		fclose(fd);		
 		job_registry_destroy(rha);
-		sleep(2);
+		sleep(loop_interval);
 	}
 	
 	return(0);

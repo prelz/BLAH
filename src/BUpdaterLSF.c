@@ -16,6 +16,8 @@ int main(int argc, char *argv[]){
 	int first=TRUE;
 	int tmptim;
 	char *dgbtimestamp;
+	time_t finalquery_start_date;
+	int loop_interval=5;
 	
 	struct poptOption poptopt[] = {     
 		{ "nodaemon",      'o', POPT_ARG_NONE,   &nodmn, 	    0, "do not run as daemon",    NULL },
@@ -155,6 +157,18 @@ int main(int argc, char *argv[]){
 	} else {
 		pidfile=strdup(ret->value);
 	}
+
+	ret = config_get("bupdater_loop_interval",cha);
+	if (ret == NULL){
+                if(debug){
+			dgbtimestamp=iepoch2str(time(0));
+			fprintf(debuglogfile, "%s %s: key bupdater_loop_interval not found - using the default:%d\n",dgbtimestamp,argv0,loop_interval);
+			fflush(debuglogfile);
+			free(dgbtimestamp);
+		}
+	} else {
+		loop_interval=atoi(ret->value);
+	}
 	
 	if( !nodmn ) daemonize();
 
@@ -180,7 +194,6 @@ int main(int argc, char *argv[]){
 				}
                 	        fprintf(stderr,"%s: Error purging job registry %s :",argv0,registry_file);
                 	        perror("");
-				sleep(2);
 
 			}else{
 				purge_time=time(0);
@@ -197,7 +210,7 @@ int main(int argc, char *argv[]){
 			}
 			fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
 			perror("");
-			sleep(2);
+			sleep(loop_interval);
 			continue;
 		}
 
@@ -213,7 +226,7 @@ int main(int argc, char *argv[]){
 			}
 			fprintf(stderr,"%s: Error opening job registry %s :",argv0,registry_file);
 			perror("");
-			sleep(2);
+			sleep(loop_interval);
 			continue;
 		}
 		if (job_registry_rdlock(rha, fd) < 0){
@@ -225,11 +238,12 @@ int main(int argc, char *argv[]){
 			}
 			fprintf(stderr,"%s: Error read locking job registry %s :",argv0,registry_file);
 			perror("");
-			sleep(2);
+			sleep(loop_interval);
 			continue;
 		}
 
 		first=TRUE;
+		finalquery_start_date = time(0);
 		
 		while ((en = job_registry_get_next(rha, fd)) != NULL){
 
@@ -242,6 +256,7 @@ int main(int argc, char *argv[]){
 				}
 			
 				if(now-en->mdate>finalstate_query_interval){
+					if (en->mdate < finalquery_start_date) finalquery_start_date=en->mdate;
 					runfinal=TRUE;
 				}
 			}
@@ -249,12 +264,12 @@ int main(int argc, char *argv[]){
 		}
 		
 		if(runfinal){
-			FinalStateQuery();
+			FinalStateQuery(finalquery_start_date);
 			runfinal=FALSE;
 		}
 		fclose(fd);		
 		job_registry_destroy(rha);
-		sleep(2);
+		sleep(loop_interval);
 	}
 	
 	return(0);
@@ -392,7 +407,7 @@ IntStateQuery()
 }
 
 int
-FinalStateQuery()
+FinalStateQuery(time_t start_date)
 {
 /*
 bhist -u all -a -l
@@ -436,12 +451,20 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	char *ex_str; 
 	char *cp; 
 	char *dgbtimestamp;
+	struct tm start_date_tm;
+	char start_date_str[80];
 
-	if((command_string=malloc(strlen(lsf_binpath) + NUM_CHARS + 24)) == 0){
+	if((command_string=malloc(strlen(lsf_binpath) + NUM_CHARS + sizeof(start_date_str) + 24)) == 0){
 		sysfatal("can't malloc command_string %r");
 	}
 
 	sprintf(command_string,"%s/bhist -u all -d -e -l -n %d",lsf_binpath,bhist_logs_to_read);
+	if (localtime_r(&start_date, &start_date_tm) != NULL){
+		if (strftime(start_date_str, sizeof(start_date_str), " -C %Y/%m/%d/%H:%M,", &start_date_tm) > 0){
+			strcat(command_string,start_date_str);
+		}
+	}
+
 	fp = popen(command_string,"r");
 
 	en.status=UNDEFINED;

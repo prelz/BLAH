@@ -19,6 +19,7 @@ int main(int argc, char *argv[]){
 	int tmptim;
 	char *dgbtimestamp;
 	int finstr_len=0;
+	int loop_interval=5;
 	
 	bact.njobs = 0;
 	bact.jobs = NULL;
@@ -138,11 +139,11 @@ int main(int argc, char *argv[]){
 		alldone_interval=atoi(ret->value);
 	}
 
-	ret = config_get("loop_interval",cha);
+	ret = config_get("bupdater_loop_interval",cha);
 	if (ret == NULL){
                 if(debug){
 			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%s %s: key loop_interval not found using the default:%d\n",dgbtimestamp,argv0,loop_interval);
+			fprintf(debuglogfile, "%s %s: key bupdater_loop_interval not found using the default:%d\n",dgbtimestamp,argv0,loop_interval);
 			fflush(debuglogfile);
 			free(dgbtimestamp);
 		}
@@ -186,7 +187,6 @@ int main(int argc, char *argv[]){
 				}
                 	        fprintf(stderr,"%s: Error purging job registry %s :",argv0,registry_file);
                 	        perror("");
-				sleep(2);
 
 			}else{
 				purge_time=time(0);
@@ -203,7 +203,7 @@ int main(int argc, char *argv[]){
 			}
 			fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
 			perror("");
-			sleep(2);
+			sleep(loop_interval);
 			continue;
 		}
 
@@ -219,7 +219,7 @@ int main(int argc, char *argv[]){
 			}
 			fprintf(stderr,"%s: Error opening job registry %s :",argv0,registry_file);
 			perror("");
-			sleep(2);
+			sleep(loop_interval);
 			continue;
 		}
 		if (job_registry_rdlock(rha, fd) < 0){
@@ -231,7 +231,7 @@ int main(int argc, char *argv[]){
 		}
 			fprintf(stderr,"%s: Error read locking job registry %s :",argv0,registry_file);
 			perror("");
-			sleep(2);
+			sleep(loop_interval);
 			continue;
 		}
 
