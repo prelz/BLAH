@@ -14,9 +14,9 @@ function bls_fl_add_value ()
   local local_file_name
   local remote_file_name
 
-  container_name=${1:?"Missing container name argument to bls_add_value"}
-  local_file_name=${2:?"Missing local file name argument to bls_add_value"}
-  remote_file_name=${3:?"Missing remote file name argument to bls_add_value"}
+  container_name=${1:?"Missing container name argument to bls_fl_add_value"}
+  local_file_name=${2:?"Missing local file name argument to bls_fl_add_value"}
+  remote_file_name=${3:?"Missing remote file name argument to bls_fl_add_value"}
 
   local last_argument
 
@@ -106,7 +106,7 @@ function bls_fl_subst_and_dump ()
   local subst_template
   local filename
 
-  container_name=${1:?"Missing container name argument to bls_fl_subst_and_accumulate"}
+  container_name=${1:?"Missing container name argument to bls_fl_subst_and_dump"}
   subst_template=${2:?"Missing template argument to bls_fl_subst_and_accumulate"}
   filename=${3:?"Missing filename argument to bls_add_value"}
 
@@ -132,7 +132,7 @@ function bls_fl_clear ()
 #
   local container_name
 
-  container_name=${1:?"Missing container name argument to bls_fl_subst_and_accumulate"}
+  container_name=${1:?"Missing container name argument to bls_fl_clear"}
 
   local last_argument
 
