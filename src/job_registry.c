@@ -417,7 +417,10 @@ job_registry_init(const char *path,
      {
       rlnk_status = readlink(path, real_file_name, sizeof(real_file_name));
       if (rlnk_status > 0 && rlnk_status < sizeof(real_file_name))
+       {
+        real_file_name[rlnk_status] = '\000'; /* readlink does not NULL-terminate */
         path = real_file_name;
+       }
      }
    }
 
