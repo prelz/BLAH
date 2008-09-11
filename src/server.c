@@ -2414,11 +2414,15 @@ make_message(const char *fmt, ...)
 
 	va_start(ap, fmt);
 	n = vsnprintf(NULL, 0, fmt, ap) + 1;
+	va_end(ap);
 
 	result = (char *) malloc (n);
 	if (result)
+	{
+		va_start(ap, fmt);
 		vsnprintf(result, n, fmt, ap);
-	va_end(ap);
+		va_end(ap);
+	}
 
 	return(result);
 }
