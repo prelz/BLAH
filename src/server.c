@@ -1025,7 +1025,7 @@ cmd_submit_job(void *args)
 	if((result = classad_get_dstring_attribute(cad, "CERequirements", &ce_req)) == C_CLASSAD_NO_ERROR)
 	{
 		gettimeofday(&ts, NULL);
-		req_file = make_message("ce-req-file-%d%d", ts.tv_sec, ts.tv_usec);
+		req_file = make_message("%s/ce-req-file-%d%d",tmp_dir, ts.tv_sec, ts.tv_usec);
 		if(!CEReq_parse(cad, req_file))
 		{
 			command_ext = make_message("%s -C %s", command, req_file);
