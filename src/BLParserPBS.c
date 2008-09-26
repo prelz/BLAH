@@ -480,7 +480,7 @@ AddToStruct(char *line, int flag)
 	int  maxtok,ii; 
 	char **tbuf;
  
-	int id;
+	int id=-1;
 	int is_queued=0;
 	int is_finished=0;
 	int belongs_to_current_cycle;
@@ -633,8 +633,9 @@ AddToStruct(char *line, int flag)
 		free(tbuf);
   
 	} /* close rex_finished if */
- 
-	id=UpdatePtr(atoi(jobid),tjobid,is_queued,has_blah);
+	if(jobid){ 
+		id=UpdatePtr(atoi(jobid),tjobid,is_queued,has_blah);
+	}
 	belongs_to_current_cycle = 0;
 	if((id >= 0) && ((reccnt[id]==recycled) ||
 	   ((id >= ptrcnt) && (reccnt[id]==(recycled-1)))))
