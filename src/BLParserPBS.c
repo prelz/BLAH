@@ -1360,8 +1360,6 @@ NotifyFromDate(char *in_buf)
 
 	if(notstr && strcmp(notstr,"CREAMFILTER")==0){
 		cream_string=strdup(notdate);
-		jcount=0;
-		nti[0]=0;
                 if ((cp = strrchr (cream_string, '\n')) != NULL){
                         *cp = '\0';
                 }
@@ -1387,7 +1385,7 @@ NotifyFromDate(char *in_buf)
 		notstrshort=iepoch2str(notepoch,"S");      
       
 		if(cream_recycled){
-			logepoch=nti[jcount+1];
+			logepoch=nti[jcount];
 		}else{
 			if(nti[0]==0){
 				logepoch=time(NULL);
@@ -1402,7 +1400,7 @@ NotifyFromDate(char *in_buf)
       
 		if(cream_recycled){
 
-			for(ii=jcount+1;ii<CRMHASHSIZE;ii++){
+			for(ii=jcount;ii<CRMHASHSIZE;ii++){
 				if(notepoch<=nti[ii]){
 					now=time(NULL);
 					nowtm=ctime(&now);
@@ -1539,7 +1537,7 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
 	pthread_mutex_lock( &cr_write_mutex );
 
 	if(jcount>=CRMHASHSIZE){
-		jcount=1;
+		jcount=0;
 		cream_recycled=1;
 		if(debug>=3){
 			fprintf(debuglogfile, "Cream Counter Recycled\n");
