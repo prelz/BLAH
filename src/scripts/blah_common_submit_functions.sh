@@ -155,7 +155,12 @@ function bls_parse_submit_options ()
   bls_opt_stgcmd="yes"
   bls_opt_stgproxy="yes"
   
-  bls_proxyrenewald="${GLITE_LOCATION:-/opt/glite}/bin/BPRserver"
+  if [ "x$blah_wn_proxy_renewal_daemon" == "x" ]
+  then
+    bls_proxyrenewald="${GLITE_LOCATION:-/opt/glite}/bin/BPRserver"
+  else
+    bls_proxyrenewald="$blah_wn_proxy_renewal_daemon"
+  fi
   
   #default is to stage proxy renewal daemon 
   bls_opt_proxyrenew="yes"
@@ -178,7 +183,7 @@ function bls_parse_submit_options ()
   ###############################################################
   # Parse parameters
   ###############################################################
-  while getopts "i:o:e:c:s:v:V:dw:q:n:rp:l:x:j:T:I:O:R:C:" arg 
+  while getopts "i:o:e:c:s:v:V:dw:q:n:r:p:l:x:j:T:I:O:R:C:" arg 
   do
       case "$arg" in
       i) bls_opt_stdin="$OPTARG" ;;
