@@ -76,10 +76,12 @@ char *get_line(FILE * f)
         pfd.events = ( POLLIN | POLLERR | POLLHUP | POLLNVAL );
         pfd.revents = 0;
         rpoll = poll(&pfd, 1, bfunctions_poll_timeout);
-        if (rpoll <= 0 || ((pfd.revents & POLLIN) == 0 ) ) break;
+        if (rpoll <= 0 || ((pfd.revents & (POLLIN|POLLHUP)) == 0 ) ||
+            feof(f) ) break;
         size += BUFSIZ;
         buf = realloc(buf,size);           
-	fgets(buf+last,size-last,f);
+        buf[last]='\000';
+	if (fgets(buf+last,size-last,f) == EOF) break;
         len = strlen(buf);
         last = len - 1;
     } while (!feof(f) && buf[last]!='\n');
