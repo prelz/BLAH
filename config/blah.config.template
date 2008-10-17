@@ -4,6 +4,10 @@ supported_lrms=pbs,lsf
 #DGAS logfile 
 BLAHPD_ACCOUNTING_INFO_LOG=
 
+#Set to yes if you wish to disable BLAH's machinery for transferring 
+#or delegating proxies to the worker node where a job is running.
+blah_disable_wn_proxy_renewal=no
+
 #Set to yes to enable delegation (instead of copy) of renewed proxies
 #to worker nodes. NOTE: limited *and* delegated proxes are not 
 #accepted for default GSI authentication as of VDT 1.2, so this should

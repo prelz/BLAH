@@ -28,6 +28,8 @@
 #   17 Jun 2008 - (prelz@mi.infn.it). Add access to the job proxy stored
 #                                     in the job registry.
 #                                     Make job proxy optional.
+#   15 Oct 2008 - (prelz@mi.infn.it). Make proxy renewal on worker nodes
+#                                     optional via config.
 #
 #  Description:
 #   Serve a connection to a blahp client, performing appropriate
@@ -155,6 +157,7 @@ char *bssp = NULL;
 char *gloc = NULL;
 int enable_condor_glexec = FALSE;
 int require_proxy_on_submit = FALSE;
+int disable_wn_proxy_renewal = FALSE;
 static char *blah_omem_msg="Out\\ of\\ memory";
 
 /* GLEXEC ENVIRONMENT VARIABLES */
@@ -348,8 +351,9 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	{
 		gloc = DEFAULT_GLEXEC_COMMAND;
 	}
-	require_proxy_on_submit = config_test_boolean(config_get("require_proxy_on_submit",blah_config_handle));
-	enable_condor_glexec = config_test_boolean(config_get("enable_glexec_from_condor",blah_config_handle));
+	require_proxy_on_submit = config_test_boolean(config_get("blah_require_proxy_on_submit",blah_config_handle));
+	enable_condor_glexec = config_test_boolean(config_get("blah_enable_glexec_from_condor",blah_config_handle));
+	disable_wn_proxy_renewal = config_test_boolean(config_get("blah_disable_wn_proxy_renewal",blah_config_handle));
 				
 	if (enable_condor_glexec)
 	{
@@ -999,6 +1003,22 @@ cmd_submit_job(void *args)
 		command = command_ext;
 	}
 
+        /* Add command line option to explicitely disable proxy renewal */
+        /* if requested. */
+	if (disable_wn_proxy_renewal)
+	{
+		command_ext = make_message("%s -r no", command);
+		if (command_ext == NULL)
+		{
+			/* PUSH A FAILURE */
+			resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
+			goto cleanup_command;
+		}
+		/* Swap new command in */
+		free(command);
+		command = command_ext;
+	}
+
 	/* Cmd attribute is mandatory: stop on any error */
 	if (set_cmd_string_option(&command, cad, "Cmd", COMMAND_PREFIX, NO_QUOTE) != C_CLASSAD_NO_ERROR)
 	{
@@ -1612,6 +1632,11 @@ get_status_and_old_proxy(int use_glexec, char *jobDescr,
 	}
 
 	job_registry_free_split_id(spid);
+
+	/* If we have a proxy link, and proxy renewal on worker nodes */
+	/* was disabled, we need to deal with the proxy locally. */
+	/* We don't need to spend time checking on job status. */
+	if (disable_wn_proxy_renewal) return 1; /* 'Local' renewal only. */
 
 	/* If we reach here we have a proxy *and* we have */
 	/* to check on the job status */
