@@ -40,7 +40,7 @@ BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 
 qstatuser=`whoami`
 qstatcache=/tmp/qstatcache_${qstatuser}.txt
-qstattmp=/tmp/qstattmp_${qstatuser}.txt
+qstattmp=`mktemp -q /tmp/qstattmp_XXXXXXXXXX`
 
 ############################
 #functions
