@@ -33,6 +33,7 @@
 static pthread_mutex_t poperations_lock  = PTHREAD_MUTEX_INITIALIZER;
 extern config_handle *blah_config_handle;
 extern char **environ;
+extern char *gloc;
 
 int
 init_poperations_lock(void)
@@ -88,19 +89,74 @@ mtsafe_pclose(FILE *stream)
 
 /* Utility functions */
 int
-merciful_kill(pid_t pid)
+glexec_kill_pid(pid_t pid, int sig, const char *cmd, char *const env[])
+{
+	char *kill_cmd;
+	char *kill_out, *kill_err;
+	char *kill_cmd_format="%s %s -%d %d";
+	config_entry *cfg_kill_cmd_format;
+	int nalloc;
+	int kill_status;
+
+	if (blah_config_handle != NULL)
+	{
+		cfg_kill_cmd_format=config_get("blah_graceful_kill_glexecable_cmd_format",blah_config_handle);
+		if (cfg_kill_cmd_format != NULL) kill_cmd_format = cfg_kill_cmd_format->value;
+	}
+
+        nalloc = snprintf(NULL, 0, kill_cmd_format, gloc, cmd, sig, pid) + 1;
+
+        kill_cmd = (char *) malloc (nalloc);
+        if (kill_cmd == NULL)
+	{
+		errno = ENOMEM;
+		return -1;
+	}
+
+	snprintf(kill_cmd, nalloc, kill_cmd_format, gloc, cmd, sig, pid);
+
+        kill_status = exe_getouterr(kill_cmd, env, &kill_out, &kill_err);
+
+	free(kill_cmd);
+	if (kill_out) free(kill_out);
+	if (kill_err) free(kill_err);
+	
+	return(kill_status);
+}
+
+int
+merciful_kill(pid_t pid, int kill_via_glexec, 
+              const char *glexeced_command, 
+              char *const glexec_environment[])
 {
 	int graceful_timeout = 20; /* Default value - overridden by config */
 	int status=0;
 	config_entry *config_timeout;
 	int tmp_timeout;
 	int tsl;
+	char *glexec_kill_cmd = "/bin/kill";
+	config_entry *cfg_glexec_kill_cmd;
+	int kill_status;
 
 	if (blah_config_handle != NULL && 
 	    (config_timeout=config_get("blah_graceful_kill_timeout",blah_config_handle)) != NULL)
 	{
 		tmp_timeout = atoi(config_timeout->value);
 		if (tmp_timeout > 0) graceful_timeout = tmp_timeout;
+	}
+
+	if (kill_via_glexec && blah_config_handle != NULL)
+	{
+		cfg_glexec_kill_cmd=config_get("blah_graceful_kill_glexecable_cmd",blah_config_handle);
+		if (cfg_glexec_kill_cmd != NULL) glexec_kill_cmd = cfg_glexec_kill_cmd->value;
+	}
+
+	if (kill_via_glexec &&
+            strncmp(glexeced_command, glexec_kill_cmd, strlen(glexec_kill_cmd))==0)
+	{
+		/* Glexec'ing kill for a glexeced kill is overkill */
+		/* (can lead to a cascade of attempts). Disable that. */
+		kill_via_glexec = 0;
 	}
 
 	/* verify that child is dead */
@@ -110,12 +166,27 @@ merciful_kill(pid_t pid)
 		/* still alive, allow a few seconds 
 		   than use brute force */
 		sleep(1);
-		if (tsl > (graceful_timeout/2)) kill(pid, SIGTERM);
+		if (tsl > (graceful_timeout/2)) 
+		{
+			if (kill_via_glexec)
+			{
+				glexec_kill_pid(pid, SIGTERM, glexec_kill_cmd, 
+						glexec_environment);
+				
+			}
+			else kill(pid, SIGTERM);
+		}
 	}
 
 	if (tsl >= graceful_timeout && (waitpid(pid, &status, WNOHANG) == 0))
 	{
-		if (kill(pid, SIGKILL) == 0)
+		if (kill_via_glexec)
+		{
+			glexec_kill_pid(pid, SIGKILL, glexec_kill_cmd, 							glexec_environment);
+		}
+		else kill_status = kill(pid, SIGKILL);
+
+		if (kill_status == 0)
 		{
 			waitpid(pid, &status, 0);
 		}
@@ -176,6 +247,8 @@ exe_getouterr(char *const command, char *const environment[], char **cmd_output,
 	config_entry *config_timeout;
 	int tmp_timeout;
 	int successful_read;
+	int kill_via_glexec = 0;
+	char *glexeced_cmd = NULL;
 
 	if (blah_config_handle != NULL && 
 	    (config_timeout=config_get("blah_child_poll_timeout",blah_config_handle)) != NULL)
@@ -188,6 +261,14 @@ exe_getouterr(char *const command, char *const environment[], char **cmd_output,
 
 	*cmd_output = NULL;
 	*cmd_error = NULL;
+
+	/* Is this a glexec'ed command ? */
+	if (strncmp(command, gloc, strlen(gloc)) == 0)
+	{
+		kill_via_glexec = 1;
+		glexeced_cmd = command + strlen(gloc);
+		while (*glexeced_cmd == ' ') glexeced_cmd++;
+	}
 
 	/* Copy original environment */
 	for (envcopy_size = 0; environ[envcopy_size] != NULL; envcopy_size++)
@@ -299,12 +380,12 @@ exe_getouterr(char *const command, char *const environment[], char **cmd_output,
 				{
 					case -1: /* poll error */
 						perror("poll()");
-						status = merciful_kill(pid);
+						status = merciful_kill(pid, kill_via_glexec, glexeced_cmd, environment);
 						child_running = 0;
 						break;
 					case 0: /* timeout occurred */
 						/* kill the child process */
-						status = merciful_kill(pid);
+						status = merciful_kill(pid, kill_via_glexec, glexeced_cmd, environment);
 						child_running = 0;
 						break;
 					default: /* some event occurred */
@@ -321,7 +402,7 @@ exe_getouterr(char *const command, char *const environment[], char **cmd_output,
 						}
 						if (successful_read == 0)
 						{
-							status = merciful_kill(pid);
+							status = merciful_kill(pid, kill_via_glexec, glexeced_cmd, environment);
 							child_running = 0;
 							break;
 						}
