@@ -310,7 +310,7 @@ END {
                 pr_removal=`echo $result | sed -e 's/^.*\///'`
                 result=`echo $result | sed 's/\/.*//'`
 
-                resstatus=`echo $result|awk -F"; JobStatus=" '{ print $2 }'|awk -F";" '{ print $1 }'`;
+		resstatus=`echo $result|sed "s/\[.*JobStatus=\([^;]*\).*/\1/"`;
                 if [ "$resstatus" != "1" -a "x$getwn" == "xyes" ] ; then
                         search_wn
                 fi
