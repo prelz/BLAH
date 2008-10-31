@@ -41,6 +41,7 @@ BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
 qstatuser=`whoami`
 qstatcache=/tmp/qstatcache_${qstatuser}.txt
 qstattmp=`mktemp -q /tmp/qstattmp_XXXXXXXXXX`
+`rm -f $qstattmp`
 
 ############################
 #functions
@@ -208,9 +209,6 @@ END {
         fi
 
      else
-	if [ "x$getwn" == "xyes" ] ; then
-		search_wn
-	fi
 
 	cliretcode=0
 	retcode=0
@@ -311,6 +309,12 @@ END {
         if [ "x$usedBLParser" == "xyes" ] ; then
                 pr_removal=`echo $result | sed -e 's/^.*\///'`
                 result=`echo $result | sed 's/\/.*//'`
+
+                resstatus=`echo $result|awk -F"; JobStatus=" '{ print $2 }'|awk -F";" '{ print $1 }'`;
+                if [ "$resstatus" != "1" -a "x$getwn" == "xyes" ] ; then
+                        search_wn
+                fi
+
                 res=`echo $result|awk -F"; ExitCode=" '{ print $2 }'|awk -F";" '{ print $1 }'`;
                 if [ "$res" == "271" ] ; then
                         out=`sed -n 's/^=>> PBS: //p' *.e$reqjob 2>/dev/null`
