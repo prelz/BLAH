@@ -315,7 +315,7 @@ END {
                         search_wn
                 fi
 
-                res=`echo $result|awk -F"; ExitCode=" '{ print $2 }'|awk -F";" '{ print $1 }'`;
+                res=`echo $result|sed "s/\[.*ExitCode=\([^;]*\).*/\1/"`;
                 if [ "$res" == "271" ] ; then
                         out=`sed -n 's/^=>> PBS: //p' *.e$reqjob 2>/dev/null`
                         if [ ! -z $out ] ; then
