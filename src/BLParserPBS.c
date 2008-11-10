@@ -702,6 +702,9 @@ AddToStruct(char *line, int flag)
 	} /* closes if-else if on jobid lookup */
  
 	free(rex);
+	free(trex);
+	free(tj_time);
+	free(j_time);
 	free(tjobid);
 	free(jobid);
 	free(tex_status);

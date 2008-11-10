@@ -578,6 +578,7 @@ int AddToStruct(char *line, int flag){
 	free(ex_status);
 	free(failex_status);
 	free(j_blahjob);
+	free(j_reason);
 
 	return 0;
 }
