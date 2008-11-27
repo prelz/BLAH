@@ -567,18 +567,18 @@ int AddToStruct(char *line, int flag){
 		} /* closes if-else if on rex_ */
 	} /* closes if-else if on jobid lookup */
  
-	free(rex);
-	free(j_time);
-	free(tj_time);
-	free(tmptime);
-	free(jobid);
-	free(j_status);
-	free(sig_status);
-	free(wnode);
-	free(ex_status);
-	free(failex_status);
-	free(j_blahjob);
-	free(j_reason);
+	if(rex) free(rex);
+	if(j_time) free(j_time);
+	if(tj_time) free(tj_time);
+	if(tmptime) free(tmptime);
+	if(jobid) free(jobid);
+	if(j_status) free(j_status);
+	if(sig_status) free(sig_status);
+	if(wnode) free(wnode);
+	if(ex_status) free(ex_status);
+	if(failex_status) free(failex_status);
+	if(j_blahjob) free(j_blahjob);
+	if(j_reason) free(j_reason);
 
 	return 0;
 }
@@ -1851,7 +1851,14 @@ strtoken(const char *s, char delim, char **token)
 	char *tmp;
 	char *ptr, *dptr;
 	int i = 0;
-    
+   
+	if(!s){
+		if((token[0] = calloc(1,1)) == 0){
+			sysfatal("can't malloc token[0] in strtoken: %r");
+		}
+		token[0] = NULL;
+		return 1;
+	}
 	if((tmp = calloc(1 + strlen(s),1)) == 0){
 		sysfatal("can't malloc tmp: %r");
 	}

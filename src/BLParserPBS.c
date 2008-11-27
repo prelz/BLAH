@@ -379,8 +379,6 @@ int
 InfoAdd(int id, char *value, const char * flag)
 {
 
-	char *jobid;
-
 	if(!value || (strlen(value)==0) || (strcmp(value,"\n")==0)){
 		return -1;
 	}
@@ -423,12 +421,8 @@ InfoAdd(int id, char *value, const char * flag)
     
 	} else if(strcmp(flag,"BLAHPNAME")==0){
  
-		if((jobid=calloc(STR_CHARS,1)) == 0){
-			sysfatal("can't malloc jobid: %r");
-		}
 		free(j2bl[id]);
 		j2bl[id] = strdup(value);
-		free(jobid);
   
 	} else if(strcmp(flag,"JOBSTATUS")==0){
  
@@ -701,17 +695,18 @@ AddToStruct(char *line, int flag)
 		} /* closes if-else if on rex_ */
 	} /* closes if-else if on jobid lookup */
  
-	free(rex);
-	free(trex);
-	free(tj_time);
-	free(j_time);
-	free(tjobid);
-	free(jobid);
-	free(tex_status);
-	free(ex_status);
-	free(tb_job);
-	free(tj_blahjob);
-	free(j_blahjob);
+	if(rex) free(rex);
+	if(trex) free(trex);
+	if(tj_time) free(tj_time);
+	if(j_time) free(j_time);
+	if(tjobid) free(tjobid);
+	if(jobid) free(jobid);
+	if(tex_status) free(tex_status);
+	if(ex_status) free(ex_status);
+	if(tb_job) free(tb_job);
+	if(tj_blahjob) free(tj_blahjob);
+	if(j_blahjob) free(j_blahjob);
+
 
 	return 0;
 }
@@ -1648,7 +1643,8 @@ UpdatePtr(int jid,char *fulljobid,int is_que,int has_bl)
 		}
 		if((is_que) && (has_bl)){
 			rptr[ptrcnt]=jid;
-			if(recycled){
+			if(recycled && rfullptr[ptrcnt]){
+
 				free(rfullptr[ptrcnt]);
 			}
 			rfullptr[ptrcnt++]=strdup(fulljobid);
@@ -1707,6 +1703,13 @@ strtoken(const char *s, char delim, char **token)
 	char *ptr, *dptr;
 	int i = 0;
     
+	if(!s){
+		if((token[0] = calloc(1,1)) == 0){
+			sysfatal("can't malloc token[0] in strtoken: %r");
+		}
+		token[0] = NULL;
+		return 1;
+	}
 	if((tmp = calloc(1 + strlen(s),1)) == 0){
 		sysfatal("can't malloc tmp in strtoken: %r");
 	}
