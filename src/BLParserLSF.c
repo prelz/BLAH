@@ -249,7 +249,7 @@ tail(FILE *fp, char *line)
 	long off=0;
 
 	while(fgets(line, STR_CHARS, fp)){
-		if((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_status)!=NULL) || (strstr(line,rex_signal)!=NULL)){        
+		if(line && ((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_status)!=NULL) || (strstr(line,rex_signal)!=NULL))){        
 			if(debug >= 2){
 				fprintf(debuglogfile, "Tail line:%s",line);
 				fflush(debuglogfile);
@@ -433,7 +433,7 @@ int AddToStruct(char *line, int flag){
 	}
 	if(maxtok>41){
 		j_blahjob=strdup(tbuf[41]);
-		if((strstr(j_blahjob,blahjob_string)!=NULL) || (strstr(j_blahjob,bl_string)!=NULL) || (strstr(j_blahjob,cream_string)!=NULL)){
+		if(j_blahjob && ((strstr(j_blahjob,blahjob_string)!=NULL) || (strstr(j_blahjob,bl_string)!=NULL) || (strstr(j_blahjob,cream_string)!=NULL))){
 			has_blah=1;
 		}
 	}
@@ -460,7 +460,7 @@ int AddToStruct(char *line, int flag){
 			NotifyCream(id, "1", j2bl[id], "NA", "NA", j2st[id], flag);
 		}
   
-	} else if((id >= 0) && (belongs_to_current_cycle) && ((strstr(j2bl[id],blahjob_string)!=NULL) || (strstr(j2bl[id],bl_string)!=NULL) || (strstr(j2bl[id],cream_string)!=NULL))){ 
+	} else if((id >= 0) && (belongs_to_current_cycle) && (j2bl[id]) && ((strstr(j2bl[id],blahjob_string)!=NULL) || (strstr(j2bl[id],bl_string)!=NULL) || (strstr(j2bl[id],cream_string)!=NULL))){ 
 
 		if(rex && strcmp(rex,rex_running)==0){
 
@@ -474,7 +474,7 @@ int AddToStruct(char *line, int flag){
   
 		} else if(rex && strcmp(rex,rex_signal)==0){
   
-			if(strstr(sig_status,"KILL")!=NULL){
+			if(sig_status && strstr(sig_status,"KILL")!=NULL){
 
 				InfoAdd(id,"3","JOBSTATUS");
 
@@ -606,7 +606,7 @@ GetAllEvents(char *file)
  
 		if((fp=fopen(opfile[i], "r")) != 0){
 			while(fgets(line, STR_CHARS, fp)){
-				if((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_status)!=NULL) || (strstr(line,rex_signal)!=NULL)){
+				if(line && ((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_status)!=NULL) || (strstr(line,rex_signal)!=NULL))){
 					AddToStruct(line,0);
 				}
 			}
@@ -931,21 +931,21 @@ LookupAndSend(int m_sock)
 			}else{
 				sprintf(t_wnode,"WorkerNode=%s;",j2wn[id]);
 			}
-			if((strcmp(j2js[id],"3")==0) || (strcmp(j2js[id],"4")==0)){
+			if(j2js[id] && ((strcmp(j2js[id],"3")==0) || (strcmp(j2js[id],"4")==0))){
 				pr_removal="Yes";
 			} else {
 				pr_removal="Not";
 			}
-			if(strcmp(j2js[id],"4")==0){
-				if((strcmp(j2ec[id],"130")==0) || (strcmp(j2ec[id],"137")==0) || (strcmp(j2ec[id],"143")==0)){
+			if(j2js[id] && strcmp(j2js[id],"4")==0){
+				if(j2ec[id] && ((strcmp(j2ec[id],"130")==0) || (strcmp(j2ec[id],"137")==0) || (strcmp(j2ec[id],"143")==0))){
 					sprintf(exitreason," ExitReason=\"Memory limit reached\";");
-				}else if(strcmp(j2ec[id],"140")==0){
+				}else if(j2ec[id] && strcmp(j2ec[id],"140")==0){
 					sprintf(exitreason," ExitReason=\"RUNtime limit reached\";");
-				}else if(strcmp(j2ec[id],"152")==0){
+				}else if(j2ec[id] && strcmp(j2ec[id],"152")==0){
 					sprintf(exitreason," ExitReason=\"CPUtime limit reached\";");
-				}else if(strcmp(j2ec[id],"153")==0){
+				}else if(j2ec[id] && strcmp(j2ec[id],"153")==0){
 					sprintf(exitreason," ExitReason=\"FILEsize limit reached\";");
-				}else if(strcmp(j2ec[id],"157")==0){
+				}else if(j2ec[id] && strcmp(j2ec[id],"157")==0){
 					sprintf(exitreason," ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
 				}
 				sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\";%s ExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], j2ct[id], exitreason, j2ec[id], pr_removal);
@@ -983,21 +983,21 @@ LookupAndSend(int m_sock)
 				}else{
 					sprintf(t_wnode,"WorkerNode=%s;",j2wn[id]);
 				}
-				if((strcmp(j2js[id],"3")==0) || (strcmp(j2js[id],"4")==0)){
+				if(j2js[id] && ((strcmp(j2js[id],"3")==0) || (strcmp(j2js[id],"4")==0))){
 					pr_removal="Yes";
 				} else {
 					pr_removal="Not";
 				}
-				if(strcmp(j2js[id],"4")==0){
-					if((strcmp(j2ec[id],"130")==0) || (strcmp(j2ec[id],"137")==0) || (strcmp(j2ec[id],"143")==0)){
+				if(j2js[id] && strcmp(j2js[id],"4")==0){
+					if(j2ec[id] && ((strcmp(j2ec[id],"130")==0) || (strcmp(j2ec[id],"137")==0) || (strcmp(j2ec[id],"143")==0))){
 						sprintf(exitreason," ExitReason=\"Memory limit reached\";");
-					}else if(strcmp(j2ec[id],"140")==0){
+					}else if(j2ec[id] && strcmp(j2ec[id],"140")==0){
 						sprintf(exitreason," ExitReason=\"RUNtime limit reached\";");
-					}else if(strcmp(j2ec[id],"152")==0){
+					}else if(j2ec[id] && strcmp(j2ec[id],"152")==0){
 						sprintf(exitreason," ExitReason=\"CPUtime limit reached\";");
-					}else if(strcmp(j2ec[id],"153")==0){
+					}else if(j2ec[id] && strcmp(j2ec[id],"153")==0){
 						sprintf(exitreason," ExitReason=\"FILEsize limit reached\";");
-					}else if(strcmp(j2ec[id],"157")==0){
+					}else if(j2ec[id] && strcmp(j2ec[id],"157")==0){
 						sprintf(exitreason," ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
 					}
 					sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\";%s ExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], j2ct[id], exitreason, j2ec[id], pr_removal);
@@ -1163,7 +1163,7 @@ GetLogDir(int largc, char *largv[])
 		sprintf(conffile,"%s/lsf.conf",econfpath);
 		if((fp=fopen(conffile, "r")) != 0){
 			while(fgets(line, STR_CHARS, fp)){
-				if(strstr(line,"LSB_SHAREDIR")!=0){
+				if(line && strstr(line,"LSB_SHAREDIR")!=0){
 					goto creamdone;
 				}
 			}
@@ -1177,7 +1177,7 @@ GetLogDir(int largc, char *largv[])
 	
 	if((fp=fopen(conffile, "r")) != 0){
 		while(fgets(line, STR_CHARS, fp)){
-			if(strstr(line,"LSB_SHAREDIR")!=0){
+			if(line && strstr(line,"LSB_SHAREDIR")!=0){
 				goto creamdone;
 			}
 		}
@@ -1190,7 +1190,7 @@ GetLogDir(int largc, char *largv[])
 		sprintf(conffile,"%s/lsf.conf",econfpath);
 		if((fp=fopen(conffile, "r")) != 0){
 			while(fgets(line, STR_CHARS, fp)){
-				if(strstr(line,"LSB_SHAREDIR")!=0){
+				if(line && strstr(line,"LSB_SHAREDIR")!=0){
 					goto creamdone;
 				}
 			}

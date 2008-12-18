@@ -311,7 +311,7 @@ follow(char *infile, char *line)
 		strcat(evfile,"/");
 		strcat(evfile,tnow);
 		
-		if(strcmp(evfile,actualfile) != 0){
+		if(evfile && strcmp(evfile,actualfile) != 0){
 
 			off = 0;
 			actualfile=strdup(evfile);
@@ -359,7 +359,7 @@ tail(FILE *fp, char *line)
 	long off=0;
 
 	while(fgets(line, STR_CHARS, fp)){
-		if((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_deleted)!=NULL) || (strstr(line,rex_finished)!=NULL) || (strstr(line,rex_hold)!=NULL)){
+		if(line && ((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_deleted)!=NULL) || (strstr(line,rex_finished)!=NULL) || (strstr(line,rex_hold)!=NULL))){
 			if(debug >= 2){
 				fprintf(debuglogfile, "Tail line:%s",line);
 				fflush(debuglogfile);
@@ -492,7 +492,7 @@ AddToStruct(char *line, int flag)
 	char *tj_blahjob=NULL;
 	char *j_blahjob=NULL;
 
-	if((strstr(line,blahjob_string)!=NULL) || (strstr(line,bl_string)!=NULL) || (strstr(line,cream_string)!=NULL)){
+	if(line && ((strstr(line,blahjob_string)!=NULL) || (strstr(line,bl_string)!=NULL) || (strstr(line,cream_string)!=NULL))){
 		has_blah=1;
 	}
  
@@ -645,7 +645,7 @@ AddToStruct(char *line, int flag)
 			NotifyCream(id, "1", j2bl[id], "NA", "NA", j2st[id], flag);
 		}  
 
-	} else if((id >= 0) && (belongs_to_current_cycle) && ((strstr(j2bl[id],blahjob_string)!=NULL)  || (strstr(j2bl[id],bl_string)!=NULL) || (strstr(j2bl[id],cream_string)!=NULL))){ 
+	} else if((id >= 0) && (belongs_to_current_cycle) && (j2bl[id]) && ((strstr(j2bl[id],blahjob_string)!=NULL)  || (strstr(j2bl[id],bl_string)!=NULL) || (strstr(j2bl[id],cream_string)!=NULL))){ 
  
 		if(rex && strstr(rex,rex_running)!=NULL){
 
@@ -656,7 +656,7 @@ AddToStruct(char *line, int flag)
 				NotifyCream(id, "2", j2bl[id], "NA", "NA", j2rt[id], flag);
 			}
    
- 		 } else if(strstr(rex,rex_deleted)!=NULL){
+ 		 } else if(rex && strstr(rex,rex_deleted)!=NULL){
   
    			InfoAdd(id,"3","JOBSTATUS");
 
@@ -676,7 +676,7 @@ AddToStruct(char *line, int flag)
 
 		} else if(rex && ((strstr(rex,rex_uhold)!=NULL) || (strstr(rex,rex_ohold)!=NULL) || (strstr(rex,rex_ohold)!=NULL))){
    
-			if(strcmp(j2js[id],"1")==0){
+			if(j2js[id] && strcmp(j2js[id],"1")==0){
 				InfoAdd(id,"5","JOBSTATUS");
 	                        if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
 					NotifyCream(id, "5", j2bl[id], "NA", "NA", j_time, flag);
@@ -685,7 +685,7 @@ AddToStruct(char *line, int flag)
    
 		} else if(rex && ((strstr(rex,rex_uresume)!=NULL) || (strstr(rex,rex_oresume)!=NULL) || (strstr(rex,rex_oresume)!=NULL))){
    
-			if(strcmp(j2js[id],"5")==0){
+			if(j2js[id] && strcmp(j2js[id],"5")==0){
 				InfoAdd(id,"1","JOBSTATUS");
 				if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
 					NotifyCream(id, "1", j2bl[id], "NA", "NA", j_time, flag);
@@ -735,7 +735,7 @@ GetAllEvents(char *file)
  
 		if((fp=fopen(opfile[i], "r")) != 0){
 			while(fgets(line, STR_CHARS, fp)){
-				if((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_deleted)!=NULL) || (strstr(line,rex_finished)!=NULL) || (strstr(line,rex_hold)!=NULL)){
+				if(line && ((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_deleted)!=NULL) || (strstr(line,rex_finished)!=NULL) || (strstr(line,rex_hold)!=NULL))){
 					AddToStruct(line,0);
 				}
 			}
@@ -1046,16 +1046,16 @@ LookupAndSend(int m_sock)
 				sysfatal("can't malloc out_buf in LookupAndSend: %r");
 			}
 		 
-			if((strcmp(j2js[id],"3")==0) || (strcmp(j2js[id],"4")==0)){
+			if(j2js[id] && ((strcmp(j2js[id],"3")==0) || (strcmp(j2js[id],"4")==0))){
 				pr_removal="Yes";
 			} else {
 				pr_removal="Not";
 			}
 			sprintf(jstat," JobStatus=%s;",j2js[id]);
 	 
-			if(strcmp(j2js[id],"4")==0){
+			if(j2js[id] && strcmp(j2js[id],"4")==0){
 				sprintf(out_buf,"[BatchJobId=\"%s\";%s LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\"; ExitCode=%s;/%s\n",jobid, jstat, j2st[id], j2rt[id], j2ct[id], j2ec[id], pr_removal);
-			}else if(strcmp(j2rt[id],"\0")!=0){
+			}else if(j2rt[id] && strcmp(j2rt[id],"\0")!=0){
 				sprintf(out_buf,"[BatchJobId=\"%s\";%s LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";/%s\n",jobid, jstat, j2st[id], j2rt[id], pr_removal);
 			}else{
 				sprintf(out_buf,"[BatchJobId=\"%s\";%s LRMSSubmissionTime=\"%s\";/%s\n",jobid, jstat, j2st[id], pr_removal);
@@ -1076,7 +1076,7 @@ LookupAndSend(int m_sock)
 					sysfatal("can't malloc out_buf in LookupAndSend: %r");
 				}
 	  
-				if((strcmp(j2js[id],"3")==0) || (strcmp(j2js[id],"4")==0)){
+				if(j2js[id] && ((strcmp(j2js[id],"3")==0) || (strcmp(j2js[id],"4")==0))){
 					pr_removal="Yes";
 				} else {
 					pr_removal="Not";
@@ -1084,9 +1084,9 @@ LookupAndSend(int m_sock)
 				
 				sprintf(jstat," JobStatus=%s;",j2js[id]);
 	  
-				if(strcmp(j2js[id],"4")==0){
+				if(j2js[id] && strcmp(j2js[id],"4")==0){
 					sprintf(out_buf,"[BatchJobId=\"%s\";%s LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\"; ExitCode=%s;/%s\n",jobid, jstat, j2st[id], j2rt[id], j2ct[id], j2ec[id], pr_removal);
-				}else if(strcmp(j2rt[id],"\0")!=0){
+				}else if(j2rt[id] && strcmp(j2rt[id],"\0")!=0){
 					sprintf(out_buf,"[BatchJobId=\"%s\";%s LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";/%s\n",jobid, jstat, j2st[id], j2rt[id], pr_removal);
 				}else{
 					sprintf(out_buf,"[BatchJobId=\"%s\";%s LRMSSubmissionTime=\"%s\";/%s\n",jobid, jstat, j2st[id], pr_removal);
