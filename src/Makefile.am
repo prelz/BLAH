@@ -2,11 +2,11 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.30 2008/06/30 15:56:19 fprelz Exp $ 
+# $Id: Makefile.am,v 1.31 2008/12/18 11:38:14 mezzadri Exp $ 
 #
 # File:           Makefile.am
 #
-# Author(s):      Francesco Prelz ($Author: fprelz $)
+# Author(s):      Francesco Prelz ($Author: mezzadri $)
 #        e-mail: "Francesco.Prelz@mi.infn.it"
 #
 # Revision history:
@@ -19,7 +19,7 @@ INCLUDES = -I. $(CLASSAD_CFLAGS) $(GLOBUS_NOTHR_CFLAGS)
 SUBDIRS = scripts
 
 if HAVE_GLOBUS
-GLOBUS_EXECS = BPRclient BPRserver BAClient BAParser
+GLOBUS_EXECS = BPRclient BPRserver
 else
 GLOBUS_EXECS =
 endif
@@ -61,15 +61,15 @@ BLParserPBS_SOURCES = BLParserPBS.c
 
 BLParserPBS_LDADD = -lpopt
 
-BAParser_SOURCES = BAParser.c BPRcomm.c tokens.c
+#BAParser_SOURCES = BAParser.c BPRcomm.c tokens.c
 
-BAParser_LDADD = -lpopt \
-$(GLOBUS_GSS_NOTHR_LIBS) $(GLOBUS_SSL_NOTHR_LIBS)
+#BAParser_LDADD = -lpopt \
+#$(GLOBUS_GSS_NOTHR_LIBS) $(GLOBUS_SSL_NOTHR_LIBS)
 
-BAClient_SOURCES = BAClient.c BPRcomm.c tokens.c BLhelper.c
+#BAClient_SOURCES = BAClient.c BPRcomm.c tokens.c BLhelper.c
 
-BAClient_LDADD = -lpopt \
-$(GLOBUS_GSS_NOTHR_LIBS) $(GLOBUS_SSL_NOTHR_LIBS)
+#BAClient_LDADD = -lpopt \
+#$(GLOBUS_GSS_NOTHR_LIBS) $(GLOBUS_SSL_NOTHR_LIBS)
 
 BDlogger_SOURCES = BDlogger.c
 
@@ -108,7 +108,7 @@ BUpdaterLSF_LDADD = -lpopt -lpthread
 BUpdaterPBS_SOURCES = BUpdaterPBS.c Bfunctions.c job_registry.c config.c
 BUpdaterPBS_LDADD = -lpopt -lpthread -lm
 
-noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h mtsafe_popen.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h BAParser.h condor_create_log.h proxy_hashcontainer.h job_registry.h config.h BUpdaterCondor.h Bfunctions.h BNotifier.h BUpdaterLSF.h BUpdaterPBS.h
+noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h mtsafe_popen.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h condor_create_log.h proxy_hashcontainer.h job_registry.h config.h BUpdaterCondor.h Bfunctions.h BNotifier.h BUpdaterLSF.h BUpdaterPBS.h
 
 #bin_SCRIPTS = pbs_cancel.sh pbs_status.sh pbs_submit.sh lsf_cancel.sh lsf_status.sh lsf_submit.sh
 
