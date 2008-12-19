@@ -926,7 +926,7 @@ LookupAndSend(int m_sock)
 				sysfatal("can't malloc exitreason in LookupAndSend: %r");
 			}
         	 
-			if(strcmp(j2wn[id],"\0")==0){
+			if(j2wn[id] && strcmp(j2wn[id],"\0")==0){
 				t_wnode[0]='\0';
 			}else{
 				sprintf(t_wnode,"WorkerNode=%s;",j2wn[id]);
@@ -949,7 +949,7 @@ LookupAndSend(int m_sock)
 					sprintf(exitreason," ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
 				}
 				sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\";%s ExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], j2ct[id], exitreason, j2ec[id], pr_removal);
-			}else if(strcmp(j2rt[id],"\0")!=0){
+			}else if(j2rt[id] && strcmp(j2rt[id],"\0")!=0){
 				sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], pr_removal);
 			}else{
 				sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], pr_removal);
@@ -978,7 +978,7 @@ LookupAndSend(int m_sock)
 					sysfatal("can't malloc exitreason in LookupAndSend: %r");
 				}
         	 
-				if(strcmp(j2wn[id],"\0")==0){
+				if(j2wn[id] && strcmp(j2wn[id],"\0")==0){
 					t_wnode[0]='\0';
 				}else{
 					sprintf(t_wnode,"WorkerNode=%s;",j2wn[id]);
@@ -1001,7 +1001,7 @@ LookupAndSend(int m_sock)
 						sprintf(exitreason," ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
 					}
 					sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\";%s ExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], j2ct[id], exitreason, j2ec[id], pr_removal);
-				}else if(strcmp(j2rt[id],"\0")!=0){
+				}else if(j2rt[id] && strcmp(j2rt[id],"\0")!=0){
 					sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], pr_removal);
 				}else{
 					sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], pr_removal);
