@@ -138,6 +138,7 @@ char * rex_queued    = "Job Queued ";
 char * rex_running   = "Job Run ";
 char * rex_deleted   = "Job deleted ";
 char * rex_finished  = "Exit_status=";
+char * rex_unable    = "unable to run job";
 char * rex_hold      = "Holds";
 char * rex_uhold     = "Holds u set";
 char * rex_ohold     = "Holds o set";

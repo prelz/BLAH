@@ -359,7 +359,7 @@ tail(FILE *fp, char *line)
 	long off=0;
 
 	while(fgets(line, STR_CHARS, fp)){
-		if(line && ((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_deleted)!=NULL) || (strstr(line,rex_finished)!=NULL) || (strstr(line,rex_hold)!=NULL))){
+		if(line && ((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_deleted)!=NULL) || (strstr(line,rex_finished)!=NULL) || (strstr(line,rex_unable)!=NULL) || (strstr(line,rex_hold)!=NULL))){
 			if(debug >= 2){
 				fprintf(debuglogfile, "Tail line:%s",line);
 				fflush(debuglogfile);
@@ -656,6 +656,14 @@ AddToStruct(char *line, int flag)
 				NotifyCream(id, "2", j2bl[id], "NA", "NA", j2rt[id], flag);
 			}
    
+ 		 } else if(rex && strstr(rex,rex_unable)!=NULL){
+  
+   			InfoAdd(id,"1","JOBSTATUS");
+
+			if((usecream>0) && j2bl[id] && (strstr(j2bl[id],cream_string)!=NULL)){
+				NotifyCream(id, "1", j2bl[id], "NA", "NA", j_time, flag);
+			}
+    
  		 } else if(rex && strstr(rex,rex_deleted)!=NULL){
   
    			InfoAdd(id,"3","JOBSTATUS");
@@ -735,7 +743,7 @@ GetAllEvents(char *file)
  
 		if((fp=fopen(opfile[i], "r")) != 0){
 			while(fgets(line, STR_CHARS, fp)){
-				if(line && ((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_deleted)!=NULL) || (strstr(line,rex_finished)!=NULL) || (strstr(line,rex_hold)!=NULL))){
+				if(line && ((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_deleted)!=NULL) || (strstr(line,rex_finished)!=NULL) || (strstr(line,rex_unable)!=NULL) || (strstr(line,rex_hold)!=NULL))){
 					AddToStruct(line,0);
 				}
 			}
