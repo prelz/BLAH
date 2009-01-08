@@ -71,7 +71,7 @@ int main(int argc, char *argv[]){
 		debug=0;
 	}
     
-	if(debug){
+	if(debuglogname){
 		if((debuglogfile = fopen(debuglogname, "a+"))==0){
 			debuglogfile =  fopen("/dev/null", "a+");
 		}

@@ -67,7 +67,7 @@ main(int argc, char *argv[])
 		debug=0;
 	}
     
-	if(debug){
+	if(debuglogname){
 		if((debuglogfile = fopen(debuglogname, "a+"))==0){
 			debuglogfile =  fopen("/dev/null", "a+");
 		}
@@ -237,7 +237,7 @@ PollDB()
 					if((excode=malloc(NUM_CHARS + 45)) == 0){
 						sysfatal("can't malloc excode in PollDB: %r");
 					}
-					sprintf(excode," ExitCode=%d; Reason=\"condor_reason=%d\";", en->exitcode, en->exitcode);
+					sprintf(excode," ExitCode=%d; Reason=\"reason=%d\";", en->exitcode, en->exitcode);
 					strcat(buffer,excode);
 					free(excode);
 				}
