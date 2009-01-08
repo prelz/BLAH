@@ -7,6 +7,7 @@
  *
  *  Revision history :
  *  15-Nov-2007 Original release
+ *   9-Jan-2009 Updated to use bitmask in job_registry_update_select.
  *
  *  Description:
  *   Update test for job registries created by test_job_registry_create.
@@ -81,7 +82,10 @@ main(int argc, char *argv[])
     memcpy(en.blah_id,rha->entries[pick].id,sizeof(en.blah_id));
     en.batch_id[0]='\000';
 
-    ret = job_registry_update(rha, &en);
+    ret = job_registry_update_select(rha, &en,
+                                     JOB_REGISTRY_UPDATE_UDATE |
+                                     JOB_REGISTRY_UPDATE_STATUS |
+                                     JOB_REGISTRY_UPDATE_EXITCODE );
     if (ret != JOB_REGISTRY_SUCCESS)
      {
       fprintf(stderr,"%s: job_registry_update of ID==%s returns %d: ",

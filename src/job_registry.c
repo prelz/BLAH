@@ -11,6 +11,7 @@
  *              Added job_registry_split_blah_id and its free call.
  *  3-Mar-2008  Added non-privileged updates to fit CREAM's file and process
  *              ownership model.
+ *  8-Jan-2009  Added job_registry_update_select call.
  *
  *  Description:
  *    File-based container to cache job IDs and statuses to implement
@@ -923,7 +924,7 @@ job_registry_append_op(job_registry_handle *rha,
       found = job_registry_lookup_op(rha, entry->batch_id, fd);
     if (found != 0)
      { 
-      return job_registry_update_op(rha, entry, fd);
+      return job_registry_update_op(rha, entry, fd, JOB_REGISTRY_UPDATE_ALL);
      }
    }
 
@@ -1201,6 +1202,7 @@ job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
 
 /*
  * job_registry_update
+ * job_registry_update_select
  * job_registry_update_op
  *
  * Update an existing entry in the job registry pointed to by rha.
@@ -1216,21 +1218,38 @@ job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
  *        will be used for the update.
  * @param fd Stream descriptor of an open (for write) and writelocked 
  *        registry file. The file will be opened and closed if fd==NULL.
+ * @param upbits Bitmask selecting which registry fields should get updated by
+ *        job_registry_update_op. Or'ed combination of the following:
+ *         - JOB_REGISTRY_UPDATE_WN_ADDR 
+ *         - JOB_REGISTRY_UPDATE_STATUS  
+ *         - JOB_REGISTRY_UPDATE_EXITCODE 
+ *         - JOB_REGISTRY_UPDATE_UDATE 
+ *         - JOB_REGISTRY_UPDATE_EXITREASON 
+ *         or JOB_REGISTRY_UPDATE_ALL for all of the above fields.
  *
  * @return Less than zero on error. See job_registry.h for error codes.
  *         errno is also set in case of error.
  */
 
 int
+job_registry_update_select(job_registry_handle *rha,
+                           job_registry_entry *entry,
+                           job_registry_update_bitmask_t upbits)
+{
+  return job_registry_update_op(rha, entry, NULL, upbits);
+}
+
+int
 job_registry_update(job_registry_handle *rha,
                     job_registry_entry *entry)
 {
-  return job_registry_update_op(rha, entry, NULL);
+  return job_registry_update_op(rha, entry, NULL, JOB_REGISTRY_UPDATE_ALL);
 }
 
 int
 job_registry_update_op(job_registry_handle *rha,
-                       job_registry_entry *entry, FILE *fd)
+                       job_registry_entry *entry, FILE *fd,
+                       job_registry_update_bitmask_t upbits)
 {
   job_registry_recnum_t found, firstrec, req_recn;
   job_registry_entry old_entry;
@@ -1289,27 +1308,34 @@ job_registry_update_op(job_registry_handle *rha,
    }
 
   /* Update original entry and rewrite it */
-  if (strncmp(old_entry.wn_addr, entry->wn_addr, sizeof(old_entry.wn_addr)) != 0)
+  if (((upbits & JOB_REGISTRY_UPDATE_WN_ADDR) != 0) &&
+      (strncmp(old_entry.wn_addr, entry->wn_addr, 
+               sizeof(old_entry.wn_addr)) != 0))
    {
     JOB_REGISTRY_ASSIGN_ENTRY(old_entry.wn_addr, entry->wn_addr);
     need_to_update = TRUE;
    }
-  if (old_entry.status != entry->status)
+  if (((upbits & JOB_REGISTRY_UPDATE_STATUS) != 0) &&
+       (old_entry.status != entry->status))
    {
     old_entry.status = entry->status;
     need_to_update = TRUE;
    }
-  if (old_entry.exitcode != entry->exitcode)
+  if (((upbits & JOB_REGISTRY_UPDATE_EXITCODE) != 0) &&
+       (old_entry.exitcode != entry->exitcode))
    {
     old_entry.exitcode = entry->exitcode;
     need_to_update = TRUE;
    }
-  if (old_entry.udate != entry->udate)
+  if (((upbits & JOB_REGISTRY_UPDATE_UDATE) != 0) &&
+       (old_entry.udate != entry->udate))
    {
     old_entry.udate = entry->udate;
     need_to_update = TRUE;
    }
-  if (strncmp(old_entry.exitreason, entry->exitreason, sizeof(old_entry.exitreason)) != 0)
+  if (((upbits & JOB_REGISTRY_UPDATE_EXITREASON) != 0) &&
+       (strncmp(old_entry.exitreason, entry->exitreason, 
+                sizeof(old_entry.exitreason)) != 0))
    {
     JOB_REGISTRY_ASSIGN_ENTRY(old_entry.exitreason, entry->exitreason);
     need_to_update = TRUE;

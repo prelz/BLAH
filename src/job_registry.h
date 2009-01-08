@@ -11,6 +11,7 @@
  *              Added job_registry_split_blah_id and its free call.
  *   3-Mar-2008 Added non-privileged updates to fit CREAM's file and process
  *              ownership model.
+ *   8-Jan-2009 Added job_registry_update_select call.
  *
  *  Description:
  *    Prototypes of functions defined in job_registry.c
@@ -33,6 +34,8 @@
 #include "blahpd.h"
 
 typedef uint32_t job_registry_recnum_t;
+typedef uint32_t job_registry_update_bitmask_t;
+
 #define JOB_REGISTRY_MAX_RECNUM 0xffffffff
 /* Allow record numbers to roll over */
 #define JOB_REGISTRY_GET_REC_OFFSET(req_recn,found,firstrec) \
@@ -157,10 +160,23 @@ int job_registry_append_nonpriv(job_registry_handle *rha,
                                 job_registry_entry *entry);
 int job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
                                                FILE *fd);
+
+/* Bitmask field definition for job_registry_update_select */
+#define JOB_REGISTRY_UPDATE_ALL  0xffffffff
+#define JOB_REGISTRY_UPDATE_WN_ADDR    0x01
+#define JOB_REGISTRY_UPDATE_STATUS     0x02
+#define JOB_REGISTRY_UPDATE_EXITCODE   0x04
+#define JOB_REGISTRY_UPDATE_UDATE      0x08
+#define JOB_REGISTRY_UPDATE_EXITREASON 0x10
+
+int job_registry_update_select(job_registry_handle *rhandle, 
+                        job_registry_entry *entry,
+                        job_registry_update_bitmask_t upbits);
 int job_registry_update(job_registry_handle *rhandle, 
                         job_registry_entry *entry);
 int job_registry_update_op(job_registry_handle *rhandle, 
-                        job_registry_entry *entry, FILE *fd);
+                        job_registry_entry *entry, FILE *fd,
+                        job_registry_update_bitmask_t upbits);
 job_registry_entry *job_registry_get(job_registry_handle *rhandle,
                                      const char *id);
 FILE *job_registry_open(job_registry_handle *rhandle, const char *mode);
