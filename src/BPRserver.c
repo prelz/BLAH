@@ -29,10 +29,9 @@ main(int argc, char **argv)
 	struct sockaddr_in recvs;
 	struct timeval tv;
 	struct protoent *prot_descr;
-	struct sockaddr_in cli_addr;
+	unsigned char discarded_addr[256];
+	int addr_size = sizeof(discarded_addr);
 	char *client_name = NULL;
-	struct hostent *resolved_client;
-	int addr_size = sizeof(cli_addr);
 	fd_set readfs, masterfs;
 	int retcod;
 	int exit_program = 0;
@@ -45,7 +44,10 @@ main(int argc, char **argv)
 	int delegation = 0;
 	int error;
 	char buffer[BPR_OPLEN];
-						    
+        char ainfo_port_string[16];
+        struct addrinfo ai_req, *ai_ans, *cur_ans;
+	int address_found;
+
 	gss_cred_id_t	credential_handle = GSS_C_NO_CREDENTIAL;
 	gss_ctx_id_t	context_handle = GSS_C_NO_CONTEXT;
 	OM_uint32       major_status = 0, minor_status = 0;
@@ -77,32 +79,49 @@ main(int argc, char **argv)
 	if (argc > 4) jobId = argv[4];
 	else          exit(3);
 
-	/* Open the socket 
-	 * --------------- */
-	prot_descr = getprotobyname("tcp");
-	if (prot_descr == NULL)
-	{
-		fprintf(stderr, "TCP protocol could not be found in /etc/protocols.\n");
-		exit(1);
-	}
-
-	if ((fd_socket = socket(PF_INET,SOCK_STREAM, prot_descr->p_proto)) == -1)
-	{
-		fprintf(stderr, "Cannot create socket: %s\n", strerror(errno));
-		exit(1);
-	}
 
 	/* Cicle through the port range */
-	for (listen_port = PORT_RANGE_FROM; listen_port <= PORT_RANGE_TO; listen_port++)
+	address_found = 0;
+	for (listen_port = PORT_RANGE_FROM; (address_found == 0) && (listen_port <= PORT_RANGE_TO); listen_port++)
 	{
-		recvs.sin_family = AF_INET;
-		recvs.sin_addr.s_addr = htonl(INADDR_ANY);
-		recvs.sin_port = htons(listen_port);
-		if (bind(fd_socket,(struct sockaddr *)&recvs,sizeof(recvs)) == 0) 
-			break;
+                ai_req.ai_flags = AI_PASSIVE;
+                ai_req.ai_family = PF_UNSPEC;
+                ai_req.ai_socktype = SOCK_STREAM;
+                ai_req.ai_protocol = 0; /* Any stream protocol is OK */
+
+                sprintf(ainfo_port_string,"%5d",listen_port);
+
+                if (getaddrinfo(NULL, ainfo_port_string, &ai_req, &ai_ans) != 0) {
+                        printf("%s: cannot get address of passive SOCK_STREAM socket.", argv[0]);
+                        exit(4);
+                }
+                /* FIXME: Try all found protocols and addresses */
+                for (cur_ans = ai_ans; cur_ans != NULL; cur_ans = cur_ans->ai_next)
+		{
+
+		 	/* Open the socket */
+		 	/* --------------- */
+			if ((fd_socket = socket(cur_ans->ai_family,
+						cur_ans->ai_socktype,
+						cur_ans->ai_protocol)) == -1)
+			{
+				close(fd_socket);
+				continue;
+			}
+			recvs.sin_family = AF_INET;
+			recvs.sin_addr.s_addr = htonl(INADDR_ANY);
+			recvs.sin_port = htons(listen_port);
+			if (bind(fd_socket,cur_ans->ai_addr, cur_ans->ai_addrlen) == 0) 
+			{
+				address_found = 1;
+				break;
+			}
+			close(fd_socket);
+		}
+		freeaddrinfo(ai_ans);
 	}
 
-	if (listen_port > PORT_RANGE_TO)
+	if (address_found == 0)
 	{
 		fprintf(stderr, "Cannot bind to any port in the given range (%d-%d)\n", PORT_RANGE_FROM, PORT_RANGE_TO);
 		exit(1);
@@ -137,7 +156,7 @@ main(int argc, char **argv)
 		{
 		        if (FD_ISSET(fd_socket, &readfs))
 		        {
-				if ((read_socket = accept(fd_socket, (struct sockaddr *)&cli_addr, &addr_size)) == -1)
+				if ((read_socket = accept(fd_socket, (struct sockaddr *)&discarded_addr, &addr_size)) == -1)
 				{
 					fprintf(stderr,"\nCannot accept connection: %s\n", strerror(errno));
 					exit(1);

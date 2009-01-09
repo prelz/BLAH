@@ -27,7 +27,7 @@ int
 main(int argc, char **argv)
 {
 	int fd_socket;
-	struct sockaddr_in localAddr, servAddr;
+	struct sockaddr_in servAddr;
 	int server_port;
 	struct timeval tv;
 	struct protoent *prot_descr;
@@ -48,6 +48,9 @@ main(int argc, char **argv)
 	int connection_poll_timeout=3000;
 	char *connection_poll_timeout_env;
 	struct pollfd connpoll;
+	char ainfo_port_string[16];
+	struct addrinfo ai_req, *ai_ans, *cur_ans;
+	int service_found;
 
 	OM_uint32	major_status;
 	OM_uint32	minor_status;
@@ -96,69 +99,73 @@ main(int argc, char **argv)
 		exit(2);
 	}
 
-	resolved_client = gethostbyname(workernode);
-	if (resolved_client == NULL) {
-		printf("%s: unknown host %s", argv[0], workernode);
-		exit(4);
-	}
 
-	servAddr.sin_family = resolved_client->h_addrtype;
-	memcpy((char *) &servAddr.sin_addr.s_addr, resolved_client->h_addr_list[0], resolved_client->h_length);
-  
 	/* Search for the job on the worker node */
-	for (server_port = PORT_RANGE_FROM; server_port <= PORT_RANGE_TO; server_port++)
+	service_found = 0;
+	for (server_port = PORT_RANGE_FROM; (service_found==0) && (server_port <= PORT_RANGE_TO); server_port++)
 	{
-		/* Create the socket everytime (cannot be reused once closed) */
-		if ((fd_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-		{
-			printf("%s: cannot create socket: %s", argv[0], strerror(errno));
-			exit(1);
-		}
+		ai_req.ai_flags = 0;
+		ai_req.ai_family = PF_UNSPEC;
+		ai_req.ai_socktype = SOCK_STREAM;
+		ai_req.ai_protocol = 0; /* Any stream protocol is OK */
 
-		/* Bind any port number */
-		localAddr.sin_family = AF_INET;
-		localAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-		localAddr.sin_port = htons(0);
+		sprintf(ainfo_port_string,"%5d",server_port);
 
-		if (bind(fd_socket, (struct sockaddr *)&localAddr, sizeof(localAddr)) == -1)
-		{
-			printf("%s: cannot bind socket: %s", argv[0], strerror(errno));
-			exit(1);
+		if (getaddrinfo(workernode, ainfo_port_string, &ai_req, &ai_ans) != 0) {
+			printf("%s: unknown host %s", argv[0], workernode);
+			exit(4);
 		}
+		/* Try all found protocols and addresses */
+		for (cur_ans = ai_ans; cur_ans != NULL; cur_ans = cur_ans->ai_next)
+		{
+			/* Create the socket everytime (cannot be reused once closed) */
+			if ((fd_socket = socket(cur_ans->ai_family, 
+						cur_ans->ai_socktype,
+						cur_ans->ai_protocol)) == -1)
+			{
+				freeaddrinfo(ai_ans);
+				printf("%s: cannot create socket: %s", argv[0], strerror(errno));
+				exit(1);
+			}
 
-		servAddr.sin_port = htons(server_port);
-		if (connect(fd_socket, (struct sockaddr *) &servAddr, sizeof(servAddr)) == -1)
-		{
-			close(fd_socket);
-			continue;
-		}
-
-		connpoll.fd = fd_socket;
-		connpoll.events = (POLLIN|POLLPRI);
-		connpoll.revents = 0;
-		if (poll(&connpoll, 1, connection_poll_timeout) <= 0)
-		{
-			close(fd_socket);
-			continue;
-		}
+			if (connect(fd_socket, cur_ans->ai_addr, cur_ans->ai_addrlen) == -1)
+			{
+				close(fd_socket);
+				continue;
+			}
 	
-		recv(fd_socket, buffer, sizeof(buffer), 0);
+			connpoll.fd = fd_socket;
+			connpoll.events = (POLLIN|POLLPRI);
+			connpoll.revents = 0;
+			if (poll(&connpoll, 1, connection_poll_timeout) <= 0)
+			{
+				close(fd_socket);
+				continue;
+			}
 	
-		/* 
-		   Additional part of the requested and received jobids are removed before strcmp:
-		   it is assumed that the ramaining part is unique for every batch system.    
-		   old version : if (strcmp(buffer, jobId) != 0)
-		*/
-		if (strcmp(pre_chop(chop(buffer)), pre_chop(chop(jobId))) != 0)
-		{
-			send(fd_socket, BPR_OP_WRONGJOB, BPR_OPLEN, 0);
-			close(fd_socket);
-			continue;
+			recv(fd_socket, buffer, sizeof(buffer), 0);
+	
+			/* 
+			   Additional part of the requested and received jobids are removed before strcmp:
+			   it is assumed that the ramaining part is unique for every batch system.    
+			   old version : if (strcmp(buffer, jobId) != 0)
+			*/
+			if (strcmp(pre_chop(chop(buffer)), pre_chop(chop(jobId))) != 0)
+			{
+				send(fd_socket, BPR_OP_WRONGJOB, BPR_OPLEN, 0);
+				close(fd_socket);
+				continue;
+			}
+			else
+			{
+				service_found = 1;
+				break;
+			}
 		}
-		else
-			break;
+		freeaddrinfo(ai_ans);
 	}
-	if (server_port > PORT_RANGE_TO)
+
+	if (service_found == 0)
 	{
 		printf("%s: job %s not found on node %s", argv[0], jobId, workernode);
 		exit(1);
