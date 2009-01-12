@@ -555,6 +555,8 @@ Job: 13.cream-12.pd.infn.it
 					freetoken(&token,maxtok_t);
 					en.udate=tmstampepoch;
 					en.status=REMOVED;
+                        		en.exitcode=-999;
+					JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				}
 				free(line);
 			}
@@ -568,8 +570,12 @@ Job: 13.cream-12.pd.infn.it
 				fflush(debuglogfile);
 				free(dgbtimestamp);
 			}
-			if(ret != JOB_REGISTRY_NOT_FOUND){
-				if ((ret=job_registry_update(rha, &en)) < 0){
+			if ((ret=job_registry_update_select(rha, &en,
+			JOB_REGISTRY_UPDATE_UDATE |
+			JOB_REGISTRY_UPDATE_STATUS |
+			JOB_REGISTRY_UPDATE_EXITCODE |
+			JOB_REGISTRY_UPDATE_EXITREASON )) < 0){
+				if(ret != JOB_REGISTRY_NOT_FOUND){
 					fprintf(stderr,"Append of record returns %d: ",ret);
 					perror("");
 				}

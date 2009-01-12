@@ -184,11 +184,11 @@ int main(int argc, char *argv[]){
 		/* Purge old entries from registry */
 		now=time(0);
 		if(now - purge_time > 86400){
-			if(job_registry_purge(registry_file, now-purge_interval,0)<0){
+			if((rc=job_registry_purge(registry_file, now-purge_interval,0))<0){
 
 				if(debug){
 					dgbtimestamp=iepoch2str(time(0));
-					fprintf(debuglogfile, "%s %s: Error purging job registry %s\n",dgbtimestamp,argv0,registry_file);
+					fprintf(debuglogfile, "%s %s: Error purging job registry %s:%d\n",dgbtimestamp,argv0,registry_file,rc);
 					fflush(debuglogfile);
 					free(dgbtimestamp);
 				}
@@ -458,7 +458,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 		sysfatal("can't malloc command_string %r");
 	}
 
-	sprintf(command_string,"%s/bhist -u all -d -e -l -n %d",lsf_binpath,bhist_logs_to_read);
+	sprintf(command_string,"%s/bhist -u all -d -l -n %d",lsf_binpath,bhist_logs_to_read);
 	if (localtime_r(&start_date, &start_date_tm) != NULL){
 		if (strftime(start_date_str, sizeof(start_date_str), " -C %Y/%m/%d/%H:%M,", &start_date_tm) > 0){
 			strcat(command_string,start_date_str);
@@ -466,9 +466,17 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	}
 
 	fp = popen(command_string,"r");
+	
+	if(debug>1){
+		dgbtimestamp=iepoch2str(time(0));
+		fprintf(debuglogfile, "%s %s: command_string in FinalStateQuery is:%s\n",dgbtimestamp,argv0,command_string);
+		fflush(debuglogfile);
+		free(dgbtimestamp);
+	}
 
 	en.status=UNDEFINED;
-
+	JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+	
 	if(fp!=NULL){
 		while(!feof(fp) && (line=get_line(fp))){
 			if(line && strlen(line)==0){
@@ -478,16 +486,25 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			if ((cp = strrchr (line, '\n')) != NULL){
 				*cp = '\0';
 			}
-				
+			if(debug>2){
+				dgbtimestamp=iepoch2str(time(0));
+				fprintf(debuglogfile, "%s %s: line in FinalStateQuery is:%s\n",dgbtimestamp,argv0,line);
+				fflush(debuglogfile);
+				free(dgbtimestamp);
+			}	
 			if(line && strstr(line,"Job <")){	
 				if(en.status!=UNDEFINED){	
 					if(debug>1){
 						dgbtimestamp=iepoch2str(time(0));
-						fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.wn_addr,en.status);
+						fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.status);
 						fflush(debuglogfile);
 						free(dgbtimestamp);
 					}
-                        		if ((ret=job_registry_update(rha, &en)) < 0){
+					if ((ret=job_registry_update_select(rha, &en,
+					JOB_REGISTRY_UPDATE_UDATE |
+					JOB_REGISTRY_UPDATE_STATUS |
+					JOB_REGISTRY_UPDATE_EXITCODE |
+					JOB_REGISTRY_UPDATE_EXITREASON )) < 0){
 						if(ret != JOB_REGISTRY_NOT_FOUND){
                 	                		fprintf(stderr,"Append of record returns %d: ",ret);
 							perror("");
@@ -511,6 +528,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				en.udate=tmstampepoch;
 				en.status=REMOVED;
 				free(timestamp);
+				en.exitcode=-999;
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line," Exited with exit code") && en.status != REMOVED){	
@@ -552,11 +570,15 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	if(en.status!=UNDEFINED){	
 		if(debug>1){
 			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.wn_addr,en.status);
+			fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.status);
 			fflush(debuglogfile);
 			free(dgbtimestamp);
 		}
-		if ((ret=job_registry_update(rha, &en)) < 0){
+		if ((ret=job_registry_update_select(rha, &en,
+		JOB_REGISTRY_UPDATE_UDATE |
+		JOB_REGISTRY_UPDATE_STATUS |
+		JOB_REGISTRY_UPDATE_EXITCODE |
+		JOB_REGISTRY_UPDATE_EXITREASON )) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
 				fprintf(stderr,"Append of record returns %d: ",ret);
 				perror("");
