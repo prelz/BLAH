@@ -26,10 +26,9 @@ main(int argc, char **argv)
 {
 	int fd_socket, read_socket;
 	int listen_port;
-	struct sockaddr_in recvs;
 	struct timeval tv;
 	struct protoent *prot_descr;
-	unsigned char discarded_addr[256];
+	struct sockaddr_storage discarded_addr;
 	int addr_size = sizeof(discarded_addr);
 	char *client_name = NULL;
 	fd_set readfs, masterfs;
@@ -108,9 +107,6 @@ main(int argc, char **argv)
 				close(fd_socket);
 				continue;
 			}
-			recvs.sin_family = AF_INET;
-			recvs.sin_addr.s_addr = htonl(INADDR_ANY);
-			recvs.sin_port = htons(listen_port);
 			if (bind(fd_socket,cur_ans->ai_addr, cur_ans->ai_addrlen) == 0) 
 			{
 				address_found = 1;
