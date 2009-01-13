@@ -2,7 +2,13 @@
 
 mkdir -p src/autogen
 set -x
-aclocal -I project
+
+if [ -d ../org.glite/project ]; then
+  aclocal -I project -I ../org.glite/project
+else
+  aclocal -I project
+fi
+
 libtoolize --force
 autoheader
 automake --foreign --add-missing --copy
