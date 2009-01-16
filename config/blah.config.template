@@ -119,11 +119,17 @@ async_notification_host=
 #port for asyncronous notification
 async_notification_port=
 
-#debug level
+#bupdater debug level
 bupdater_debug_level=1
 
-#debug log file
-bupdater_debug_logfile=/var/tmp/cream_tomcat.log
+#bupdater debug log file
+bupdater_debug_logfile=/var/tmp/bupdater.log
+
+#bnotifier debug level
+bnotifier_debug_level=1
+
+#bnotifier debug log file
+bnotifier_debug_logfile=/var/tmp/bnotifier.log
 
 # purge interval
 purge_interval=7200

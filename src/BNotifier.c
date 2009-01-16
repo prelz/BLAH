@@ -53,12 +53,12 @@ main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	
-	ret = config_get("debug_level",cha);
+	ret = config_get("bnotifier_debug_level",cha);
 	if (ret != NULL){
 		debug=atoi(ret->value);
 	}
 	
-	ret = config_get("debug_logfile",cha);
+	ret = config_get("bnotifier_debug_logfile",cha);
 	if (ret != NULL){
 		debuglogname=strdup(ret->value);
 	}
