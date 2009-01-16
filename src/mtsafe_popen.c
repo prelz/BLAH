@@ -168,13 +168,14 @@ merciful_kill(pid_t pid, int kill_via_glexec,
 		sleep(1);
 		if (tsl > (graceful_timeout/2)) 
 		{
+			/* Signal forked process group */
 			if (kill_via_glexec)
 			{
-				glexec_kill_pid(pid, SIGTERM, glexec_kill_cmd, 
+				glexec_kill_pid(-pid, SIGTERM, glexec_kill_cmd, 
 						glexec_environment);
 				
 			}
-			else kill(pid, SIGTERM);
+			else kill(-pid, SIGTERM);
 		}
 	}
 
@@ -182,9 +183,9 @@ merciful_kill(pid_t pid, int kill_via_glexec,
 	{
 		if (kill_via_glexec)
 		{
-			glexec_kill_pid(pid, SIGKILL, glexec_kill_cmd, 							glexec_environment);
+			glexec_kill_pid(-pid, SIGKILL, glexec_kill_cmd,	glexec_environment);
 		}
-		else kill_status = kill(pid, SIGKILL);
+		else kill_status = kill(-pid, SIGKILL);
 
 		if (kill_status == 0)
 		{
@@ -234,14 +235,16 @@ exe_getouterr(char *const command, char *const environment[], char **cmd_output,
 	int fdpipe_stderr[2];
 	struct pollfd pipe_poll[2];
 	int poll_timeout = 30000; /* 30 seconds by default */
-	pid_t pid;
+	pid_t pid, process_group;
 	int child_running, status, exitcode;
 	char **envcopy = NULL;
 	int envcopy_size;
 	int i = 0;
 	char buffer[BUFFERSIZE];
-	char *killed_msg;
-	char *killed_format = "killed by signal %02d\n";
+	char *killed_format = "%s <blah> killed by signal %s %d.\n";
+	char *killed_for_timeout = "%s <blah> exe_getouterr: %d seconds timeout expired, killing child process.\n";
+	char *killed_for_poll_signal = "%s <blah> exe_getouterr: poll() got an unknown event (stdout 0x%04X - stderr: 0x%04X).\n";
+        char *signal_name="";
 	char *new_cmd_error;
 	wordexp_t args;
 	config_entry *config_timeout;
@@ -320,6 +323,16 @@ exe_getouterr(char *const command, char *const environment[], char **cmd_output,
 		case 0: /* Child process */
 			/* CAUTION: fork was invoked from within a thread!
 			 * Do NOT use any fork-unsafe function! */
+
+			/* Set up process group so that the resulting process tree can be signaled. */
+			if (((process_group = setsid()) == -1) ||
+			     (process_group != getpid()))
+			{
+				fprintf(stderr,"Error: setsid() returns %d. getpid returns %d: ", process_group, getpid());
+				perror("");
+				exit(1);       
+			}
+
 			/* Connect stdout & stderr to the pipes */
 			if (dup2(fdpipe_stdout[1], STDOUT_FILENO) == -1)
 			{
@@ -383,11 +396,23 @@ exe_getouterr(char *const command, char *const environment[], char **cmd_output,
 						status = merciful_kill(pid, kill_via_glexec, glexeced_cmd, environment);
 						child_running = 0;
 						break;
+
 					case 0: /* timeout occurred */
+						/* add a message to stderr */
+						new_cmd_error = make_message(killed_for_timeout, *cmd_error, poll_timeout/1000);
+						if (new_cmd_error != NULL)
+						{
+							free(*cmd_error);
+							*cmd_error = new_cmd_error;
+						}
+						else
+							/* if memory low, print message directly on sdterr */
+							fprintf(stderr, killed_for_timeout, *cmd_error, poll_timeout/1000);
 						/* kill the child process */
 						status = merciful_kill(pid, kill_via_glexec, glexeced_cmd, environment);
 						child_running = 0;
 						break;
+
 					default: /* some event occurred */
 						successful_read = 0;
 						if (pipe_poll[0].revents & POLLIN)
@@ -402,6 +427,20 @@ exe_getouterr(char *const command, char *const environment[], char **cmd_output,
 						}
 						if (successful_read == 0)
 						{
+							/* add a message to stderr if the signal is not POLLHUP */
+							if (!((pipe_poll[0].revents & POLLHUP) && (pipe_poll[1].revents & POLLHUP)))
+							{
+								new_cmd_error = make_message(killed_for_poll_signal, *cmd_error, pipe_poll[0].revents, pipe_poll[1].revents);
+								if (new_cmd_error != NULL)
+								{
+									free(*cmd_error);
+									*cmd_error = new_cmd_error;
+								}
+								else
+									/* if memory low, print message directly on sdterr */
+									fprintf(stderr, killed_for_poll_signal, *cmd_error, pipe_poll[0].revents, pipe_poll[1].revents);
+							}
+							/* kill the child process */
 							status = merciful_kill(pid, kill_via_glexec, glexeced_cmd, environment);
 							child_running = 0;
 							break;
@@ -420,24 +459,15 @@ exe_getouterr(char *const command, char *const environment[], char **cmd_output,
 			{
 				exitcode = WTERMSIG(status);
 #ifdef _GNU_SOURCE
-				killed_msg = strdup(strsignal(exitcode));
-#else
-				/* FIXME: should import make_message here too */
-				killed_msg = (char *)malloc(strlen(killed_format));
-				if (killed_msg != NULL)
-					snprintf(killed_msg, strlen(killed_format), killed_format, exitcode);
+				signal_name = strsignal(exitcode);
 #endif
+				/* Append message to the stderr */
+				new_cmd_error = make_message(killed_format, *cmd_error, signal_name, exitcode);
 				exitcode = -exitcode;
-				if (killed_msg != NULL)
+				if (new_cmd_error != NULL)
 				{
-					/* Append it to the stderr */
-					new_cmd_error = (char *)realloc(*cmd_error, strlen(*cmd_error)+strlen(killed_msg)+2);
-					if (new_cmd_error != NULL)
-					{
-						strcat(new_cmd_error,"\n");
-						strcat(new_cmd_error,killed_msg);
-						*cmd_error = new_cmd_error;
-					}
+					free(*cmd_error);
+					*cmd_error = new_cmd_error;
 				}
 			}
 			else
