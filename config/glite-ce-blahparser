@@ -1,0 +1,102 @@
+#!/bin/sh
+
+# chkconfig: 345 94 15
+
+# Source function library
+. /etc/rc.d/init.d/functions
+
+GLITE_LOCATION=${GLITE_LOCATION:-/opt/glite}
+GLITE_LOCATION_VAR=${GLITE_LOCATION_VAR:-${GLITE_LOCATION}/var}
+
+[ -f $GLITE_LOCATION/etc/blah.config ] && . $GLITE_LOCATION/etc/blah.config
+
+GLITE_CE_BUPDATER=$bnotifier_path
+GLITE_CE_BNOTIFIER=$bupdater_path
+pidfile_bupdater=$GLITE_LOCATION_VAR/glite-bupdater.pid
+pidfile_bnotifier=$GLITE_LOCATION_VAR/glite-bnotifier.pid
+
+
+start()
+{
+	      
+	      $GLITE_CE_BUPDATER
+              [ "$?" -eq 0 ] && success $"startup" || failure $" startup"
+	      echo `pidofproc ${GLITE_CE_BUPDATER}` > $pidfile_bupdater
+
+	      $GLITE_CE_BNOTIFIER
+              [ "$?" -eq 0 ] && success $"startup" || failure $" startup"
+              echo `pidofproc ${GLITE_CE_BNOTIFIER}` > $pidfile_bnotifier
+	
+}
+
+stop()
+{
+	    
+              if [ -f $pidfile_bupdater ]; then
+             	     pidbup=`cat $pidfile_bupdater`
+		     if [ ! -z "$pidbup" ]; then
+		     	     kill $pidbup
+             	             [ "$?" -eq 0 ] && success $"${GLITE_CE_BUPDATER} shutdown" || failure $"${GLITE_CE_BUPDATER} shutdown" 
+            	             echo ""
+		     fi
+             	     rm -f $pidfile_bupdater
+             else
+             	     echo $pidfile_bupdater does not exist - ${GLITE_CE_BUPDATER} not running? >&2
+             	     return 1
+             fi
+
+              if [ -f $pidfile_bnotifier ]; then
+                     pidbup=`cat $pidfile_bnotifier`
+                     if [ ! -z "$pidnot" ]; then
+                             kill $pidnot
+                             [ "$?" -eq 0 ] && success $"${GLITE_CE_BNOTIFIER} shutdown" || failure $"${GLITE_CE_BNOTIFIER} shutdown" 
+                             echo ""
+                     fi
+                     rm -f $pidfile_bnotifier
+             else
+                     echo $pidfile_bnotifier does not exist - ${GLITE_CE_BNOTIFIER} not running? >&2
+                     return 1
+             fi
+
+}
+
+status()
+{
+
+              if [ -f $pidfile_bupdater ]; then
+                     pidbup=`cat $pidfile_bupdater`
+                     if [ ! -z "$pidbup" ]; then
+     	     	     	     if ps p $pidbup >/dev/null 2>&1; then
+     	     			          echo ${GLITE_CE_BUPDATER} running as $pidbup 
+     	     			          continue
+     	     	     	     fi
+		     fi
+     	     else 
+	            echo ${GLITE_CE_BUPDATER} not running
+             fi
+
+              if [ -f $pidfile_bnotifier ]; then
+                     pidbup=`cat $pidfile_bnotifier`
+                     if [ ! -z "$pidnot" ]; then
+                             if ps p $pidnot >/dev/null 2>&1; then
+                                          echo ${GLITE_CE_BNOTIFIER} running as $pidnot 
+                                          continue
+                             fi
+                     fi
+             else
+                    echo ${GLITE_CE_BNOTIFIER} not running
+             fi
+
+
+	return 1
+}
+
+case x$1 in
+	xstart)	start;;
+	xstop)	stop;;
+	xrestart) stop; start;;
+	xstatus) status;;
+	x*)	echo usage: $0 start,stop,restart,status >&2
+		exit 1;;
+esac
+
