@@ -346,7 +346,7 @@ follow(char *infile, char *line)
 			sysfatal("couldn't seek in follow: %r");
 		}
         
-		off = tail(fp, line);
+		off = tail(fp, line, off);
 		fclose(fp);
 	
 		sleep(1);
@@ -354,17 +354,24 @@ follow(char *infile, char *line)
 }
 
 long
-tail(FILE *fp, char *line)
+tail(FILE *fp, char *line, long old_off)
 {
 	long off=0;
+	long act_off=old_off;
 
 	while(fgets(line, STR_CHARS, fp)){
+		if (strrchr (line, '\n') == NULL){
+			return act_off;
+		}
 		if(line && ((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_deleted)!=NULL) || (strstr(line,rex_finished)!=NULL) || (strstr(line,rex_unable)!=NULL) || (strstr(line,rex_hold)!=NULL))){
 			if(debug >= 2){
 				fprintf(debuglogfile, "Tail line:%s",line);
 				fflush(debuglogfile);
 			}
 			AddToStruct(line,1);
+		}
+		if((act_off=ftell(fp)) < 0){
+			sysfatal("couldn't ftell in tail: %r");
 		}
 	}
 

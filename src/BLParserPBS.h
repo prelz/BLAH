@@ -43,7 +43,7 @@ ssize_t Readline(int fd, void *vptr, size_t maxlen);
 ssize_t Writeline(int fc, const void *vptr, size_t maxlen);
 void *mytail (void *infile);    
 void follow(char *infile, char *line);
-long tail(FILE *fp, char *line);
+long tail(FILE *fp, char *line, long old_off);
 int InfoAdd(int id, char *value, const char * flag);
 int AddToStruct(char *o_buffer, int flag);
 char *GetAllEvents(char *file);
