@@ -341,17 +341,17 @@ IntStateQuery()
 				continue;
 			}
 			if(en.status!=UNDEFINED){	
-				if(debug>1){
-					dgbtimestamp=iepoch2str(time(0));
-					fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.wn_addr,en.status);
-					fflush(debuglogfile);
-					free(dgbtimestamp);
-				}
 				if ((ret=job_registry_update(rha, &en)) < 0){
 					if(ret != JOB_REGISTRY_NOT_FOUND){
 						fprintf(stderr,"Append of record returns %d: ",ret);
 						perror("");
 					}
+				}
+				if(debug>1){
+					dgbtimestamp=iepoch2str(time(0));
+					fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
+					fflush(debuglogfile);
+					free(dgbtimestamp);
 				}
 				en.status = UNDEFINED;
 			}
@@ -388,17 +388,17 @@ IntStateQuery()
 	}
 	
 	if(en.status!=UNDEFINED){	
-		if(debug>1){
-			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.wn_addr,en.status);
-			fflush(debuglogfile);
-			free(dgbtimestamp);
-		}
 		if ((ret=job_registry_update(rha, &en)) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
 				fprintf(stderr,"Append of record returns %d: ",ret);
 				perror("");
 			}
+		}
+		if(debug>1){
+			dgbtimestamp=iepoch2str(time(0));
+			fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
+			fflush(debuglogfile);
+			free(dgbtimestamp);
 		}
 	}				
 
@@ -496,7 +496,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				if(en.status!=UNDEFINED){	
 					if(debug>1){
 						dgbtimestamp=iepoch2str(time(0));
-						fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.status);
+						fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s creamjobid=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.status);
 						fflush(debuglogfile);
 						free(dgbtimestamp);
 					}
@@ -568,12 +568,6 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	}
 	
 	if(en.status!=UNDEFINED){	
-		if(debug>1){
-			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.status);
-			fflush(debuglogfile);
-			free(dgbtimestamp);
-		}
 		if ((ret=job_registry_update_select(rha, &en,
 		JOB_REGISTRY_UPDATE_UDATE |
 		JOB_REGISTRY_UPDATE_STATUS |
@@ -583,6 +577,12 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				fprintf(stderr,"Append of record returns %d: ",ret);
 				perror("");
 			}
+		}
+		if(debug>1){
+			dgbtimestamp=iepoch2str(time(0));
+			fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s creamjobid=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.status);
+			fflush(debuglogfile);
+			free(dgbtimestamp);
 		}
 	}				
 
