@@ -1216,6 +1216,8 @@ job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
  *        updated into the registry.
  *        The values of udate, status, exitcode, exitreason and wn_addr
  *        will be used for the update.
+ *        The entry is updated with the actual registry contents upon
+ *        successful return.
  * @param fd Stream descriptor of an open (for write) and writelocked 
  *        registry file. The file will be opened and closed if fd==NULL.
  * @param upbits Bitmask selecting which registry fields should get updated by
@@ -1353,6 +1355,10 @@ job_registry_update_op(job_registry_handle *rha,
    }
 
   if (need_to_fclose) fclose(fd);
+
+  /* Update entry contents with actual registry entry */
+  memcpy(entry, &old_entry, sizeof(job_registry_entry));
+
   return JOB_REGISTRY_SUCCESS;
 }
 
