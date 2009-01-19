@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.10 2008/12/18 14:28:23 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.11 2009/01/19 09:36:17 mezzadri Exp $ 
 #
 # File:           Makefile.am
 #
@@ -23,10 +23,11 @@ wletcwm_DATA = blah.config.template blparser.conf.template
 
 EXTRA_DIST = blah.config.template \
              blparser.conf.template \
-             glite-ce-blparser 
+             glite-ce-blparser \
+             glite-ce-blahparser
 
 bldir = $(sysconfdir)/init.d
-bl_SCRIPTS = glite-ce-blparser
+bl_SCRIPTS = glite-ce-blparser glite-ce-blahparser
 
 CLEANFILES =
 
