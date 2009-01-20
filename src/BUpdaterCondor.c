@@ -323,6 +323,7 @@ IntStateQuery()
 	job_registry_entry en;
 	int ret;
 	char *cp; 
+	char *dgbtimestamp;
 
 	if((command_string=malloc(strlen(condor_binpath) + NUM_CHARS)) == 0){
 		sysfatal("can't malloc command_string %r");
@@ -355,10 +356,18 @@ IntStateQuery()
 			JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 			JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				
-			if ((ret=job_registry_update(rha, &en)) < 0){
-				if(ret != JOB_REGISTRY_NOT_FOUND){
-					fprintf(stderr,"Append of record returns %d: ",ret);
-					perror("");
+			if(en.status!=UNDEFINED && en.status!=IDLE){	
+				if ((ret=job_registry_update(rha, &en)) < 0){
+					if(ret != JOB_REGISTRY_NOT_FOUND){
+						fprintf(stderr,"Append of record returns %d: ",ret);
+						perror("");
+					}
+				}
+				if(debug>1){
+					dgbtimestamp=iepoch2str(time(0));
+					fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
+					fflush(debuglogfile);
+					free(dgbtimestamp);
 				}
 			}
 		
@@ -401,6 +410,7 @@ FinalStateQuery(char *query)
 	job_registry_entry en;
 	int ret;
 	char *cp; 
+	char *dgbtimestamp;
 
 	if((command_string=malloc(NUM_CHARS + strlen(query) +strlen(condor_binpath))) == 0){
 		sysfatal("can't malloc command_string %r");
@@ -433,13 +443,21 @@ FinalStateQuery(char *query)
                 	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
                 	JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 		
-			if ((ret=job_registry_update(rha, &en)) < 0){
-				if(ret != JOB_REGISTRY_NOT_FOUND){
-					fprintf(stderr,"Append of record returns %d: ",ret);
-					perror("");
+			if(en.status!=UNDEFINED && en.status!=IDLE){	
+				if ((ret=job_registry_update(rha, &en)) < 0){
+					if(ret != JOB_REGISTRY_NOT_FOUND){
+						fprintf(stderr,"Append of record returns %d: ",ret);
+						perror("");
+					}
+				}
+		
+				if(debug>1){
+					dgbtimestamp=iepoch2str(time(0));
+					fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
+					fflush(debuglogfile);
+					free(dgbtimestamp);
 				}
 			}
-		
 			freetoken(&token,maxtok_t);
 			free(line);
 		}
@@ -455,6 +473,7 @@ int AssignFinalState(char *batchid){
 	job_registry_entry en;
 	int ret,i;
 	time_t now;
+	char *dgbtimestamp;
 
 	now=time(0);
 	
@@ -471,5 +490,12 @@ int AssignFinalState(char *batchid){
 			perror("");
 		}
 	}
+	if(debug>1){
+		dgbtimestamp=iepoch2str(time(0));
+		fprintf(debuglogfile, "%s %s: registry update in AssignStateQuery for: jobid=%s creamjobid=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.status);
+		fflush(debuglogfile);
+		free(dgbtimestamp);
+	}
+	
 	return(0);
 }

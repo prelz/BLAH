@@ -346,7 +346,7 @@ Job Id: 11.cream-12.pd.infn.it
 				*cp = '\0';
 			}
 			if(line && strstr(line,"Job Id: ")){
-				if(en.status!=UNDEFINED){	
+				if(en.status!=UNDEFINED && en.status!=IDLE){
 					if(debug>1){
 						dgbtimestamp=iepoch2str(time(0));
 						fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.wn_addr,en.status);
@@ -407,7 +407,7 @@ Job Id: 11.cream-12.pd.infn.it
 		pclose(fp);
 	}
 	
-	if(en.status!=UNDEFINED){	
+	if(en.status!=UNDEFINED && en.status!=IDLE){
 		if(debug>1){
 			dgbtimestamp=iepoch2str(time(0));
 			fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.wn_addr,en.status);
@@ -563,7 +563,7 @@ Job: 13.cream-12.pd.infn.it
 			pclose(fp);
 		}
 		
-		if(en.status !=UNDEFINED){
+		if(en.status !=UNDEFINED && en.status!=IDLE){
 			if(debug>1){
 				dgbtimestamp=iepoch2str(time(0));
 				fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s exitcode=%d status=%d\n",dgbtimestamp,argv0,en.batch_id,en.exitcode,en.status);
@@ -605,6 +605,7 @@ int AssignFinalState(char *batchid){
 	job_registry_entry en;
 	int ret,i;
 	time_t now;
+	char *dgbtimestamp;
 
 	now=time(0);
 	
@@ -621,5 +622,12 @@ int AssignFinalState(char *batchid){
 			perror("");
 		}
 	}
+	if(debug>1){
+		dgbtimestamp=iepoch2str(time(0));
+		fprintf(debuglogfile, "%s %s: registry update in AssignStateQuery for: jobid=%s creamjobid=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.status);
+		fflush(debuglogfile);
+		free(dgbtimestamp);
+	}
+
 	return(0);
 }
