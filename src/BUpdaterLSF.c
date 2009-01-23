@@ -238,9 +238,9 @@ int main(int argc, char *argv[]){
 			continue;
 		}
 		if(bjobs_long_format && strcmp(bjobs_long_format,"yes")==0){ 
-			IntStateQueryShort();
-		}else{
 			IntStateQuery();
+		}else{
+			IntStateQueryShort();
 		}
 		fd = job_registry_open(rha, "r");
 		if (fd == NULL){
