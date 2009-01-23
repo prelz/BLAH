@@ -324,6 +324,7 @@ Job Id: 11.cream-12.pd.infn.it
         char *status_str;
 	char *dgbtimestamp;
 	char *cp;
+	char *command_string;
 
 	if((command_string=malloc(strlen(pbs_binpath) + 10)) == 0){
 		sysfatal("can't malloc command_string %r");
@@ -488,6 +489,7 @@ Job: 13.cream-12.pd.infn.it
 	time_t now;
 	char *dgbtimestamp;
 	char *cp;
+	char *command_string;
 
 	if(debug>1){
 		dgbtimestamp=iepoch2str(time(0));

@@ -12,7 +12,6 @@ int FinalStateQuery(time_t start_date);
 int AssignFinalState(char *batchid);
 
 int runfinal=FALSE;
-char *command_string;
 char *lsf_binpath;
 char *registry_file;
 int purge_interval=864000;

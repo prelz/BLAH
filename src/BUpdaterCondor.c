@@ -324,6 +324,7 @@ IntStateQuery()
 	int ret;
 	char *cp; 
 	char *dgbtimestamp;
+	char *command_string;
 
 	if((command_string=malloc(strlen(condor_binpath) + NUM_CHARS)) == 0){
 		sysfatal("can't malloc command_string %r");
@@ -411,6 +412,7 @@ FinalStateQuery(char *query)
 	int ret;
 	char *cp; 
 	char *dgbtimestamp;
+	char *command_string;
 
 	if((command_string=malloc(NUM_CHARS + strlen(query) +strlen(condor_binpath))) == 0){
 		sysfatal("can't malloc command_string %r");

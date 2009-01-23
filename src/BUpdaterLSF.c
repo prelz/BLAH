@@ -335,6 +335,7 @@ IntStateQueryShort()
 	char *dgbtimestamp;
 	char *tmp; 
 	char *cp; 
+	char *command_string;
 
 	if((command_string=malloc(strlen(lsf_binpath) + 17)) == 0){
 		sysfatal("can't malloc command_string %r");
@@ -465,6 +466,7 @@ IntStateQuery()
 	char *cp; 
 	char *wn_str; 
 	char *batch_str;
+	char *command_string;
 
 	if((command_string=malloc(strlen(lsf_binpath) + 17)) == 0){
 		sysfatal("can't malloc command_string %r");
@@ -537,18 +539,6 @@ IntStateQuery()
 				wn_str=strdel(token[6],"<>");
 				JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
 				free(wn_str);
-				freetoken(&token,maxtok_t);
-			}else if(line && strstr(line,"Suspended ") && (en.status == HELD)){	
-				maxtok_t = strtoken(line, ' ', &token);
-                        	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
-					sysfatal("can't malloc timestamp in IntStateQuery: %r");
-				}
-				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
-				timestamp[strlen(timestamp)-1]='\0';
-				tmstampepoch=str2epoch(timestamp,"W");
-				en.udate=tmstampepoch;
-				en.status=HELD;
-				free(timestamp);
 				freetoken(&token,maxtok_t);
 			}
 			free(line);
@@ -623,6 +613,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	char *dgbtimestamp;
 	struct tm start_date_tm;
 	char start_date_str[80];
+	char *command_string;
 
 	if((command_string=malloc(strlen(lsf_binpath) + NUM_CHARS + sizeof(start_date_str) + 24)) == 0){
 		sysfatal("can't malloc command_string %r");
@@ -774,7 +765,8 @@ get_susp_timestamp(char *jobid)
 	int tmstampepoch;
 	char *cp; 
 	char *dgbtimestamp;
-
+	char *command_string;
+	
 	if((command_string=malloc(strlen(lsf_binpath) + NUM_CHARS + 20)) == 0){
 		sysfatal("can't malloc command_string %r");
 	}

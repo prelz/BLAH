@@ -12,7 +12,6 @@ int FinalStateQuery(char *input_string);
 int AssignFinalState(char *batchid);
 
 int runfinal=FALSE;
-char *command_string;
 char *pbs_binpath;
 char *registry_file;
 int purge_interval=864000;
