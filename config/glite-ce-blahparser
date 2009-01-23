@@ -17,12 +17,12 @@ case "$1" in
 
   start)
 	      echo -n "Starting `basename $GLITE_CE_BUPDATER`: " 
-	      daemon $GLITE_CE_BUPDATER
+	      daemon --user=tomcat $GLITE_CE_BUPDATER
               RETVAL=$?
 	      echo 
 
               echo -n "Starting `basename $GLITE_CE_BNOTIFIER`: " 
-              daemon $GLITE_CE_BNOTIFIER
+              daemon --user=tomcat $GLITE_CE_BNOTIFIER
               RETVAL=$?
               echo
               ;;
