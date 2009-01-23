@@ -6,6 +6,7 @@
 #define VERSION            "1.8.0"
 #endif
 
+int IntStateQueryShort();
 int IntStateQuery();
 int FinalStateQuery(time_t start_date);
 int AssignFinalState(char *batchid);
@@ -18,6 +19,8 @@ int purge_interval=864000;
 int finalstate_query_interval=30;
 int alldone_interval=600;
 int bhist_logs_to_read=1;
+char *bjobs_long_format="yes";
+char *use_bhist_for_susp="no";
 int debug=0;
 int nodmn=0;
 

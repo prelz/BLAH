@@ -148,3 +148,10 @@ export CONDOR_CONFIG="/opt/condor-c/etc/condor_config"
 
 #seconds to sleep in the main loop
 #loop_interval=
+
+#use the long format for bjobs command (-l instead of -w) (yes|no) (default=yes)
+bupdater_bjobs_long_format=yes
+
+#use bhist to calculate suspended jobs timestamp 
+bupdater_use_bhist_for_susp=no
+

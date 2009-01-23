@@ -170,6 +170,30 @@ int main(int argc, char *argv[]){
 		loop_interval=atoi(ret->value);
 	}
 	
+	ret = config_get("bupdater_bjobs_long_format",cha);
+	if (ret == NULL){
+                if(debug){
+			dgbtimestamp=iepoch2str(time(0));
+			fprintf(debuglogfile, "%s %s: key bupdater_bjobs_long_format not found - using the default:%d\n",dgbtimestamp,argv0,bjobs_long_format);
+			fflush(debuglogfile);
+			free(dgbtimestamp);
+		}
+	} else {
+		bjobs_long_format=strdup(ret->value);
+	}
+	
+	ret = config_get("bupdater_use_bhist_for_susp",cha);
+	if (ret == NULL){
+                if(debug){
+			dgbtimestamp=iepoch2str(time(0));
+			fprintf(debuglogfile, "%s %s: key bupdater_use_bhist_for_susp not found - using the default:%d\n",dgbtimestamp,argv0,use_bhist_for_susp);
+			fflush(debuglogfile);
+			free(dgbtimestamp);
+		}
+	} else {
+		use_bhist_for_susp=strdup(ret->value);
+	}
+	
 	if( !nodmn ) daemonize();
 
 
@@ -213,9 +237,11 @@ int main(int argc, char *argv[]){
 			sleep(loop_interval);
 			continue;
 		}
-
-		IntStateQuery();
-		
+		if(bjobs_long_format && strcmp(bjobs_long_format,"yes")==0){ 
+			IntStateQueryShort();
+		}else{
+			IntStateQuery();
+		}
 		fd = job_registry_open(rha, "r");
 		if (fd == NULL){
 			if(debug){
@@ -278,7 +304,7 @@ int main(int argc, char *argv[]){
 
 
 int
-IntStateQuery()
+IntStateQueryShort()
 {
 
 /*
@@ -349,7 +375,7 @@ IntStateQuery()
 				}
 				if(debug>1){
 					dgbtimestamp=iepoch2str(time(0));
-					fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
+					fprintf(debuglogfile, "%s %s: registry update in IntStateQueryShort for: jobid=%s creamjobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
 					fflush(debuglogfile);
 					free(dgbtimestamp);
 				}
@@ -386,6 +412,150 @@ IntStateQuery()
 		}
 		pclose(fp);
 	}
+	
+	if(en.status!=UNDEFINED && en.status!=IDLE){	
+		if ((ret=job_registry_update(rha, &en)) < 0){
+			if(ret != JOB_REGISTRY_NOT_FOUND){
+				fprintf(stderr,"Append of record returns %d: ",ret);
+				perror("");
+			}
+		}
+		if(debug>1){
+			dgbtimestamp=iepoch2str(time(0));
+			fprintf(debuglogfile, "%s %s: registry update in IntStateQueryShort for: jobid=%s creamjobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
+			fflush(debuglogfile);
+			free(dgbtimestamp);
+		}
+	}				
+
+	free(command_string);
+	return(0);
+}
+
+int
+IntStateQuery()
+{
+
+/*
+ Filled entries:
+ batch_id
+ wn_addr
+ status
+ udate
+ 
+ Filled by submit script:
+ blah_id 
+ 
+ Unfilled entries:
+ exitreason
+*/
+
+
+        FILE *fp;
+	int len;
+	char *line;
+	char **token;
+	int maxtok_t=0;
+	job_registry_entry en;
+	int ret;
+	char *timestamp;
+	int tmstampepoch;
+	char *dgbtimestamp;
+	char *tmp; 
+	char *cp; 
+	char *wn_str; 
+	char *batch_str;
+
+	if((command_string=malloc(strlen(lsf_binpath) + 17)) == 0){
+		sysfatal("can't malloc command_string %r");
+	}
+	
+	sprintf(command_string,"%s/bjobs -u all -l",lsf_binpath);
+	fp = popen(command_string,"r");
+
+	en.status=UNDEFINED;
+	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"N/A");
+	bupdater_free_active_jobs(&bact);
+
+	if(fp!=NULL){
+		while(!feof(fp) && (line=get_line(fp))){
+			if(line && strlen(line)==0){
+				free(line);
+				continue;
+			}
+			if ((cp = strrchr (line, '\n')) != NULL){
+				*cp = '\0';
+			}
+			if(debug>2){
+				dgbtimestamp=iepoch2str(time(0));
+				fprintf(debuglogfile, "%s %s: line in IntStateQuery is:%s\n",dgbtimestamp,argv0,line);
+				fflush(debuglogfile);
+				free(dgbtimestamp);
+			}	
+			if(line && strstr(line,"Job <")){	
+				if(en.status!=UNDEFINED && en.status!=IDLE){	
+					if ((ret=job_registry_update(rha, &en)) < 0){
+						if(ret != JOB_REGISTRY_NOT_FOUND){
+							fprintf(stderr,"Append of record returns %d: ",ret);
+							perror("");
+						}
+					}
+					if(debug>1){
+						dgbtimestamp=iepoch2str(time(0));
+						fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
+						fflush(debuglogfile);
+						free(dgbtimestamp);
+					}
+					en.status = UNDEFINED;
+				}
+				maxtok_t = strtoken(line, ',', &token);
+				batch_str=strdel(token[0],"Job <>");
+				JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
+				free(batch_str);
+				freetoken(&token,maxtok_t);
+			}else if(line && strstr(line,"Status <PEND>")){	
+				en.status=IDLE;
+			}else if(line && strstr(line,"Status <RUN>")){	
+				en.status=RUNNING;
+			}else if(line && (strstr(line,"Status <USUSP>") || strstr(line,"Status <PSUSP>") || strstr(line,"Status <SSUSP>"))){	
+				en.status=HELD;
+				if(use_bhist_for_susp && strcmp(use_bhist_for_susp,"yes")==0){ 
+					tmstampepoch=get_susp_timestamp(en.batch_id);
+					en.udate=tmstampepoch;
+				}
+			}else if(line && strstr(line,"Started on ") && (en.status == RUNNING)){	
+				maxtok_t = strtoken(line, ' ', &token);
+                        	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
+					sysfatal("can't malloc timestamp in IntStateQuery: %r");
+				}
+				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp[strlen(timestamp)-1]='\0';
+				tmstampepoch=str2epoch(timestamp,"W");
+				en.udate=tmstampepoch;
+				en.status=RUNNING;
+				free(timestamp);
+				wn_str=strdel(token[6],"<>");
+				JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
+				free(wn_str);
+				freetoken(&token,maxtok_t);
+			}else if(line && strstr(line,"Suspended ") && (en.status == HELD)){	
+				maxtok_t = strtoken(line, ' ', &token);
+                        	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
+					sysfatal("can't malloc timestamp in IntStateQuery: %r");
+				}
+				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp[strlen(timestamp)-1]='\0';
+				tmstampepoch=str2epoch(timestamp,"W");
+				en.udate=tmstampepoch;
+				en.status=HELD;
+				free(timestamp);
+				freetoken(&token,maxtok_t);
+			}
+			free(line);
+		}
+		pclose(fp);
+	}
+	
 	
 	if(en.status!=UNDEFINED && en.status!=IDLE){	
 		if ((ret=job_registry_update(rha, &en)) < 0){
@@ -588,6 +758,59 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 
 	free(command_string);
 	return(0);
+}
+
+int
+get_susp_timestamp(char *jobid)
+{
+
+        FILE *fp;
+	int len;
+	char *line;
+	char **token;
+	int maxtok_t=0;
+	int ret;
+	char *timestamp;
+	int tmstampepoch;
+	char *cp; 
+	char *dgbtimestamp;
+
+	if((command_string=malloc(strlen(lsf_binpath) + NUM_CHARS + 20)) == 0){
+		sysfatal("can't malloc command_string %r");
+	}
+
+	sprintf(command_string,"%s/bhist -u all -l %s",lsf_binpath,jobid);
+
+	fp = popen(command_string,"r");
+		
+	if(fp!=NULL){
+		while(!feof(fp) && (line=get_line(fp))){
+			if(line && strlen(line)==0){
+				free(line);
+				continue;
+			}
+			if ((cp = strrchr (line, '\n')) != NULL){
+				*cp = '\0';
+			}
+			if(line && strstr(line," Suspended")){	
+				maxtok_t = strtoken(line, ' ', &token);
+                        	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
+					sysfatal("can't malloc timestamp in get_susp_timestamp: %r");
+				}
+				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp[strlen(timestamp)-1]='\0';
+				tmstampepoch=str2epoch(timestamp,"W");
+				free(timestamp);
+				freetoken(&token,maxtok_t);
+			}
+			free(line);
+		}
+		pclose(fp);
+	}
+	
+
+	free(command_string);
+	return tmstampepoch;
 }
 
 int AssignFinalState(char *batchid){
