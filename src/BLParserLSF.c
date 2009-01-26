@@ -1876,7 +1876,9 @@ strtoken(const char *s, char delim, char **token)
 			ptr = dptr + 1;
 			if (strlen(token[i]) != 0){
 				i++;
-			}
+			}else{
+                                free(token[i]);
+                        }
 		} else {
 			if(strlen(ptr)) {
 				if((token[i] = calloc(1 + strlen(ptr),1)) == 0){
