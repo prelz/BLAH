@@ -1,0 +1,75 @@
+#!/bin/sh
+
+# chkconfig: 345 94 15
+
+# Source function library
+. /etc/rc.d/init.d/functions
+
+GLITE_LOCATION=${GLITE_LOCATION:-/opt/glite}
+GLITE_LOCATION_VAR=${GLITE_LOCATION_VAR:-${GLITE_LOCATION}/var}
+
+[ -f $GLITE_LOCATION/etc/blparser.conf ] && . $GLITE_LOCATION/etc/blparser.conf
+
+GLITE_CE_BLPARSERPBS=${GLITE_LOCATION}/bin/BLParserPBS
+GLITE_CE_BLPARSERLSF=${GLITE_LOCATION}/bin/BLParserLSF
+
+[ "x$GLITE_CE_USE_BLPARSERPBS" == "xyes" ] && LRMS1=PBS
+[ "x$GLITE_CE_USE_BLPARSERLSF" == "xyes" ] && LRMS2=LSF
+
+        exe=""
+        daemon=""
+        debuglevel=""
+        debuglogfile=""
+        binpath=""
+        confpath=""
+        spooldir=""
+        parsernum=""
+	
+        for lrms in $LRMS1 $LRMS2;do
+
+	      eval parsernum=\$`echo GLITE_CE_BLPARSER${lrms}_NUM`
+              eval exe=\$`echo GLITE_CE_BLPARSER${lrms}`
+
+	      
+              i=1
+	      while (( i <= $parsernum ));do
+
+             	   portval=`echo GLITE_CE_BLPARSER${lrms}_PORT${i}`
+             	   eval portnum=\$$portval
+		 
+                   isup=""
+		   isup=`ps -edfaw|grep $exe|grep $portnum`
+	     	   if [ "x$isup" == "x" ]; then
+                         eval daemon=\$`echo GLITE_CE_BLPARSER${lrms}_DAEMON`
+                         eval debuglevel=\$`echo GLITE_CE_BLPARSER${lrms}_DEBUGLEVEL`
+                         eval debuglogfile=\$`echo GLITE_CE_BLPARSER${lrms}_DEBUGLOGFILE`
+                         eval binpath=\$`echo GLITE_CE_BLPARSER${lrms}_BINPATH`
+                         eval confpath=\$`echo GLITE_CE_BLPARSER${lrms}_CONFPATH`
+                         eval spooldir=\$`echo GLITE_CE_BLPARSER${lrms}_SPOOLDIR`
+                         portval=`echo GLITE_CE_BLPARSER${lrms}_PORT${i}`
+                         eval portnum=\$$portval
+                         creamportval=`echo GLITE_CE_BLPARSER${lrms}_CREAMPORT${i}`
+                         eval creamportnum=\$$creamportval
+
+                         [ "x$daemon" == "xyes" ] && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -D`
+                         [ -n "$debuglevel" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -d $debuglevel`
+                         [ -n "$debuglogfile" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -l $debuglogfile`
+                         [ -n "$binpath" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -b $binpath`
+                         [ -n "$confpath" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -c $confpath`
+                         [ -n "$spooldir" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -s $spooldir`
+                         [ ! -n "$parsernum" ] && parsernum=1
+  
+                         [ -n "$portnum" ] && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -p $portnum`
+                         [ -n "$creamportnum" ] && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -m $creamportnum`
+                  	
+                         rdate=`date` 
+                         echo "$rdate: Restarting $exe $GLITE_CE_BLPARSER_CMDLINE"
+                         $exe $GLITE_CE_BLPARSER_CMDLINE
+			
+             	   fi
+
+	     	   let i=$i+1
+	     	  
+              done
+        done
+	      
