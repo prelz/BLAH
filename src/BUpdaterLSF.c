@@ -336,6 +336,9 @@ IntStateQueryShort()
 	char *tmp; 
 	char *cp; 
 	char *command_string;
+	job_registry_entry *ren=NULL;
+	int isresumed=0;
+	int first=1;
 
 	if((command_string=malloc(strlen(lsf_binpath) + 17)) == 0){
 		sysfatal("can't malloc command_string %r");
@@ -367,7 +370,7 @@ IntStateQueryShort()
 				free(tmp);
 				continue;
 			}
-			if(en.status!=UNDEFINED && en.status!=IDLE){	
+			if(!first && en.status!=UNDEFINED && en.status!=IDLE && (en.status!=ren->status)){	
 				if ((ret=job_registry_update(rha, &en)) < 0){
 					if(ret != JOB_REGISTRY_NOT_FOUND){
 						fprintf(stderr,"Append of record returns %d: ",ret);
@@ -391,6 +394,12 @@ IntStateQueryShort()
 			
 			JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,token[5]);
 			
+			if(!first) free(ren);
+			if ((ren=job_registry_get(rha, en.batch_id)) == NULL){
+					fprintf(stderr,"Get of record returns error ");
+					perror("");
+			}
+			first=0;        
 			if(token[2] && strcmp(token[2],"PEND")==0){ 
 				en.status=IDLE;
 			}else if(token[2] && (strcmp(token[2],"USUSP")==0) || (strcmp(token[2],"PSUSP")==0) ||(strcmp(token[2],"SSUSP")==0)){ 
@@ -414,7 +423,7 @@ IntStateQueryShort()
 		pclose(fp);
 	}
 	
-	if(en.status!=UNDEFINED && en.status!=IDLE){	
+	if(en.status!=UNDEFINED && en.status!=IDLE && (en.status!=ren->status)){	
 		if ((ret=job_registry_update(rha, &en)) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
 				fprintf(stderr,"Append of record returns %d: ",ret);
@@ -429,6 +438,7 @@ IntStateQueryShort()
 		}
 	}				
 
+	if(ren) free(ren);
 	free(command_string);
 	return(0);
 }
@@ -467,6 +477,9 @@ IntStateQuery()
 	char *wn_str; 
 	char *batch_str;
 	char *command_string;
+	job_registry_entry *ren=NULL;
+	int isresumed=0;
+	int first=1;
 
 	if((command_string=malloc(strlen(lsf_binpath) + 17)) == 0){
 		sysfatal("can't malloc command_string %r");
@@ -476,7 +489,6 @@ IntStateQuery()
 	fp = popen(command_string,"r");
 
 	en.status=UNDEFINED;
-	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"N/A");
 	bupdater_free_active_jobs(&bact);
 
 	if(fp!=NULL){
@@ -494,8 +506,9 @@ IntStateQuery()
 				fflush(debuglogfile);
 				free(dgbtimestamp);
 			}	
-			if(line && strstr(line,"Job <")){	
-				if(en.status!=UNDEFINED && en.status!=IDLE){	
+			if(line && strstr(line,"Job <")){
+				isresumed=0;
+				if(!first && (en.status!=UNDEFINED && en.status!=IDLE) && (en.status!=ren->status)){	
 					if ((ret=job_registry_update(rha, &en)) < 0){
 						if(ret != JOB_REGISTRY_NOT_FOUND){
 							fprintf(stderr,"Append of record returns %d: ",ret);
@@ -515,17 +528,32 @@ IntStateQuery()
 				JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
 				free(batch_str);
 				freetoken(&token,maxtok_t);
-			}else if(line && strstr(line,"Status <PEND>")){	
+				if(!first) free(ren);
+				if ((ren=job_registry_get(rha, en.batch_id)) == NULL){
+						fprintf(stderr,"Get of record returns error ");
+						perror("");
+				}
+				first=0;
+			}else if(line && strstr(line," <PEND>, ")){	
 				en.status=IDLE;
-			}else if(line && strstr(line,"Status <RUN>")){	
+			}else if(line && strstr(line," <RUN>, ")){	
 				en.status=RUNNING;
-			}else if(line && (strstr(line,"Status <USUSP>") || strstr(line,"Status <PSUSP>") || strstr(line,"Status <SSUSP>"))){	
+				if(use_bhist_for_susp && strcmp(use_bhist_for_susp,"yes")==0){
+				/*If status was HELD we have to check timestamp of resume with bhist (the info is not there with bjobs)*/
+					if(ren->status==HELD){
+						tmstampepoch=get_resume_timestamp(en.batch_id);
+						en.udate=tmstampepoch;
+						isresumed=1;
+					}
+				}
+			}else if(line && (strstr(line," <USUSP>,") || strstr(line," <PSUSP>,") || strstr(line," <SSUSP>,"))){	
 				en.status=HELD;
+				/*If status is HELD we check timestamp of suspension with bhist (the info is not there with bjobs)*/
 				if(use_bhist_for_susp && strcmp(use_bhist_for_susp,"yes")==0){ 
 					tmstampepoch=get_susp_timestamp(en.batch_id);
 					en.udate=tmstampepoch;
 				}
-			}else if(line && strstr(line,"Started on ") && (en.status == RUNNING)){	
+			}else if(line && strstr(line,"Started on ") && (en.status == RUNNING) && (isresumed == 0)){	
 				maxtok_t = strtoken(line, ' ', &token);
                         	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
 					sysfatal("can't malloc timestamp in IntStateQuery: %r");
@@ -536,7 +564,7 @@ IntStateQuery()
 				en.udate=tmstampepoch;
 				en.status=RUNNING;
 				free(timestamp);
-				wn_str=strdel(token[6],"<>");
+				wn_str=strdel(token[6],"<>,");
 				JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
 				free(wn_str);
 				freetoken(&token,maxtok_t);
@@ -545,9 +573,8 @@ IntStateQuery()
 		}
 		pclose(fp);
 	}
-	
-	
-	if(en.status!=UNDEFINED && en.status!=IDLE){	
+		
+	if((en.status!=UNDEFINED && en.status!=IDLE) && (en.status!=ren->status)){	
 		if ((ret=job_registry_update(rha, &en)) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
 				fprintf(stderr,"Append of record returns %d: ",ret);
@@ -562,6 +589,7 @@ IntStateQuery()
 		}
 	}				
 
+	if(ren) free(ren);
 	free(command_string);
 	return(0);
 }
@@ -664,12 +692,12 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
                 	                		fprintf(stderr,"Append of record returns %d: ",ret);
 							perror("");
 						}
-						if(debug>1){
-							dgbtimestamp=iepoch2str(time(0));
-							fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s creamjobid=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.status);
-							fflush(debuglogfile);
-							free(dgbtimestamp);
-						}
+					}
+					if(debug>1){
+						dgbtimestamp=iepoch2str(time(0));
+						fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s creamjobid=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.status);
+						fflush(debuglogfile);
+						free(dgbtimestamp);
 					}
 					en.status = UNDEFINED;
 				}				
@@ -741,7 +769,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 		}
 		if(debug>1){
 			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s creamjobid=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.status);
+			fprintf(debuglogfile, "%s %s: f registry update in FinalStateQuery for: jobid=%s creamjobid=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.status);
 			fflush(debuglogfile);
 			free(dgbtimestamp);
 		}
@@ -784,7 +812,61 @@ get_susp_timestamp(char *jobid)
 			if ((cp = strrchr (line, '\n')) != NULL){
 				*cp = '\0';
 			}
-			if(line && strstr(line," Suspended")){	
+			if(line && strstr(line," Suspended by")){	
+				maxtok_t = strtoken(line, ' ', &token);
+                        	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
+					sysfatal("can't malloc timestamp in get_susp_timestamp: %r");
+				}
+				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp[strlen(timestamp)-1]='\0';
+				tmstampepoch=str2epoch(timestamp,"W");
+				free(timestamp);
+				freetoken(&token,maxtok_t);
+			}
+			free(line);
+		}
+		pclose(fp);
+	}
+	
+
+	free(command_string);
+	return tmstampepoch;
+}
+
+int
+get_resume_timestamp(char *jobid)
+{
+
+        FILE *fp;
+	int len;
+	char *line;
+	char **token;
+	int maxtok_t=0;
+	int ret;
+	char *timestamp;
+	int tmstampepoch;
+	char *cp; 
+	char *dgbtimestamp;
+	char *command_string;
+	
+	if((command_string=malloc(strlen(lsf_binpath) + NUM_CHARS + 20)) == 0){
+		sysfatal("can't malloc command_string %r");
+	}
+
+	sprintf(command_string,"%s/bhist -u all -l %s",lsf_binpath,jobid);
+
+	fp = popen(command_string,"r");
+		
+	if(fp!=NULL){
+		while(!feof(fp) && (line=get_line(fp))){
+			if(line && strlen(line)==0){
+				free(line);
+				continue;
+			}
+			if ((cp = strrchr (line, '\n')) != NULL){
+				*cp = '\0';
+			}
+			if(line && strstr(line," Running;")){	
 				maxtok_t = strtoken(line, ' ', &token);
                         	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
 					sysfatal("can't malloc timestamp in get_susp_timestamp: %r");

@@ -10,6 +10,8 @@ int IntStateQueryShort();
 int IntStateQuery();
 int FinalStateQuery(time_t start_date);
 int AssignFinalState(char *batchid);
+int get_susp_timestamp(char *jobid);
+int get_resume_timestamp(char *jobid);
 
 int runfinal=FALSE;
 char *lsf_binpath;
