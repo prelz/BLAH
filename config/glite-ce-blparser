@@ -8,126 +8,36 @@
 GLITE_LOCATION=${GLITE_LOCATION:-/opt/glite}
 GLITE_LOCATION_VAR=${GLITE_LOCATION_VAR:-${GLITE_LOCATION}/var}
 
-[ -f $GLITE_LOCATION/etc/blparser.conf ] && . $GLITE_LOCATION/etc/blparser.conf
+GLITE_CE_PARSER_MASTER=${GLITE_LOCATION}/bin/blparser_master
+case "$1" in
 
-GLITE_CE_BLPARSERPBS=${GLITE_LOCATION}/bin/BLParserPBS
-GLITE_CE_BLPARSERLSF=${GLITE_LOCATION}/bin/BLParserLSF
+  start)
+             echo -n "Starting `basename $GLITE_CE_PARSER_MASTER`: " 
+             daemon $GLITE_CE_PARSER_MASTER
+             RETVAL=$?
+             echo 
+             ;;
 
-[ "x$GLITE_CE_USE_BLPARSERPBS" == "xyes" ] && LRMS1=PBS
-[ "x$GLITE_CE_USE_BLPARSERLSF" == "xyes" ] && LRMS2=LSF
+  stop)
+             echo -n "Shutting down `basename ${GLITE_CE_PARSER_MASTER}`: "
+             killproc ${GLITE_CE_PARSER_MASTER}
+             RETVAL=$?
+             echo
+             ;;
 
-start()
-{
+  status)
+             status ${GLITE_CE_PARSER_MASTER}
+             ;;
 
-        exe=""
-        daemon=""
-        debuglevel=""
-        debuglogfile=""
-        binpath=""
-        confpath=""
-        spooldir=""
-        parsernum=""
-	
-        for lrms in $LRMS1 $LRMS2;do
-	
-	      GLITE_CE_BLPARSER_CMDLINE=""
-              pidfile=$GLITE_LOCATION_VAR/glite-blparser${lrms}.pid
-	      
-	      eval exe=\$`echo GLITE_CE_BLPARSER${lrms}`
-	      
-	      eval daemon=\$`echo GLITE_CE_BLPARSER${lrms}_DAEMON`
-	      eval debuglevel=\$`echo GLITE_CE_BLPARSER${lrms}_DEBUGLEVEL`
-	      eval debuglogfile=\$`echo GLITE_CE_BLPARSER${lrms}_DEBUGLOGFILE`
-	      eval binpath=\$`echo GLITE_CE_BLPARSER${lrms}_BINPATH`
-	      eval confpath=\$`echo GLITE_CE_BLPARSER${lrms}_CONFPATH`
-	      eval spooldir=\$`echo GLITE_CE_BLPARSER${lrms}_SPOOLDIR`
-	      eval parsernum=\$`echo GLITE_CE_BLPARSER${lrms}_NUM`
-	      
-              [ "x$daemon" == "xyes" ] && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -D`
-              [ -n "$debuglevel" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -d $debuglevel`
-              [ -n "$debuglogfile" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -l $debuglogfile`
-              [ -n "$binpath" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -b $binpath`
-              [ -n "$confpath" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -c $confpath`
-              [ -n "$spooldir" ]  && GLITE_CE_BLPARSER_CMDLINE=`echo $GLITE_CE_BLPARSER_CMDLINE -s $spooldir`
-              [ ! -n "$parsernum" ] && parsernum=1
-	      
-              i=1
-	      while (( i <= $parsernum ));do
+  restart)
+             $0 stop
+	     sleep 1
+             $0 start
+             ;;
 
-             	   GLITE_CE_BLPARSER_CMDIN=$GLITE_CE_BLPARSER_CMDLINE
-
-             	   portval=`echo GLITE_CE_BLPARSER${lrms}_PORT${i}`
-             	   eval portnum=\$$portval
-	     	  
-	     	   creamportval=`echo GLITE_CE_BLPARSER${lrms}_CREAMPORT${i}`
-             	   eval creamportnum=\$$creamportval
-	     	  
-	     	   [ -n "$portnum" ] && GLITE_CE_BLPARSER_CMDIN=`echo $GLITE_CE_BLPARSER_CMDIN -p $portnum`
-	     	   [ -n "$creamportnum" ] && GLITE_CE_BLPARSER_CMDIN=`echo $GLITE_CE_BLPARSER_CMDIN -m $creamportnum`
-             	  
-	     	   $exe $GLITE_CE_BLPARSER_CMDIN
-	     	  
-	     	   [ "$?" -eq 0 ] && success $"startup" || failure $" startup" 
-            
-	     	   echo
-	     	   let i=$i+1
-	     	  
-              done
-	      
-	      
-	      echo `pidofproc ${exe}` > $pidfile 
- 
-	done
-	
-	
-}
-
-stop()
-{
-        for lrms in $LRMS1 $LRMS2;do
-             pidfile=$GLITE_LOCATION_VAR/glite-blparser${lrms}.pid
-	     eval exe=\$`echo GLITE_CE_BLPARSER${lrms}`
-             if [ -f $pidfile ]; then
-             	     pid=`cat $pidfile`
-		     if [ ! -z "$pid" ]; then
-		     	     kill $pid
-             	             [ "$?" -eq 0 ] && success $"${exe} shutdown" || failure $"${exe} shutdown" 
-            	             echo ""
-		     fi
-             	     rm -f $pidfile
-             else
-             	     echo $pidfile does not exist - ${exe} not running? >&2
-             	     return 1
-             fi
-	done
-}
-
-status()
-{
-        for lrms in $LRMS1 $LRMS2;do
-             pidfile=$GLITE_LOCATION_VAR/glite-blparser${lrms}.pid
-	     eval exe=\$`echo GLITE_CE_BLPARSER${lrms}`
-     	     if [ -f $pidfile ]; then
-     	     	     pid=`cat $pidfile`
-		     if [ ! -z "$pid" ]; then
-     	     	     	     if ps p $pid >/dev/null 2>&1; then
-     	     			          echo ${exe} running as $pid 
-     	     			          continue
-     	     	     	     fi
-		     fi
-     	     fi
-
-	     echo ${exe} not running
-	done
-	return 1
-}
-
-case x$1 in
-	xstart)	start;;
-	xstop)	stop;;
-	xrestart) stop; start;;
-	xstatus) status;;
-	x*)	echo usage: $0 start,stop,restart,status >&2
-		exit 1;;
+  *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
 esac
 
+exit 0

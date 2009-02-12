@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.31 2008/12/18 11:38:14 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.32 2009/02/12 14:18:57 mezzadri Exp $ 
 #
 # File:           Makefile.am
 #
@@ -24,7 +24,7 @@ else
 GLOBUS_EXECS =
 endif
 
-bin_PROGRAMS = blahpd blahpd_daemon BLClient BLParserLSF BLParserPBS BDlogger test_condor_logger blah_job_registry_add blah_job_registry_lkup BUpdaterCondor BNotifier BUpdaterLSF BUpdaterPBS $(GLOBUS_EXECS)
+bin_PROGRAMS = blahpd blahpd_daemon BLClient BLParserLSF BLParserPBS BDlogger test_condor_logger blah_job_registry_add blah_job_registry_lkup BUpdaterCondor BNotifier BUpdaterLSF BUpdaterPBS $(GLOBUS_EXECS)  blparser_master
 noinst_PROGRAMS = test_job_registry_create test_job_registry_purge test_job_registry_update test_job_registry_access
 
 common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C mtsafe_popen.c proxy_hashcontainer.c config.c job_registry.c Bfunctions.c
@@ -107,6 +107,9 @@ BUpdaterLSF_LDADD = -lpopt -lpthread
 
 BUpdaterPBS_SOURCES = BUpdaterPBS.c Bfunctions.c job_registry.c config.c
 BUpdaterPBS_LDADD = -lpopt -lpthread -lm
+
+blparser_master_SOURCES = blparser_master.c config.c
+blparser_master_LDADD = 
 
 noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h mtsafe_popen.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h condor_create_log.h proxy_hashcontainer.h job_registry.h config.h BUpdaterCondor.h Bfunctions.h BNotifier.h BUpdaterLSF.h BUpdaterPBS.h
 
