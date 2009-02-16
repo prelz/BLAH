@@ -325,6 +325,7 @@ IntStateQuery()
 	char *cp; 
 	char *dgbtimestamp;
 	char *command_string;
+	job_registry_entry *ren=NULL;
 
 	if((command_string=malloc(strlen(condor_binpath) + NUM_CHARS)) == 0){
 		sysfatal("can't malloc command_string %r");
@@ -356,8 +357,13 @@ IntStateQuery()
 			en.udate=atoi(token[5]);
 			JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 			JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+			
+			if ((ren=job_registry_get(rha, en.batch_id)) == NULL){
+					fprintf(stderr,"Get of record returns error ");
+					perror("");
+			}
 				
-			if(en.status!=UNDEFINED && en.status!=IDLE){	
+			if(en.status!=UNDEFINED && en.status!=IDLE && (en.status!=ren->status)){	
 				if ((ret=job_registry_update(rha, &en)) < 0){
 					if(ret != JOB_REGISTRY_NOT_FOUND){
 						fprintf(stderr,"Append of record returns %d: ",ret);
@@ -373,7 +379,8 @@ IntStateQuery()
 			}
 		
 			freetoken(&token,maxtok_t);
-			free(line);
+			if(line) free(line);
+			if(ren) free(ren);
 		}
 		pclose(fp);
 	}
@@ -481,7 +488,7 @@ int AssignFinalState(char *batchid){
 	
 	JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batchid);
 	en.status=COMPLETED;
-	en.exitcode=-1;
+	en.exitcode=999;
 	en.udate=now;
 	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 	JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");

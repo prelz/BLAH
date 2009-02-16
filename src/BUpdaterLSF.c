@@ -898,7 +898,7 @@ int AssignFinalState(char *batchid){
 	
 	JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batchid);
 	en.status=COMPLETED;
-	en.exitcode=-1;
+	en.exitcode=999;
 	en.udate=now;
 	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 	JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");

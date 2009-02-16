@@ -325,6 +325,8 @@ Job Id: 11.cream-12.pd.infn.it
 	char *dgbtimestamp;
 	char *cp;
 	char *command_string;
+	job_registry_entry *ren=NULL;
+	int first=1;
 
 	if((command_string=malloc(strlen(pbs_binpath) + 10)) == 0){
 		sysfatal("can't malloc command_string %r");
@@ -346,19 +348,19 @@ Job Id: 11.cream-12.pd.infn.it
 			if ((cp = strrchr (line, '\n')) != NULL){
 				*cp = '\0';
 			}
-			if(line && strstr(line,"Job Id: ")){
-				if(en.status!=UNDEFINED && en.status!=IDLE){
-					if(debug>1){
-						dgbtimestamp=iepoch2str(time(0));
-						fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.wn_addr,en.status);
-						fflush(debuglogfile);
-						free(dgbtimestamp);
-					}
+			if(!first && line && strstr(line,"Job Id: ")){
+				if(en.status!=UNDEFINED && en.status!=IDLE && (en.status!=ren->status)){
                         		if ((ret=job_registry_update(rha, &en)) < 0){
 						if(ret != JOB_REGISTRY_NOT_FOUND){
                 	                		fprintf(stderr,"Append of record returns %d: ",ret);
 							perror("");
 						}
+					}
+					if(debug>1){
+						dgbtimestamp=iepoch2str(time(0));
+						fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.wn_addr,en.status);
+						fflush(debuglogfile);
+						free(dgbtimestamp);
 					}
 					en.status = UNDEFINED;
 				}				
@@ -368,6 +370,12 @@ Job Id: 11.cream-12.pd.infn.it
 				bupdater_push_active_job(&bact, en.batch_id);
 				free(batch_str);
 				freetoken(&token,maxtok_t);
+				if(!first) free(ren);
+				if ((ren=job_registry_get(rha, en.batch_id)) == NULL){
+						fprintf(stderr,"Get of record returns error ");
+						perror("");
+				}
+				first=0;				
 			}else if(line && strstr(line,"job_state = ")){	
 				maxtok_t = strtoken(line, '=', &token);
 				status_str=strdel(token[1]," ");
@@ -408,21 +416,22 @@ Job Id: 11.cream-12.pd.infn.it
 		pclose(fp);
 	}
 	
-	if(en.status!=UNDEFINED && en.status!=IDLE){
-		if(debug>1){
-			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.wn_addr,en.status);
-			fflush(debuglogfile);
-			free(dgbtimestamp);
-		}
+	if(en.status!=UNDEFINED && en.status!=IDLE && (en.status!=ren->status)){
 		if ((ret=job_registry_update(rha, &en)) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
 				fprintf(stderr,"Append of record returns %d: ",ret);
 				perror("");
 			}
 		}
+		if(debug>1){
+			dgbtimestamp=iepoch2str(time(0));
+			fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.wn_addr,en.status);
+			fflush(debuglogfile);
+			free(dgbtimestamp);
+		}
 	}				
 
+	if(ren) free(ren);
 	free(command_string);
 	return(0);
 }
@@ -566,12 +575,6 @@ Job: 13.cream-12.pd.infn.it
 		}
 		
 		if(en.status !=UNDEFINED && en.status!=IDLE){
-			if(debug>1){
-				dgbtimestamp=iepoch2str(time(0));
-				fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s exitcode=%d status=%d\n",dgbtimestamp,argv0,en.batch_id,en.exitcode,en.status);
-				fflush(debuglogfile);
-				free(dgbtimestamp);
-			}
 			if ((ret=job_registry_update_select(rha, &en,
 			JOB_REGISTRY_UPDATE_UDATE |
 			JOB_REGISTRY_UPDATE_STATUS |
@@ -582,6 +585,12 @@ Job: 13.cream-12.pd.infn.it
 					perror("");
 				}
 			}
+			if(debug>1){
+				dgbtimestamp=iepoch2str(time(0));
+				fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s exitcode=%d status=%d\n",dgbtimestamp,argv0,en.batch_id,en.exitcode,en.status);
+				fflush(debuglogfile);
+				free(dgbtimestamp);
+			}
 		}else{
 			failed_count++;
 		}		
@@ -591,7 +600,7 @@ Job: 13.cream-12.pd.infn.it
 	now=time(0);
 	time_to_add=pow(failed_count,1.5);
 	next_finalstatequery=now+time_to_add;
-	if(debug>1){
+	if(debug>2){
 		dgbtimestamp=iepoch2str(time(0));
 		fprintf(debuglogfile, "%s %s: next FinalStatequery will be in %d seconds\n",dgbtimestamp,argv0,time_to_add);
 		fflush(debuglogfile);
@@ -613,7 +622,7 @@ int AssignFinalState(char *batchid){
 	
 	JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batchid);
 	en.status=COMPLETED;
-	en.exitcode=-1;
+	en.exitcode=999;
 	en.udate=now;
 	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 	JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
