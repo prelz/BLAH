@@ -1,3 +1,27 @@
+/*
+#  File:     BUpdaterPBS.c
+#
+#  Author:   Massimo Mezzadri
+#  e-mail:   Massimo.Mezzadri@mi.infn.it
+# 
+# Copyright (c) Members of the EGEE Collaboration. 2004. 
+# See http://www.eu-egee.org/partners/ for details on the copyright
+# holders.  
+# 
+# Licensed under the Apache License, Version 2.0 (the "License"); 
+# you may not use this file except in compliance with the License. 
+# You may obtain a copy of the License at 
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0 
+# 
+# Unless required by applicable law or agreed to in writing, software 
+# distributed under the License is distributed on an "AS IS" BASIS, 
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+# See the License for the specific language governing permissions and 
+# limitations under the License.
+# 
+*/
+
 #include "BUpdaterPBS.h"
 
 extern int bfunctions_poll_timeout;
@@ -275,7 +299,7 @@ int main(int argc, char *argv[]){
 		sleep(loop_interval);
 	}
 	
-	return(0);
+	return 0;
 	
 }
 
@@ -318,13 +342,13 @@ Job Id: 11.cream-12.pd.infn.it
 	int ret;
 	char *timestamp;
 	int tmstampepoch;
-	char *batch_str;
-	char *wn_str; 
-        char *twn_str;
-        char *status_str;
+	char *batch_str=NULL;
+	char *wn_str=NULL; 
+        char *twn_str=NULL;
+        char *status_str=NULL;
 	char *dgbtimestamp;
-	char *cp;
-	char *command_string;
+	char *cp=NULL;
+	char *command_string=NULL;
 	job_registry_entry *ren=NULL;
 	int first=1;
 
@@ -411,7 +435,7 @@ Job Id: 11.cream-12.pd.infn.it
 				en.udate=tmstampepoch;
 				freetoken(&token,maxtok_t);
 			}
-			if(line) free(line);
+			free(line);
 		}
 		pclose(fp);
 	}
@@ -431,9 +455,9 @@ Job Id: 11.cream-12.pd.infn.it
 		}
 	}				
 
-	if(ren) free(ren);
-	if(command_string) free(command_string);
-	return(0);
+	free(ren);
+	free(command_string);
+	return 0;
 }
 
 int
@@ -482,7 +506,7 @@ Job: 13.cream-12.pd.infn.it
 
         FILE *fp;
 	int len;
-	char *line;
+	char *line=NULL;
 	char **token;
 	char **jobid;
 	int maxtok_t=0,maxtok_j=0,k;
@@ -490,15 +514,15 @@ Job: 13.cream-12.pd.infn.it
 	int ret;
 	char *timestamp;
 	int tmstampepoch;
-	char *batch_str;
-	char *wn_str; 
-	char *exit_str;
+	char *batch_str=NULL;
+	char *wn_str=NULL; 
+	char *exit_str=NULL;
 	int failed_count=0;
 	int time_to_add=0;
 	time_t now;
 	char *dgbtimestamp;
-	char *cp;
-	char *command_string;
+	char *cp=NULL;
+	char *command_string=NULL;
 
 	if(debug>1){
 		dgbtimestamp=iepoch2str(time(0));
@@ -569,7 +593,7 @@ Job: 13.cream-12.pd.infn.it
                         		en.exitcode=-999;
 					JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				}
-				if(line) free(line);
+				free(line);
 			}
 			pclose(fp);
 		}
@@ -594,7 +618,7 @@ Job: 13.cream-12.pd.infn.it
 		}else{
 			failed_count++;
 		}		
-		if(command_string) free(command_string);
+		free(command_string);
 	}
 	
 	now=time(0);
@@ -608,7 +632,7 @@ Job: 13.cream-12.pd.infn.it
 	}
 	
 	freetoken(&jobid,maxtok_j);
-	return(0);
+	return 0;
 }
 
 int AssignFinalState(char *batchid){
@@ -640,5 +664,5 @@ int AssignFinalState(char *batchid){
 		free(dgbtimestamp);
 	}
 
-	return(0);
+	return 0;
 }

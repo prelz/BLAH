@@ -1,3 +1,27 @@
+/*
+#  File:     BUpdaterLSF.c
+#
+#  Author:   Massimo Mezzadri
+#  e-mail:   Massimo.Mezzadri@mi.infn.it
+# 
+# Copyright (c) Members of the EGEE Collaboration. 2004. 
+# See http://www.eu-egee.org/partners/ for details on the copyright
+# holders.  
+# 
+# Licensed under the Apache License, Version 2.0 (the "License"); 
+# you may not use this file except in compliance with the License. 
+# You may obtain a copy of the License at 
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0 
+# 
+# Unless required by applicable law or agreed to in writing, software 
+# distributed under the License is distributed on an "AS IS" BASIS, 
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+# See the License for the specific language governing permissions and 
+# limitations under the License.
+# 
+*/
+
 #include "BUpdaterLSF.h"
 
 extern int bfunctions_poll_timeout;
@@ -298,7 +322,7 @@ int main(int argc, char *argv[]){
 		sleep(loop_interval);
 	}
 	
-	return(0);
+	return 0;
 	
 }
 
@@ -325,7 +349,7 @@ IntStateQueryShort()
 
         FILE *fp;
 	int len;
-	char *line;
+	char *line=NULL;
 	char **token;
 	int maxtok_l=0,i;
 	job_registry_entry en;
@@ -333,9 +357,9 @@ IntStateQueryShort()
 	char *timestamp;
 	int tmstampepoch;
 	char *dgbtimestamp;
-	char *tmp; 
-	char *cp; 
-	char *command_string;
+	char *tmp=NULL; 
+	char *cp=NULL; 
+	char *command_string=NULL;
 	job_registry_entry *ren=NULL;
 	int isresumed=0;
 	int first=1;
@@ -418,7 +442,7 @@ IntStateQueryShort()
 		
 			freetoken(&token,maxtok_l);
 			
-			if(line) free(line);
+			free(line);
 		}
 		pclose(fp);
 	}
@@ -438,9 +462,9 @@ IntStateQueryShort()
 		}
 	}				
 
-	if(ren) free(ren);
-	if(command_string) free(command_string);
-	return(0);
+	free(ren);
+	free(command_string);
+	return 0;
 }
 
 int
@@ -464,7 +488,7 @@ IntStateQuery()
 
         FILE *fp;
 	int len;
-	char *line;
+	char *line=NULL;
 	char **token;
 	int maxtok_t=0;
 	job_registry_entry en;
@@ -472,11 +496,11 @@ IntStateQuery()
 	char *timestamp;
 	int tmstampepoch;
 	char *dgbtimestamp;
-	char *tmp; 
-	char *cp; 
-	char *wn_str; 
-	char *batch_str;
-	char *command_string;
+	char *tmp=NULL; 
+	char *cp=NULL; 
+	char *wn_str=NULL; 
+	char *batch_str=NULL;
+	char *command_string=NULL;
 	job_registry_entry *ren=NULL;
 	int isresumed=0;
 	int first=1;
@@ -569,7 +593,7 @@ IntStateQuery()
 				free(wn_str);
 				freetoken(&token,maxtok_t);
 			}
-			if(line) free(line);
+			free(line);
 		}
 		pclose(fp);
 	}
@@ -589,9 +613,9 @@ IntStateQuery()
 		}
 	}				
 
-	if(ren) free(ren);
-	if(command_string) free(command_string);
-	return(0);
+	free(ren);
+	free(command_string);
+	return 0;
 }
 
 int
@@ -628,20 +652,20 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 
         FILE *fp;
 	int len;
-	char *line;
+	char *line=NULL;
 	char **token;
 	int maxtok_t=0;
 	job_registry_entry en;
 	int ret;
 	char *timestamp;
 	int tmstampepoch;
-	char *batch_str;
-	char *ex_str; 
-	char *cp; 
+	char *batch_str=NULL;
+	char *ex_str=NULL; 
+	char *cp=NULL; 
 	char *dgbtimestamp;
 	struct tm start_date_tm;
 	char start_date_str[80];
-	char *command_string;
+	char *command_string=NULL;
 
 	if((command_string=malloc(strlen(lsf_binpath) + NUM_CHARS + sizeof(start_date_str) + 24)) == 0){
 		sysfatal("can't malloc command_string %r");
@@ -751,7 +775,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				freetoken(&token,maxtok_t);
 			}
-			if(line) free(line);
+			free(line);
 		}
 		pclose(fp);
 	}
@@ -775,8 +799,8 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 		}
 	}				
 
-	if(command_string) free(command_string);
-	return(0);
+	free(command_string);
+	return 0;
 }
 
 int
@@ -785,15 +809,15 @@ get_susp_timestamp(char *jobid)
 
         FILE *fp;
 	int len;
-	char *line;
+	char *line=NULL;
 	char **token;
 	int maxtok_t=0;
 	int ret;
 	char *timestamp;
 	int tmstampepoch;
-	char *cp; 
+	char *cp=NULL; 
 	char *dgbtimestamp;
-	char *command_string;
+	char *command_string=NULL;
 	
 	if((command_string=malloc(strlen(lsf_binpath) + NUM_CHARS + 20)) == 0){
 		sysfatal("can't malloc command_string %r");
@@ -823,13 +847,13 @@ get_susp_timestamp(char *jobid)
 				free(timestamp);
 				freetoken(&token,maxtok_t);
 			}
-			if(line) free(line);
+			free(line);
 		}
 		pclose(fp);
 	}
 	
 
-	if(command_string) free(command_string);
+	free(command_string);
 	return tmstampepoch;
 }
 
@@ -839,15 +863,15 @@ get_resume_timestamp(char *jobid)
 
         FILE *fp;
 	int len;
-	char *line;
+	char *line=NULL;
 	char **token;
 	int maxtok_t=0;
 	int ret;
 	char *timestamp;
 	int tmstampepoch;
-	char *cp; 
+	char *cp=NULL; 
 	char *dgbtimestamp;
-	char *command_string;
+	char *command_string=NULL;
 	
 	if((command_string=malloc(strlen(lsf_binpath) + NUM_CHARS + 20)) == 0){
 		sysfatal("can't malloc command_string %r");
@@ -877,13 +901,13 @@ get_resume_timestamp(char *jobid)
 				free(timestamp);
 				freetoken(&token,maxtok_t);
 			}
-			if(line) free(line);
+			free(line);
 		}
 		pclose(fp);
 	}
 	
 
-	if(command_string) free(command_string);
+	free(command_string);
 	return tmstampepoch;
 }
 
@@ -916,5 +940,5 @@ int AssignFinalState(char *batchid){
 		free(dgbtimestamp);
 	}
 	
-	return(0);
+	return 0;
 }

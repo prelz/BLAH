@@ -1,3 +1,27 @@
+/*
+#  File:     BNotifier.c
+#
+#  Author:   Massimo Mezzadri
+#  e-mail:   Massimo.Mezzadri@mi.infn.it
+# 
+# Copyright (c) Members of the EGEE Collaboration. 2004. 
+# See http://www.eu-egee.org/partners/ for details on the copyright
+# holders.  
+# 
+# Licensed under the Apache License, Version 2.0 (the "License"); 
+# you may not use this file except in compliance with the License. 
+# You may obtain a copy of the License at 
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0 
+# 
+# Unless required by applicable law or agreed to in writing, software 
+# distributed under the License is distributed on an "AS IS" BASIS, 
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+# See the License for the specific language governing permissions and 
+# limitations under the License.
+# 
+*/
+
 #include "BNotifier.h"
 
 int
@@ -290,7 +314,7 @@ PollDB()
                 job_registry_destroy(rha);
 		sleep(2);
 	}
-	return(0);
+	return 0;
 }
 int
 UpdateFileTime(int sec)
@@ -323,10 +347,10 @@ UpdateFileTime(int sec)
 		}
 		fprintf(stderr,"Error in utime in UpdateFileTime: ");
 		perror("");
-		return(1);
+		return 1;
 	}
 	
-	return(0);
+	return 0;
 
 }
 
@@ -335,7 +359,7 @@ GetModTime(char *filename)
 {
 	struct stat buf;
 	stat(filename,&buf);
-	return(buf.st_mtime);
+	return buf.st_mtime;
 }
 
 void 
@@ -485,7 +509,7 @@ int GetFilter(char *buffer){
 	freetoken(&tbuf,maxtok);
         free(out_buf);
 	
-        return(0);
+        return 0;
 
 }
 
@@ -516,7 +540,7 @@ int NotifyStart(char *buffer){
 
 	UpdateFileTime(notifepoch);
 	
-	return(0);
+	return 0;
 
 }
 
@@ -601,7 +625,7 @@ NotifyCream(char *buffer)
 		} 
 	}       
 
-	return(0);
+	return 0;
 
 }
 
