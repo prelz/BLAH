@@ -411,7 +411,7 @@ Job Id: 11.cream-12.pd.infn.it
 				en.udate=tmstampepoch;
 				freetoken(&token,maxtok_t);
 			}
-			free(line);
+			if(line) free(line);
 		}
 		pclose(fp);
 	}
@@ -432,7 +432,7 @@ Job Id: 11.cream-12.pd.infn.it
 	}				
 
 	if(ren) free(ren);
-	free(command_string);
+	if(command_string) free(command_string);
 	return(0);
 }
 
@@ -569,7 +569,7 @@ Job: 13.cream-12.pd.infn.it
                         		en.exitcode=-999;
 					JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				}
-				free(line);
+				if(line) free(line);
 			}
 			pclose(fp);
 		}
@@ -594,7 +594,7 @@ Job: 13.cream-12.pd.infn.it
 		}else{
 			failed_count++;
 		}		
-		free(command_string);
+		if(command_string) free(command_string);
 	}
 	
 	now=time(0);

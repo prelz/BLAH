@@ -418,7 +418,7 @@ IntStateQueryShort()
 		
 			freetoken(&token,maxtok_l);
 			
-			free(line);
+			if(line) free(line);
 		}
 		pclose(fp);
 	}
@@ -439,7 +439,7 @@ IntStateQueryShort()
 	}				
 
 	if(ren) free(ren);
-	free(command_string);
+	if(command_string) free(command_string);
 	return(0);
 }
 
@@ -569,7 +569,7 @@ IntStateQuery()
 				free(wn_str);
 				freetoken(&token,maxtok_t);
 			}
-			free(line);
+			if(line) free(line);
 		}
 		pclose(fp);
 	}
@@ -590,7 +590,7 @@ IntStateQuery()
 	}				
 
 	if(ren) free(ren);
-	free(command_string);
+	if(command_string) free(command_string);
 	return(0);
 }
 
@@ -751,7 +751,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				freetoken(&token,maxtok_t);
 			}
-			free(line);
+			if(line) free(line);
 		}
 		pclose(fp);
 	}
@@ -775,7 +775,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 		}
 	}				
 
-	free(command_string);
+	if(command_string) free(command_string);
 	return(0);
 }
 
@@ -823,13 +823,13 @@ get_susp_timestamp(char *jobid)
 				free(timestamp);
 				freetoken(&token,maxtok_t);
 			}
-			free(line);
+			if(line) free(line);
 		}
 		pclose(fp);
 	}
 	
 
-	free(command_string);
+	if(command_string) free(command_string);
 	return tmstampepoch;
 }
 
@@ -877,13 +877,13 @@ get_resume_timestamp(char *jobid)
 				free(timestamp);
 				freetoken(&token,maxtok_t);
 			}
-			free(line);
+			if(line) free(line);
 		}
 		pclose(fp);
 	}
 	
 
-	free(command_string);
+	if(command_string) free(command_string);
 	return tmstampepoch;
 }
 

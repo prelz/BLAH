@@ -385,7 +385,7 @@ IntStateQuery()
 		pclose(fp);
 	}
 
-	free(command_string);
+	if(command_string) free(command_string);
 	return(0);
 }
 
@@ -468,12 +468,12 @@ FinalStateQuery(char *query)
 				}
 			}
 			freetoken(&token,maxtok_t);
-			free(line);
+			if(line) free(line);
 		}
 		pclose(fp);
 	}
 
-	free(command_string);
+	if(command_string) free(command_string);
 	return(0);
 }
 
