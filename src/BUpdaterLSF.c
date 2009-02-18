@@ -394,7 +394,7 @@ IntStateQueryShort()
 				free(tmp);
 				continue;
 			}
-			if(!first && en.status!=UNDEFINED && en.status!=IDLE && (en.status!=ren->status)){	
+			if(!first && en.status!=UNDEFINED && en.status!=IDLE && ren && (en.status!=ren->status)){	
 				if ((ret=job_registry_update(rha, &en)) < 0){
 					if(ret != JOB_REGISTRY_NOT_FOUND){
 						fprintf(stderr,"Append of record returns %d: ",ret);
@@ -447,7 +447,7 @@ IntStateQueryShort()
 		pclose(fp);
 	}
 	
-	if(en.status!=UNDEFINED && en.status!=IDLE && (en.status!=ren->status)){	
+	if(en.status!=UNDEFINED && en.status!=IDLE && ren && (en.status!=ren->status)){	
 		if ((ret=job_registry_update(rha, &en)) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
 				fprintf(stderr,"Append of record returns %d: ",ret);
@@ -532,7 +532,7 @@ IntStateQuery()
 			}	
 			if(line && strstr(line,"Job <")){
 				isresumed=0;
-				if(!first && (en.status!=UNDEFINED && en.status!=IDLE) && (en.status!=ren->status)){	
+				if(!first && (en.status!=UNDEFINED && en.status!=IDLE) && ren && (en.status!=ren->status)){	
 					if ((ret=job_registry_update(rha, &en)) < 0){
 						if(ret != JOB_REGISTRY_NOT_FOUND){
 							fprintf(stderr,"Append of record returns %d: ",ret);
@@ -564,7 +564,7 @@ IntStateQuery()
 				en.status=RUNNING;
 				if(use_bhist_for_susp && strcmp(use_bhist_for_susp,"yes")==0){
 				/*If status was HELD we have to check timestamp of resume with bhist (the info is not there with bjobs)*/
-					if(ren->status==HELD){
+					if(ren && ren->status==HELD){
 						tmstampepoch=get_resume_timestamp(en.batch_id);
 						en.udate=tmstampepoch;
 						isresumed=1;
@@ -598,7 +598,7 @@ IntStateQuery()
 		pclose(fp);
 	}
 		
-	if((en.status!=UNDEFINED && en.status!=IDLE) && (en.status!=ren->status)){	
+	if((en.status!=UNDEFINED && en.status!=IDLE) && ren && (en.status!=ren->status)){	
 		if ((ret=job_registry_update(rha, &en)) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
 				fprintf(stderr,"Append of record returns %d: ",ret);
