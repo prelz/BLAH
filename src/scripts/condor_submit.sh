@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 #
 # 	File:     condor_submit.sh
 # 	Author:   Giuseppe Fiorentino (giuseppe.fiorentino@mi.infn.it)
@@ -247,6 +247,7 @@ else
 fi
 
 now=`date +%s`
+let now=$now-1
 
 full_result=$($condor_binpath/condor_submit $target $submit_file)
 return_code=$?
@@ -256,7 +257,7 @@ if [ "$return_code" == "0" ] ; then
     blahp_jobID="condor/$jobID/$queue/$pool"
 
     if [ "x$job_registry" != "x" ]; then
-      `dirname $0`/blah_job_registry_add "$blahp_jobID" "$jobID" 1 $now-1 "$creamjobid" "$proxy_file" 0
+      `dirname $0`/blah_job_registry_add "$blahp_jobID" "$jobID" 1 $now "$creamjobid" "$proxy_file" 0
     fi
 
     echo "BLAHP_JOBID_PREFIX$blahp_jobID"

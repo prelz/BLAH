@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 #
 # File:     pbs_submit.sh
 # Author:   David Rebatto (david.rebatto@mi.infn.it)
@@ -212,7 +212,8 @@ blahp_jobID="pbs/`basename $logfile`/$jobID"
 
 if [ "x$job_registry" != "x" ]; then
   now=`date +%s`
-  `dirname $0`/blah_job_registry_add "$blahp_jobID" "$jobID" 1 $now-1 "$bls_opt_creamjobid" "$bls_proxy_local_file" 1
+  let now=$now-1
+  `dirname $0`/blah_job_registry_add "$blahp_jobID" "$jobID" 1 $now "$bls_opt_creamjobid" "$bls_proxy_local_file" 1
 fi
 
 echo "BLAHP_JOBID_PREFIX$blahp_jobID"
