@@ -22,6 +22,11 @@
 
 [ -f ${GLITE_LOCATION:-/opt/glite}/etc/blah.config ] && . ${GLITE_LOCATION:-/opt/glite}/etc/blah.config
 
+if [ "x$job_registry" != "x" ] ; then
+   ${GLITE_LOCATION:-/opt/glite}/bin/blah_job_registry_lkup $@
+   exit 0
+fi
+
 usage_string="Usage: $0 [-w] [-n]"
 
 logpath=${pbs_spoolpath}/server_logs

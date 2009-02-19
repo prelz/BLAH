@@ -22,6 +22,11 @@
 
 [ -f ${GLITE_LOCATION:-/opt/glite}/etc/blah.config ] && . ${GLITE_LOCATION:-/opt/glite}/etc/blah.config
 
+if [ "x$job_registry" != "x" ] ; then
+   ${GLITE_LOCATION:-/opt/glite}/bin/blah_job_registry_lkup $@
+   exit 0
+fi
+
 conffile=$lsf_confpath/lsf.conf
 lsf_confdir=`cat $conffile|grep LSF_CONFDIR| awk -F"=" '{ print $2 }'`
 [ -f ${lsf_confdir}/profile.lsf ] && . ${lsf_confdir}/profile.lsf
