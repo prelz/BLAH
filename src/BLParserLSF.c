@@ -216,7 +216,7 @@ follow(char *infile, char *line)
 			sysfatal("couldn't seek: %r");
 		}
 		real_off=ftell(fp);
-
+/*
 		if(real_off < off){
 			if(fseek(fp, 0L, SEEK_SET) < 0){
 				sysfatal("couldn't seek: %r");
@@ -232,23 +232,31 @@ follow(char *infile, char *line)
 			free(ts);
 
 		}
-   
+*/
+		if(real_off < off){
+			off=0;
+		}
+		
 		if(fseek(fp, off, SEEK_SET) < 0){
 			sysfatal("couldn't seek: %r");
 		}
         
-		off = tail(fp, line);
+		off = tail(fp, line, off);
 		fclose(fp);
 		sleep(1);
 	}        
 }
 
 long
-tail(FILE *fp, char *line)
+tail(FILE *fp, char *line, long old_off)
 {
 	long off=0;
+	long act_off=old_off;
 
 	while(fgets(line, STR_CHARS, fp)){
+		if (strrchr (line, '\n') == NULL){
+			return act_off;
+		}
 		if(line && ((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_status)!=NULL) || (strstr(line,rex_signal)!=NULL))){        
 			if(debug >= 2){
 				fprintf(debuglogfile, "Tail line:%s",line);
@@ -256,14 +264,13 @@ tail(FILE *fp, char *line)
 			}
 			AddToStruct(line,1);
 		}
+		if((act_off=ftell(fp)) < 0){
+			sysfatal("couldn't ftell in tail: %r");
+		}
 	}
 
-	if((off=ftell(fp)) < 0){
-		sysfatal("couldn't get file location: %r");
-	}
-	return off;
+	return act_off;
 }
-
 
 int
 InfoAdd(int id, char *value, const char * flag)

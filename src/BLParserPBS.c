@@ -375,12 +375,8 @@ tail(FILE *fp, char *line, long old_off)
 		}
 	}
 
-	if((off=ftell(fp)) < 0){
-		sysfatal("couldn't ftell in tail: %r");
-	}
-	return off;
+	return act_off;
 }
-
 
 int
 InfoAdd(int id, char *value, const char * flag)
