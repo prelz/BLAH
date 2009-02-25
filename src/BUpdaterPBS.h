@@ -36,7 +36,8 @@ int FinalStateQuery(char *input_string);
 int AssignFinalState(char *batchid);
 
 int runfinal=FALSE;
-char *pbs_binpath;
+char *pbs_binpath=NULL;
+char *pbs_spoolpath=NULL;
 char *registry_file;
 int purge_interval=864000;
 int finalstate_query_interval=30;

@@ -115,6 +115,18 @@ int main(int argc, char *argv[]){
                 pbs_binpath=strdup(ret->value);
         }
 	
+        ret = config_get("pbs_spoolpath",cha);
+        if (ret == NULL){
+                if(debug){
+			dgbtimestamp=iepoch2str(time(0));
+			fprintf(debuglogfile, "%s %s: key pbs_spoolpath not found\n",dgbtimestamp,argv0);
+			fflush(debuglogfile);
+			free(dgbtimestamp);
+		}
+        } else {
+                pbs_spoolpath=strdup(ret->value);
+        }
+	
 	ret = config_get("job_registry",cha);
 	if (ret == NULL){
                 if(debug){
@@ -372,8 +384,14 @@ Job Id: 11.cream-12.pd.infn.it
 			if ((cp = strrchr (line, '\n')) != NULL){
 				*cp = '\0';
 			}
-			if(!first && line && strstr(line,"Job Id: ")){
-				if(en.status!=UNDEFINED && en.status!=IDLE && ren && (en.status!=ren->status)){
+			if(debug>3){
+				dgbtimestamp=iepoch2str(time(0));
+				fprintf(debuglogfile, "%s %s: line in IntStateQuery is:%s\n",dgbtimestamp,argv0,line);
+				fflush(debuglogfile);
+				free(dgbtimestamp);
+			}
+			if(line && strstr(line,"Job Id: ")){
+				if(!first && en.status!=UNDEFINED && en.status!=IDLE && ren && (en.status!=ren->status)){
                         		if ((ret=job_registry_update(rha, &en)) < 0){
 						if(ret != JOB_REGISTRY_NOT_FOUND){
                 	                		fprintf(stderr,"Append of record returns %d: ",ret);
@@ -523,8 +541,9 @@ Job: 13.cream-12.pd.infn.it
 	char *dgbtimestamp;
 	char *cp=NULL;
 	char *command_string=NULL;
+	char *pbs_spool=NULL;
 
-	if(debug>1){
+	if(debug>2){
 		dgbtimestamp=iepoch2str(time(0));
 		fprintf(debuglogfile, "%s %s: input_string in FinalStateQuery is:%s\n",dgbtimestamp,argv0,input_string);
 		fflush(debuglogfile);
@@ -537,14 +556,28 @@ Job: 13.cream-12.pd.infn.it
 	
 		if(jobid[k] && strlen(jobid[k])==0) continue;
 
-		if((command_string=malloc(strlen(pbs_binpath) + strlen(jobid[k]) + 20)) == 0){
-			sysfatal("can't malloc command_string %r");
+		if(pbs_spoolpath){
+			if((pbs_spool=malloc(strlen(pbs_spoolpath) + 4)) == 0){
+				sysfatal("can't malloc pbs_spool %r");
+			}
+			sprintf(pbs_spool,"-p %s",pbs_spoolpath);
+			
+			if((command_string=malloc(strlen(pbs_binpath) + strlen(pbs_spool) + strlen(jobid[k]) + 20)) == 0){
+				sysfatal("can't malloc command_string %r");
+			}
+		
+			sprintf(command_string,"%s/tracejob %s -m -l -a %s",pbs_binpath,pbs_spool,jobid[k]);
+		}else{
+			if((command_string=malloc(strlen(pbs_binpath) + strlen(jobid[k]) + 20)) == 0){
+				sysfatal("can't malloc command_string %r");
+			}
+		
+			sprintf(command_string,"%s/tracejob -m -l -a %s",pbs_binpath,jobid[k]);
 		}
 		
-		sprintf(command_string,"%s/tracejob -m -l -a %s",pbs_binpath,jobid[k]);
 		fp = popen(command_string,"r");
 		
-		if(debug>1){
+		if(debug>2){
 			dgbtimestamp=iepoch2str(time(0));
 			fprintf(debuglogfile, "%s %s: command_string in FinalStateQuery is:%s\n",dgbtimestamp,argv0,command_string);
 			fflush(debuglogfile);
@@ -619,6 +652,7 @@ Job: 13.cream-12.pd.infn.it
 			failed_count++;
 		}		
 		free(command_string);
+		if(pbs_spoolpath) free(pbs_spool);
 	}
 	
 	now=time(0);
