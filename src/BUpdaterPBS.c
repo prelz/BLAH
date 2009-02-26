@@ -595,7 +595,20 @@ Job: 13.cream-12.pd.infn.it
 				if ((cp = strrchr (line, '\n')) != NULL){
 					*cp = '\0';
 				}
-				if(line && strstr(line,"Exit_status=")){	
+				if(line && strstr(line,"Job deleted")){	
+					maxtok_t = strtoken(line, ' ', &token);
+ 					if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + 4)) == 0){
+                        		        sysfatal("can't malloc timestamp in FinalStateQuery: %r");
+                        		}
+                        		sprintf(timestamp,"%s %s",token[0],token[1]);
+					tmstampepoch=str2epoch(timestamp,"A");
+					free(timestamp);
+					freetoken(&token,maxtok_t);
+					en.udate=tmstampepoch;
+					en.status=REMOVED;
+                        		en.exitcode=-999;
+					JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+				}else if(line && strstr(line,"Exit_status=") && en.status != REMOVED){	
 					maxtok_t = strtoken(line, ' ', &token);
  					if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + 4)) == 0){
                         		        sysfatal("can't malloc timestamp in FinalStateQuery: %r");
@@ -612,19 +625,6 @@ Job: 13.cream-12.pd.infn.it
 					en.status=COMPLETED;
 					JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 					freetoken(&token,maxtok_t);
-				}else if(line && strstr(line,"Job deleted")){	
-					maxtok_t = strtoken(line, ' ', &token);
- 					if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + 4)) == 0){
-                        		        sysfatal("can't malloc timestamp in FinalStateQuery: %r");
-                        		}
-                        		sprintf(timestamp,"%s %s",token[0],token[1]);
-					tmstampepoch=str2epoch(timestamp,"A");
-					free(timestamp);
-					freetoken(&token,maxtok_t);
-					en.udate=tmstampepoch;
-					en.status=REMOVED;
-                        		en.exitcode=-999;
-					JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				}
 				free(line);
 			}
