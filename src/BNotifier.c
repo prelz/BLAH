@@ -180,22 +180,15 @@ PollDB()
         job_registry_entry *en;
 	job_registry_handle *rha;
 	char *buffer;
-	char *wn;
-	char *excode;
-	char *exreas;
-	char *blahid;
-	char *strudate;
 	time_t now;
         int  maxtok,i;
         char **tbuf;
-	char *clientid=NULL;
-	char *cp;
 	
 	while(1){
 	
 		now=time(NULL);
 	
-		if(!startnotify){
+		if(!startnotify && !startnotifyjob){
 			sleep(2);
 			continue;
 		}
@@ -235,76 +228,49 @@ PollDB()
 			sleep(2);
 			continue;
 		}
-		
-		while ((en = job_registry_get_next(rha, fd)) != NULL)
-		{
-		
-			if((buffer=calloc(STR_CHARS,1)) == 0){
-				sysfatal("can't malloc buffer in PollDB: %r");
-			}
-		
-			if(en->mdate >= GetModTime(notiffile) && en->mdate < now && en->user_prefix && strstr(en->user_prefix,creamfilter)!=NULL)
+		if(startnotify){
+			while ((en = job_registry_get_next(rha, fd)) != NULL)
 			{
-				strudate=iepoch2str(en->udate);
-				sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%d; ChangeTime=\"%s\";",en->batch_id, en->status, strudate);
-				free(strudate);
-
-				if (strlen(en->wn_addr) > 0){
-					if((wn=malloc(strlen(en->wn_addr) + 22)) == 0){
-						sysfatal("can't malloc wn in PollDB: %r");
-					}
-					sprintf(wn," WorkerNode=\"%s\";",en->wn_addr);
-					strcat(buffer,wn);
-					free(wn);
+		
+				if(en->mdate >= GetModTime(notiffile) && en->mdate < now && en->user_prefix && strstr(en->user_prefix,creamfilter)!=NULL)
+				{
+					buffer=ComposeClassad(en);
+					NotifyCream(buffer);
+					free(buffer);
 				}
-				if (en->status == 3 || en->status == 4){
-					if((excode=malloc(NUM_CHARS + 45)) == 0){
-						sysfatal("can't malloc excode in PollDB: %r");
-					}
-					sprintf(excode," ExitCode=%d; Reason=\"reason=%d\";", en->exitcode, en->exitcode);
-					strcat(buffer,excode);
-					free(excode);
-				}
-				if (strlen(en->exitreason) > 0){
-					if((exreas=malloc(strlen(en->exitreason) + 20)) == 0){
-						sysfatal("can't malloc exreas in PollDB: %r");
-					}
-					sprintf(exreas," ExitReason=\"%s\";", en->exitreason);
-					strcat(buffer,exreas);
-					free(exreas);
-				}
-				if (strlen(en->user_prefix) > 0){
-					if((blahid=calloc(STR_CHARS,1)) == 0){
-						sysfatal("can't malloc blahid in PollDB: %r");
-					}
-					if((clientid=calloc(STR_CHARS,1)) == 0){
-						sysfatal("can't malloc clientid in PollDB: %r");
-					}
-					maxtok=strtoken(en->user_prefix,'_',&tbuf);
-					if(tbuf[1]){
-						if ((cp = strrchr (tbuf[1], '\n')) != NULL){
-							*cp = '\0';
-						}
-						if ((cp = strrchr (tbuf[1], '\r')) != NULL){
-							*cp = '\0';
-						}
-						 sprintf(clientid," ClientJobId=\"%s\";",tbuf[1]);
-					}
-					sprintf(blahid,"%s BlahJobName=\"%s\";",clientid, en->user_prefix);
-					strcat(buffer,blahid);
-					free(blahid);
-					freetoken(&tbuf,maxtok);
-                                        free(clientid);
-				}
-				strcat(buffer,"]\n");
-				NotifyCream(buffer);
+				free(en);
 			}
-			free(en);
-			free(buffer);
-		}
 
-	        /* change date of notification file */
-		UpdateFileTime(now);
+	        	/* change date of notification file */
+			UpdateFileTime(now);
+			
+		}else if(startnotifyjob){
+			if(debug>1){
+				fprintf(debuglogfile, "%s:Job list for notification:%s\n",argv0,joblist_string);
+				fflush(debuglogfile);
+			}
+			maxtok=strtoken(joblist_string,',',&tbuf);
+   			for(i=0;i<maxtok;i++){
+        			if ((en=job_registry_get(rha, tbuf[i])) != NULL){
+					buffer=ComposeClassad(en);
+					NotifyCream(buffer);
+				}else{
+					if((buffer=calloc(STR_CHARS,1)) == 0){
+						sysfatal("can't malloc buffer in PollDB: %r");
+					}
+					sprintf(buffer,"Jobid %s not found in registry\n",tbuf[i]);	
+					NotifyCream(buffer);
+				}
+				free(en);
+				free(buffer);
+			}
+			freetoken(&tbuf,maxtok);
+			
+	        	/* change date of notification file */
+			UpdateFileTime(now);
+			startnotifyjob=FALSE;
+			startnotify=TRUE;
+		}
 
 		if(firstnotify){
 			NotifyCream("NTFDATE/END\n");
@@ -316,6 +282,82 @@ PollDB()
 	}
 	return 0;
 }
+
+char *
+ComposeClassad(job_registry_entry *en){
+
+	char *strudate=NULL;
+	char *buffer=NULL;
+	char *wn=NULL;
+	char *excode=NULL;
+	char *exreas=NULL;
+	char *blahid=NULL;
+	char *clientid=NULL;
+        int  maxtok;
+        char **tbuf;
+	char *cp;
+			
+	if((buffer=calloc(STR_CHARS,1)) == 0){
+		sysfatal("can't malloc buffer in PollDB: %r");
+	}
+		
+	strudate=iepoch2str(en->udate);
+	sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%d; ChangeTime=\"%s\";",en->batch_id, en->status, strudate);
+	free(strudate);
+
+	if (strlen(en->wn_addr) > 0){
+		if((wn=malloc(strlen(en->wn_addr) + 22)) == 0){
+			sysfatal("can't malloc wn in ComposeClassad: %r");
+		}
+		sprintf(wn," WorkerNode=\"%s\";",en->wn_addr);
+		strcat(buffer,wn);
+		free(wn);
+		}
+	if (en->status == 3 || en->status == 4){
+		if((excode=malloc(NUM_CHARS + 45)) == 0){
+			sysfatal("can't malloc excode in ComposeClassad: %r");
+		}
+		sprintf(excode," ExitCode=%d; Reason=\"reason=%d\";", en->exitcode, en->exitcode);
+		strcat(buffer,excode);
+		free(excode);
+	}
+	if (strlen(en->exitreason) > 0){
+		if((exreas=malloc(strlen(en->exitreason) + 20)) == 0){
+			sysfatal("can't malloc exreas in ComposeClassad: %r");
+		}
+		sprintf(exreas," ExitReason=\"%s\";", en->exitreason);
+		strcat(buffer,exreas);
+		free(exreas);
+	}
+	if (strlen(en->user_prefix) > 0){
+		if((blahid=calloc(STR_CHARS,1)) == 0){
+			sysfatal("can't malloc blahid in ComposeClassad: %r");
+		}
+		if((clientid=calloc(STR_CHARS,1)) == 0){
+			sysfatal("can't malloc clientid in ComposeClassad: %r");
+		}
+		maxtok=strtoken(en->user_prefix,'_',&tbuf);
+		if(tbuf[1]){
+			if ((cp = strrchr (tbuf[1], '\n')) != NULL){
+				*cp = '\0';
+			}
+			if ((cp = strrchr (tbuf[1], '\r')) != NULL){
+				*cp = '\0';
+			}
+			 sprintf(clientid," ClientJobId=\"%s\";",tbuf[1]);
+		}
+		sprintf(blahid,"%s BlahJobName=\"%s\";",clientid, en->user_prefix);
+		strcat(buffer,blahid);
+		free(blahid);
+		freetoken(&tbuf,maxtok);
+		free(clientid);
+	}
+	strcat(buffer,"]\n");
+		
+	return buffer;
+		
+}
+
 int
 UpdateFileTime(int sec)
 {
@@ -458,12 +500,17 @@ write_c:
 					fprintf(debuglogfile, "Received for Cream:%s\n",buffer);
 					fflush(debuglogfile);
 				}
-				if(buffer && strstr(buffer,"STARTNOTIFY")!=NULL){
+				if(buffer && strstr(buffer,"STARTNOTIFY/")!=NULL){
 					NotifyStart(buffer);
 					startnotify=TRUE;
 					firstnotify=TRUE;
 				}
-                                if(buffer && strstr(buffer,"CREAMFILTER")!=NULL){
+				if(buffer && strstr(buffer,"STARTNOTIFYJOB/")!=NULL){
+					GetJobList(buffer);
+					startnotifyjob=TRUE;
+					firstnotify=TRUE;
+				}
+                                if(buffer && strstr(buffer,"CREAMFILTER/")!=NULL){
                                         GetFilter(buffer);
 					creamisconn=TRUE;
                                 }
@@ -472,7 +519,8 @@ write_c:
 	} 
 }
 
-int GetFilter(char *buffer){
+int 
+GetFilter(char *buffer){
 
         int  maxtok,i;
         char **tbuf;
@@ -513,7 +561,8 @@ int GetFilter(char *buffer){
 
 }
 
-int NotifyStart(char *buffer){
+int 
+NotifyStart(char *buffer){
 
         int  maxtok,i;
         char **tbuf;
@@ -540,6 +589,31 @@ int NotifyStart(char *buffer){
 
 	UpdateFileTime(notifepoch);
 	
+	return 0;
+
+}
+
+int 
+GetJobList(char *buffer){
+
+        int  maxtok,i;
+        char **tbuf;
+        char *cp;
+	
+        maxtok=strtoken(buffer,'/',&tbuf);
+
+        if(tbuf[1]){
+                joblist_string=strdup(tbuf[1]);
+                if ((cp = strrchr (joblist_string, '\n')) != NULL){
+                        *cp = '\0';
+                }
+                if ((cp = strrchr (joblist_string, '\r')) != NULL){
+                        *cp = '\0';
+                }
+        }
+
+	freetoken(&tbuf,maxtok);
+
 	return 0;
 
 }

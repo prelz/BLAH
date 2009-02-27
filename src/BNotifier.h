@@ -45,8 +45,10 @@
 
 int PollDB();
 int UpdateFileTime(int sec);
+char *ComposeClassad(job_registry_entry *en);
 int NotifyStart(char *buffer);
 int GetFilter(char *buffer);
+int GetJobList(char *buffer);
 int GetModTime(char *filename);
 void CreamConnection(int c_sock);
 int NotifyCream(char *buffer);
@@ -77,5 +79,6 @@ int  c_sock;
 
 int creamisconn=FALSE;
 int startnotify=FALSE;
+int startnotifyjob=FALSE;
 int firstnotify=FALSE;
-
+char *joblist_string=NULL;
