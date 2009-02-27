@@ -372,7 +372,7 @@ Job Id: 11.cream-12.pd.infn.it
 	fp = popen(command_string,"r");
 
 	en.status=UNDEFINED;
-	en.wn_addr[0]='\0';
+	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 	bupdater_free_active_jobs(&bact);
 
 	if(fp!=NULL){
@@ -391,7 +391,7 @@ Job Id: 11.cream-12.pd.infn.it
 				free(dgbtimestamp);
 			}
 			if(line && strstr(line,"Job Id: ")){
-				if(!first && en.status!=UNDEFINED && en.status!=IDLE && ren && (en.status!=ren->status)){
+				if(!first && en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren->status==HELD)) && ren && (en.status!=ren->status)){
                         		if ((ret=job_registry_update(rha, &en)) < 0){
 						if(ret != JOB_REGISTRY_NOT_FOUND){
                 	                		fprintf(stderr,"Append of record returns %d: ",ret);
@@ -405,6 +405,7 @@ Job Id: 11.cream-12.pd.infn.it
 						free(dgbtimestamp);
 					}
 					en.status = UNDEFINED;
+					JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 				}				
                         	maxtok_t = strtoken(line, ':', &token);
 				batch_str=strdel(token[1]," ");
@@ -423,12 +424,15 @@ Job Id: 11.cream-12.pd.infn.it
 				status_str=strdel(token[1]," ");
 				if(status_str && strcmp(status_str,"Q")==0){ 
 					en.status=IDLE;
+					JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 				}else if(status_str && strcmp(status_str,"W")==0){ 
 					en.status=IDLE;
+					JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 				}else if(status_str && strcmp(status_str,"R")==0){ 
 					en.status=RUNNING;
 				}else if(status_str && strcmp(status_str,"H")==0){ 
 					en.status=HELD;
+					JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 				}
 				free(status_str);
 				freetoken(&token,maxtok_t);
@@ -442,7 +446,7 @@ Job Id: 11.cream-12.pd.infn.it
 				free(twn_str);
  				free(wn_str);
 				freetoken(&token,maxtok_t);
-			}else if(line && strstr(line,"ctime = ")){	
+			}else if(line && strstr(line,"mtime = ")){	
                         	maxtok_t = strtoken(line, ' ', &token);
                         	if((timestamp=malloc(strlen(token[2]) + strlen(token[3]) + strlen(token[4]) + strlen(token[5]) + strlen(token[6]) + 6)) == 0){
                         	        sysfatal("can't malloc timestamp in IntStateQuery: %r");
@@ -458,7 +462,7 @@ Job Id: 11.cream-12.pd.infn.it
 		pclose(fp);
 	}
 	
-	if(en.status!=UNDEFINED && en.status!=IDLE && ren && (en.status!=ren->status)){
+	if(en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren->status==HELD)) && ren && (en.status!=ren->status)){
 		if ((ret=job_registry_update(rha, &en)) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
 				fprintf(stderr,"Append of record returns %d: ",ret);
