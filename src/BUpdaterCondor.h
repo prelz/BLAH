@@ -26,6 +26,8 @@
 #include "Bfunctions.h"
 #include "config.h"
 
+#define DEFAULT_LOOP_INTERVAL 5
+
 #ifndef VERSION
 #define VERSION            "1.8.0"
 #endif
@@ -40,8 +42,8 @@ char *registry_file;
 int purge_interval=864000;
 int finalstate_query_interval=30;
 int alldone_interval=600;
-int debug=0;
-int nodmn=0;
+int debug=FALSE;
+int nodmn=FALSE;
 
 FILE *debuglogfile;
 char *debuglogname;

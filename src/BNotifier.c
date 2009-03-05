@@ -28,10 +28,10 @@ int
 main(int argc, char *argv[])
 {
 
-	int       set = 1;
-	int       status;
-	int       version = 0;
-	int       list_c;
+	int set = 1;
+	int status;
+	int version = 0;
+	int list_c;
 
 	pthread_t CreamThd;
 	pthread_t PollThd;
@@ -179,7 +179,7 @@ PollDB()
         FILE *fd;
         job_registry_entry *en;
 	job_registry_handle *rha;
-	char *buffer;
+	char *buffer=NULL;
 	time_t now;
         int  maxtok,i;
         char **tbuf;
@@ -284,7 +284,8 @@ PollDB()
 }
 
 char *
-ComposeClassad(job_registry_entry *en){
+ComposeClassad(job_registry_entry *en)
+{
 
 	char *strudate=NULL;
 	char *buffer=NULL;
@@ -295,7 +296,7 @@ ComposeClassad(job_registry_entry *en){
 	char *clientid=NULL;
         int  maxtok;
         char **tbuf;
-	char *cp;
+	char *cp=NULL;
 			
 	if((buffer=calloc(STR_CHARS,1)) == 0){
 		sysfatal("can't malloc buffer in PollDB: %r");
@@ -520,11 +521,12 @@ write_c:
 }
 
 int 
-GetFilter(char *buffer){
+GetFilter(char *buffer)
+{
 
         int  maxtok,i;
         char **tbuf;
-        char *cp;
+        char *cp=NULL;
         char * out_buf;
 
         if((out_buf=calloc(STR_CHARS,1)) == 0){
@@ -562,12 +564,13 @@ GetFilter(char *buffer){
 }
 
 int 
-NotifyStart(char *buffer){
+NotifyStart(char *buffer)
+{
 
         int  maxtok,i;
         char **tbuf;
-        char *cp;
-	char *notifdate;
+        char *cp=NULL;
+	char *notifdate=NULL;
         int   notifepoch;
 	
         maxtok=strtoken(buffer,'/',&tbuf);
@@ -594,11 +597,12 @@ NotifyStart(char *buffer){
 }
 
 int 
-GetJobList(char *buffer){
+GetJobList(char *buffer)
+{
 
         int  maxtok,i;
         char **tbuf;
-        char *cp;
+        char *cp=NULL;
 	
         maxtok=strtoken(buffer,'/',&tbuf);
 

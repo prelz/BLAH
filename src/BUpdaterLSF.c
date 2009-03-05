@@ -41,7 +41,7 @@ int main(int argc, char *argv[]){
 	int tmptim;
 	char *dgbtimestamp;
 	time_t finalquery_start_date;
-	int loop_interval=5;
+	int loop_interval=DEFAULT_LOOP_INTERVAL;
 	
 	struct poptOption poptopt[] = {     
 		{ "nodaemon",      'o', POPT_ARG_NONE,   &nodmn, 	    0, "do not run as daemon",    NULL },
@@ -361,8 +361,8 @@ IntStateQueryShort()
 	char *cp=NULL; 
 	char *command_string=NULL;
 	job_registry_entry *ren=NULL;
-	int isresumed=0;
-	int first=1;
+	int isresumed=FALSE;
+	int first=TRUE;
 
 	if((command_string=malloc(strlen(lsf_binpath) + 17)) == 0){
 		sysfatal("can't malloc command_string %r");
@@ -423,7 +423,7 @@ IntStateQueryShort()
 					fprintf(stderr,"Get of record returns error ");
 					perror("");
 			}
-			first=0;        
+			first=FALSE;        
 			if(token[2] && strcmp(token[2],"PEND")==0){ 
 				en.status=IDLE;
 			}else if(token[2] && (strcmp(token[2],"USUSP")==0) || (strcmp(token[2],"PSUSP")==0) ||(strcmp(token[2],"SSUSP")==0)){ 
@@ -502,8 +502,8 @@ IntStateQuery()
 	char *batch_str=NULL;
 	char *command_string=NULL;
 	job_registry_entry *ren=NULL;
-	int isresumed=0;
-	int first=1;
+	int isresumed=FALSE;
+	int first=TRUE;
 
 	if((command_string=malloc(strlen(lsf_binpath) + 17)) == 0){
 		sysfatal("can't malloc command_string %r");
@@ -531,7 +531,7 @@ IntStateQuery()
 				free(dgbtimestamp);
 			}	
 			if(line && strstr(line,"Job <")){
-				isresumed=0;
+				isresumed=FALSE;
 				if(!first && en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD)) && ren && (en.status!=ren->status)){	
 					if ((ret=job_registry_update(rha, &en)) < 0){
 						if(ret != JOB_REGISTRY_NOT_FOUND){
@@ -557,7 +557,7 @@ IntStateQuery()
 						fprintf(stderr,"Get of record returns error ");
 						perror("");
 				}
-				first=0;
+				first=FALSE;
 			}else if(line && strstr(line," <PEND>, ")){	
 				en.status=IDLE;
 			}else if(line && strstr(line," <RUN>, ")){	
@@ -567,7 +567,7 @@ IntStateQuery()
 					if(ren && ren->status==HELD){
 						tmstampepoch=get_resume_timestamp(en.batch_id);
 						en.udate=tmstampepoch;
-						isresumed=1;
+						isresumed=TRUE;
 					}
 				}
 			}else if(line && (strstr(line," <USUSP>,") || strstr(line," <PSUSP>,") || strstr(line," <SSUSP>,"))){	
@@ -577,7 +577,7 @@ IntStateQuery()
 					tmstampepoch=get_susp_timestamp(en.batch_id);
 					en.udate=tmstampepoch;
 				}
-			}else if(line && strstr(line,"Started on ") && (en.status == RUNNING) && (isresumed == 0)){	
+			}else if(line && strstr(line,"Started on ") && (en.status == RUNNING) && (!isresumed)){	
 				maxtok_t = strtoken(line, ' ', &token);
                         	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
 					sysfatal("can't malloc timestamp in IntStateQuery: %r");

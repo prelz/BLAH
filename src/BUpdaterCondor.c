@@ -40,11 +40,11 @@ int main(int argc, char *argv[]){
 	poptContext poptcon;
 	int rc=0;			     
 	int version=0;
-	int qlen;
+	int qlen=0;
 	int first=TRUE;
-        int tmptim;
+        int tmptim=0;
 	char *dgbtimestamp;
-	int loop_interval=5;
+	int loop_interval=DEFAULT_LOOP_INTERVAL;
 	
 	struct poptOption poptopt[] = {     
 		{ "nodaemon",      'o', POPT_ARG_NONE,   &nodmn, 	    0, "do not run as daemon",    NULL },
@@ -340,15 +340,15 @@ IntStateQuery()
 */
 
         FILE *fp;
-	int len;
-	char *line;
+	int len=0;
+	char *line=NULL;
 	char **token;
 	int maxtok_t=0;
 	job_registry_entry en;
-	int ret;
-	char *cp; 
+	int ret=0;
+	char *cp=NULL; 
 	char *dgbtimestamp;
-	char *command_string;
+	char *command_string=NULL;
 	job_registry_entry *ren=NULL;
 
 	if((command_string=malloc(strlen(condor_binpath) + NUM_CHARS)) == 0){
@@ -435,15 +435,15 @@ FinalStateQuery(char *query)
  exitreason
 */
         FILE *fp;
-	int len;
-	char *line;
+	int len=0;
+	char *line=NULL;
 	char **token;
 	int maxtok_t=0;
 	job_registry_entry en;
-	int ret;
-	char *cp; 
+	int ret=0;
+	char *cp=NULL; 
 	char *dgbtimestamp;
-	char *command_string;
+	char *command_string=NULL;
 
 	if((command_string=malloc(NUM_CHARS + strlen(query) +strlen(condor_binpath))) == 0){
 		sysfatal("can't malloc command_string %r");

@@ -26,6 +26,8 @@
 #include "Bfunctions.h"
 #include "config.h"
 
+#define DEFAULT_LOOP_INTERVAL 5
+
 #ifndef VERSION
 #define VERSION            "1.8.0"
 #endif
@@ -46,8 +48,8 @@ int alldone_interval=600;
 int bhist_logs_to_read=1;
 char *bjobs_long_format="yes";
 char *use_bhist_for_susp="no";
-int debug=0;
-int nodmn=0;
+int debug=FALSE;
+int nodmn=FALSE;
 
 bupdater_active_jobs bact;
 
@@ -58,4 +60,3 @@ job_registry_handle *rha;
 config_handle *cha;
 config_entry *ret;
 char *progname="BUpdaterLSF";
-

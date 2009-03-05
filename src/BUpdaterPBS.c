@@ -43,7 +43,7 @@ int main(int argc, char *argv[]){
 	int tmptim;
 	char *dgbtimestamp;
 	int finstr_len=0;
-	int loop_interval=5;
+	int loop_interval=DEFAULT_LOOP_INTERVAL;
 	
 	bact.njobs = 0;
 	bact.jobs = NULL;
@@ -362,7 +362,7 @@ Job Id: 11.cream-12.pd.infn.it
 	char *cp=NULL;
 	char *command_string=NULL;
 	job_registry_entry *ren=NULL;
-	int first=1;
+	int first=TRUE;
 
 	if((command_string=malloc(strlen(pbs_binpath) + 10)) == 0){
 		sysfatal("can't malloc command_string %r");
@@ -418,7 +418,7 @@ Job Id: 11.cream-12.pd.infn.it
 						fprintf(stderr,"Get of record returns error ");
 						perror("");
 				}
-				first=0;				
+				first=FALSE;				
 			}else if(line && strstr(line,"job_state = ")){	
 				maxtok_t = strtoken(line, '=', &token);
 				status_str=strdel(token[1]," ");

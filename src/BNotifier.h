@@ -36,6 +36,7 @@
 #include "config.h"
 
 #define LISTENQ            1024
+#define NOTIF_FILE         "/tmp/.notiftime.txt" 
 
 #ifndef VERSION
 #define VERSION            "1.8.0"
@@ -57,7 +58,7 @@ int NotifyCream(char *buffer);
 
 char *progname="BNotifier";
 
-char *notiffile="/tmp/.notiftime.txt";
+char *notiffile=NOTIF_FILE;
 
 char *registry_file;
 
@@ -65,8 +66,8 @@ char *creamfilter=NULL;
 
 int async_notif_port;
 
-int debug=0;
-int nodmn=0;
+int debug=FALSE;
+int nodmn=FALSE;
 
 FILE *debuglogfile;
 char *debuglogname;

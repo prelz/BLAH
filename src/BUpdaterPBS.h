@@ -25,7 +25,8 @@
 #include "job_registry.h"
 #include "Bfunctions.h"
 #include "config.h"
-#include "mtsafe_popen.h"
+
+#define DEFAULT_LOOP_INTERVAL 5
 
 #ifndef VERSION
 #define VERSION            "1.8.0"
@@ -43,8 +44,8 @@ int purge_interval=864000;
 int finalstate_query_interval=30;
 int alldone_interval=600;
 int next_finalstatequery=0;
-int debug=0;
-int nodmn=0;
+int debug=FALSE;
+int nodmn=FALSE;
 
 bupdater_active_jobs bact;
 
@@ -55,4 +56,3 @@ job_registry_handle *rha;
 config_handle *cha;
 config_entry *ret;
 char *progname="BUpdaterPBS";
-
