@@ -387,7 +387,7 @@ IntStateQuery()
 					perror("");
 			}
 				
-			if(en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren->status==HELD)) && ren && (en.status!=ren->status)){	
+			if(en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD)) && ren && (en.status!=ren->status)){	
 				if ((ret=job_registry_update(rha, &en)) < 0){
 					if(ret != JOB_REGISTRY_NOT_FOUND){
 						fprintf(stderr,"Append of record returns %d: ",ret);
