@@ -27,7 +27,6 @@ main(int argc, char **argv)
 	int fd_socket, read_socket;
 	int listen_port;
 	struct timeval tv;
-	struct protoent *prot_descr;
 	struct sockaddr_storage discarded_addr;
 	int addr_size = sizeof(discarded_addr);
 	char *client_name = NULL;

@@ -30,8 +30,6 @@ main(int argc, char **argv)
 	struct sockaddr_in servAddr;
 	int server_port;
 	struct timeval tv;
-	struct protoent *prot_descr;
-	struct hostent *resolved_client;
 	int retcod, status;
 	int proxy_file;
 	char *proxy_filename;
