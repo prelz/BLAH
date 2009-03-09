@@ -23,9 +23,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <netdb.h>
-#include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include <sys/select.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -40,50 +40,85 @@ int
 main(int argc, char *argv[])
 {
     int fd_socket, read_socket;
-    struct sockaddr_in recvs;
-    struct protoent *prot_descr;
-    struct sockaddr_in cli_addr;
-    char client_ip[16];
+    int listen_port;
+    char client_ip[120];
     struct hostent *resolved_client;
-    int addr_size = sizeof(cli_addr);
+    struct sockaddr_storage tentative_addr;
+    struct sockaddr *cli_addr;
+    int real_addr_size;
     fd_set readfs, masterfs;
     int retcod, status;
     int exit_program = 0;
     pid_t pid;
+    char ainfo_port_string[16];
+    struct addrinfo ai_req, *ai_ans, *cur_ans;
+    int address_found;
 
+#ifdef MTRACE_ON
+    char mtrace_log[2048];
+#endif
+
+#ifdef MTRACE_ON
+    sprintf(mtrace_log, "mtrace_%d.log", getpid());
+    setenv("MALLOC_TRACE", mtrace_log, 1);
     mtrace();
+#endif
     
+    listen_port = 19999;
+    if (argc > 2)
+    {
+       if (strncmp(argv[1],"-p", 2) == 0)
+           listen_port = atoi(argv[2]);
+    }
+
     openlog("blahpd", LOG_PID, LOG_DAEMON);
     syslog(LOG_DAEMON | LOG_INFO, "Starting blah server (%s)", RCSID_VERSION);
     
     printf("Starting BLAHP server...\n");
     printf("%s\n", RCSID_VERSION);
 
-    recvs.sin_family = AF_INET;
-    recvs.sin_addr.s_addr = htonl(INADDR_ANY);
-    recvs.sin_port = htons(19999);
+    ai_req.ai_flags = AI_PASSIVE;
+    ai_req.ai_family = PF_UNSPEC;
+    ai_req.ai_socktype = SOCK_STREAM;
+    ai_req.ai_protocol = 0; /* Any stream protocol is OK */
 
-    prot_descr = getprotobyname("tcp");
-    if (prot_descr == NULL)
-    { 
-        fprintf(stderr, "TCP protocol could not be found in /etc/protocols.\n");
-        exit(1);
-    }
-    if ((fd_socket = socket(PF_INET,SOCK_STREAM, prot_descr->p_proto)) == -1)
+    sprintf(ainfo_port_string,"%5d",listen_port);
+
+    if (getaddrinfo(NULL, ainfo_port_string, &ai_req, &ai_ans) != 0)
     {
-        fprintf(stderr, "Cannot create socket: %s\n", strerror(errno));
+        fprintf(stderr, "Cannot get address of passive SOCK_STREAM socket.\n");
         exit(1);
     }
-    if (bind(fd_socket,(struct sockaddr *)&recvs,sizeof(recvs)) == -1)
+
+    address_found = 0;
+    for (cur_ans = ai_ans; cur_ans != NULL; cur_ans = cur_ans->ai_next)
     {
-        fprintf(stderr, "Cannot bind socket: %s\n", strerror(errno));
+        if ((fd_socket = socket(cur_ans->ai_family,
+                                cur_ans->ai_socktype,
+                              cur_ans->ai_protocol)) == -1)
+        {
+            continue; 
+        }
+        if (bind(fd_socket,cur_ans->ai_addr, cur_ans->ai_addrlen) == 0)
+        {
+            address_found = 1;
+            break;
+        }
+        close(fd_socket);
+    }
+    freeaddrinfo(ai_ans);
+
+    if (address_found == 0)
+    {
+        fprintf(stderr, "Cannot create or bind socket: %s\n", strerror(errno));
         exit(1);
     }
+
     if (listen(fd_socket,1) == -1)
     {
         fprintf(stderr, "Cannot listen from socket: %s\n", strerror(errno));
         exit(1);
-    } else printf("Server up and listening on port 19999...\n");
+    } else printf("Server up and listening on port %d...\n", listen_port);
 
     FD_ZERO(&masterfs);
     FD_SET(0, &masterfs);
@@ -110,12 +145,20 @@ main(int argc, char *argv[])
 
         if (FD_ISSET(fd_socket, &readfs))
         {
-            if ((read_socket = accept(fd_socket, (struct sockaddr *)&cli_addr, &addr_size)) == -1)
+            real_addr_size = sizeof(tentative_addr);
+            cli_addr = (struct sockaddr *)(&tentative_addr);
+            if ((read_socket = accept(fd_socket, cli_addr, &real_addr_size)) == -1)
             {
                 fprintf(stderr,"\nCannot accept connection: %s\n", strerror(errno));
                 exit(1);
             }
-            sprintf(client_ip, "%s", inet_ntoa(cli_addr.sin_addr));
+            if ((getnameinfo(cli_addr, real_addr_size,
+                             client_ip, sizeof(client_ip), NULL, 0, 0)) < 0)
+            {
+                client_ip[sizeof(client_ip)-1]='\000';
+                strncpy(client_ip, "-unknown-", sizeof(client_ip) - 1);
+            }
+
             printf("\nIncoming connection from %s\n", client_ip);
             while (waitpid(-1, &status, WNOHANG) > 0);
             pid = fork();
