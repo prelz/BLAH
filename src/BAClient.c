@@ -4,8 +4,9 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include <sys/select.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -31,12 +32,13 @@ main(int argc, char *argv[])
 {
 
 	int       conn_s;
-	struct    sockaddr_in servaddr;
 	char      buffer[MAX_LINE];
     
 	char      *address=NULL;
 	int       port = 0;
 	int       version=0;
+	char      ainfo_port_string[16];
+	struct    addrinfo ai_req, *ai_ans, *cur_ans;
 
 	fd_set   wset;
 	struct   timeval to;
@@ -86,29 +88,43 @@ main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	ai_req.ai_flags = 0;
+	ai_req.ai_family = PF_UNSPEC;
+	ai_req.ai_socktype = SOCK_STREAM;
+	ai_req.ai_protocol = 0; /* Any stream protocol is OK */
 
-	if ( (conn_s = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
-		fprintf(stderr,"%s: Error creating listening socket.\n",progname);
+	sprintf(ainfo_port_string,"%5d",port);
+
+	if (getaddrinfo(address, ainfo_port_string, &ai_req, &ai_ans) != 0) {
+		printf("%s: unknown host %s", progname, address);
 		exit(EXIT_FAILURE);
 	}
 
-	memset(&servaddr, 0, sizeof(servaddr));
-	servaddr.sin_family      = AF_INET;
-	servaddr.sin_port        = htons(port);
+	/* Try all found protocols and addresses */
+	for (cur_ans = ai_ans; cur_ans != NULL; cur_ans = cur_ans->ai_next)
+	{
+		/* Create the socket everytime (cannot be reused once closed) */
+		if ((conn_s = socket(cur_ans->ai_family, 
+				     cur_ans->ai_socktype,
+				     cur_ans->ai_protocol)) == -1)
+		{
+			continue;
+		}
 
+		if (connect(conn_s, cur_ans->ai_addr, cur_ans->ai_addrlen) == -1)
+		{
+			close(conn_s);
+			conn_s = -1;
+			continue;
+		}
+	}
+	freeaddrinfo(ai_ans);
 
-	/*  Set the remote IP address  */
-
-	if ( !address || inet_aton(address, &servaddr.sin_addr) <= 0 ) {
-		fprintf(stderr, "%s: Invalid remote IP address.\n",progname);
+	if (conn_s < 0 ) {
+		fprintf(stderr,"%s: Error creating or connecting socket.\n",progname);
 		exit(EXIT_FAILURE);
 	}
-    
-	if ( connect(conn_s, (struct sockaddr *) &servaddr, sizeof(servaddr) ) < 0 ) {
-		fprintf(stderr,"%s: Error calling connect().\n",progname);
-		exit(EXIT_FAILURE);
-	}
-    
+
 	if ((context_handle = initiate_context(credential_handle, "GSI-NO-TARGET", conn_s)) == GSS_C_NO_CONTEXT){
 		fprintf(stderr,"%s: Cannot initiate security context...\n",progname);
 		exit(EXIT_FAILURE);

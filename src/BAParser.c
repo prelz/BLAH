@@ -4,7 +4,6 @@ int
 main(int argc, char *argv[])
 {
 
-	struct    sockaddr_in servaddr;
 	char      *endptr;
 	int       i;
 	int       set = 1;
@@ -12,6 +11,9 @@ main(int argc, char *argv[])
     
 	int version=0;
 	const char *nport;
+        char ainfo_port_string[16];
+        struct addrinfo ai_req, *ai_ans, *cur_ans;
+        int address_found;
 
 	pthread_t ReadThd[NUMTHRDS];
     
@@ -62,32 +64,48 @@ main(int argc, char *argv[])
 		port=DEFAULT_PORT;
 	}	
 
+	ai_req.ai_flags = AI_PASSIVE;
+	ai_req.ai_family = PF_UNSPEC;
+	ai_req.ai_socktype = SOCK_STREAM;
+	ai_req.ai_protocol = 0; /* Any stream protocol is OK */
+
+	sprintf(ainfo_port_string,"%5d",port);
+
+	if (getaddrinfo(NULL, ainfo_port_string, &ai_req, &ai_ans) != 0) {
+		sysfatal("Error getting address of passive SOCK_STREAM socket: %r");
+	}
+
+	address_found = 0;
+	for (cur_ans = ai_ans; cur_ans != NULL; cur_ans = cur_ans->ai_next) {
+
+	 	/* Open the socket */
+	 	/* --------------- */
+		if ((list_s = socket(cur_ans->ai_family,
+					cur_ans->ai_socktype,
+					cur_ans->ai_protocol)) == -1)
+		{
+			continue;
+		}
+		if (bind(list_s,cur_ans->ai_addr, cur_ans->ai_addrlen) == 0) 
+		{
+			address_found = 1;
+			break;
+		}
+		close(list_s);
+	}
+	freeaddrinfo(ai_ans);
+
 	/*  Create the listening socket  */
 
-	if ( (list_s = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
-		sysfatal("Error creating listening socket: %r");
+	if ( address_found == 0 ) {
+		sysfatal("Error creating and binding socket: %r");
 	}
 
 	if(setsockopt(list_s, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0) {
+		close(list_s);
 		syserror("setsockopt() failed: %r");
 	}
 
-	/*  Set all bytes in socket address structure to
-	zero, and fill in the relevant data members   */
-
-	memset(&servaddr, 0, sizeof(servaddr));
-	servaddr.sin_family      = AF_INET;
-	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	servaddr.sin_port        = htons(port);
-
-
-	/*  Bind our socket addresss to the 
-	listening socket, and call listen()  */
-
-	if ( bind(list_s, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0 ) {
-		sysfatal("Error calling bind(): %r");
-	}
-    
 	if ( listen(list_s, LISTENQ) < 0 ) {
 		sysfatal("Error calling listen(): %r");
 	}
