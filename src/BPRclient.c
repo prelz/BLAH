@@ -121,9 +121,7 @@ main(int argc, char **argv)
 						cur_ans->ai_socktype,
 						cur_ans->ai_protocol)) == -1)
 			{
-				freeaddrinfo(ai_ans);
-				printf("%s: cannot create socket: %s", argv[0], strerror(errno));
-				exit(1);
+				continue;
 			}
 
 			if (connect(fd_socket, cur_ans->ai_addr, cur_ans->ai_addrlen) == -1)
