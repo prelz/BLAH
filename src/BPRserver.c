@@ -79,7 +79,7 @@ main(int argc, char **argv)
 	else          exit(3);
 
 
-	/* Cicle through the port range */
+	/* Cycle through the port range */
 	address_found = 0;
 	for (listen_port = PORT_RANGE_FROM; (address_found == 0) && (listen_port <= PORT_RANGE_TO); listen_port++)
 	{
@@ -91,10 +91,9 @@ main(int argc, char **argv)
                 sprintf(ainfo_port_string,"%5d",listen_port);
 
                 if (getaddrinfo(NULL, ainfo_port_string, &ai_req, &ai_ans) != 0) {
-                        printf("%s: cannot get address of passive SOCK_STREAM socket.", argv[0]);
+                        printf("%s: cannot get address of passive SOCK_STREAM socket.\n", argv[0]);
                         exit(4);
                 }
-                /* FIXME: Try all found protocols and addresses */
                 for (cur_ans = ai_ans; cur_ans != NULL; cur_ans = cur_ans->ai_next)
 		{
 
@@ -104,7 +103,6 @@ main(int argc, char **argv)
 						cur_ans->ai_socktype,
 						cur_ans->ai_protocol)) == -1)
 			{
-				close(fd_socket);
 				continue;
 			}
 			if (bind(fd_socket,cur_ans->ai_addr, cur_ans->ai_addrlen) == 0) 
