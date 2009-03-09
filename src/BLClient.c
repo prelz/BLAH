@@ -29,12 +29,14 @@ main(int argc, char *argv[])
 {
 
 	int       conn_s;
-	struct    sockaddr_in servaddr;
 	char      buffer[MAX_LINE];
     
 	char      *address=NULL;
 	int       port = 0;
 	int       version=0;
+	char      ainfo_port_string[16];
+	struct    addrinfo ai_req, *ai_ans, *cur_ans;
+
 
 	fd_set   wset;
 	struct   timeval to;
@@ -81,66 +83,66 @@ main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
      
-	if ( (conn_s = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
-		fprintf(stderr, "%s: Error creating listening socket.\n",progname);
+	ai_req.ai_flags = 0;
+	ai_req.ai_family = PF_UNSPEC;
+	ai_req.ai_socktype = SOCK_STREAM;
+	ai_req.ai_protocol = 0; /* Any stream protocol is OK */
+
+	sprintf(ainfo_port_string,"%5d",port);
+
+	if (getaddrinfo(address, ainfo_port_string, &ai_req, &ai_ans) != 0) {
+		printf("%s: unknown host %s", progname, address);
 		exit(EXIT_FAILURE);
 	}
 
-	memset(&servaddr, 0, sizeof(servaddr));
-	servaddr.sin_family      = AF_INET;
-	servaddr.sin_port        = htons(port);
-    
-	if ( !address || (hp = gethostbyname(address)) == NULL ){
-		fprintf(stderr, "%s: Invalid hostname.\n",progname);
-		exit(EXIT_FAILURE);
-	}
-    
-	if((ipaddr=calloc(STR_CHARS,1)) == 0){
-		fprintf(stderr, "%s: Can't malloc ipaddr.\n",progname);
-		exit(EXIT_FAILURE);
-	}
-	while ( hp -> h_addr_list[i] != NULL) {
-		strcat(ipaddr,inet_ntoa( *( struct in_addr*)( hp -> h_addr_list[i])));
-		i++;
-	}
-
-	if ( inet_aton(ipaddr, &servaddr.sin_addr) <= 0 ) {
-		fprintf(stderr, "%s: Invalid remote IP address.\n",progname);
-		exit(EXIT_FAILURE);
-	}
-   
-	if((r = fcntl(conn_s, F_GETFL, NULL)) < 0) {
-		fprintf(stderr, "%s: Error in getfl for socket.\n",progname);
-		exit(EXIT_FAILURE);
-	}
- 
-	r |= O_NONBLOCK;
- 
-	if(fcntl(conn_s, F_SETFL, r) < 0) {
-		fprintf(stderr, "%s: Error in setfl for socket.\n",progname);
-		exit(EXIT_FAILURE);
-	}
-        
-	if ( connect(conn_s, (struct sockaddr *) &servaddr, sizeof(servaddr) ) < 0 ) {
-		if(errno == EINPROGRESS) {
-			to.tv_sec  = CONN_TIMEOUT_SEC;
-			to.tv_usec = CONN_TIMEOUT_MSEC;
-            
-			FD_ZERO(&wset);
-			FD_SET(conn_s, &wset);
-	    
-			r = select(1 + conn_s, NULL, &wset, NULL, &to);
-            
-			if(r < 0) {
-				exit(EXIT_FAILURE);
-			} else if(r == 0) {
-				errno = ECONNREFUSED;
-				exit(EXIT_FAILURE);
-			}
-		} else {
-			exit(EXIT_FAILURE);
+	/* Try all found protocols and addresses */
+	for (cur_ans = ai_ans; cur_ans != NULL; cur_ans = cur_ans->ai_next)
+	{
+		/* Create the socket everytime (cannot be reused once closed) */
+		if ((conn_s = socket(cur_ans->ai_family, 
+				     cur_ans->ai_socktype,
+				     cur_ans->ai_protocol)) == -1)
+		{
+			continue;
 		}
-	}    
+
+		if((r = fcntl(conn_s, F_GETFL, NULL)) < 0) {
+			fprintf(stderr, "%s: Error in getfl for socket.\n",progname);
+			close(conn_s);
+			conn_s = -1;
+			continue;
+		}
+ 
+		r |= O_NONBLOCK;
+ 
+		if(fcntl(conn_s, F_SETFL, r) < 0) {
+			fprintf(stderr, "%s: Error in setfl for socket.\n",progname);
+			close(conn_s);
+			conn_s = -1;
+			continue;
+		}
+        
+		if ( connect(conn_s, cur_ans->ai_addr, cur_ans->ai_addrlen ) < 0 ) {
+			if(errno == EINPROGRESS) break;
+		} else break;   
+		close(conn_s);
+	}
+	freeaddrinfo(ai_ans);
+
+	to.tv_sec  = CONN_TIMEOUT_SEC;
+	to.tv_usec = CONN_TIMEOUT_MSEC;
+          
+	FD_ZERO(&wset);
+	FD_SET(conn_s, &wset);
+   
+	r = select(1 + conn_s, NULL, &wset, NULL, &to);
+          
+	if(r < 0) {
+		exit(EXIT_FAILURE);
+	} else if(r == 0) {
+		errno = ECONNREFUSED;
+		exit(EXIT_FAILURE);
+	}
 
 	if(FD_ISSET(conn_s, &wset)) {
          

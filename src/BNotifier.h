@@ -23,7 +23,9 @@
 */
 
 #include <utime.h>
+#include <sys/types.h>
 #include <sys/socket.h>
+#include <netdb.h>
 #include <arpa/inet.h> 
 #include <pthread.h>
 #include <signal.h>
@@ -72,9 +74,6 @@ int nodmn=FALSE;
 FILE *debuglogfile;
 char *debuglogname;
 
-struct sockaddr_in cservaddr;
-
-int  list_c;
 int  conn_c=-1;
 int  c_sock;
 

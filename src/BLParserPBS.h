@@ -6,8 +6,9 @@
 #include <stdarg.h>
 #include <string.h>
 #include <time.h>
-#include <sys/socket.h>
 #include <sys/types.h> 
+#include <sys/socket.h>
+#include <netdb.h>
 #include <arpa/inet.h> 
 #include <errno.h>
 #include <pthread.h>
@@ -114,9 +115,6 @@ int dmn=0;
 FILE *debuglogfile;
 char *debuglogname="/opt/glite/var/log/BLParserPBS.log";;
 
-struct sockaddr_in cservaddr;
-
-int  list_c;
 int  conn_c=-1;
 int  c_sock;
 

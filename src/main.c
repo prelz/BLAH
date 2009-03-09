@@ -42,12 +42,6 @@ int
 main(int argc, char *argv[])
 {
     int fd_socket, read_socket;
-    struct sockaddr_in recvs;
-    struct protoent *prot_descr;
-    struct sockaddr_in cli_addr;
-    char client_ip[16];
-    struct hostent *resolved_client;
-    int addr_size = sizeof(cli_addr);
     fd_set readfs, masterfs;
     int retcod, status;
     int exit_program = 0;

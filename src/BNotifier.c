@@ -32,6 +32,10 @@ main(int argc, char *argv[])
 	int status;
 	int version = 0;
 	int list_c;
+	char ainfo_port_string[16];
+	struct addrinfo ai_req, *ai_ans, *cur_ans;
+	int address_found;
+
 
 	pthread_t CreamThd;
 	pthread_t PollThd;
@@ -133,23 +137,44 @@ main(int argc, char *argv[])
 		sysfatal("Invalid port supplied for Cream: %r");
 	}
 
-	if ( (list_c = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
-		sysfatal("Error creating listening socket in main: %r");
+	ai_req.ai_flags = AI_PASSIVE;
+	ai_req.ai_family = PF_UNSPEC;
+	ai_req.ai_socktype = SOCK_STREAM;
+	ai_req.ai_protocol = 0; /* Any stream protocol is OK */
+
+	sprintf(ainfo_port_string,"%5d",async_notif_port);
+
+	if (getaddrinfo(NULL, ainfo_port_string, &ai_req, &ai_ans) != 0) {
+		sysfatal("Error getting address of passive SOCK_STREAM socket: %r");
+	}
+
+	address_found = 0;
+	for (cur_ans = ai_ans; cur_ans != NULL; cur_ans = cur_ans->ai_next) {
+
+		if ((list_c = socket(cur_ans->ai_family,
+				     cur_ans->ai_socktype,
+				     cur_ans->ai_protocol)) == -1)
+		{
+			continue;
+		}
+		if (bind(list_c,cur_ans->ai_addr, cur_ans->ai_addrlen) == 0) 
+		{
+			address_found = 1;
+			break;
+		}
+		close(list_c);
+	}
+	freeaddrinfo(ai_ans);
+
+	if ( address_found == 0 ) {
+		sysfatal("Error creating and binding socket: %r");
 	}
 
 	if(setsockopt(list_c, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0) {
+		close(list_c);
 		syserror("setsockopt() failed: %r");
 	}
 
-	memset(&cservaddr, 0, sizeof(cservaddr));
-	cservaddr.sin_family	= AF_INET;
-	cservaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	cservaddr.sin_port	= htons(async_notif_port);
-
-	if ( bind(list_c, (struct sockaddr *) &cservaddr, sizeof(cservaddr)) < 0 ) {
-		sysfatal("Error calling bind() in main: %r");
-	}
-     
 	if ( listen(list_c, LISTENQ) < 0 ) {
 		sysfatal("Error calling listen() in main: %r");
 	}
