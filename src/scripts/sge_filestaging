@@ -1,0 +1,30 @@
+#! /usr/bin/perl
+
+use Getopt::Long;
+
+my ( $STAGEIN, $FILELIST );
+
+GetOptions(
+    'stagein'	=> sub { $STAGEIN = 1; $FILELIST = 'SGE_stagein'; },
+    'stageout'	=> sub { $STAGEIN = 0; $FILELIST = 'SGE_stageout'; },
+    );
+
+exit 0 unless $FILELIST;
+
+my ( @FILES ) = split( /\@\@\@/, $ENV{$FILELIST} );
+
+foreach ( @FILES ) {
+    next unless /^([^\@]+)\@([^\:]+)\:(.+)$/;
+    
+    my $localfile     = $1;
+    my $remotemachine = $2;
+    my $remotefile    = $3;
+    
+    if ( $STAGEIN ) {
+	system( 'scp', "$remotemachine:$remotefile", $localfile );
+    } else {
+	system( 'scp', $localfile, "$remotemachine:$remotefile" );
+    }
+}
+
+exit( 0 );
