@@ -54,7 +54,7 @@ int nodmn=FALSE;
 bupdater_active_jobs bact;
 
 FILE *debuglogfile;
-char *debuglogname;
+char *debuglogname=NULL;
 
 job_registry_handle *rha;
 config_handle *cha;

@@ -99,8 +99,10 @@ int main(int argc, char *argv[]){
     
 	if(debuglogname){
 		if((debuglogfile = fopen(debuglogname, "a+"))==0){
-			debuglogfile =  fopen("/dev/null", "a+");
+			debug = 0;
 		}
+	}else{
+		debug = 0;
 	}
 	
         ret = config_get("pbs_binpath",cha);
