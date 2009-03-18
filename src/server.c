@@ -1087,10 +1087,7 @@ cmd_submit_job(void *args)
         {
                 conv_environment = ConvertArgs(environment,' ');
 		/* fprintf(stderr, "DEBUG: args conversion <%s> to <%s>\n", environment, conv_environment); */
-                if(conv_environment == NULL)
-                {
-                        free(environment);
-                }else
+                if(conv_environment != NULL)
                 {
                         command_ext = make_message("%s -V %s", command, conv_environment);
                         if (command_ext == NULL)
