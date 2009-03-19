@@ -63,6 +63,7 @@ char *strdel(char *s, const char *delete);
 char *iepoch2str(int epoch, char *f);
 int str2epoch(char *str, char *f);
 void daemonize();
+void sighup();
 void eprint(int err, char *fmt, va_list args);
 char *chopfmt(char *fmt);
 void syserror(char *fmt, ...);
@@ -113,7 +114,7 @@ int debug=0;
 int dmn=0;
 
 FILE *debuglogfile;
-char *debuglogname="/opt/glite/var/log/BLParserPBS.log";;
+char *debuglogname="/opt/glite/var/log/BLParserPBS.log";
 
 int  conn_c=-1;
 int  c_sock;

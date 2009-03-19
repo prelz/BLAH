@@ -23,7 +23,8 @@ main(int argc, char *argv[])
     
 	/*Ignore sigpipe*/
     
-	signal(SIGPIPE, SIG_IGN);             
+	signal(SIGPIPE, SIG_IGN);
+        signal(SIGHUP,sighup);
 
 	/* Get log dir name and port from conf file*/
 
@@ -2099,6 +2100,16 @@ daemonize()
 	freopen ("/dev/null", "w", stdout);
 	freopen ("/dev/null", "w", stderr); 
 
+}
+
+void sighup()
+{
+	
+	fclose(debuglogfile);
+	if((debuglogfile = fopen(debuglogname, "a+"))==0){
+		debuglogfile =  fopen("/dev/null", "a+");
+	}
+	
 }
 
 void

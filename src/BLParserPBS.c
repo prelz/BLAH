@@ -47,7 +47,8 @@ main(int argc, char *argv[])
 
 	/*Ignore sigpipe*/
     
-	signal(SIGPIPE, SIG_IGN);             
+	signal(SIGPIPE, SIG_IGN);
+        signal(SIGHUP,sighup);
         
 	poptcon = poptGetContext(NULL, argc, (const char **) argv, poptopt, 0);
  
@@ -1962,6 +1963,16 @@ daemonize()
 	freopen ("/dev/null", "w", stdout);
 	freopen ("/dev/null", "w", stderr);
 
+}
+
+void sighup()
+{
+	
+	fclose(debuglogfile);
+	if((debuglogfile = fopen(debuglogname, "a+"))==0){
+		debuglogfile =  fopen("/dev/null", "a+");
+	}
+	
 }
 
 void
