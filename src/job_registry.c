@@ -1176,7 +1176,7 @@ job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
         if ((rapp = job_registry_append_op(rha, &en, ofd, cfp_st.st_mtime)) < 0) 
          {
           free(cfp);
-          fclose(ofd);
+          if (fd == NULL && ofd != NULL) fclose(ofd);
           closedir(npd);
           return rapp;
          }
