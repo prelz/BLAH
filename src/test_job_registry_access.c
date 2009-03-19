@@ -103,7 +103,7 @@ main(int argc, char *argv[])
        {
         if (stat(pname, &pstat) < 0)
          {
-          fprintf(stderr,"%s: stat of %s fails: ", argv[0], pstat);
+          fprintf(stderr,"%s: stat of %s fails: ", argv[0], pname);
           perror("");
          }
        }
