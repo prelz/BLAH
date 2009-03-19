@@ -1098,12 +1098,12 @@ cmd_submit_job(void *args)
                                 free(conv_environment);
                                 goto cleanup_command;
                         }
+			/* Swap new command in */
+			free(command);
+			command = command_ext;
                 }
 		free(environment);
 		free(conv_environment);
-               /* Swap new command in */
-               free(command);
-               command = command_ext;
         }else
         if(set_cmd_string_option(&command, cad, "Env","-v", SINGLE_QUOTE) == C_CLASSAD_OUT_OF_MEMORY)
         {
