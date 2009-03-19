@@ -46,9 +46,10 @@ typedef uint32_t job_registry_update_bitmask_t;
 #define JOB_REGISTRY_MAX_USER_PREFIX 32
 #define JOB_REGISTRY_MAX_PROXY_LINK  40
 
+typedef uint32_t job_registry_entry_magic_t;
 typedef struct job_registry_entry_s
  {
-   uint32_t     magic_start; 
+   job_registry_entry_magic_t magic_start; 
    uint32_t     reclen;
    job_registry_recnum_t recnum;
    uid_t        submitter;
@@ -58,14 +59,31 @@ typedef struct job_registry_entry_s
    char         blah_id[JOBID_MAX_LEN];
    char         batch_id[JOBID_MAX_LEN];
    job_status_t status; 
-   int          exitcode;
+   int32_t          exitcode;
    char         exitreason[JOB_REGISTRY_MAX_EXITREASON];
    char         wn_addr[40]; /* Accommodates IPV6 addresses */
    char         user_prefix[JOB_REGISTRY_MAX_USER_PREFIX];
    char         proxy_link[JOB_REGISTRY_MAX_PROXY_LINK];
-   int          renew_proxy; 
-   uint32_t     magic_end; 
+   int32_t      renew_proxy; 
+#define                 JOB_REGISTRY_ENTRY_UPDATE_2 40
+   char         subject_hash[JOB_REGISTRY_ENTRY_UPDATE_2]; 
+   job_registry_entry_magic_t magic_end; 
  } job_registry_entry;
+
+/* The job_registry_entry struct can be expanded by *adding* fields         */
+/* before magic_end. When this is done, remember to update the following    */
+/* array definition: (zero-terminated array)  */
+
+#define JOB_REGISTRY_ENTRY_UPDATE_1 60
+
+#define N_JOB_REGISTRY_ALLOWED_ENTRY_SIZE_INCS 4
+#define JOB_REGISTRY_ALLOWED_ENTRY_SIZE_INCS  \
+      { sizeof(job_registry_entry) - \
+        2*sizeof(job_registry_entry_magic_t) - \
+        JOB_REGISTRY_ENTRY_UPDATE_1 - \
+        JOB_REGISTRY_ENTRY_UPDATE_2, \
+        JOB_REGISTRY_ENTRY_UPDATE_1, \
+        JOB_REGISTRY_ENTRY_UPDATE_2, 0 };
 
 #define JOB_REGISTRY_ASSIGN_ENTRY(dest,src) \
   (dest)[sizeof(dest)-1]='\000'; \
@@ -91,8 +109,10 @@ typedef struct job_registry_handle_s
    uint32_t lastrec;
    char *path;
    char *lockfile;
+   char *subjectfile;
    char *npudir;
    char *proxydir;
+   char *subjectlist;
    job_registry_index *entries;
    int n_entries;
    int n_alloc;
@@ -137,6 +157,8 @@ typedef struct job_registry_split_id_s
 
 char *jobregistry_construct_path(const char *format, const char *path,
                                  unsigned int num);
+size_t job_registry_probe_next_record(FILE *fd, job_registry_entry *en);
+int job_registry_update_reg(const job_registry_handle *rha, const char *old_path);
 int job_registry_purge(const char *path, time_t oldest_creation_date,
                        int force_rewrite);
 job_registry_handle *job_registry_init(const char *path, 
