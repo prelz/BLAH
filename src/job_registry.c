@@ -37,6 +37,8 @@
 
 #include "job_registry.h"
 
+#include "md5.h"
+
 /*
  * jobregistry_construct_path
  *
@@ -295,20 +297,114 @@ job_registry_purge(const char *path, time_t oldest_creation_date,
 }
 
 /*
+ * job_registry_probe_next_record
+ *
+ * Guess the record size in the registry file by looking for record magic
+ * numbers and matching them to a set of known sizes.
+ * Read a record that fits into our current job_registry_entry structure.
+ *
+ * @param fd File descriptor of an open and read-locked registry file.
+ * @param entry to be filled with data.
+ *
+ * @return Zero in case of error. Record size as found on disk on success.
+ *
+ */
+
+size_t
+job_registry_probe_next_record(FILE *fd, job_registry_entry *en)
+{
+  size_t rsize = 0;
+  size_t act_size;
+  long start_pos, end_pos, offset;
+  int sret, eret, cret;
+  int ic;
+  size_t allowed_size_incs[N_JOB_REGISTRY_ALLOWED_ENTRY_SIZE_INCS] =
+                             JOB_REGISTRY_ALLOWED_ENTRY_SIZE_INCS;
+
+  while (!feof(fd))
+   {
+    start_pos = ftell(fd);
+    if (start_pos < 0) return start_pos;
+
+    if ((sret=fread(&en->magic_start, 1, sizeof(en->magic_start), fd)) < 
+        sizeof(en->magic_start)) break;
+    if (en->magic_start != JOB_REGISTRY_MAGIC_START)
+     {
+      fseek(fd, -sret+1, SEEK_CUR);
+      continue;
+     }
+
+    for(ic=0;allowed_size_incs[ic] != 0;ic++)
+     {
+      fseek(fd, allowed_size_incs[ic], SEEK_CUR);
+
+      if ((eret=fread(&en->magic_end, 1, sizeof(en->magic_end), fd)) < sizeof(en->magic_end)) break;
+      end_pos = ftell(fd);
+      if (end_pos < 0) return end_pos;
+
+      if (en->magic_end == JOB_REGISTRY_MAGIC_END)
+       {
+        /* Declare an end-of-record only if at end-of-file or if */
+        /* followed by a start-of-record */
+        if ((cret=fread(&en->magic_start, 1, sizeof(en->magic_start), fd)) == sizeof(en->magic_start))
+         {
+          if (en->magic_start == JOB_REGISTRY_MAGIC_START)
+           {
+            fseek(fd, end_pos, SEEK_SET);
+            break;
+           }
+         }
+        else
+         {
+          if (feof(fd)) en->magic_start == JOB_REGISTRY_MAGIC_START;
+          break;
+         }
+       }
+      fseek(fd, end_pos-eret, SEEK_SET);
+     }
+
+    if (en->magic_start == JOB_REGISTRY_MAGIC_START &&
+        en->magic_end == JOB_REGISTRY_MAGIC_END)
+     {
+      rsize = end_pos - start_pos;
+      break;
+     }
+   }
+
+  if (rsize > 0)
+   {
+    if (fseek(fd, start_pos, SEEK_SET) < 0) return -1;
+    if (rsize > sizeof(*en)) act_size = sizeof(*en);
+    else act_size = rsize;
+
+    memset(en, 0, sizeof(*en));
+
+    if (fread(en, act_size - sizeof(en->magic_end), 1, fd) < 1) return -1;
+    if (fseek(fd, end_pos, SEEK_SET) < 0) return -1;
+
+    en->magic_end = JOB_REGISTRY_MAGIC_END;
+   }
+
+  return rsize;
+}
+
+/*
  * job_registry_update_reg
  *
- * Converts an old registry to a newer format. This assumes
+ * Converts an old registry to a newer format at path rha->path. This assumes
  * The registry entry structure is always expanded at the tail,
  * before the final magic number, and that zeroing out the new
  * part is OK.
  *
+ * @param rha Pointer to a job registry handle. The current lockfile
+ *            will be obtained.
  * @param old_path Pathname of the old job registry file.
- * @param new_path Pathname of the new job registry file.
  *
  */
 
 int
-job_registry_update_reg(const char *old_path, const char *new_path)
+job_registry_update_reg(const job_registry_handle *rha,
+                        const char *old_path)
 {
   FILE *of, *nf;
   job_registry_entry en;
@@ -320,36 +416,23 @@ job_registry_update_reg(const char *old_path, const char *new_path)
   of = fopen(old_path,"r");
   if (of == NULL) return -1;
 
-  nf = fopen(new_path,"w");
+  nf = fopen(rha->path,"w");
   if (nf == NULL)
    {
     fclose(of);
+    return -1;
+   }
+  if (job_registry_wrlock(rha,nf) < 0)
+   {
+    fclose(of);
+    fclose(nf);
     return -1;
    }
 
   encount = 0;
   while (!feof(of))
    {
-    wret = 0;
-    if ((rret=fread(&en, 1, sizeof(en), of)) < sizeof(en.magic_start)) break;
-    if (en.magic_start != JOB_REGISTRY_MAGIC_START)
-     {
-      fseek(of, -rret+1, SEEK_CUR);
-      continue;
-     }
-    for(i=sizeof(en.magic_start), enendp = (unsigned char *)(&en) + i;
-        i <= (rret - sizeof(en.magic_start)) && 
-            (*(uint32_t *)(enendp)) != JOB_REGISTRY_MAGIC_END;
-        i++, enendp++) /*Empty loop - scan to end of record magic */ ;
-    if ((*(uint32_t *)(enendp)) != JOB_REGISTRY_MAGIC_END)
-     {
-      fseek(of, -rret+1, SEEK_CUR);
-      continue;
-     }
-    fseek(of, -sizeof(en)+i+sizeof(en.magic_end), SEEK_CUR);
-    /* Zero out tail of record and set new magic end */
-    for (;i<sizeof(en);i++,enendp++) *enendp = 0;
-    en.magic_end = JOB_REGISTRY_MAGIC_END;
+    if ((rret = job_registry_probe_next_record(of, &en)) == 0) break;
     if ((wret = fwrite(&en, sizeof(en), 1, nf)) < 1) break;
     else encount++;
    }
@@ -357,11 +440,12 @@ job_registry_update_reg(const char *old_path, const char *new_path)
   fclose(of);
   fclose(nf);
 
-  if (wret < 0 || rret < 0)
+  if (wret < 1 || rret < 0)
    {
-    unlink(new_path);
+    unlink(rha->path);
     return -1;
    }
+  else unlink(old_path);
 
   return encount;
 }
@@ -389,6 +473,8 @@ job_registry_init(const char *path,
                   job_registry_index_mode mode)
 {
   job_registry_handle *rha;
+  job_registry_entry junk;
+  size_t found_size;
   struct stat fst, lst, dst;
   char real_file_name[FILENAME_MAX];
   int rlnk_status;
@@ -434,6 +520,7 @@ job_registry_init(const char *path,
    }
   sprintf(rha->path, "%s/%s", path, JOB_REGISTRY_REGISTRY_NAME);
 
+  /* Create path and dir for NPU storage */
   rha->npudir = jobregistry_construct_path("%s/%s.npudir",rha->path,0);
   if (rha->npudir == NULL)
    {
@@ -501,13 +588,12 @@ job_registry_init(const char *path,
         free(old_npudir);
         unlink(old_lockfile); /* No real worry if this fails */
         free(old_lockfile);
-        if (job_registry_update_reg(old_path, rha->path) < 0)
+        if (job_registry_update_reg(rha, old_path) < 0)
          {
           free(old_path);
           job_registry_destroy(rha);
           return NULL; /* keep the rename errno */
          }
-        unlink(old_path); /* No more worry if this fails */
        }
      }
    }
@@ -545,9 +631,18 @@ job_registry_init(const char *path,
      }
    }
 
-  /* Create path and dir for NPU and proxy storage */
+  /* Create path and dir for proxy storage */
   rha->proxydir = jobregistry_construct_path("%s/%s.proxydir",rha->path,0);
   if (rha->proxydir == NULL)
+   {
+    job_registry_destroy(rha);
+    errno = ENOMEM;
+    return NULL;
+   }
+
+  /* Create path for subject list */
+  rha->subjectlist = jobregistry_construct_path("%s/%s.subjectlist",rha->path,0);
+  if (rha->subjectlist == NULL)
    {
     job_registry_destroy(rha);
     errno = ENOMEM;
@@ -598,12 +693,15 @@ job_registry_init(const char *path,
   /* Now read the entire file and cache its contents */
 
   /* In NO_INDEX mode only firstrec and lastrec will be updated */
-  fd = job_registry_open(rha, "r");
+  /* Don't merge pending updates (use fopen instead of job_registry_open), as */
+  /* we may be in need of a registry format update. */
+
+  fd = fopen(rha->path, "r");
   if (fd == NULL)
    {
     /* Make sure the file is group writable. */
     old_umask = umask(S_IWOTH);
-    if (errno == ENOENT) fd = job_registry_open(rha, "w+");
+    if (errno == ENOENT) fd = fopen(rha->path, "w+");
     umask(old_umask);
     if (fd == NULL)
      {
@@ -613,9 +711,59 @@ job_registry_init(const char *path,
    }
   if (job_registry_rdlock(rha, fd) < 0)
    {
+    fclose(fd);
     job_registry_destroy(rha);
     return NULL;
    }
+
+  /* Is the record structure on disk of a different size than our current one ? */
+  /* We may need a registry update. */
+
+  found_size = job_registry_probe_next_record(fd, &junk);
+
+  if ((found_size > 0) && (found_size != sizeof(job_registry_entry)))
+   {
+    /* Move old registry away and update it */
+    old_path = jobregistry_construct_path("%s/%s.oldreg",rha->path,0);
+    if (old_path == NULL)
+     {
+      job_registry_destroy(rha);
+      errno = ENOMEM;
+      return NULL;
+     }
+    if (rename(rha->path, old_path) < 0)
+     {
+      free(old_path);
+      job_registry_destroy(rha);
+      return NULL;
+     }
+    fclose(fd); /* Release lock */
+    if (job_registry_update_reg(rha, old_path) < 0)
+     {
+      free(old_path);
+      job_registry_destroy(rha);
+      return NULL; /* keep the rename errno */
+     }
+    free(old_path);
+   }
+  else fclose(fd);
+
+  /* Now it's safe to attempt a NPU merge */
+  job_registry_merge_pending_nonpriv_updates(rha, NULL);
+
+  fd = fopen(rha->path, "r");
+  if (fd == NULL)
+   {
+    job_registry_destroy(rha);
+     return NULL;
+   }
+  if (job_registry_rdlock(rha, fd) < 0)
+   {
+    fclose(fd);
+    job_registry_destroy(rha);
+    return NULL;
+   }
+
   if (job_registry_resync(rha, fd) < 0)
    {
     fclose(fd);
@@ -643,6 +791,7 @@ job_registry_destroy(job_registry_handle *rha)
    if (rha->lockfile != NULL) free(rha->lockfile);
    if (rha->npudir != NULL) free(rha->npudir);
    if (rha->proxydir != NULL) free(rha->proxydir);
+   if (rha->subjectlist != NULL) free(rha->subjectlist);
    rha->n_entries = rha->n_alloc = 0;
    if (rha->entries != NULL) free(rha->entries);
    free(rha);
@@ -1132,66 +1281,53 @@ job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
       cfd = fopen(cfp, "r");
       if (cfd == NULL) continue;
 
-      frret = fread(&en, sizeof(job_registry_entry), 1, cfd);
-      if (frret == 0 && feof(cfd))
+      frret = job_registry_probe_next_record(cfd, &en);
+      if (frret == 0)
        {
-        /* File too short. Get rid of it. */
+        /* Can't get anything out of this file. Get rid of it. */
         fclose(cfd);
         unlink(cfp);
         free(cfp);
         continue;
        }
 
-      if (frret == 1)
+      fclose(cfd);
+      if (ofd == NULL)
        {
-        fclose(cfd);
-        if (ofd == NULL)
-         {
-          /* Open file and writelock it */
-          /* Don't user job_registry_open, as we get called from */
-          /* within it. */
+        /* Open file and writelock it */
+        /* Don't user job_registry_open, as we get called from */
+        /* within it. */
 
-          ofd = fopen(rha->path,"a+");
-          if (ofd == NULL) return JOB_REGISTRY_FOPEN_FAIL;
+        ofd = fopen(rha->path,"a+");
+        if (ofd == NULL) return JOB_REGISTRY_FOPEN_FAIL;
 
-          if (job_registry_wrlock(rha,ofd) < 0)
-           {
-            free(cfp);
-            fclose(ofd);
-            closedir(npd);
-            return JOB_REGISTRY_FLOCK_FAIL;
-           }
-         }
-
-        if (en.magic_start != JOB_REGISTRY_MAGIC_START ||
-            en.magic_end   != JOB_REGISTRY_MAGIC_END)
-         {
-          /* File contains garbage. Waste it. */
-          unlink(cfp);
-          free(cfp);
-          continue;
-         }
-         
-        /* Use the file mtime as event creation timestamp */
-        if ((rapp = job_registry_append_op(rha, &en, ofd, cfp_st.st_mtime)) < 0) 
+        if (job_registry_wrlock(rha,ofd) < 0)
          {
           free(cfp);
-          if (fd == NULL && ofd != NULL) fclose(ofd);
+          fclose(ofd);
           closedir(npd);
-          return rapp;
-         }
-        else
-         {
-          nadd++;
-          unlink(cfp);
-          /* FIXME: If the unlink operation fails we should report a warning. */
-          /* No bad things will happen if this file is re-read, but that */
-          /* will be inefficient. The job registry creator should *always* */
-          /* be able to unlink the file as it is also the owner of the ufd */
-          /* directory. */
+          return JOB_REGISTRY_FLOCK_FAIL;
          }
        }
-      else fclose(cfd);
+
+      /* Use the file mtime as event creation timestamp */
+      if ((rapp = job_registry_append_op(rha, &en, ofd, cfp_st.st_mtime)) < 0) 
+       {
+        free(cfp);
+        if (fd == NULL && ofd != NULL) fclose(ofd);
+        closedir(npd);
+        return rapp;
+       }
+      else
+       {
+        nadd++;
+        unlink(cfp);
+        /* FIXME: If the unlink operation fails we should report a warning. */
+        /* No bad things will happen if this file is re-read, but that */
+        /* will be inefficient. The job registry creator should *always* */
+        /* be able to unlink the file as it is also the owner of the ufd */
+        /* directory. */
+       }
       free(cfp);
      }
    }
