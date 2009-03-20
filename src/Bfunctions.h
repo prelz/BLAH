@@ -37,6 +37,7 @@
 #include <sys/poll.h>
 #include <popt.h>
 #include <math.h>
+#include <signal.h>
 #include "blahpd.h"
 
 #define STR_CHARS          50000

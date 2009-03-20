@@ -35,6 +35,7 @@
 int IntStateQuery();
 int FinalStateQuery(char *input_string);
 int AssignFinalState(char *batchid);
+void sighup();
 
 int runfinal=FALSE;
 char *pbs_binpath=NULL;

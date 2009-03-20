@@ -55,6 +55,7 @@ int GetJobList(char *buffer);
 int GetModTime(char *filename);
 void CreamConnection(int c_sock);
 int NotifyCream(char *buffer);
+void sighup();
 
 /* Variables initialization */
 

@@ -58,6 +58,7 @@ main(int argc, char *argv[])
 	/*Ignore sigpipe*/
     
 	signal(SIGPIPE, SIG_IGN);             
+        signal(SIGHUP,sighup);
     
 	poptcon = poptGetContext(NULL, argc, (const char **) argv, poptopt, 0);
  
@@ -734,3 +735,12 @@ NotifyCream(char *buffer)
 
 }
 
+void sighup()
+{
+        if(debug){
+                fclose(debuglogfile);
+                if((debuglogfile = fopen(debuglogname, "a+"))==0){
+                        debug = 0;
+                }
+        }
+}

@@ -51,6 +51,8 @@ int main(int argc, char *argv[]){
 	};
 		
 	argv0 = argv[0];
+	
+        signal(SIGHUP,sighup);
 
 	poptcon = poptGetContext(NULL, argc, (const char **) argv, poptopt, 0);
  
@@ -944,3 +946,14 @@ int AssignFinalState(char *batchid){
 	
 	return 0;
 }
+
+void sighup()
+{
+	if(debug){
+        	fclose(debuglogfile);
+        	if((debuglogfile = fopen(debuglogname, "a+"))==0){
+                	debug = 0;
+        	}
+	}
+}
+

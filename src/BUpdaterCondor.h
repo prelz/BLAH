@@ -35,6 +35,7 @@
 int IntStateQuery();
 int FinalStateQuery(char *query);
 int AssignFinalState(char *batchid);
+void sighup();
 
 int runfinal=FALSE;
 char *condor_binpath;
