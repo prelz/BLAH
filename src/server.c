@@ -1180,7 +1180,7 @@ cmd_submit_job(void *args)
 		resultLine = make_message("%s 8 no\\ jobId\\ in\\ submission\\ script's\\ output\\ (stdout:%s)\\ (stderr:%s) N/A", reqId, escpd_cmd_out, escpd_cmd_err);
 		if (escpd_cmd_out != blah_omem_msg) free(escpd_cmd_out);
 		if (escpd_cmd_err != blah_omem_msg) free(escpd_cmd_err);
-		goto cleanup_cmd_out;
+		goto cleanup_regbuf;
 	}
 
 	cmd_out[pmatch[2].rm_eo] = '\000';
@@ -1195,10 +1195,11 @@ cmd_submit_job(void *args)
 
 	/* Free up all arguments and exit (exit point in case of error is the label
 	   pointing to last successfully allocated variable) */
+cleanup_regbuf:
+	regfree(&regbuf);
 cleanup_cmd_out:
 	free(cmd_out);
 	if (cmd_err) free(cmd_err);
-	regfree(&regbuf);
 cleanup_command:
 	free(command);
 cleanup_proxyname:
