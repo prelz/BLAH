@@ -1085,25 +1085,27 @@ cmd_submit_job(void *args)
         /*if present environment attribute must be used instead of env */
         if ((result = classad_get_dstring_attribute(cad, "environment", &environment)) == C_CLASSAD_NO_ERROR)
         {
-                conv_environment = ConvertArgs(environment,' ');
-		/* fprintf(stderr, "DEBUG: args conversion <%s> to <%s>\n", environment, conv_environment); */
-                if(conv_environment != NULL)
-                {
-                        command_ext = make_message("%s -V %s", command, conv_environment);
-                        if (command_ext == NULL)
-                        {
-                                /* PUSH A FAILURE */
+		if (environment[0] != '\000')
+		{
+                	conv_environment = ConvertArgs(environment, ' ');
+			free(environment);
+			/* fprintf(stderr, "DEBUG: args conversion <%s> to <%s>\n", environment, conv_environment); */
+                	if (conv_environment)
+                	{
+				command_ext = make_message("%s -V %s", command, conv_environment);
+				free(conv_environment);
+			}
+
+			if ((conv_environment == NULL) || (command_ext == NULL))
+			{
+				/* PUSH A FAILURE */
                                 resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
-                                free(environment);
-                                free(conv_environment);
-                                goto cleanup_command;
-                        }
+				goto cleanup_command;
+			}
 			/* Swap new command in */
 			free(command);
 			command = command_ext;
-                }
-		free(environment);
-		free(conv_environment);
+		}
         }else
         if(set_cmd_string_option(&command, cad, "Env","-v", SINGLE_QUOTE) == C_CLASSAD_OUT_OF_MEMORY)
         {
@@ -1129,7 +1131,7 @@ cmd_submit_job(void *args)
 			if ((conv_arguments == NULL) || (command_ext == NULL))
 			{
 				/* PUSH A FAILURE */
-				resultLine = make_message("%s 1 Out\\ of\\ memory\\ creating\\ submission\\ command", reqId);
+				resultLine = make_message("%s 1 Out\\ of\\ memory\\ creating\\ submission\\ command N/A", reqId);
 				goto cleanup_command;
 			}
 			/* Swap new command in */
