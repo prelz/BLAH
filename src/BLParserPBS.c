@@ -1967,12 +1967,12 @@ daemonize()
 
 void sighup()
 {
-	
-	fclose(debuglogfile);
-	if((debuglogfile = fopen(debuglogname, "a+"))==0){
-		debuglogfile =  fopen("/dev/null", "a+");
-	}
-	
+	if(debug){
+		fclose(debuglogfile);
+		if((debuglogfile = fopen(debuglogname, "a+"))==0){
+			debuglogfile =  fopen("/dev/null", "a+");
+		}
+	}	
 }
 
 void
