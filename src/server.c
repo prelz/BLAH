@@ -1106,6 +1106,7 @@ cmd_submit_job(void *args)
 			free(command);
 			command = command_ext;
 		}
+		else free(environment);
         }else
         if(set_cmd_string_option(&command, cad, "Env","-v", SINGLE_QUOTE) == C_CLASSAD_OUT_OF_MEMORY)
         {
@@ -1138,6 +1139,7 @@ cmd_submit_job(void *args)
 			free(command);
 			command = command_ext;
 		}
+		else free(arguments);
 	}
 	else if (set_cmd_string_option(&command, cad, "Args","--", NO_QUOTE) == C_CLASSAD_OUT_OF_MEMORY)
         {
