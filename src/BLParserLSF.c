@@ -24,7 +24,7 @@ main(int argc, char *argv[])
 	/*Ignore sigpipe*/
     
 	signal(SIGPIPE, SIG_IGN);
-        signal(SIGHUP,sighup);
+	signal(SIGHUP,sighup);
 
 	/* Get log dir name and port from conf file*/
 
@@ -237,7 +237,7 @@ mytail (void *infile)
         
 	char *linebuffer;
     
-	if((linebuffer=calloc(STR_CHARS,1)) == 0){
+	if((linebuffer=calloc(MAX_CHARS,1)) == 0){
 		sysfatal("can't malloc linebuffer: %r");
 	}
     
@@ -252,6 +252,7 @@ follow(char *infile, char *line)
 	FILE *fp;
 	long off = 0;
 	long real_off = 0;
+	long tmp_off = 0;
 	char *s;
 	char *ts;
 	
@@ -291,7 +292,8 @@ follow(char *infile, char *line)
 			sysfatal("couldn't seek: %r");
 		}
         
-		off = tail(fp, line, off);
+		tmp_off = tail(fp, line, off);
+		off=tmp_off;
 		fclose(fp);
 		sleep(1);
 	}        
@@ -303,8 +305,8 @@ tail(FILE *fp, char *line, long old_off)
 	long off=0;
 	long act_off=old_off;
 
-	while(fgets(line, STR_CHARS, fp)){
-		if (strrchr (line, '\n') == NULL){
+	while(fgets(line, MAX_CHARS, fp)){
+		if (strrchr(line, '\n') == NULL){
 			return act_off;
 		}
 		if(line && ((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_status)!=NULL) || (strstr(line,rex_signal)!=NULL))){        

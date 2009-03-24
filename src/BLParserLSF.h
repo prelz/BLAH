@@ -24,14 +24,14 @@
 
 #define LISTENQ            1024
 #define DEFAULT_PORT       33333 
-#define MAX_CHARS          100000
+#define MAX_CHARS          200000
 #define STR_CHARS          3000
 #define NUM_CHARS          300
 #define RDXHASHSIZE        20000
 #define CRMHASHSIZE        60000
 #define NUMTHRDS           3
 #define ERRMAX             80
-#define TBUFSIZE           400 
+#define TBUFSIZE           100000
 #define WRETRIES           10
 
 #ifndef VERSION
