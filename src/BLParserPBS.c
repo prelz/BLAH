@@ -48,7 +48,7 @@ main(int argc, char *argv[])
 	/*Ignore sigpipe*/
     
 	signal(SIGPIPE, SIG_IGN);
-        signal(SIGHUP,sighup);
+	signal(SIGHUP,sighup);
         
 	poptcon = poptGetContext(NULL, argc, (const char **) argv, poptopt, 0);
  
