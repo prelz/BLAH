@@ -8,10 +8,8 @@
 #include "config.h"
 
 #define RCSID_VERSION		"$GahpVersion: %s Mar 31 2008 INFN\\ blahpd\\ (%s) $"
-#define BUFFER_FILE		"/tmp/blahp_result_buffer"
-#define FLUSHED_BUFFER		"/tmp/blahp_result_buffer.flushed"
 
-#define DEFAULT_GLITE_LOCATION	"/opt/glite"
+#define DEFAULT_GLITE_LOCATION "/opt/glite"
 #define DEFAULT_GLEXEC_COMMAND "/opt/glite/sbin/glexec"
 
 /* Change this in order to select the default batch system
@@ -45,14 +43,6 @@ typedef enum job_states {
 	COMPLETED,
 	HELD
 } job_status_t;
-
-/* Struct for the result lines 
- * (single linked list)        
- * */
-typedef struct s_resline {
-	struct s_resline *next;
-	char *text;
-} t_resline;
 
 
 char *make_message(const char *fmt, ...);

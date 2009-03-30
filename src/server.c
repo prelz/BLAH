@@ -73,7 +73,6 @@
 #include "proxy_hashcontainer.h"
 
 #define COMMAND_PREFIX "-c"
-#define PERSISTENT_BUFFER BUFFER_DONT_SAVE
 #define JOBID_REGEXP            "(^|\n)BLAHP_JOBID_PREFIX([^\n]*)"
 #define HOLD_JOB                1
 #define RESUME_JOB              0
