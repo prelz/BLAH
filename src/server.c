@@ -542,8 +542,7 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 			pthread_mutex_lock(&send_lock);
 			if (reply)
 			{
-				if (write(server_socket, reply, strlen(reply)) > 0)
-					remove(FLUSHED_BUFFER);
+				write(server_socket, reply, strlen(reply));
 				free(reply);
 			}
 			else
