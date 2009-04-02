@@ -2538,82 +2538,63 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 }
 
 
-int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char* userDN, char** environment)
+int
+logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char* userDN, char** environment)
 {
 	int i=0, rc=0, cs=0, result=0, fd = -1, count = 0, slen = 0, slen2 = 0;
-	FILE *cmd_out=NULL;
-	FILE *conf_file=NULL;
 	char *log_line;
-	char *proxname=NULL;
 	char *gridjobid=NULL;
 	char *ce_id=NULL;
 	char *ce_idtmp=NULL;
-	char *login=NULL;
 	char *temp_str=NULL;
-	char date_str[MAX_TEMP_ARRAY_SIZE], jobid_trunc[MAX_TEMP_ARRAY_SIZE];
+	char date_str[MAX_TEMP_ARRAY_SIZE];
 	time_t tt;
 	struct tm *t_m=NULL;
 	char *glite_loc=NULL;
 	char host_name[MAX_TEMP_ARRAY_SIZE];
 	char *jobid=NULL;
 	char *lrms_jobid=NULL;
-	int id;
-	char bs[4];
+	char *bs;
 	char *queue=NULL;
 	char *esc_userDN=NULL;
 	char *uid;
-	memset(jobid_trunc,0,MAX_TEMP_ARRAY_SIZE);
+	job_registry_split_id *spid;
 
 	/* Get values from environment and compose the logfile pathname */
 	if ((glite_loc = getenv("GLITE_LOCATION")) == NULL)
 	{
 		glite_loc = DEFAULT_GLITE_LOCATION;
 	}
+
 	/* Submission time */
 	time(&tt);
 	t_m = gmtime(&tt);
-	/* sprintf(date_str,"%04d-%02d-%02d\\\ %02d:%02d:%02d", 1900+t_m->tm_year, t_m->tm_mon+1, t_m->tm_mday, t_m->tm_hour, t_m->tm_min, t_m->tm_sec);*/
-	sprintf(date_str,"%04d-%02d-%02d\\ %02d:%02d:%02d", 1900+t_m->tm_year, t_m->tm_mon+1, t_m->tm_mday, t_m->tm_hour, t_m->tm_min, t_m->tm_sec);
+	sprintf(date_str, "%04d-%02d-%02d\\ %02d:%02d:%02d", 1900+t_m->tm_year,
+	                  t_m->tm_mon+1, t_m->tm_mday, t_m->tm_hour, t_m->tm_min, t_m->tm_sec);
 
 	/* These data must be logged in the log file:
 	 "timestamp=<submission time to LRMS>" "userDN=<user's DN>" "userFQAN=<user's FQAN>"
 	 "ceID=<CE ID>" "jobID=<grid job ID>" "lrmsID=<LRMS job ID>"
 	*/
+
 	/* grid jobID  : if we are here we suppose that the edg_jobid is present, if not we log an empty string*/
-	if(*environment)
+	classad_get_dstring_attribute(cad, "edg_jobid", &gridjobid);
+	if ((*environment) && (gridjobid == NULL))
 	{
-		classad_get_dstring_attribute(cad, "edg_jobid", &gridjobid);
-		if(gridjobid==NULL) classad_get_dstring_attribute(cad, "uniquejobid", &gridjobid);
-	}else
-		classad_get_dstring_attribute(cad, "edg_jobid", &gridjobid);
-	if(!gridjobid) gridjobid=make_message("");
+		classad_get_dstring_attribute(cad, "uniquejobid", &gridjobid);
+	}
+	if (gridjobid == NULL) gridjobid = make_message("");
 
-	/* job ID */
-	/*
-	strncpy(jobid_trunc, &jobId[JOBID_PREFIX_LEN], strlen(jobId) - JOBID_PREFIX_LEN);
-	jobid_trunc[strlen(jobId) - JOBID_PREFIX_LEN]=0;
-	*/
-	strncpy(jobid_trunc, jobId, sizeof(jobid_trunc));
-
-	/* lrmsID : if hostname.domain is missing it must be added  !!!!! */
-	gethostname(host_name, MAX_TEMP_ARRAY_SIZE);
-	jobid = basename(jobid_trunc);
-	if(strlen(jobid) <= strlen(host_name))
+	/* lrms job ID */
+	if((spid = job_registry_split_blah_id(jobId)) == NULL)
 	{
-		/*add hostname*/
-		lrms_jobid=make_message("%s.%s",jobid,host_name);	
-
-	}else
-	if(strcmp(host_name,&jobid[strlen(jobid) - strlen(host_name)]))
-	{
-		/*add hostname*/
-		lrms_jobid=make_message("%s.%s",jobid,host_name);
-
-	}else lrms_jobid=strdup(jobid);
+		fprintf(stderr, "blahpd: logAccInf called with bad jobId <%s>. Nothing will be logged\n", jobId);
+		return(1);
+	}
+	lrms_jobid = spid->proxy_id;
 
 	/* Ce ID */
-	memcpy(bs,jobid_trunc,3);
-	bs[3]=0;
+	bs = spid->lrms;
 	classad_get_dstring_attribute(cad, "CeID", &ce_id);
 	if(!ce_id) 
 	{
@@ -2635,6 +2616,8 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
 		}
 		if (queue) free(queue);
 	}
+
+	/* user ID */
 	if(*environment)
 	{
 	 	/* need to fork and glexec an id command to obtain real user */
@@ -2656,7 +2639,7 @@ int  logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan,
 	free(esc_userDN);
 	if (ce_id) free(ce_id);
 	memset(fqan,0,MAX_TEMP_ARRAY_SIZE);
-	free(lrms_jobid);
+	job_registry_free_split_id(spid);
 	return 0;
 }
 
