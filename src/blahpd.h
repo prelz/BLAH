@@ -45,6 +45,4 @@ typedef enum job_states {
 } job_status_t;
 
 
-char *make_message(const char *fmt, ...);
-
 #endif /* defined BLAHPD_H_INCLUDED */

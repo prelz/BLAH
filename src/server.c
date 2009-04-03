@@ -71,6 +71,7 @@
 #include "resbuffer.h"
 #include "mtsafe_popen.h"
 #include "proxy_hashcontainer.h"
+#include "blah_utils.h"
 
 #define COMMAND_PREFIX "-c"
 #define JOBID_REGEXP            "(^|\n)BLAHP_JOBID_PREFIX([^\n]*)"
@@ -113,7 +114,6 @@ const char *statusstring[] = {
 
 /* Function prototypes */
 char *get_command(int client_socket);
-char *escape_spaces(const char *str);
 int set_cmd_list_option(char **command, classad_context cad, const char *attribute, const char *option);
 int set_cmd_string_option(char **command, classad_context cad, const char *attribute, const char *option, const int quote_style);
 int set_cmd_int_option(char **command, classad_context cad, const char *attribute, const char *option, const int quote_style);
@@ -157,7 +157,6 @@ char *gloc = NULL;
 int enable_condor_glexec = FALSE;
 int require_proxy_on_submit = FALSE;
 int disable_wn_proxy_renewal = FALSE;
-static char *blah_omem_msg="Out\\ of\\ memory";
 
 /* GLEXEC ENVIRONMENT VARIABLES */
 #define GLEXEC_MODE_IDX         0
@@ -667,7 +666,7 @@ cmd_use_cached_proxy(void *args)
 			/* Check that the proxy dir is group writable */
 			escaped_proxy = escape_spaces(entry->proxy_file_name);
 			/* Out of memory: Try with the full name */
-			if (escaped_proxy == NULL) escaped_proxy = entry->proxy_file_name;
+			if (!BLAH_DYN_ALLOCATED(escaped_proxy)) escaped_proxy = entry->proxy_file_name;
 			else need_to_free_escaped_proxy = 1;
 
 			proxy_name = strdup(entry->proxy_file_name);
@@ -1153,12 +1152,11 @@ cmd_submit_job(void *args)
 	{
 		/* PUSH A FAILURE */
 		escpd_cmd_out = escape_spaces(cmd_out);
-		if (escpd_cmd_out == NULL) escpd_cmd_out = blah_omem_msg;
 		escpd_cmd_err = escape_spaces(cmd_err);
-		if (escpd_cmd_err == NULL) escpd_cmd_err = blah_omem_msg;
-		resultLine = make_message("%s %d submission\\ command\\ failed\\ (exit\\ code\\ =\\ %d)\\ (stdout:%s)\\ (stderr:%s) N/A", reqId, retcod, retcod, escpd_cmd_out, escpd_cmd_err);
-		if (escpd_cmd_out != blah_omem_msg) free(escpd_cmd_out);
-		if (escpd_cmd_err != blah_omem_msg) free(escpd_cmd_err);
+		resultLine = make_message("%s %d submission\\ command\\ failed\\ (exit\\ code\\ =\\ %d)\\ (stdout:%s)\\ (stderr:%s) N/A",
+		                           reqId, retcod, retcod, escpd_cmd_out, escpd_cmd_err);
+		if (BLAH_DYN_ALLOCATED(escpd_cmd_out)) free(escpd_cmd_out);
+		if (BLAH_DYN_ALLOCATED(escpd_cmd_err)) free(escpd_cmd_err);
 		goto cleanup_cmd_out;
 	}
 
@@ -1174,12 +1172,10 @@ cmd_submit_job(void *args)
 	{
 		/* PUSH A FAILURE */
 		escpd_cmd_out = escape_spaces(cmd_out);
-		if (escpd_cmd_out == NULL) escpd_cmd_out = blah_omem_msg;
 		escpd_cmd_err = escape_spaces(cmd_err);
-		if (escpd_cmd_err == NULL) escpd_cmd_err = blah_omem_msg;
 		resultLine = make_message("%s 8 no\\ jobId\\ in\\ submission\\ script's\\ output\\ (stdout:%s)\\ (stderr:%s) N/A", reqId, escpd_cmd_out, escpd_cmd_err);
-		if (escpd_cmd_out != blah_omem_msg) free(escpd_cmd_out);
-		if (escpd_cmd_err != blah_omem_msg) free(escpd_cmd_err);
+		if (BLAH_DYN_ALLOCATED(escpd_cmd_out)) free(escpd_cmd_out);
+		if (BLAH_DYN_ALLOCATED(escpd_cmd_err)) free(escpd_cmd_err);
 		goto cleanup_regbuf;
 	}
 
@@ -1265,12 +1261,10 @@ cmd_cancel_job(void* args)
 	{
 		/* PUSH A FAILURE */
 		escpd_cmd_out = escape_spaces(cmd_out);
-		if (escpd_cmd_out == NULL) escpd_cmd_out = blah_omem_msg;
 		escpd_cmd_err = escape_spaces(cmd_err);
-		if (escpd_cmd_err == NULL) escpd_cmd_err = blah_omem_msg;
 		resultLine = make_message("%s %d Cancellation\\ command\\ failed\\ (stdout:%s)\\ (stderr:%s)", reqId, retcod, escpd_cmd_out, escpd_cmd_err);
-		if (escpd_cmd_out != blah_omem_msg) free(escpd_cmd_out);
-		if (escpd_cmd_err != blah_omem_msg) free(escpd_cmd_err);
+		if (BLAH_DYN_ALLOCATED(escpd_cmd_out)) free(escpd_cmd_out);
+		if (BLAH_DYN_ALLOCATED(escpd_cmd_err)) free(escpd_cmd_err);
 		goto cleanup_command;
 	}	
 
@@ -1340,7 +1334,7 @@ cmd_status_job(void *args)
 					resultLine = make_message("%s %d %s %d %s", reqId, retcode, esc_errstr, jobStatus, esc_str_cad);
 				classad_free(status_ad[i]);
 				free(str_cad);
-				free(esc_str_cad);
+				if (BLAH_DYN_ALLOCATED(esc_str_cad)) free(esc_str_cad);
 			}
 			else
 			{
@@ -1350,7 +1344,7 @@ cmd_status_job(void *args)
 				else
 					resultLine = make_message("%s 1 %s 0 N/A", reqId, esc_errstr);
 			}
-			free(esc_errstr);
+			if (BLAH_DYN_ALLOCATED(esc_errstr)) free(esc_errstr);
 			enqueue_result(resultLine);
 			free(resultLine);
 		}
@@ -1361,7 +1355,7 @@ cmd_status_job(void *args)
 		resultLine = make_message("%s %d %s 0 N/A", reqId, retcode, esc_errstr);
 		enqueue_result(resultLine);
 		free(resultLine);
-		free(esc_errstr);
+		if (BLAH_DYN_ALLOCATED(esc_errstr)) free(esc_errstr);
 	}
 
 	/* Free up all arguments */
@@ -1399,7 +1393,7 @@ cmd_status_job_all(void *args)
 	  	/* Report error opening registry. */
 		esc_errstr = escape_spaces(strerror(errno));
 		resultLine = make_message("%s 1 Cannot\\ open\\ BLAH\\ job\\ registry:\\ %s N/A", reqId, esc_errstr);
-		free(esc_errstr);
+		if (BLAH_DYN_ALLOCATED(esc_errstr)) free(esc_errstr);
 		goto wrap_up;
 	}
 	if (job_registry_rdlock(blah_jr_handle, fd) < 0)
@@ -1407,7 +1401,7 @@ cmd_status_job_all(void *args)
 	  	/* Report error locking registry. */
 		esc_errstr = escape_spaces(strerror(errno));
 		resultLine = make_message("%s 1 Cannot\\ lock\\ BLAH\\ job\\ registry:\\ %s N/A", reqId, esc_errstr);
-		free(esc_errstr);
+		if (BLAH_DYN_ALLOCATED(esc_errstr)) free(esc_errstr);
 		goto wrap_up;
 	}
 
@@ -1463,7 +1457,7 @@ cmd_status_job_all(void *args)
 			resultLine = make_message("%s 0 No\\ error [%s]", reqId, esc_str_cad);
 		else resultLine = make_message("%s 1 Out\\ of\\ memory\\ servicing\\ status_all\\ request N/A", reqId);
 		free(str_cad);
-		if (esc_str_cad != NULL) free(esc_str_cad);
+		if (BLAH_DYN_ALLOCATED(esc_str_cad)) free(esc_str_cad);
 	} else {
 		resultLine = make_message("%s 0 No\\ error []", reqId);
 	}
@@ -1606,7 +1600,7 @@ get_status_and_old_proxy(int use_glexec, char *jobDescr,
 			{
 				escaped_command = escape_spaces(command);
 				*error_string = make_message("%s\\ returns\\ %d\\ and\\ no\\ proxy.", escaped_command, retcod);;
-				free(escaped_command);
+				if (BLAH_DYN_ALLOCATED(escaped_command)) free(escaped_command);
 			}
 			/* Proxy link for renewal is not accessible */
 			/* Try with .norenew */
@@ -1687,13 +1681,13 @@ cmd_renew_proxy(void *args)
 	if ((jobStatus=get_status_and_old_proxy(use_glexec, jobDescr, argv + CMD_RENEW_PROXY_ARGS + 1, &old_proxy, &workernode, &error_string)) < 0)
 	{
 		resultLine = make_message("%s 1 Cannot\\ locate\\ old\\ proxy:\\ %s", reqId, error_string);
-		if (error_string != NULL) free(error_string);
+		if (BLAH_DYN_ALLOCATED(error_string)) free(error_string);
 		if (old_proxy != NULL) free(old_proxy);
 		if (workernode != NULL) free(workernode);
 	}
 	else
 	{
-		if (error_string != NULL) free(error_string);
+		if (BLAH_DYN_ALLOCATED(error_string)) free(error_string);
 		switch(jobStatus)
 		{
 			case 1: /* job queued: copy the proxy locally */
@@ -1852,7 +1846,7 @@ cmd_send_proxy_to_worker_node(void *args)
 			error_string = strdup("Cannot\\ execute\\ BPRclient");
 
 		resultLine = make_message("%s %d %s", reqId, retcod, error_string);
-		free(error_string);
+		if (BLAH_DYN_ALLOCATED(error_string)) free(error_string);
 		free(command);
 	}
 	else
@@ -1933,13 +1927,12 @@ hold_res_exec(char* jobdescr, char* reqId, char* action, int status, char **envi
 	if(retcod)
 	{
 		escpd_cmd_out = escape_spaces(cmd_out);
-		if (escpd_cmd_out == NULL) escpd_cmd_out = blah_omem_msg;
 		escpd_cmd_err = escape_spaces(cmd_err);
-		if (escpd_cmd_err == NULL) escpd_cmd_err = blah_omem_msg;
 		resultLine = make_message("%s %d Job\\ %s:\\ %s\\ not\\ supported\\ by\\ %s\\ (stdout:%s)\\ (stderr:%s)", reqId, retcod, statusstring[status - 1], action, spid->lrms, escpd_cmd_out, escpd_cmd_err);
-		if (escpd_cmd_out != blah_omem_msg) free(escpd_cmd_out);
-		if (escpd_cmd_err != blah_omem_msg) free(escpd_cmd_err);
-	}else
+		if (BLAH_DYN_ALLOCATED(escpd_cmd_out)) free(escpd_cmd_out);
+		if (BLAH_DYN_ALLOCATED(escpd_cmd_err)) free(escpd_cmd_err);
+	}
+	else
 		resultLine = make_message("%s %d No\\ error", reqId, retcod);
 
 	if (cmd_out != NULL) free(cmd_out);
@@ -2146,34 +2139,6 @@ cmd_get_hostport(void *args)
 
 /* Utility functions
  * */
-
-char 
-*escape_spaces(const char *str)
-{
-	char *buffer;
-	char cur;
-	int i, j;
-
-	if ((buffer = (char *) malloc (strlen(str) * 2 + 1)) == NULL)
-	{
-		fprintf(stderr, "Out of memory.\n");
-		exit(MALLOC_ERROR);
-	}
-
-	for (i = 0, j = 0; i <= strlen(str); i++, j++)
-	{
-		cur = str[i];
-		if (cur == '\r') cur = '-';
-		else if (cur == '\n') cur = '-';
-		else if (cur == '\t') cur = ' ';
-
-		if (cur == ' ') buffer[j++] = '\\';
-		buffer[j] = cur;
-	}
-	/* FIXME 24-11-06 what is this realloc for??????? */
-	/* realloc(buffer, strlen(buffer) + 1); */
-	return(buffer);
-}
 
 char*
 get_command(int s)
@@ -2430,28 +2395,6 @@ set_cmd_list_option(char **command, classad_context cad, const char *attribute, 
 	return(result);
 }
 
-char *
-make_message(const char *fmt, ...)
-{
-	int n;
-	char *result = NULL;
-	va_list ap;
-
-	va_start(ap, fmt);
-	n = vsnprintf(NULL, 0, fmt, ap) + 1;
-	va_end(ap);
-
-	result = (char *) malloc (n);
-	if (result)
-	{
-		va_start(ap, fmt);
-		vsnprintf(result, n, fmt, ap);
-		va_end(ap);
-	}
-
-	return(result);
-}
-
 int
 limit_proxy(char* proxy_name, char *limited_proxy_name)
 {
@@ -2636,7 +2579,7 @@ logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char
 	if(gridjobid) free(gridjobid);
 	free(uid);
 	free(log_line);
-	free(esc_userDN);
+	if (BLAH_DYN_ALLOCATED(esc_userDN)) free(esc_userDN);
 	if (ce_id) free(ce_id);
 	memset(fqan,0,MAX_TEMP_ARRAY_SIZE);
 	job_registry_free_split_id(spid);

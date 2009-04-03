@@ -30,6 +30,8 @@
 #include "blahpd.h"
 #include "mtsafe_popen.h"
 #include "job_registry.h"
+#include "blah_utils.h"
+
 #define MAX_TEMP_ARRAY_SIZE              1000
 #define CAD_LEN                          1024
 
