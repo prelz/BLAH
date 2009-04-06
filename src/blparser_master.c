@@ -114,7 +114,7 @@ void check_on_children_args(const struct blah_managed_child *children, const int
 				if(j = wordexp(children[i].exefile, &args, 0))
 				{
 					fprintf(stderr,"wordexp: unable to parse the command line \"%s\" (error %d)\n", children[i].exefile, j);
-                			return NULL;
+                			return;
         			}
 				/* Child process. Exec exe file. */
 				if (execv(args.we_wordv[0], args.we_wordv) < 0)
@@ -137,9 +137,9 @@ void check_on_children_args(const struct blah_managed_child *children, const int
 					if (errno == ESRCH) try_to_restart = 1;
 				}else{
         				fpid = fopen(children[i].pidfile, "w");
-        				if ( !fpid ) { perror(children[i].pidfile); return 1; }
-					if (fprintf(fpid, "%d", fret) <= 0) { perror(children[i].pidfile); return 1; }
-        				if (fclose(fpid) != 0) { perror(children[i].pidfile); return 1; }
+        				if ( !fpid ) { perror(children[i].pidfile); return; }
+					if (fprintf(fpid, "%d", fret) <= 0) { perror(children[i].pidfile); return; }
+        				if (fclose(fpid) != 0) { perror(children[i].pidfile); return; }
 				}
 			}
 			new_lastfork = now;
@@ -308,7 +308,7 @@ main(int argc, char *argv[])
 	}
 	
 	config_file = (char *)malloc(strlen(CONFIG_FILE_PARSER)+strlen(blah_location)+6);
-	if (config_file == NULL) return NULL;
+	if (config_file == NULL) return -1;
 	sprintf(config_file,"%s/etc/%s",blah_location,CONFIG_FILE_PARSER);
 
         blah_config_handle = config_read(config_file);

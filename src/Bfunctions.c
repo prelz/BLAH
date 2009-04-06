@@ -105,7 +105,7 @@ char *get_line(FILE * f)
         size += BUFSIZ;
         buf = realloc(buf,size);           
         buf[last]='\000';
-	if (fgets(buf+last,size-last,f) == EOF) break;
+	if (fgets(buf+last,size-last,f) == NULL) break;
         len = strlen(buf);
         last = len - 1;
     } while (!feof(f) && buf[last]!='\n');
