@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.34 2009/04/03 11:10:37 drebatto Exp $ 
+# $Id: Makefile.am,v 1.35 2009/04/06 13:59:17 drebatto Exp $ 
 #
 # File:           Makefile.am
 #
@@ -111,7 +111,7 @@ BUpdaterPBS_LDADD = -lpopt -lpthread -lm
 BUpdaterSGE_SOURCES = BUpdaterSGE.c Bfunctions.c job_registry.c config.c
 BUpdaterSGE_LDADD = -lpopt -lpthread
 
-blparser_master_SOURCES = blparser_master.c config.c
+blparser_master_SOURCES = blparser_master.c config.c blah_utils.c
 blparser_master_LDADD = 
 
 noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h mtsafe_popen.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h condor_create_log.h proxy_hashcontainer.h job_registry.h config.h BUpdaterCondor.h Bfunctions.h BNotifier.h BUpdaterLSF.h BUpdaterPBS.h BUpdaterSGE.h blah_utils.h

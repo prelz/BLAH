@@ -16,6 +16,7 @@
 
 #include "blahpd.h"
 #include "config.h"
+#include "blah_utils.h"
 
 #define CONFIG_FILE_PARSER "blparser.conf"
 #define PID_DIR "/var/run"
@@ -185,24 +186,6 @@ void sigterm(){
 	}
 	exit(0);
 
-}
-
-char *
-make_message(const char *fmt, ...)
-{
-	int n;
-	char *result = NULL;
-	va_list ap;
-
-	va_start(ap, fmt);
-	n = vsnprintf(NULL, 0, fmt, ap) + 1;
-
-	result = (char *) malloc (n);
-	if (result)
-		vsnprintf(result, n, fmt, ap);
-	va_end(ap);
-
-	return(result);
 }
 
 void
