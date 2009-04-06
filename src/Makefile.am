@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.35 2009/04/06 13:59:17 drebatto Exp $ 
+# $Id: Makefile.am,v 1.36 2009/04/06 17:29:21 drebatto Exp $ 
 #
 # File:           Makefile.am
 #
@@ -75,7 +75,7 @@ BDlogger_SOURCES = BDlogger.c
 
 BDlogger_LDADD =
 
-test_condor_logger_SOURCES = test_condor_create_log.c condor_create_log.c config.c
+test_condor_logger_SOURCES = test_condor_create_log.c condor_create_log.c config.c blah_utils.c
 test_condor_logger_CFLAGS = $(AM_CFLAGS)
 
 blah_job_registry_add_SOURCES = blah_job_registry_add.c job_registry.c config.c

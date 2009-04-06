@@ -25,6 +25,7 @@
 #include <sys/stat.h>
 #include "condor_create_log.h"
 #include "config.h"
+#include "blah_utils.h"
 
 #define MAX_TEMP_ARRAY_SIZE              1000
 #define DEFAULT_GLITE_LOCATION  	"/opt/glite"
@@ -35,8 +36,6 @@ static config_handle *blah_config_handle=NULL;
 /* prototypes */
 int logAccInfo(char* jobId, char* gridjobid, char* ce_id, char* queue, char* fqan, char* userDN);
 int getProxyInfo(char* proxname, char* fqan, char* userDN);
-char *make_message(const char *fmt, ...);
-char* escape_spaces(const char *str);
 char* lower(char* tlowstring);
 char* getValue(char* field, int fieldnum, char** name, char** value);
 
@@ -212,26 +211,6 @@ int getProxyInfo(char* proxname, char* fqan, char* userDN)
 }
 
 /* Utility functions */
-char
-*escape_spaces(const char *str)
-{
-        char *buffer;
-        int i, j;
-
-        if ((buffer = (char *) malloc (strlen(str) * 2 + 1)) == NULL)
-        {
-                fprintf(stderr, "Out of memory.\n");
-                exit(1);
-        }
-
-        for (i = 0, j = 0; i <= strlen(str); i++, j++)
-        {
-                if (str[i] == ' ') buffer[j++] = '\\';
-                buffer[j] = str[i];
-        }
-        realloc(buffer, strlen(buffer) + 1);
-        return(buffer);
-}
 
 char* getValue(char* field, int fieldnum, char** name, char** value)
 {
@@ -258,19 +237,3 @@ char* lower(char* tlowstring)
 	return lowstr;
 }
 
-char* make_message(const char *fmt, ...)
-{
-        int n;
-        char *result = NULL;
-        va_list ap;
-
-        va_start(ap, fmt);
-        n = vsnprintf(NULL, 0, fmt, ap) + 1;
-
-        result = (char *) malloc (n);
-        if (result)
-                vsnprintf(result, n, fmt, ap);
-        va_end(ap);
-
-        return(result);
-}
