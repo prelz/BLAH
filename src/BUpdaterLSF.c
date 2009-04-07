@@ -202,7 +202,7 @@ int main(int argc, char *argv[]){
 	if (ret == NULL){
                 if(debug){
 			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%s %s: key bupdater_bjobs_long_format not found - using the default:%d\n",dgbtimestamp,argv0,bjobs_long_format);
+			fprintf(debuglogfile, "%s %s: key bupdater_bjobs_long_format not found - using the default:%s\n",dgbtimestamp,argv0,bjobs_long_format);
 			fflush(debuglogfile);
 			free(dgbtimestamp);
 		}
@@ -214,7 +214,7 @@ int main(int argc, char *argv[]){
 	if (ret == NULL){
                 if(debug){
 			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%s %s: key bupdater_use_bhist_for_susp not found - using the default:%d\n",dgbtimestamp,argv0,use_bhist_for_susp);
+			fprintf(debuglogfile, "%s %s: key bupdater_use_bhist_for_susp not found - using the default:%s\n",dgbtimestamp,argv0,use_bhist_for_susp);
 			fflush(debuglogfile);
 			free(dgbtimestamp);
 		}
