@@ -2,7 +2,7 @@
 //  File :     classad_binary_op_unwind.C
 //
 //
-//  Author :   Francesco Prelz ($Author: gfiorent $)
+//  Author :   Francesco Prelz ($Author: drebatto $)
 //  e-mail :   "francesco.prelz@mi.infn.it"
 //
 //  Revision history :
@@ -18,6 +18,7 @@
 
 #include <vector>
 #include <string>
+#include <sstream>
 
 #include <strings.h> // strcasecmp
 
@@ -166,10 +167,9 @@ UnparseAux( std::string &buffer, std::string &fnName, std::vector<ExprTree*>& ar
       args[0]->Evaluate(state,v);
       Unparse( attribute_value, v );
 
-      std::string result_line = attribute_name;
-      result_line.append("=");
-      result_line.append(attribute_value);
-      m_unwind_output.push_back(result_line);
+      std::stringstream result_line;
+      result_line << attribute_name << "[" << m_member_list_counter_[attribute_name]++ << "]=" << attribute_value;
+      m_unwind_output.push_back(result_line.str());
      }
    }
 
