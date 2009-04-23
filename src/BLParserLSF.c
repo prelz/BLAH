@@ -1329,6 +1329,10 @@ bdone:
 		len = fread(lsf_clustername, sizeof(char), STR_CHARS - 1 , file_output);
 		if (len>0){
 			lsf_clustername[len-1]='\000';
+		}else{
+			sleep(1);
+			pclose(file_output);
+			goto bdone;
 		}
 	}
 	pclose(file_output);
