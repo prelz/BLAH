@@ -34,6 +34,7 @@ original_args=$@
 while getopts "i:o:e:j:v:V:c:w:x:q:s:T:I:O:R:" arg 
 do
     case "$arg" in
+    a) xtra_args="$OPTARG" ;;
     i) stdin="$OPTARG" ;;
     o) stdout="$OPTARG" ;;
     e) stderr="$OPTARG" ;;
@@ -198,6 +199,11 @@ EOF
 if [ "x$proxy_file" != "x" ]
 then
   echo "x509userproxy = $proxy_file" >> $submit_file
+fi
+
+if [ "x$xtra_args" != "x" ]
+then
+  echo -e $xtra_args >> $submit_file
 fi
 
 cat >> $submit_file << EOF

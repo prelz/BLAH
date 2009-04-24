@@ -186,6 +186,7 @@ function bls_parse_submit_options ()
   while getopts "i:o:e:c:s:v:V:dw:q:n:r:p:l:x:j:T:I:O:R:C:" arg 
   do
       case "$arg" in
+      a) bls_opt_xtra_args="$OPTARG" ;;
       i) bls_opt_stdin="$OPTARG" ;;
       o) bls_opt_stdout="$OPTARG" ;;
       e) bls_opt_stderr="$OPTARG" ;;

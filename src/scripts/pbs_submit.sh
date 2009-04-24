@@ -104,6 +104,10 @@ if [ ! -z $bls_opt_req_file ] ; then
     rm -f $bls_opt_req_file
 fi
 
+if [ ! -z $bls_opt_xtra_args ] ; then
+    echo -e $bls_opt_xtra_args >> $bls_tmp_file 2> /dev/null
+fi
+
 # Write PBS directives according to command line options
 # handle queue overriding
 [ -z "$bls_opt_queue" ] || grep -q "^#PBS -q" $bls_tmp_file || echo "#PBS -q $bls_opt_queue" >> $bls_tmp_file
