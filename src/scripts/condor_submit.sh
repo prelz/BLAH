@@ -28,7 +28,7 @@ proxy_dir=~/.blah_jobproxy_dir
 ###############################################################
 # Parse parameters
 ###############################################################
-original_args=$@
+original_args="$@"
 # Note: -s (stage command) s ignored as it is not relevant for Condor.
 
 while getopts "a:i:o:e:j:v:V:c:w:x:q:s:T:I:O:R:" arg 

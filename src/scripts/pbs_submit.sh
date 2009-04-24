@@ -39,8 +39,8 @@ bls_job_id_for_renewal=PBS_JOBID
 
 srvfound=""
 
-original_args=$@
-bls_parse_submit_options $@
+original_args="$@"
+bls_parse_submit_options "$@"
 
 if [ "x$pbs_nologaccess" != "xyes" -a "x$pbs_nochecksubmission" != "xyes" ]; then
 

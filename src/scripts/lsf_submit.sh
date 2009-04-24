@@ -49,8 +49,8 @@ bls_job_id_for_renewal=LSB_JOBID
 
 srvfound=""
 
-original_args=$@
-bls_parse_submit_options $@
+original_args="$@"
+bls_parse_submit_options "$@"
 
 if [ "x$lsf_nologaccess" != "xyes" -a "x$lsf_nochecksubmission" != "xyes" ]; then
 
