@@ -338,6 +338,8 @@ extern "C"
   unwind_attributes(classad_context cad, char *attribute_name, char ***results) 
    {
     if (cad == NULL) return C_CLASSAD_INVALID_CONTEXT;
+    if ((results == NULL) || (attribute_name == NULL))
+      return C_CLASSAD_INVALID_ARG;
 
     ClassAd *ad = (ClassAd *)cad;
 
@@ -372,20 +374,39 @@ extern "C"
     BinaryOpUnwind res_unp; 
     std::string result;
     res_unp.Unparse(result, et);
-    int n_results = 0;
-    (*results) = (char **)malloc(sizeof(char **));
-    if ((*results) == NULL) return C_CLASSAD_OUT_OF_MEMORY;
-    (*results)[0] = NULL;
+    int n_results;
+    if (*results == NULL)
+     {
+      n_results = 0;
+      (*results) = (char **)malloc(sizeof(char **));
+      if ((*results) == NULL) return C_CLASSAD_OUT_OF_MEMORY;
+      (*results)[0] = NULL;
+     }
+    else
+     {
+      for (n_results = 0; (*results)[n_results] != NULL; n_results++) /*NOP*/ ;
+     }
 
     std::vector<std::string>::const_iterator it;
     for (it = res_unp.m_unwind_output.begin(); 
          it != res_unp.m_unwind_output.end(); it++)
      {
       n_results++;
-      (*results) = (char **)realloc(*results, (n_results+1)*sizeof(char *));
-      if ((*results) == NULL) return C_CLASSAD_OUT_OF_MEMORY;
-      (*results)[n_results-1] = strdup(it->c_str());
+      char **new_results;
+      new_results = (char **)realloc(*results, (n_results+1)*sizeof(char *));
+      if (new_results == NULL)
+       {
+        if (need_to_delete_et) delete et;
+        return C_CLASSAD_OUT_OF_MEMORY;
+       }
+      (*results) = new_results;
       (*results)[n_results] = NULL;
+      (*results)[n_results-1] = strdup(it->c_str());
+      if (((*results)[n_results-1]) == NULL)
+       {
+        if (need_to_delete_et) delete et;
+        return C_CLASSAD_OUT_OF_MEMORY;
+       }
      }
 
     if (need_to_delete_et) delete et;
