@@ -1039,26 +1039,23 @@ cmd_submit_job(void *args)
 		goto cleanup_cad;
 
 	/* Set the CE requirements */
-	if((result = classad_get_dstring_attribute(cad, "CERequirements", &ce_req)) == C_CLASSAD_NO_ERROR)
+	gettimeofday(&ts, NULL);
+	req_file = make_message("%s/ce-req-file-%d%d",tmp_dir, ts.tv_sec, ts.tv_usec);
+	if(CEReq_parse(cad, req_file) >= 0)
 	{
-		gettimeofday(&ts, NULL);
-		req_file = make_message("%s/ce-req-file-%d%d",tmp_dir, ts.tv_sec, ts.tv_usec);
-		if(!CEReq_parse(cad, req_file))
+		command_ext = make_message("%s -C %s", command, req_file);
+		if (command_ext == NULL)
 		{
-			command_ext = make_message("%s -C %s", command, req_file);
-			if (command_ext == NULL)
-			{
-				/* PUSH A FAILURE */
-				resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
-				free(req_file);
-				goto cleanup_command;
-			}
-			/* Swap new command in */
-			free(command);
-			command = command_ext;
+			/* PUSH A FAILURE */
+			resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
+			free(req_file);
+			goto cleanup_command;
 		}
-		free(req_file);
+		/* Swap new command in */
+		free(command);
+		command = command_ext;
 	}
+	free(req_file);
 
 	/* All other attributes are optional: fail only on memory error 
 	   IMPORTANT: Args must alway be the last!
@@ -1071,7 +1068,8 @@ cmd_submit_job(void *args)
 	    (set_cmd_string_option(&command, cad, "Queue",      "-q", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_int_option   (&command, cad, "NodeNumber", "-n", INT_NOQUOTE)   == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_bool_option  (&command, cad, "StageCmd",   "-s", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
-	    (set_cmd_string_option(&command, cad, "ClientJobId","-j", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY))
+	    (set_cmd_string_option(&command, cad, "ClientJobId","-j", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_string_option(&command, cad, "BatchExtraSubmitArgs", "-a", SINGLE_QUOTE) == C_CLASSAD_OUT_OF_MEMORY))
 //	    (set_cmd_string_option(&command, cad, "Args",      	"--", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY))
 	{
 		/* PUSH A FAILURE */
@@ -2660,30 +2658,70 @@ int CEReq_parse(classad_context cad, char* filename)
 {
 	FILE *req_file=NULL;
 	char **reqstr=NULL;
+	char **creq;
 	int cs=0;
 	char *vo=NULL;
-	req_file= fopen(filename,"w");
-	if(req_file==NULL) return 1;
-	/**
-	int unwind_attributes(classad_context cad, char *attribute_name, char ***results);
-	**/
+	int n_written=-1;
+	config_entry *aen;
+	int i;
+
 	classad_get_dstring_attribute(cad, "VirtualOrganisation", &vo);
 	if(vo)
 	{
+		if (req_file== NULL)
+		{
+			req_file=fopen(filename,"w");
+			if(req_file==NULL) return -1;
+		}
 		cs = fwrite("VirtualOrganisation=", 1, strlen("VirtualOrganisation="), req_file);
 		cs = fwrite(vo, 1, strlen(vo), req_file);
 		cs = fwrite("\n" ,1, strlen("\n"), req_file);
 		free(vo);
+		n_written++;
 	}
-	unwind_attributes(cad,"CERequirements",&reqstr);
-	while(*reqstr != NULL)
+
+	/* Look up any configured attribute */
+	aen = config_get("local_submit_attributes_setup_args",blah_config_handle);
+	if (aen != NULL)
 	{
-		cs = fwrite(*reqstr ,1, strlen(*reqstr), req_file);
-		cs = fwrite("\n" ,1, strlen("\n"), req_file);
-		reqstr++;
+		if (aen->n_values > 0)
+		{
+			for(i=0; i<aen->n_values; i++)
+				unwind_attributes(cad,aen->values[i],&reqstr);
+		} else {
+			unwind_attributes(cad,aen->value,&reqstr);
+		}
 	}
-	fclose(req_file);
-	return 0;
+
+	/* Look up 'CERequirements' last so that it takes precedence */
+	unwind_attributes(cad,"CERequirements",&reqstr);
+
+	if (reqstr != NULL)
+	{
+		for(creq=reqstr; (*creq)!=NULL; creq++)
+		{
+			if (req_file== NULL)
+			{
+				req_file=fopen(filename,"w");
+				if(req_file==NULL) goto free_reqstr;
+			}
+			cs = fwrite(*creq ,1, strlen(*creq), req_file);
+			cs = fwrite("\n" ,1, strlen("\n"), req_file);
+			n_written++;
+		}
+	}
+	if (req_file != NULL) fclose(req_file);
+
+free_reqstr:
+	if (reqstr != NULL)
+	{
+		for(creq=reqstr; (*creq)!=NULL; creq++)
+		{
+			free(*creq);
+		}
+		free(reqstr);
+	}
+	return n_written;
 }
 
 int check_TransferINOUT(classad_context cad, char **command, char *reqId)
