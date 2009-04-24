@@ -104,7 +104,7 @@ if [ ! -z $bls_opt_req_file ] ; then
     rm -f $bls_opt_req_file
 fi
 
-if [ ! -z $bls_opt_xtra_args ] ; then
+if [ ! -z "$bls_opt_xtra_args" ] ; then
     echo -e $bls_opt_xtra_args >> $bls_tmp_file 2> /dev/null
 fi
 
