@@ -375,6 +375,7 @@ extern "C"
     int n_results = 0;
     (*results) = (char **)malloc(sizeof(char **));
     if ((*results) == NULL) return C_CLASSAD_OUT_OF_MEMORY;
+    (*results)[0] = NULL;
 
     std::vector<std::string>::const_iterator it;
     for (it = res_unp.m_unwind_output.begin(); 
