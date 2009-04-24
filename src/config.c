@@ -7,6 +7,7 @@
  *
  *  Revision history :
  *  23-Nov-2007 Original release
+ *  24-Apr-2009 Added parsing of shell arrays.
  *
  *  Description:
  *    Small library for access to the BLAH configuration file.
@@ -19,9 +20,46 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <regex.h>
 
 #include "blahpd.h"
 #include "config.h"
+
+static int
+config_parse_array_values(config_entry *en)
+ {
+  if (en == NULL) return -1;
+  if (en->value == NULL) return -1;
+
+  /* Arrays are dumped in the format foo=([0]="bar1" [1]="bar2") */
+  if ((en->value[0] == '(') && (en->value[strlen(en->value)-1] == ')'))
+   {
+    char *val_regex = "\\[[^]]+\\] *= *\"((\\\\\"|[^\"])*)\""; 
+    regex_t regbuf;
+    char *match_start = &(en->value[1]);
+    regmatch_t pmatch[2];
+    int value_len;
+    char **new_values;
+
+    if (regcomp(&regbuf, val_regex, REG_EXTENDED) != 0) return -1;
+
+    while (regexec(&regbuf, match_start, 2, pmatch, 0) == 0)
+     {
+      value_len = pmatch[1].rm_eo - pmatch[1].rm_so;
+      new_values = (char **)realloc(en->values, sizeof(char *)*(en->n_values+1));
+      if (new_values == NULL) return -1;
+      en->values = new_values;
+      en->values[en->n_values] = (char *)malloc(value_len+1);
+      if (en->values[en->n_values] == NULL) return -1; 
+      memcpy(en->values[en->n_values],
+             match_start + pmatch[1].rm_so, 
+             value_len);
+      en->values[en->n_values][value_len] = '\000';
+      en->n_values++;
+      match_start += pmatch[0].rm_eo;
+     }
+   }
+ }
 
 config_handle *
 config_read(const char *ipath)
@@ -182,6 +220,8 @@ config_read(const char *ipath)
                }
   
               new_entry->key = new_entry->value = NULL;
+              new_entry->n_values = 0;
+              new_entry->values = NULL;
               new_entry->next = NULL;
               key_len = (int)(key_end - key_start);
               val_len = (int)(val_end - val_start);
@@ -201,6 +241,7 @@ config_read(const char *ipath)
               if (c_tail != NULL) c_tail->next = new_entry;
               if (rha->list == NULL) rha->list = new_entry;
               c_tail = new_entry;
+              config_parse_array_values(new_entry);
              }
            }
          }
@@ -283,6 +324,15 @@ config_free(config_handle *handle)
      {
       if (cur->key != NULL)   free(cur->key);
       if (cur->value != NULL) free(cur->value);
+      if ((cur->n_values > 0) && (cur->values != NULL))
+       {
+        int i;
+        for(i=0; i<cur->n_values; i++)
+         {
+          if (cur->values[i] != NULL) free(cur->values[i]);
+         }
+        free(cur->values);
+       }
       next = cur->next;
       free(cur);
      }
@@ -323,6 +373,8 @@ main(int argc, char *argv[])
     "b4=\"   Junk\"\n"
     "b5=\" False\"\n"
     "file=/tmp/test_`whoami`.bjr\n"
+    "arr[0]=value_0\n"
+    "arr[3]=value_3\n"
     "\n";
 
   config_handle *cha;
@@ -392,6 +444,15 @@ main(int argc, char *argv[])
   ret = config_get("file",cha);
   if (ret == NULL) fprintf(stderr,"%s: key file not found\n",argv[0]),r=19;
   printf("file == <%s>\n",ret->value);
+
+  ret = config_get("arr",cha);
+  if (ret == NULL) fprintf(stderr,"%s: key arr not found\n",argv[0]),r=20;
+  if (ret->n_values != 2) fprintf(stderr,"%s: arr contains %d values instead of 2\n",argv[0],ret->n_values),r=21;
+  else
+   {
+    printf("arr value 0 == <%s>\n",ret->values[0]);
+    printf("arr value 1 == <%s>\n",ret->values[1]);
+   }
 
   config_free(cha);
 

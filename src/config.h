@@ -25,6 +25,8 @@ typedef struct config_entry_s
  {
    char *key;
    char *value;
+   char **values;
+   int n_values;
    struct config_entry_s *next;
  } config_entry;
 
