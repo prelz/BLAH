@@ -183,7 +183,7 @@ function bls_parse_submit_options ()
   ###############################################################
   # Parse parameters
   ###############################################################
-  while getopts "i:o:e:c:s:v:V:dw:q:n:r:p:l:x:j:T:I:O:R:C:" arg 
+  while getopts "a:i:o:e:c:s:v:V:dw:q:n:r:p:l:x:j:T:I:O:R:C:" arg 
   do
       case "$arg" in
       a) bls_opt_xtra_args="$OPTARG" ;;

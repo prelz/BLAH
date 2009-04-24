@@ -31,7 +31,7 @@ proxy_dir=~/.blah_jobproxy_dir
 original_args=$@
 # Note: -s (stage command) s ignored as it is not relevant for Condor.
 
-while getopts "i:o:e:j:v:V:c:w:x:q:s:T:I:O:R:" arg 
+while getopts "a:i:o:e:j:v:V:c:w:x:q:s:T:I:O:R:" arg 
 do
     case "$arg" in
     a) xtra_args="$OPTARG" ;;
