@@ -2135,7 +2135,7 @@ job_registry_set_proxy(const job_registry_handle *rha,
                        char *proxy)
 {
   const char *proxylink_fmt="proxy_XXXXXX";
-  const char *proxylink_id_fmt="proxy_%*s_XXXXXX";
+  const char *proxylink_id_fmt="proxy_%*.*s_XXXXXX";
   char *fullpath;
   int idlen;
   int spret = -1;
@@ -2147,7 +2147,7 @@ job_registry_set_proxy(const job_registry_handle *rha,
    {
      if (idlen > 20) idlen = 20;
      spret = snprintf(en->proxy_link, sizeof(en->proxy_link), 
-                      proxylink_id_fmt, idlen, en->batch_id);
+                      proxylink_id_fmt, idlen, idlen, en->batch_id);
      /* No slashes allowed here */
      for(i=0; i<strlen(en->proxy_link); i++)
       {
