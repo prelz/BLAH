@@ -101,7 +101,6 @@ if [ ! -z $bls_opt_req_file ] ; then
     chmod +x ${bls_opt_req_file}-temp_req_script
     ${bls_opt_req_file}-temp_req_script  >> $bls_tmp_file 2> /dev/null
     rm -f ${bls_opt_req_file}-temp_req_script
-    rm -f $bls_opt_req_file
 fi
 
 if [ ! -z "$bls_opt_xtra_args" ] ; then
