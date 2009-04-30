@@ -30,6 +30,10 @@
 #                                     Make job proxy optional.
 #   15 Oct 2008 - (prelz@mi.infn.it). Make proxy renewal on worker nodes
 #                                     optional via config.
+#   18 Mar 2009 - (rebatto@mi.infn.it) Glexec references replaced with generic
+#                                      mapping names. Constants' definitions
+#                                      moved to mapped_exec.h.
+#                                      
 #
 #  Description:
 #   Serve a connection to a blahp client, performing appropriate
@@ -69,7 +73,7 @@
 #include "commands.h"
 #include "job_status.h"
 #include "resbuffer.h"
-#include "mtsafe_popen.h"
+#include "mapped_exec.h"
 #include "proxy_hashcontainer.h"
 #include "blah_utils.h"
 
@@ -149,7 +153,7 @@ char *blah_script_location;
 char *blah_version;
 static char lrmslist[MAX_LRMS_NUMBER][MAX_LRMS_NAME_SIZE];
 static int  lrms_counter = 0;
-int  glexec_mode = 0; /* FIXME: need to become static */
+static mapping_t current_mapping_mode = MEXEC_NO_MAPPING;
 char *tmp_dir;
 struct stat tmp_stat;
 char *bssp = NULL;
@@ -158,15 +162,8 @@ int enable_condor_glexec = FALSE;
 int require_proxy_on_submit = FALSE;
 int disable_wn_proxy_renewal = FALSE;
 
-/* GLEXEC ENVIRONMENT VARIABLES */
-#define GLEXEC_MODE_IDX         0
-#define GLEXEC_CLIENT_CERT_IDX  1
-#define GLEXEC_SOURCE_PROXY_IDX 2
-#define GLEXEC_ENV_TOTAL        3
-static char *glexec_env_name[] = {"GLEXEC_MODE", "GLEXEC_CLIENT_CERT", "GLEXEC_SOURCE_PROXY"};
-static char *glexec_env_var[GLEXEC_ENV_TOTAL];
+static char *mapping_parameter[MEXEC_PARAM_COUNT];
 
-/* #define TSF_DEBUG */
 
 /* Check on good health of our managed children
  **/
@@ -311,8 +308,8 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	max_threaded_conf = config_get("blah_max_threaded_cmds",blah_config_handle);
 	if (max_threaded_conf != NULL) max_threaded_cmds = atoi(max_threaded_conf->value);
 
-	for (i = 0; i < GLEXEC_ENV_TOTAL; i++)
-		glexec_env_var[i] = NULL;
+	for (i = 0; i < MEXEC_PARAM_COUNT; i++)
+		mapping_parameter[i] = NULL;
 
 	init_resbuffer();
 	if (cli_socket == 0) server_socket = 1;
@@ -323,10 +320,10 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	{
 		result = DEFAULT_GLITE_LOCATION;
 	}
-        if ((tmp_dir = getenv("GAHP_TEMP")) == NULL)
-        {
-                tmp_dir  = DEFAULT_TEMP_DIR;
-        }
+	if ((tmp_dir = getenv("GAHP_TEMP")) == NULL)
+	{
+		tmp_dir  = DEFAULT_TEMP_DIR;
+	}
 
 	needed_libs = make_message("%s/lib:%s/externals/lib:%s/lib:/opt/lcg/lib", result, result, getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus");
 	old_ld_lib=getenv("LD_LIBRARY_PATH");
@@ -340,7 +337,8 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 		}
 	  	sprintf(new_ld_lib,"%s;%s",old_ld_lib,needed_libs);
 	  	setenv("LD_LIBRARY_PATH",new_ld_lib,1);
-	}else
+	}
+	else
 	 	 setenv("LD_LIBRARY_PATH",needed_libs,1);
 	
 	blah_script_location = strdup(blah_config_handle->bin_path);
@@ -498,15 +496,13 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 				{
 					if (command->threaded)
 					{	
-						/* Add the glexec environment as last arguments */
-						if (glexec_mode) 
+						/* Add the proxy parameters as last arguments */
+						if (current_mapping_mode != MEXEC_NO_MAPPING) 
 						{
-							argv = (char **)realloc(argv, (argc + GLEXEC_ENV_TOTAL + 1) * sizeof(char *));
-							for (i = 0; i < GLEXEC_ENV_TOTAL; i++) 
-							{
-								argv[argc + i] = make_message("%s=%s", glexec_env_name[i], glexec_env_var[i]);
-							}
-							argv[argc + GLEXEC_ENV_TOTAL] = NULL;
+							argv = (char **)realloc(argv, (argc + MEXEC_PARAM_COUNT + 1) * sizeof(char *));
+							for (i = 0; i < MEXEC_PARAM_COUNT; i++) 
+								argv[argc + i] = strdup(mapping_parameter[i]);
+							argv[argc + MEXEC_PARAM_COUNT] = NULL;
 						}
 
 						if (sem_trywait(&sem_total_commands))
@@ -725,10 +721,10 @@ cmd_uncache_proxy(void *args)
 	} else
 	{
                       /* Check for entry->proxy_file_name at the beginning */
-                      /* of glexec_env_var[GLEXEC_SOURCE_PROXY_IDX] to */
+                      /* of mapping_parameter[MEXEC_PARAM_SRCPROXY] to */
                       /* allow for limited proxies */
-		if ( glexec_mode &&
-		    ( strncmp(glexec_env_var[GLEXEC_SOURCE_PROXY_IDX],
+		if ( current_mapping_mode &&
+		    ( strncmp(mapping_parameter[MEXEC_PARAM_SRCPROXY],
 		              entry->proxy_file_name,
                               strlen(entry->proxy_file_name)) == 0) )
 		{
@@ -787,13 +783,13 @@ cmd_unset_glexec_dn(void *args)
 	char *result;
 	int i;
 
-	for (i = 0; i < GLEXEC_ENV_TOTAL; i++)
-		if (glexec_env_var[i])
+	for (i = 0; i < MEXEC_PARAM_COUNT; i++)
+		if (mapping_parameter[i])
 		{
-			free(glexec_env_var[i]);
-			glexec_env_var[i] = NULL;
+			free(mapping_parameter[i]);
+			mapping_parameter[i] = NULL;
 		}
-	glexec_mode = 0;
+	current_mapping_mode = 0;
 
 	result = make_message("S Glexec\\ mode\\ off");
 	return (result);
@@ -812,7 +808,7 @@ cmd_set_glexec_dn(void *args)
 	int res = 0;
 	char *proxynameNew = NULL;
 	
-	if (glexec_mode)
+	if (current_mapping_mode)
 	{
 		dummy = (char *)cmd_unset_glexec_dn(NULL);
 		free(dummy);
@@ -820,8 +816,7 @@ cmd_set_glexec_dn(void *args)
 
 	if((!stat(proxt4, &buf)) && (!stat(ssl_client_cert, &buf)))
 	{
-		glexec_env_var[GLEXEC_MODE_IDX] = strdup("lcmaps_get_account");
-		glexec_env_var[GLEXEC_CLIENT_CERT_IDX] = strdup(ssl_client_cert);
+		mapping_parameter[MEXEC_PARAM_DELEGCRED] = strdup(ssl_client_cert);
 		/* proxt4 must be limited for subsequent submission */		
 		if(argv[3][0]=='0')
 		{
@@ -829,22 +824,22 @@ cmd_set_glexec_dn(void *args)
 			if(res = limit_proxy(proxt4, proxynameNew))
 			{
 				free(proxynameNew);
-				free(glexec_env_var[GLEXEC_MODE_IDX]);
-				free(glexec_env_var[GLEXEC_CLIENT_CERT_IDX]);
-				glexec_env_var[GLEXEC_MODE_IDX] = NULL;
-				glexec_env_var[GLEXEC_CLIENT_CERT_IDX] = NULL;
+				free(mapping_parameter[MEXEC_PARAM_DELEGCRED]);
+				mapping_parameter[MEXEC_PARAM_DELEGCRED] = NULL;
 				result = strdup("F Cannot\\ limit\\ proxy\\ file");
 			}
 			else
-				glexec_env_var[GLEXEC_SOURCE_PROXY_IDX] = proxynameNew;
+				mapping_parameter[MEXEC_PARAM_SRCPROXY] = proxynameNew;
 		}
 		else
 		{
-			glexec_env_var[GLEXEC_SOURCE_PROXY_IDX] = strdup(proxt4);
+			mapping_parameter[MEXEC_PARAM_SRCPROXY] = strdup(proxt4);
 		}
 		if (!result)
 		{
-			glexec_mode = 1;
+			current_mapping_mode = MEXEC_GLEXEC;
+			/* string version needed to pass it as char* parameter to threaded functions */
+			mapping_parameter[MEXEC_PARAM_DELEGTYPE] = make_message("%d", current_mapping_mode);
 			result = strdup("S Glexec\\ mode\\ on");
 		}
 	}
@@ -863,8 +858,6 @@ cmd_set_glexec_dn(void *args)
 void *
 cmd_submit_job(void *args)
 {
-	char *cmd_out = NULL;
-	char *cmd_err = NULL;
 	char *escpd_cmd_out, *escpd_cmd_err;
 	int retcod;
 	char *command;
@@ -879,11 +872,9 @@ cmd_submit_job(void *args)
 	char error_message[ERROR_MAX_LEN];
 	char *error_string;
 	int res = 1;
-	char* resfg = NULL;
 	char *proxyname = NULL;
 	char *proxynameNew   = NULL;
 	char *log_proxy;
-	char *cmdstr = NULL;
 	char *command_ext = NULL;
 	char fqan[MAX_TEMP_ARRAY_SIZE], userDN[MAX_TEMP_ARRAY_SIZE];
 	int count = 0;
@@ -894,11 +885,12 @@ cmd_submit_job(void *args)
 	regex_t regbuf;
 	size_t nmatch;
 	regmatch_t pmatch[3];
-        char *arguments=NULL;
-        char *conv_arguments=NULL;
-        char *environment=NULL;
-        char *conv_environment=NULL;
+	char *arguments=NULL;
+	char *conv_arguments=NULL;
+	char *environment=NULL;
+	char *conv_environment=NULL;
 	struct stat buf;
+	exec_cmd_t submit_command = EXEC_CMD_DEFAULT;
 
 
 	/* Parse the job description classad */
@@ -930,22 +922,20 @@ cmd_submit_job(void *args)
 		}
 	}
 
-	/* If there are additional arguments, we are in glexec mode */
+	/* If there are additional arguments, we have to map on a different id */
 	if(argv[CMD_SUBMIT_JOB_ARGS + 1] != NULL)
 	{
+		submit_command.delegation_type = atoi(argv[CMD_SUBMIT_JOB_ARGS + 1 + MEXEC_PARAM_DELEGTYPE]);
+		submit_command.delegation_cred = argv[CMD_SUBMIT_JOB_ARGS + 1 + MEXEC_PARAM_DELEGCRED];
 		if (proxyname != NULL)
 		{
+			submit_command.source_proxy = argv[CMD_SUBMIT_JOB_ARGS + 1 + MEXEC_PARAM_SRCPROXY];
 			/* Add the target proxy - cause glexec to move it to another file */
 			proxynameNew = make_message("%s.glexec", proxyname);
 			free(proxyname);
 			proxyname = proxynameNew;
-                	/* Savannah #37003: Let glexec rotate the new proxy in place if (stat(proxynameNew, &buf) >= 0) unlink(proxynameNew); */
-
-			for(count = CMD_SUBMIT_JOB_ARGS + 2; argv[count]; count++);
-			argv = (char **)realloc(argv, sizeof(char *) * (count + 2));
-			argv[count] = make_message("GLEXEC_TARGET_PROXY=%s", proxyname);
-			argv[count + 1] = NULL;
-			log_proxy = argv[CMD_SUBMIT_JOB_ARGS + 1 + GLEXEC_SOURCE_PROXY_IDX] + strlen(glexec_env_name[GLEXEC_SOURCE_PROXY_IDX]) + 1;
+			submit_command.dest_proxy = proxyname;
+			log_proxy = argv[CMD_SUBMIT_JOB_ARGS + 1 + MEXEC_PARAM_SRCPROXY];
 		}
 	}
 	else if (proxyname != NULL)
@@ -976,8 +966,8 @@ cmd_submit_job(void *args)
 		if (userDN) enable_log=1;
 	}
 
-	command = make_message("%s %s/%s_submit.sh", argv[CMD_SUBMIT_JOB_ARGS + 1] ? gloc : "",
-	                        blah_script_location, server_lrms);
+	command = make_message("%s/%s_submit.sh", blah_script_location, server_lrms);
+
 	if (command == NULL)
 	{
 		/* PUSH A FAILURE */
@@ -985,7 +975,7 @@ cmd_submit_job(void *args)
 		goto cleanup_proxyname;
 	}
 
-        /* add proxy name if present */
+	/* add proxy name if present */
 	if (proxyname != NULL)
 	{
 		command_ext = make_message("%s -x %s", command, proxyname);
@@ -1000,8 +990,8 @@ cmd_submit_job(void *args)
 		command = command_ext;
 	}
 
-        /* Add command line option to explicitely disable proxy renewal */
-        /* if requested. */
+	/* Add command line option to explicitely disable proxy renewal */
+	/* if requested. */
 	if (disable_wn_proxy_renewal)
 	{
 		command_ext = make_message("%s -r no", command);
@@ -1024,7 +1014,7 @@ cmd_submit_job(void *args)
 		goto cleanup_command;
 	}
 
-        /* temporary directory path*/
+	/* temporary directory path*/
 	command_ext = make_message("%s -T %s", command, tmp_dir);
 	if (command_ext == NULL)
 	{
@@ -1036,7 +1026,7 @@ cmd_submit_job(void *args)
 	free(command);
 	command = command_ext;
 	if(check_TransferINOUT(cad,&command,reqId))
-		goto cleanup_cad;
+		goto cleanup_command;
 
 	/* Set the CE requirements */
 	gettimeofday(&ts, NULL);
@@ -1049,7 +1039,7 @@ cmd_submit_job(void *args)
 			/* PUSH A FAILURE */
 			resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
 			free(req_file);
-			goto cleanup_command;
+			goto cleanup_req;
 		}
 		/* Swap new command in */
 		free(command);
@@ -1074,85 +1064,98 @@ cmd_submit_job(void *args)
 	{
 		/* PUSH A FAILURE */
 		resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
-		goto cleanup_command;
+		goto cleanup_req;
 	}
 
-        /*if present environment attribute must be used instead of env */
-        if ((result = classad_get_dstring_attribute(cad, "environment", &environment)) == C_CLASSAD_NO_ERROR)
-        {
+	/* if present, "environment" attribute must be used instead of "env" */
+	if ((result = classad_get_dstring_attribute(cad, "environment", &environment)) == C_CLASSAD_NO_ERROR)
+	{
 		if (environment[0] != '\000')
 		{
-                	conv_environment = ConvertArgs(environment, ' ');
-			free(environment);
+			conv_environment = ConvertArgs(environment, ' ');
 			/* fprintf(stderr, "DEBUG: args conversion <%s> to <%s>\n", environment, conv_environment); */
-                	if (conv_environment)
-                	{
+			if (conv_environment != NULL)
+			{
 				command_ext = make_message("%s -V %s", command, conv_environment);
 				free(conv_environment);
 			}
-
 			if ((conv_environment == NULL) || (command_ext == NULL))
 			{
 				/* PUSH A FAILURE */
-                                resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
-				goto cleanup_command;
+				resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
+				free(environment);
+				goto cleanup_req;
 			}
 			/* Swap new command in */
 			free(command);
 			command = command_ext;
 		}
-		else free(environment);
-        }else
-        if(set_cmd_string_option(&command, cad, "Env","-v", SINGLE_QUOTE) == C_CLASSAD_OUT_OF_MEMORY)
-        {
-                /* PUSH A FAILURE */
-                resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
-                goto cleanup_command;
-        }
+		free(environment);
+	}
+	else /* use Env old syntax */
+	{
+		if(set_cmd_string_option(&command, cad, "Env","-v", SINGLE_QUOTE) == C_CLASSAD_OUT_OF_MEMORY)
+		{
+			/* PUSH A FAILURE */
+			resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
+			goto cleanup_req;
+		}
+	}
 
-        /*if present arguments attribute must be used instead of args */
-        if ((result = classad_get_dstring_attribute(cad, "Arguments", &arguments)) == C_CLASSAD_NO_ERROR)
-        {
+	/* if present, "arguments" attribute must be used instead of "args" */
+	if ((result = classad_get_dstring_attribute(cad, "Arguments", &arguments)) == C_CLASSAD_NO_ERROR)
+	{
 		if (arguments[0] != '\000')
 		{
-                	conv_arguments = ConvertArgs(arguments, ' ');
-			free(arguments);
+			conv_arguments = ConvertArgs(arguments, ' ');
 			/* fprintf(stderr, "DEBUG: args conversion <%s> to <%s>\n", arguments, conv_arguments); */
-                	if (conv_arguments)
-                	{
+			if (conv_arguments)
+			{
 				command_ext = make_message("%s -- %s", command, conv_arguments);
 				free(conv_arguments);
 			}
-
 			if ((conv_arguments == NULL) || (command_ext == NULL))
 			{
 				/* PUSH A FAILURE */
 				resultLine = make_message("%s 1 Out\\ of\\ memory\\ creating\\ submission\\ command N/A", reqId);
-				goto cleanup_command;
+				goto cleanup_req;
 			}
 			/* Swap new command in */
 			free(command);
 			command = command_ext;
 		}
-		else free(arguments);
+		free(arguments);
 	}
-	else if (set_cmd_string_option(&command, cad, "Args","--", NO_QUOTE) == C_CLASSAD_OUT_OF_MEMORY)
-        {
-		/* PUSH A FAILURE */
-                resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
-		goto cleanup_command;
+	else /* use Args old syntax */
+	{
+		if (set_cmd_string_option(&command, cad, "Args","--", NO_QUOTE) == C_CLASSAD_OUT_OF_MEMORY)
+		{
+			/* PUSH A FAILURE */
+			resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
+			goto cleanup_req;
+		}
 	}
 
 	/* Execute the submission command */
-	retcod = exe_getouterr(command, argv + CMD_SUBMIT_JOB_ARGS + 1, &cmd_out, &cmd_err);
+	submit_command.command = command;
+	retcod = execute_cmd(&submit_command);
 
 	if (retcod != 0)
 	{
+		escpd_cmd_err = escape_spaces(strerror(errno));
+		if (escpd_cmd_err == NULL) escpd_cmd_err = blah_omem_msg;
+		resultLine = make_message("%s 3 Error\\ executing\\ the\\ submission\\ command:\\ %s", reqId, escpd_cmd_err);
+		if (escpd_cmd_err != blah_omem_msg) free(escpd_cmd_err);
+		goto cleanup_cmd_out;
+	}
+
+	else if (submit_command.exit_code != 0)
+	{
 		/* PUSH A FAILURE */
-		escpd_cmd_out = escape_spaces(cmd_out);
-		escpd_cmd_err = escape_spaces(cmd_err);
+		escpd_cmd_out = escape_spaces(submit_command.output);
+		escpd_cmd_err = escape_spaces(submit_command.error);
 		resultLine = make_message("%s %d submission\\ command\\ failed\\ (exit\\ code\\ =\\ %d)\\ (stdout:%s)\\ (stderr:%s) N/A",
-		                           reqId, retcod, retcod, escpd_cmd_out, escpd_cmd_err);
+		                            reqId, submit_command.exit_code, submit_command.exit_code, escpd_cmd_out, escpd_cmd_err);
 		if (BLAH_DYN_ALLOCATED(escpd_cmd_out)) free(escpd_cmd_out);
 		if (BLAH_DYN_ALLOCATED(escpd_cmd_err)) free(escpd_cmd_err);
 		goto cleanup_cmd_out;
@@ -1166,19 +1169,20 @@ cmd_submit_job(void *args)
 		exit(1);
 	}
 
-	if (regexec(&regbuf, cmd_out, 3, pmatch, 0) != 0)
+	if (regexec(&regbuf, submit_command.output, 3, pmatch, 0) != 0)
 	{
 		/* PUSH A FAILURE */
-		escpd_cmd_out = escape_spaces(cmd_out);
-		escpd_cmd_err = escape_spaces(cmd_err);
-		resultLine = make_message("%s 8 no\\ jobId\\ in\\ submission\\ script's\\ output\\ (stdout:%s)\\ (stderr:%s) N/A", reqId, escpd_cmd_out, escpd_cmd_err);
+		escpd_cmd_out = escape_spaces(submit_command.output);
+		escpd_cmd_err = escape_spaces(submit_command.error);
+		resultLine = make_message("%s 8 no\\ jobId\\ in\\ submission\\ script's\\ output\\ (stdout:%s)\\ (stderr:%s) N/A",
+		                          reqId, escpd_cmd_out, escpd_cmd_err);
 		if (BLAH_DYN_ALLOCATED(escpd_cmd_out)) free(escpd_cmd_out);
 		if (BLAH_DYN_ALLOCATED(escpd_cmd_err)) free(escpd_cmd_err);
 		goto cleanup_regbuf;
 	}
 
-	cmd_out[pmatch[2].rm_eo] = '\000';
-	strncpy(jobId, cmd_out + pmatch[2].rm_so, sizeof(jobId));
+	submit_command.output[pmatch[2].rm_eo] = '\000';
+	strncpy(jobId, submit_command.output + pmatch[2].rm_so, sizeof(jobId));
 
 	/* PUSH A SUCCESS */
 	resultLine = make_message("%s 0 No\\ error %s", reqId, jobId);
@@ -1192,8 +1196,9 @@ cmd_submit_job(void *args)
 cleanup_regbuf:
 	regfree(&regbuf);
 cleanup_cmd_out:
-	free(cmd_out);
-	if (cmd_err) free(cmd_err);
+	cleanup_cmd(&submit_command);
+cleanup_req:
+	unlink(req_file);
 cleanup_command:
 	free(command);
 cleanup_proxyname:
@@ -1236,6 +1241,7 @@ cmd_cancel_job(void* args)
 	char *reqId = argv[1];
 	char *error_string;
 	char answer[1024];
+	exec_cmd_t cancel_command = EXEC_CMD_DEFAULT;
 
 	/* Split <lrms> and actual job Id */
 	if((spid = job_registry_split_blah_id(argv[2])) == NULL)
@@ -1246,29 +1252,46 @@ cmd_cancel_job(void* args)
 	}
 
 	/* Prepare the cancellation command */
-	command = make_message("%s %s/%s_cancel.sh %s", argv[CMD_CANCEL_JOB_ARGS + 1] ? gloc : "", blah_script_location, spid->lrms, spid->script_id);
-	if (command == NULL)
+	cancel_command.command = make_message("%s/%s_cancel.sh %s", blah_script_location, spid->lrms, spid->script_id);
+	if (cancel_command.command == NULL)
 	{
 		/* PUSH A FAILURE */
 		resultLine = make_message("%s 1 Cannot\\ allocate\\ memory\\ for\\ the\\ command\\ string", reqId);
 		goto cleanup_lrms;
 	}
+	if (argv[CMD_CANCEL_JOB_ARGS + 1] != NULL)
+	{
+		cancel_command.delegation_type = atoi(argv[CMD_CANCEL_JOB_ARGS + 1 + MEXEC_PARAM_DELEGTYPE]);
+		cancel_command.delegation_cred = argv[CMD_CANCEL_JOB_ARGS + 1 + MEXEC_PARAM_DELEGCRED];
+	}
 
 	/* Execute the command */
-	if (retcod = exe_getouterr(command, argv + CMD_CANCEL_JOB_ARGS + 1, &cmd_out, &cmd_err))
+	retcod = execute_cmd(&cancel_command);
+
+	if (retcod != 0)
+	{
+		escpd_cmd_err = escape_spaces(strerror(errno));
+		if (escpd_cmd_err == NULL) escpd_cmd_err = blah_omem_msg;
+		resultLine = make_message("%s 3 Error\\ executing\\ the\\ cancel\\ command:\\ %s", reqId, escpd_cmd_err);
+		if (escpd_cmd_err != blah_omem_msg) free(escpd_cmd_err);
+		goto cleanup_command;
+	}
+
+	if (cancel_command.exit_code != 0)
 	{
 		/* PUSH A FAILURE */
-		escpd_cmd_out = escape_spaces(cmd_out);
-		escpd_cmd_err = escape_spaces(cmd_err);
-		resultLine = make_message("%s %d Cancellation\\ command\\ failed\\ (stdout:%s)\\ (stderr:%s)", reqId, retcod, escpd_cmd_out, escpd_cmd_err);
+		escpd_cmd_out = escape_spaces(cancel_command.output);
+		escpd_cmd_err = escape_spaces(cancel_command.error);
+		resultLine = make_message("%s %d Cancellation\\ command\\ failed\\ (stdout:%s)\\ (stderr:%s)",
+		                           reqId, retcod, escpd_cmd_out, escpd_cmd_err);
 		if (BLAH_DYN_ALLOCATED(escpd_cmd_out)) free(escpd_cmd_out);
 		if (BLAH_DYN_ALLOCATED(escpd_cmd_err)) free(escpd_cmd_err);
 		goto cleanup_command;
 	}	
 
 	/* Multiple job cancellation */
-	res_length = strlen(cmd_out);
-	for (begin_res = cmd_out; end_res = memchr(cmd_out, '\n', res_length); begin_res = end_res + 1)
+	res_length = strlen(cancel_command.output);
+	for (begin_res = cancel_command.output; end_res = memchr(cancel_command.output, '\n', res_length); begin_res = end_res + 1)
 	{
 		*end_res = 0;
 		resultLine = make_message("%s%s", reqId, begin_res);
@@ -1280,9 +1303,8 @@ cmd_cancel_job(void* args)
 	/* Free up all arguments and exit (exit point in case of error is the label
 	   pointing to last successfully allocated variable) */
 cleanup_command:
-	if (cmd_out) free(cmd_out);
-	if (cmd_err) free(cmd_err);
-	free(command);
+	cleanup_cmd(&cancel_command);
+	free(cancel_command.command);
 cleanup_lrms:
 	job_registry_free_split_id(spid);
 cleanup_argv:
@@ -1492,6 +1514,7 @@ get_status_and_old_proxy(int use_glexec, char *jobDescr,
 	job_registry_split_id *spid;
 	job_registry_entry *ren;
 	int i;
+	exec_cmd_t exe_command = EXEC_CMD_DEFAULT;
 
 	if (old_proxy == NULL) return(-1);
 	*old_proxy = NULL;
@@ -1579,14 +1602,17 @@ get_status_and_old_proxy(int use_glexec, char *jobDescr,
 	else
 	{
 		/* GLEXEC case */
-		command = make_message("%s /usr/bin/readlink -n .blah_jobproxy_dir/%s.proxy", gloc, spid->proxy_id);
-		if (command == NULL)
+		exe_command.delegation_type = atoi(status_argv[MEXEC_PARAM_DELEGTYPE]);
+		exe_command.delegation_cred = status_argv[MEXEC_PARAM_DELEGCRED];
+		exe_command.command = make_message("/usr/bin/readlink -n .blah_jobproxy_dir/%s.proxy", spid->proxy_id);
+		if (exe_command.command == NULL)
 	 	{
 			fprintf(stderr, "Out of memory.\n");
 			exit(MALLOC_ERROR);
 		}
-		retcod = exe_getout(command, status_argv, &r_old_proxy);
-		if (r_old_proxy == NULL || strlen(r_old_proxy) == 0 || retcod != 0)
+		retcod = execute_cmd(&exe_command);
+		r_old_proxy = strdup(exe_command.output);
+		if (r_old_proxy == NULL || strlen(r_old_proxy) == 0 || retcod != 0 || exe_command.exit_code != 0)
 		{
 			if (r_old_proxy != NULL)
 			{
@@ -1597,30 +1623,35 @@ get_status_and_old_proxy(int use_glexec, char *jobDescr,
 			if (error_string != NULL)
 			{
 				escaped_command = escape_spaces(command);
-				*error_string = make_message("%s\\ returns\\ %d\\ and\\ no\\ proxy.", escaped_command, retcod);;
+				*error_string = make_message("%s\\ returns\\ %d\\ and\\ no\\ proxy.", escaped_command, retcod);
 				if (BLAH_DYN_ALLOCATED(escaped_command)) free(escaped_command);
 			}
+
 			/* Proxy link for renewal is not accessible */
 			/* Try with .norenew */
-			free(command);
-			command = make_message("%s /usr/bin/readlink -n .blah_jobproxy_dir/%s.proxy.norenew", gloc, spid->proxy_id);
-			retcod = exe_getout(command, status_argv, &r_old_proxy);
+			recycle_cmd(&exe_command);
+			exe_command.append_to_command = ".norenew";
+			retcod = execute_cmd(&exe_command);
+			r_old_proxy = strdup(exe_command.output);
 			if (r_old_proxy != NULL && strlen(r_old_proxy) > 0 && retcod == 0)
 			{
 				/* No need to check for job status - */
 				/* Proxy has to be renewed locally */
 				*old_proxy = r_old_proxy;
-				free(command);
+				free(exe_command.command);
+				cleanup_cmd(&exe_command);
 				job_registry_free_split_id(spid);
 				return 1; /* 'local' state */
 			}
 			if (r_old_proxy != NULL) free(r_old_proxy);
-			free(command);
+			free(exe_command.command);
+			cleanup_cmd(&exe_command);
 			job_registry_free_split_id(spid);
 			return(-1);
 		}
 		*old_proxy = r_old_proxy;
-		free(command);
+		free(exe_command.command);
+		cleanup_cmd(&exe_command);
 	}
 
 	job_registry_free_split_id(spid);
@@ -1662,15 +1693,13 @@ cmd_renew_proxy(void *args)
 	char *jobDescr = argv[2];
 	char *proxyFileName = argv[3];
 	char *workernode = NULL;
-	char *command = NULL;
 	char *old_proxy = NULL;
-	char *dummy_cmd_out = NULL;
 	
 	int i, jobStatus, retcod, count;
-	char *cmd_out;
 	char *error_string = NULL;
 	char *proxyFileNameNew = NULL;
 	int use_glexec;
+	exec_cmd_t exe_command = EXEC_CMD_DEFAULT;
 
 	use_glexec = (argv[CMD_RENEW_PROXY_ARGS + 1] != NULL);
 
@@ -1689,34 +1718,26 @@ cmd_renew_proxy(void *args)
 		switch(jobStatus)
 		{
 			case 1: /* job queued: copy the proxy locally */
-				/* FIXME: add all the controls */
 				if (!use_glexec)
 				{
-					/* Not in GLEXEC mode */
-					limit_proxy(proxyFileName, old_proxy);
+					limit_proxy(proxyFileName, old_proxy); /*FIXME: should check if limited proxies are enabled? */ 
 					resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
 				}
 				else
 				{
-					/* GLEXEC mode */
-
-					/* add the target proxy */
-					for(count = CMD_RENEW_PROXY_ARGS + 2; argv[count]; count++);
-					argv = (char **)realloc(argv, sizeof(char *) * (count + 2));
-					argv[count] = make_message("GLEXEC_TARGET_PROXY=%s", old_proxy);
-					argv[count + 1] = NULL;
-					/* FIXME: should not execute anything, just create the new copy of the proxy (not yet supported by glexec) */
-					command = make_message("%s /bin/pwd", gloc);
-					retcod = exe_getout(command, argv + CMD_RENEW_PROXY_ARGS + 1, &dummy_cmd_out);
+					exe_command.delegation_type = atoi(argv[CMD_RENEW_PROXY_ARGS + 1 + MEXEC_PARAM_DELEGTYPE]);
+					exe_command.delegation_cred = argv[CMD_RENEW_PROXY_ARGS + 1 + MEXEC_PARAM_DELEGCRED];
+					exe_command.source_proxy = argv[CMD_RENEW_PROXY_ARGS + 1 + MEXEC_PARAM_SRCPROXY];
+					exe_command.dest_proxy = old_proxy;
+					retcod = execute_cmd(&exe_command);
 					if (retcod == 0)
 					{
-						resultLine = make_message("%s 0 Proxy\\ renewed\\ via\\ glexec", reqId);
+						resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
 					} else {
 						resultLine = make_message("%s 1 glexec\\ failed\\ (exitcode==%d)", reqId, retcod);
 					}
-					free(command);
+					cleanup_cmd(&exe_command);
 				}
-				if (dummy_cmd_out != NULL) free(dummy_cmd_out);
 				break;
 
 			case 2: /* job running: send the proxy to remote host */
@@ -1794,12 +1815,12 @@ cmd_send_proxy_to_worker_node(void *args)
 	char *jobDescr = argv[2];
 	char *proxyFileName = argv[3];
 	char *workernode = argv[4];
-	char *command = NULL;
-	int count,retcod;
+	char *ld_path = NULL;
+	int retcod;
 	
-	char *cmd_out;
 	char *error_string = NULL;
 	char *proxyFileNameNew = NULL;
+	exec_cmd_t exe_command = EXEC_CMD_DEFAULT;
 
 	char *delegate_switch;
 
@@ -1811,41 +1832,36 @@ cmd_send_proxy_to_worker_node(void *args)
 			limit_proxy(proxyFileName, proxyFileNameNew);
 		}
 		else
-			proxyFileNameNew = strdup(argv[CMD_SEND_PROXY_TO_WORKER_NODE_ARGS + GLEXEC_SOURCE_PROXY_IDX + 1] + 
-			                           strlen(glexec_env_name[GLEXEC_SOURCE_PROXY_IDX]) + 1);
+			proxyFileNameNew = strdup(argv[CMD_SEND_PROXY_TO_WORKER_NODE_ARGS + MEXEC_PARAM_SRCPROXY + 1]);
 
 		/* Add the globus library path */
-		for(count = CMD_SEND_PROXY_TO_WORKER_NODE_ARGS + 1; argv[count]; count++);
-		argv = (char **)realloc(argv, sizeof(char *) * (count + 2));
-		if (argv == NULL)
-		{
-			fprintf(stderr, "blahpd: out of memory! Exiting...\n");
-			exit(MALLOC_ERROR);
-		}
-		argv[count] = make_message("LD_LIBRARY_PATH=%s/lib",
+		ld_path = make_message("LD_LIBRARY_PATH=%s/lib",
 		                           getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus");
-		argv[count + 1] = NULL;
+		push_env(&exe_command.environment, ld_path);
+		free(ld_path);
 
 		delegate_switch = "";
 		if (config_test_boolean(config_get("blah_delegate_renewed_proxies",blah_config_handle)))
 			delegate_switch = "delegate_proxy";
 
-		command = make_message("%s/BPRclient %s %s %s %s",
+		exe_command.command = make_message("%s/BPRclient %s %s %s %s",
 		                       blah_script_location, proxyFileNameNew, jobDescr, workernode, delegate_switch); 
 		free(proxyFileNameNew);
 
-		retcod = exe_getout(command, argv + CMD_RENEW_PROXY_ARGS + 1, &cmd_out);
-		if (cmd_out)
+		retcod = execute_cmd(&exe_command);
+		if (exe_command.output)
 		{
-			error_string = escape_spaces(cmd_out);
-			free(cmd_out);
+			error_string = escape_spaces(exe_command.output);
 		}
 		else
+		{
 			error_string = strdup("Cannot\\ execute\\ BPRclient");
-
+		}
+		free(exe_command.command);
+		cleanup_cmd(&exe_command);
+		
 		resultLine = make_message("%s %d %s", reqId, retcod, error_string);
 		if (BLAH_DYN_ALLOCATED(error_string)) free(error_string);
-		free(command);
 	}
 	else
 	{
@@ -1870,15 +1886,13 @@ cmd_send_proxy_to_worker_node(void *args)
 }
 
 void
-hold_res_exec(char* jobdescr, char* reqId, char* action, int status, char **environment )
+hold_res_exec(char* jobdescr, char* reqId, char* action, int status, char **argv )
 {
 	int retcod;
-	char *cmd_out, *cmd_err;
 	char *escpd_cmd_out, *escpd_cmd_err;
-	char *command;
 	char *resultLine = NULL;
 	job_registry_split_id *spid;
-	char *error_string;
+	exec_cmd_t hold_command = EXEC_CMD_DEFAULT;
 
 	/* Split <lrms> and actual job Id */
 	if((spid = job_registry_split_blah_id(jobdescr)) == NULL)
@@ -1888,27 +1902,22 @@ hold_res_exec(char* jobdescr, char* reqId, char* action, int status, char **envi
 		goto cleanup_argv;
 	}
 
-	if(*environment)
+	if (argv[MEXEC_PARAM_DELEGTYPE] != NULL)
 	{
-		if(!strcmp(action,"hold"))
-		{
-		        command = make_message("%s %s/%s_%s.sh %s %d", gloc, blah_script_location, spid->lrms, action, spid->script_id, status);
-		}else
-		{
-		        command = make_message("%s %s/%s_%s.sh %s", gloc, blah_script_location, spid->lrms, action, spid->script_id);
-		}
-	}else
+		hold_command.delegation_type = atoi(argv[MEXEC_PARAM_DELEGTYPE]);
+		hold_command.delegation_cred = argv[MEXEC_PARAM_DELEGCRED];
+	}
+	
+	if(!strcmp(action,"hold"))
 	{
-		if(!strcmp(action,"hold"))
-		{
-		        command = make_message("%s/%s_%s.sh %s %d", blah_script_location, spid->lrms, action, spid->script_id, status);
-		}else
-		{
-		        command = make_message("%s/%s_%s.sh %s", blah_script_location, spid->lrms, action, spid->script_id);
-		}
+		hold_command.command = make_message("%s/%s_%s.sh %s %d", blah_script_location, spid->lrms, action, spid->script_id, status);
+	}
+	else
+	{
+		hold_command.command = make_message("%s/%s_%s.sh %s", blah_script_location, spid->lrms, action, spid->script_id);
 	}
 
-	if (command == NULL)
+	if (hold_command.command == NULL)
 	{
 		/* PUSH A FAILURE */
 		resultLine = make_message("%s 1 Cannot\\ allocate\\ memory\\ for\\ the\\ command\\ string", reqId);
@@ -1916,37 +1925,39 @@ hold_res_exec(char* jobdescr, char* reqId, char* action, int status, char **envi
 	}
 
 	/* Execute the command */
-	retcod = exe_getouterr(command, environment, &cmd_out, &cmd_err);
-	if(cmd_out == NULL)
+	retcod = execute_cmd(&hold_command);
+
+	if (retcod != 0)
 	{
-		resultLine = make_message("%s 1 Cannot\\ execute\\ %s\\ script", reqId, command);
+		resultLine = make_message("%s 1 Cannot\\ execute\\ %s\\ script", reqId, hold_command.command);
 		goto cleanup_command;
 	}
-	if(retcod)
+
+	if (hold_command.exit_code != 0)
 	{
-		escpd_cmd_out = escape_spaces(cmd_out);
-		escpd_cmd_err = escape_spaces(cmd_err);
-		resultLine = make_message("%s %d Job\\ %s:\\ %s\\ not\\ supported\\ by\\ %s\\ (stdout:%s)\\ (stderr:%s)", reqId, retcod, statusstring[status - 1], action, spid->lrms, escpd_cmd_out, escpd_cmd_err);
+		escpd_cmd_out = escape_spaces(hold_command.output);
+		escpd_cmd_err = escape_spaces(hold_command.error);
+		resultLine = make_message("%s %d Job\\ %s:\\ %s\\ not\\ supported\\ by\\ %s\\ (stdout:%s)\\ (stderr:%s)",
+		                          reqId, retcod, statusstring[status - 1], action, spid->lrms, escpd_cmd_out, escpd_cmd_err);
 		if (BLAH_DYN_ALLOCATED(escpd_cmd_out)) free(escpd_cmd_out);
 		if (BLAH_DYN_ALLOCATED(escpd_cmd_err)) free(escpd_cmd_err);
 	}
 	else
 		resultLine = make_message("%s %d No\\ error", reqId, retcod);
 
-	if (cmd_out != NULL) free(cmd_out);
-	if (cmd_err != NULL) free(cmd_err);
+	cleanup_cmd(&hold_command);
 
 	/* Free up all arguments and exit (exit point in case of error is the label
 	   pointing to last successfully allocated variable) */
 cleanup_command:
-	free(command);
+	free(hold_command.command);
 cleanup_lrms:
 	job_registry_free_split_id(spid);
 cleanup_argv:
 	if(resultLine)
 	{
 		enqueue_result(resultLine);
-		free (resultLine);
+		free(resultLine);
 	}
 	else
 	{
@@ -2093,10 +2104,11 @@ cmd_get_hostport(void *args)
 {
 	char **argv = (char **)args;
 	char *reqId = argv[1];
-	char *cmd_out;
-	char *command;
 	char *resultLine;
+	char *resultLine_tmp;
+	char *cmd_out;
 	int  retcode;
+	exec_cmd_t exe_command = EXEC_CMD_DEFAULT;
 	int i;
 
 	if (blah_children_count>0) check_on_children(blah_children, blah_children_count);
@@ -2106,22 +2118,24 @@ cmd_get_hostport(void *args)
 		resultLine = make_message("%s 0 ", reqId);
 		for(i = 0; i < lrms_counter; i++)
 		{        
-			command = make_message("%s/%s_status.sh -n", blah_script_location, lrmslist[i]);
-			retcode = exe_getout(command, NULL, &cmd_out);
-			free(command);
+			exe_command.command = make_message("%s/%s_status.sh -n", blah_script_location, lrmslist[i]);
+			retcode = execute_cmd(&exe_command);
+			cmd_out = exe_command.output;
 			if (retcode || !cmd_out)
 			{
 				free(resultLine);
 				resultLine = make_message("%s 1 Unable\\ to\\ retrieve\\ the\\ port\\ (exit\\ code\\ =\\ %d) ", reqId, retcode);
-				if (cmd_out) free (cmd_out);
 				break;
 			}
 			if (cmd_out[strlen(cmd_out) - 1] == '\n') cmd_out[strlen(cmd_out) - 1] = '\0';
-			resultLine = make_message("%s%s/%s ", resultLine, lrmslist[i], strlen(cmd_out) ? cmd_out : "Error\\ reading\\ host:port");
-			free(cmd_out);
+			resultLine_tmp = make_message("%s%s/%s ", resultLine, lrmslist[i], strlen(cmd_out) ? cmd_out : "Error\\ reading\\ host:port");
+			free(resultLine);
+			resultLine = resultLine_tmp;
+			recycle_cmd(&exe_command);
 		}
 		/* remove the trailing space */
 		resultLine[strlen(resultLine) - 1] = '\0';
+		cleanup_cmd(&exe_command);
 	}
 	else
 	{
@@ -2396,24 +2410,34 @@ set_cmd_list_option(char **command, classad_context cad, const char *attribute, 
 int
 limit_proxy(char* proxy_name, char *limited_proxy_name)
 {
-	char *timeleftcommand;
 	int seconds_left, hours_left, minutes_left;
 	char *limcommand;
-	char *cmd_out;
 	int res;
 	char* globuslocation;
 	char *limit_command_output;
 	int tmpfd;
+	exec_cmd_t exe_command = EXEC_CMD_DEFAULT;
 
 	globuslocation = (getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus");
-	timeleftcommand = make_message("%s/bin/grid-proxy-info -timeleft -file %s",
+	exe_command.command = make_message("%s/bin/grid-proxy-info -timeleft -file %s",
 	                          globuslocation, proxy_name);
-	res = exe_getout(timeleftcommand, NULL, &cmd_out);
-	free(timeleftcommand);
-	if (!cmd_out) return -1;
-	else {
-		seconds_left = atoi(cmd_out);
-		free(cmd_out);
+	if (exe_command.command == NULL)
+	{
+		fprintf(stderr, "blahpd: out of memory\n");
+		exit(1);
+	}
+	res = execute_cmd(&exe_command);
+	free(exe_command.command);
+
+	if (res != 0)
+	{
+		perror("blahpd error invoking grid-proxy-info");
+		return(-1);
+	}
+	else
+	{
+		seconds_left = atoi(exe_command.output);
+		cleanup_cmd(&exe_command);
 	}
 
 	limit_command_output = make_message("%s_XXXXXX", limited_proxy_name);
@@ -2434,41 +2458,46 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 		}
 	}
         
-	if (seconds_left <= 0) {
+	if (seconds_left <= 0)
+	{
 		/* Something's wrong with the current proxy - use defaults */
-		limcommand = make_message("%s/bin/grid-proxy-init -old -limited -cert %s -key %s -out %s",
+		exe_command.command = make_message("%s/bin/grid-proxy-init -old -limited -cert %s -key %s -out %s",
 	                          globuslocation, proxy_name, proxy_name, limit_command_output);
-	} else {
+	} 
+	else
+	{
 		hours_left = (int)(seconds_left/3600);
 		minutes_left = (int)((seconds_left%3600)/60) + 1;
-		limcommand = make_message("%s/bin/grid-proxy-init -old -limited -valid %d:%d -cert %s -key %s -out %s",
+		exe_command.command = make_message("%s/bin/grid-proxy-init -old -limited -valid %d:%d -cert %s -key %s -out %s",
 	                          globuslocation, hours_left, minutes_left, proxy_name, proxy_name, limit_command_output);
 	}
-	res = exe_getout(limcommand, NULL, &cmd_out);
-	free(limcommand);
-	if (!cmd_out) 
+	res = execute_cmd(&exe_command);
+	free(exe_command.command);
+	if (res != 0) 
 	{
 		if (limit_command_output != limited_proxy_name)
 			free(limit_command_output);
-		return -1;
+		return(-1);
 	}
-	else free(cmd_out);
 
 	/* If exitcode != 0 there may be a problem due to a warning by grid-proxy-init but */
 	/* the call may have been successful. We just check the temporary proxy  */
-	if (res)
+	if (exe_command.exit_code != 0)
 	{
-		limcommand = make_message("%s/bin/grid-proxy-info -f %s", globuslocation, limit_command_output);
-		res = exe_getout(limcommand, NULL, &cmd_out);
-		free(limcommand);
-		if (res != 0 || !cmd_out) 
+		cleanup_cmd(&exe_command);
+		exe_command.command = make_message("%s/bin/grid-proxy-info -f %s", globuslocation, limit_command_output);
+		res = execute_cmd(&exe_command);
+		free(exe_command.command);
+		if (res != 0 || exe_command.exit_code != 0) 
 		{
 			if (limit_command_output != limited_proxy_name)
 				free(limit_command_output);
-			return -1;
+			return(-1);
 		}
-		else free(cmd_out);
 	}
+
+	cleanup_cmd(&exe_command);
+
 	if (limit_command_output != limited_proxy_name)
 	{
 		/* Rotate limited proxy in place via atomic rename */
@@ -2500,6 +2529,7 @@ logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char
 	char *esc_userDN=NULL;
 	char *uid;
 	job_registry_split_id *spid;
+	exec_cmd_t exe_command = EXEC_CMD_DEFAULT;
 
 	/* Get values from environment and compose the logfile pathname */
 	if ((glite_loc = getenv("GLITE_LOCATION")) == NULL)
@@ -2534,6 +2564,8 @@ logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char
 	}
 	lrms_jobid = spid->proxy_id;
 
+
+
 	/* Ce ID */
 	bs = spid->lrms;
 	classad_get_dstring_attribute(cad, "CeID", &ce_id);
@@ -2544,9 +2576,11 @@ logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char
 		{
 			ce_id=make_message("%s:2119/blah-%s-%s",host_name,bs,queue);
 			free(queue);
-		}else
+		}
+		else
 			ce_id=make_message("%s:2119/blah-%s-",host_name,bs);
-	}else
+	}
+	else
 	{
 		classad_get_dstring_attribute(cad, "Queue", &queue);
 		if(queue&&(strncmp(&ce_id[strlen(ce_id) - strlen(queue)],queue,strlen(queue))))
@@ -2557,18 +2591,23 @@ logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char
 		}
 		if (queue) free(queue);
 	}
-
-	/* user ID */
 	if(*environment)
 	{
 	 	/* need to fork and glexec an id command to obtain real user */
-		temp_str=make_message("%s /usr/bin/id -u",gloc);
-		if (exe_getout(temp_str, environment, &uid) != 0)
+		exe_command.delegation_type = atoi(environment[MEXEC_PARAM_DELEGTYPE]);
+		exe_command.delegation_cred = environment[MEXEC_PARAM_DELEGCRED];
+		exe_command.command = make_message("/usr/bin/id -u");
+		result = execute_cmd(&exe_command);
+		free(exe_command.command);
+		if (result != 0 || exe_command.exit_code != 0)
 			return 1;
-		free(temp_str);
-		uid[strlen(uid)-1]=0;	
-	}else
-		uid = make_message("%d",getuid());
+		uid = strdup(exe_command.output);
+		cleanup_cmd(&exe_command);
+		uid[strlen(uid)-1] = 0;
+	}
+	else
+		uid = make_message("%d", getuid());
+
 	/* log line with in addiction unixuser */
 	esc_userDN=escape_spaces(userDN);
 	/* log_line=make_message("%s/BDlogger %s \\\"timestamp=%s\\\"\\\ \\\"userDN=%s\\\"\\\ %s\\\"ceID=%s\\\"\\\ \\\"jobID=%s\\\"\\\ \\\"lrmsID=%s\\\"\\\ \\\"localUser=%s\\\"", blah_script_location, blah_config_handle->config_path, date_str, esc_userDN, fqan, ce_id, gridjobid, lrms_jobid, uid); */
@@ -2584,21 +2623,23 @@ logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char
 	return 0;
 }
 
-int getProxyInfo(char* proxname, char* fqan, char* userDN)
+int
+getProxyInfo(char* proxname, char* fqan, char* userDN)
 {
-	char temp_str[MAX_TEMP_ARRAY_SIZE];
-	FILE *cmd_out=NULL;
-	int  result=0;
 	int  slen=0;
 	int  count=0;
-	char fqanlong[MAX_TEMP_ARRAY_SIZE];
+	char *begin_res;
+	char *end_res;
+	int res_length;
+	char *fqanlong;
+	char *fqanlong_tmp;
+	exec_cmd_t exe_command = EXEC_CMD_DEFAULT;
 
-	sprintf(temp_str, "%s/voms-proxy-info -file %s -subject", blah_script_location, proxname);
-	BLAHDBG("DEBUG: getProxyInfo: executing %s\n", temp_str);
-	if ((cmd_out = mtsafe_popen(temp_str, "r")) == NULL)
+	exe_command.command = make_message("%s/voms-proxy-info -file %s ", blah_script_location, proxname);
+	exe_command.append_to_command = "-subject";
+	if (execute_cmd(&exe_command) != 0)
 		return 1;
-	fgets(fqanlong, MAX_TEMP_ARRAY_SIZE, cmd_out);
-	/* Trim trailing newline, if any */
+	fqanlong = exe_command.output;
 	slen = strlen(fqanlong);
 	if (fqanlong[slen-1] == '\n') 
 	{
@@ -2606,7 +2647,6 @@ int getProxyInfo(char* proxname, char* fqan, char* userDN)
 		slen--;
 	}
 
-	result = mtsafe_pclose(cmd_out);
 	/* example:
 	   subject= /C=IT/O=INFN/OU=Personal Certificate/L=Milano/CN=Giuseppe Fiorentino/Email=giuseppe.fiorentino@mi.infn.it/CN=proxy
 	   CN=proxy, CN=limited proxy must be removed from the 
@@ -2626,29 +2666,24 @@ int getProxyInfo(char* proxname, char* fqan, char* userDN)
 		}else
 		          break;
 	}
-	strcpy(userDN,fqanlong);
-	/* user'sFQAN detection */
-	fqanlong[0]=0;
-	memset(fqanlong,0,MAX_TEMP_ARRAY_SIZE);
-	fqan[0]=0;
-	/* command : voms-proxy-info -file proxname -fqan  */
-	memset(temp_str,0,MAX_TEMP_ARRAY_SIZE);
-	sprintf(temp_str,"%s/voms-proxy-info -file %s -fqan", blah_script_location, proxname);
-	BLAHDBG("DEBUG: getProxyInfo: executing %s\n", temp_str);
-	if ((cmd_out=mtsafe_popen(temp_str, "r")) == NULL)
+	strncpy(userDN, fqanlong, MAX_TEMP_ARRAY_SIZE);
+	recycle_cmd(&exe_command);
+	exe_command.append_to_command = "-fqan";
+	if (execute_cmd(&exe_command) != 0)
 		return 1;
-	while(fgets(fqanlong, MAX_TEMP_ARRAY_SIZE, cmd_out))
+	fqanlong = strdup("");
+	fqan[0] = '\000';
+	res_length = strlen(exe_command.output);
+	for (begin_res = exe_command.output; end_res = memchr(exe_command.output, '\n', res_length); begin_res = end_res + 1)
 	{
-		strcat(fqan,"\\\"userFQAN=");
-		strcat(fqan,fqanlong);
-		memset(fqanlong,0,MAX_TEMP_ARRAY_SIZE);
-		if(fqan[strlen(fqan)-1]=='\n') fqan[strlen(fqan)-1] = 0;
-		/* strcat(fqan,"\\\"\\\ "); */
-		strcat(fqan,"\\\"\\ ");
+		*end_res = 0;
+		fqanlong_tmp = make_message("%s\\\"userFQAN=%s\\\"\\ ", fqanlong, begin_res);
+		free(fqanlong);
+		fqanlong = fqanlong_tmp;
 	}
-	/* if (!strcmp(fqan,"")) sprintf(fqan,"\\\"userFQAN=\\\"\\\ "); */
-	if (!strcmp(fqan,"")) sprintf(fqan,"\\\"userFQAN=\\\"\\ ");
-	result = mtsafe_pclose(cmd_out);
+	strncpy(fqan, fqanlong, MAX_TEMP_ARRAY_SIZE);
+	cleanup_cmd(&exe_command);
+	if (fqan[0] == '\000') snprintf(fqan, MAX_TEMP_ARRAY_SIZE, "\\\"userFQAN=\\\"\\ ");
 	BLAHDBG("DEBUG: getProxyInfo returns: userDN:%s  ", userDN);
 	BLAHDBG("fqan:  %s\n", fqan);
 	return 0;
