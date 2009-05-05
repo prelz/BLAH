@@ -212,7 +212,11 @@ execute_cmd(exec_cmd_t *cmd)
 		else
 			id_mapping_command = cfg_id_mapping_command->value;
 
-		command = make_message("%s %s", id_mapping_command, cmd->command ? cmd->command : "/bin/true");
+		/* /bin/pwd is used here as default as it's ordinarily */
+		/* allowed to execute by GLEXEC configs. Take caution */
+		/* by making sure it's added to GLEXEC allowed commands */
+		/* before replacing it. */
+		command = make_message("%s %s", id_mapping_command, cmd->command ? cmd->command : "/bin/pwd");
 		push_env(&cmd_env, "GLEXEC_MODE=lcmaps_get_account");
 		env_strbuffer = make_message("GLEXEC_CLIENT_CERT=%s", cmd->delegation_cred);
 		push_env(&cmd_env, env_strbuffer);
