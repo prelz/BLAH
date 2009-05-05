@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.38 2009/05/05 09:05:31 fprelz Exp $ 
+# $Id: Makefile.am,v 1.39 2009/05/05 11:17:49 fprelz Exp $ 
 #
 # File:           Makefile.am
 #
@@ -24,7 +24,7 @@ else
 GLOBUS_EXECS =
 endif
 
-bin_PROGRAMS = blahpd blahpd_daemon BLClient BLParserLSF BLParserPBS BDlogger test_condor_logger blah_job_registry_add blah_job_registry_lkup BUpdaterCondor BNotifier BUpdaterLSF BUpdaterPBS BUpdaterSGE $(GLOBUS_EXECS)  blparser_master
+bin_PROGRAMS = blahpd blahpd_daemon BLClient BLParserLSF BLParserPBS BDlogger test_condor_logger blah_job_registry_add blah_job_registry_lkup blah_job_registry_scan_by_subject BUpdaterCondor BNotifier BUpdaterLSF BUpdaterPBS BUpdaterSGE $(GLOBUS_EXECS)  blparser_master
 noinst_PROGRAMS = test_job_registry_create test_job_registry_purge test_job_registry_update test_job_registry_access
 
 common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C proxy_hashcontainer.c config.c job_registry.c Bfunctions.c blah_utils.c env_helper.c mapped_exec.c md5.c
@@ -83,6 +83,10 @@ blah_job_registry_add_CFLAGS = $(AM_CFLAGS)
 
 blah_job_registry_lkup_SOURCES = blah_job_registry_lkup.c job_registry.c md5.c config.c
 blah_job_registry_lkup_CFLAGS = $(AM_CFLAGS)
+
+blah_job_registry_scan_by_subject_SOURCES = blah_job_registry_scan_by_subject.c classad_c_helper.C classad_binary_op_unwind.C job_registry.c md5.c config.c
+blah_job_registry_scan_by_subject_LDADD = $(CLASSAD_LIBS)
+blah_job_registry_scan_by_subject_CFLAGS = $(AM_CFLAGS)
 
 test_job_registry_purge_SOURCES = test_job_registry_purge.c job_registry.c md5.c
 test_job_registry_purge_CFLAGS = $(AM_CFLAGS)
