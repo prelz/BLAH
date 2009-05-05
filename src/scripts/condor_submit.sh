@@ -31,7 +31,7 @@ proxy_dir=~/.blah_jobproxy_dir
 original_args="$@"
 # Note: -s (stage command) s ignored as it is not relevant for Condor.
 
-while getopts "a:i:o:e:j:v:V:c:w:x:q:s:T:I:O:R:" arg 
+while getopts "a:i:o:e:j:v:V:c:w:x:u:q:s:T:I:O:R:" arg 
 do
     case "$arg" in
     a) xtra_args="$OPTARG" ;;
@@ -44,6 +44,7 @@ do
     c) command="$OPTARG" ;;
     w) workdir="$OPTARG";;
     x) proxy_file="$OPTARG" ;;
+    u) proxy_subject="$OPTARG" ;;
     q) queue="$OPTARG";;
     s) stgcmd="$OPTARG" ;;
     T) temp_dir="$OPTARG" ;;
@@ -263,7 +264,7 @@ if [ "$return_code" == "0" ] ; then
     blahp_jobID="condor/$jobID/$queue/$pool"
 
     if [ "x$job_registry" != "x" ]; then
-      `dirname $0`/blah_job_registry_add "$blahp_jobID" "$jobID" 1 $now "$creamjobid" "$proxy_file" 0
+      `dirname $0`/blah_job_registry_add "$blahp_jobID" "$jobID" 1 $now "$creamjobid" "$proxy_file" 0 "$proxy_subject"
     fi
 
     echo "BLAHP_JOBID_PREFIX$blahp_jobID"

@@ -873,6 +873,7 @@ cmd_submit_job(void *args)
 	char *error_string;
 	int res = 1;
 	char *proxyname = NULL;
+	char *proxysubject = NULL;
 	char *proxynameNew   = NULL;
 	char *log_proxy;
 	char *command_ext = NULL;
@@ -919,6 +920,7 @@ cmd_submit_job(void *args)
 			goto cleanup_lrms;
 		} else {
 			proxyname = NULL;
+			classad_get_dstring_attribute(cad, "x509UserProxySubject", &proxysubject);
 		}
 	}
 
@@ -954,6 +956,8 @@ cmd_submit_job(void *args)
 		log_proxy = proxynameNew;
 	}
 
+	userDN[0] = '\000'; /* FIXME: these should really be dynamic */
+	fqan[0] = '\000';   /* FIXME: these should really be dynamic */
 	if (proxyname != NULL)
 	{
 		/* DGAS accounting */
@@ -963,7 +967,7 @@ cmd_submit_job(void *args)
 			resultLine = make_message("%s 1 Credentials\\ not\\ valid N/A", reqId);
 			goto cleanup_command;
 		}
-		if (userDN) enable_log=1;
+		if (strlen(userDN) > 0) enable_log=1;
 	}
 
 	command = make_message("%s/%s_submit.sh", blah_script_location, server_lrms);
@@ -975,16 +979,28 @@ cmd_submit_job(void *args)
 		goto cleanup_proxyname;
 	}
 
-	/* add proxy name if present */
+	/* add proxy name and/or subjects if present */
+	command_ext = NULL;
 	if (proxyname != NULL)
 	{
-		command_ext = make_message("%s -x %s", command, proxyname);
+		command_ext = make_message("%s -x %s -u \"%s\" ", command, proxyname, userDN);
 		if (command_ext == NULL)
 		{
 			/* PUSH A FAILURE */
 			resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
 			goto cleanup_command;
 		}
+	} else if (proxysubject != NULL) {
+		command_ext = make_message("%s -u \"%s\" ", command, proxysubject);
+		if (command_ext == NULL)
+		{
+			/* PUSH A FAILURE */
+			resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
+			goto cleanup_command;
+		}
+	}
+	if (command_ext != NULL)
+	{
 		/* Swap new command in */
 		free(command);
 		command = command_ext;
@@ -1203,6 +1219,7 @@ cleanup_command:
 	free(command);
 cleanup_proxyname:
 	if (proxyname != NULL) free(proxyname);
+	if (proxysubject != NULL) free(proxysubject);
 cleanup_lrms:
 	free(server_lrms);
 cleanup_cad:

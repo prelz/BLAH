@@ -40,18 +40,19 @@ main(int argc, char *argv[])
   char *exitreason = "";
   char *user_prefix = "";
   char *user_proxy = "";
+  char *proxy_subject = "";
   int  renew_proxy = 0;
   char *wn_addr = "";
   time_t udate=0;
   char *blah_id, *batch_id;
-  int ret, prret;
+  int ret, prret, rhret;
   config_handle *cha;
   config_entry *rge;
   job_registry_handle *rha, *rhano;
 
   if (argc < 3)
    {
-    fprintf(stderr,"Usage: %s <BLAH id> <batch id> [job status] [udate] [user prefix] [user proxy] [renew proxy] [worker node] [exit code] [exit reason]\n",argv[0]);
+    fprintf(stderr,"Usage: %s <BLAH id> <batch id> [job status] [udate] [user prefix] [user proxy] [renew proxy] [proxy subject] [worker node] [exit code] [exit reason]\n",argv[0]);
     return 1;
    }
 
@@ -63,9 +64,10 @@ main(int argc, char *argv[])
   if (argc > 5) user_prefix = argv[5];
   if (argc > 6) user_proxy = argv[6];
   if (argc > 7) renew_proxy = atoi(argv[7]);
-  if (argc > 8) wn_addr = argv[8];
-  if (argc > 9) exitcode = atoi(argv[9]);
-  if (argc > 10) exitreason = argv[10];
+  if (argc > 8) proxy_subject = argv[8];
+  if (argc > 9) wn_addr = argv[9];
+  if (argc > 10) exitcode = atoi(argv[10]);
+  if (argc > 11) exitreason = argv[11];
    
   cha = config_read(NULL); /* Read config from default locations. */
   if (cha != NULL)
@@ -161,6 +163,18 @@ main(int argc, char *argv[])
       perror("");
      }
     else en.renew_proxy = renew_proxy;
+   }
+
+  if (strlen(proxy_subject) > 0)
+   {
+    job_registry_compute_subject_hash(&en, proxy_subject);
+    rhret = job_registry_record_subject_hash(rha, en.subject_hash, 
+                                             proxy_subject, TRUE);  
+    if (rhret < 0)
+     {
+      fprintf(stderr,"%s: warning: recording proxy subject %s (hash %s): ", proxy_subject, en.subject_hash);
+      perror("");
+     }
    }
 
   if ((ret=job_registry_append(rha, &en)) < 0)

@@ -45,6 +45,7 @@ typedef uint32_t job_registry_update_bitmask_t;
 #define JOB_REGISTRY_MAX_EXITREASON 120
 #define JOB_REGISTRY_MAX_USER_PREFIX 32
 #define JOB_REGISTRY_MAX_PROXY_LINK  40
+#define JOB_REGISTRY_MAX_SUBJECTLIST_LINE 512
 
 typedef uint32_t job_registry_entry_magic_t;
 typedef struct job_registry_entry_s
@@ -113,6 +114,7 @@ typedef struct job_registry_handle_s
    char *npudir;
    char *proxydir;
    char *subjectlist;
+   char *npusubjectlist;
    job_registry_index *entries;
    int n_entries;
    int n_alloc;
@@ -150,6 +152,7 @@ typedef struct job_registry_split_id_s
 #define JOB_REGISTRY_BAD_POSITION    -13 
 #define JOB_REGISTRY_BAD_RECNUM      -14 
 #define JOB_REGISTRY_OPENDIR_FAIL    -15 
+#define JOB_REGISTRY_HASH_EXISTS     -16 
 
 #define JOB_REGISTRY_TEST_FILE "/tmp/test_reg.bjr"
 #define JOB_REGISTRY_REGISTRY_NAME "registry"
@@ -217,6 +220,18 @@ char *job_registry_get_proxy(const job_registry_handle *rha,
                              const job_registry_entry *en);
 int job_registry_unlink_proxy(const job_registry_handle *rha,
                               job_registry_entry *en);
+void job_registry_compute_subject_hash(job_registry_entry *en,
+                                       const char *subject);
+int job_registry_record_subject_hash(const job_registry_handle *rha,
+                                     const char *hash,
+                                     const char *subject,
+                                     int nonpriv_allowed);
+char *job_registry_lookup_subject_hash(const job_registry_handle *rha,
+                                       const char *hash);
+job_registry_entry *job_registry_get_next_hash_match(
+                                 const job_registry_handle *rha,
+                                 FILE *fd, const char *hash);
+
 
 #ifndef TRUE
 #define TRUE 1

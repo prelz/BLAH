@@ -8,6 +8,7 @@
  *  Revision history :
  *  14-Nov-2007 Original release
  *  27-Feb-2008 Added user_prefix.
+ *   4-May-2009 Fill the proxy subject list.
  *
  *  Description:
  *    Job registry creation test for code in job_registry.{c,h}
@@ -31,11 +32,13 @@ main(int argc, char *argv[])
   char *test_blahid_format="conlrms/%c%c%c_blahid_%05d/stuff";
   char *test_batchid_format="%c%c%c_batchid_%05d";
   char *test_proxy;
+  char *test_subject;
+  char *test_subject_format="/C=IT/O=INFN/OU=Personal Certificate/L=Milano/CN=User %03x";
   job_registry_entry en;
   struct timeval tm_start, tm_end;
   int n_entries = 10000;
   float elapsed_secs;
-  int ret;
+  int ret, rhret;
   int i;
 
   if (argc > 1) test_registry_file = argv[1];
@@ -81,8 +84,26 @@ main(int argc, char *argv[])
      {
       job_registry_set_proxy(rha, &en, test_proxy);
       en.renew_proxy = 1;
+      test_subject = strdup(test_subject_format);
+      if (test_subject != NULL)
+       {
+        sprintf(test_subject, test_subject_format, rand()%1000);
+        job_registry_compute_subject_hash(&en, test_subject);
+        rhret = job_registry_record_subject_hash(rha, en.subject_hash,
+                                                 test_subject, TRUE);
+        if (rhret < 0)
+         {
+          fprintf(stderr,"%s: Record of subject %s (hash %s) returns %s: ",argv[0],test_subject, en.subject_hash ,ret);
+          perror("");
+         }
+        free(test_subject);
+       }
      }
-    else                   en.proxy_link[0]='\000';
+    else
+     {
+      en.proxy_link[0]='\000';
+      en.subject_hash[0]='\000';
+     }
 
     if ((ret=job_registry_append(rha, &en)) < 0)
      {

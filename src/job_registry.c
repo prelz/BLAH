@@ -648,6 +648,14 @@ job_registry_init(const char *path,
     errno = ENOMEM;
     return NULL;
    }
+  /* Create path for non-privileged updates to the subject list */
+  rha->npusubjectlist = jobregistry_construct_path("%s/%s.npusubjectlist",rha->path,0);
+  if (rha->npusubjectlist == NULL)
+   {
+    job_registry_destroy(rha);
+    errno = ENOMEM;
+    return NULL;
+   }
 
   if (mode != NAMES_ONLY)
    {
@@ -792,6 +800,7 @@ job_registry_destroy(job_registry_handle *rha)
    if (rha->npudir != NULL) free(rha->npudir);
    if (rha->proxydir != NULL) free(rha->proxydir);
    if (rha->subjectlist != NULL) free(rha->subjectlist);
+   if (rha->npusubjectlist != NULL) free(rha->npusubjectlist);
    rha->n_entries = rha->n_alloc = 0;
    if (rha->entries != NULL) free(rha->entries);
    free(rha);
@@ -1258,9 +1267,11 @@ job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
   FILE *ofd = NULL;
   struct stat cfp_st;
   char *cfp;
-  FILE *cfd;
+  FILE *cfd, *npsfd;
   DIR  *npd;
   struct dirent *de;
+  char subline[JOB_REGISTRY_MAX_SUBJECTLIST_LINE];
+  char *sp;
 
   ofd = fd;
 
@@ -1333,6 +1344,30 @@ job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
    }
   closedir(npd);
   if (fd == NULL && ofd != NULL) fclose(ofd);
+
+  if (nadd > 0)
+   {
+    /* Try merging the non-privileged subject list, if any */
+    npsfd = fopen(rha->npusubjectlist, "r+");
+    if (npsfd != NULL && job_registry_wrlock(rha,npsfd) >= 0)
+     {
+      while (!feof(npsfd))
+       {
+        if (fgets(subline, sizeof(subline), npsfd) != NULL)
+         {
+          sp = strchr(subline, ' ');
+          if (sp == NULL) continue;
+          *sp = '\000';
+          sp++;
+          if (sp[strlen(sp)-1] == '\n') sp[strlen(sp)-1] = '\000';
+          job_registry_record_subject_hash(rha, subline, sp, FALSE);
+         }
+       }
+      unlink(rha->npusubjectlist);
+     }
+    if (npsfd != NULL) fclose(npsfd);
+   }
+
   return nadd;
 }
 
@@ -2297,4 +2332,227 @@ job_registry_unlink_proxy(const job_registry_handle *rha,
 
   free(fullpath);
   return unret;
+}
+
+/*
+ * job_registry_compute_subject_hash
+ *
+ * Compute a MD5 hash out of a string containing a proxy certificate subject.
+ *
+ * @param en Pointer to a job registry entry. Its subject_hash will be
+ *           modified to contain an MD5 hash of subject.
+ * @param subject Pointer to a string containing the certificate subject.
+ *
+ */
+
+void
+job_registry_compute_subject_hash(job_registry_entry *en, const char *subject)
+{
+  md5_state_t ctx;
+  md5_byte_t digest[16];
+  char nibble[4];
+  int i;
+
+  md5_init(&ctx);
+  md5_append(&ctx, subject, strlen(subject));
+  md5_finish(&ctx, digest);
+
+  if (sizeof(en->subject_hash) < 4) return;
+  en->subject_hash[0] = '\000';
+
+  for (i=0; i<16; i++)
+   {
+    if (i >= (sizeof(en->subject_hash)/2 - 3)) break;
+    sprintf(nibble,"%02x",digest[i]);
+    strcat(en->subject_hash, nibble);
+   }
+}
+
+/*
+ * job_registry_record_subject_hash
+ *
+ * Compute a MD5 hash out of a string containing a proxy certificate subject,
+ * and record in a file archive the association between the MD5 hash
+ * and the full proxy subject.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
+ * @param hash    Pointer to a string containing the MD5 hash of subject.
+ * @param subject Pointer to a string containing the certificate subject.
+ *
+ * @return 0 in case of success, < 0 in case of failure 
+ *                               (errno is set accordingly).
+ */
+
+int
+job_registry_record_subject_hash(const job_registry_handle *rha,
+                                 const char *hash,
+                                 const char *subject, 
+                                 int nonpriv_allowed)
+{
+  FILE *fd;
+  char subline[JOB_REGISTRY_MAX_SUBJECTLIST_LINE];
+  int retcod;
+
+  fd = fopen(rha->subjectlist, "a+");
+  if (fd == NULL)
+   {
+    if ((errno == EACCES) && nonpriv_allowed)
+     {
+      fd = fopen(rha->npusubjectlist, "a+");
+      if (fd != NULL) 
+       {
+        /* Make sure other non-privileged appends to this file can be made */
+        fchmod(fileno(fd), S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
+       }
+     }
+   }
+
+  if (fd == NULL) return JOB_REGISTRY_FOPEN_FAIL;
+
+  if (job_registry_wrlock(rha, fd) < 0)
+   {
+    fclose(fd);
+    return JOB_REGISTRY_FLOCK_FAIL;
+   }
+
+  while (!feof(fd))
+   {
+    if (fgets(subline, sizeof(subline), fd) != NULL)
+     {
+      if (strncmp(subline, hash, strlen(hash)) == 0)
+       {
+        /* Hash was found already. Right or wrong, keep this entry. */
+        fclose(fd);
+        if (strncmp(subline+strlen(hash)+1, subject, strlen(subject)) != 0)
+         {
+          return JOB_REGISTRY_HASH_EXISTS;
+         }
+        else return JOB_REGISTRY_SUCCESS;
+       }
+     }
+   }
+  /* If we reach here, we are at end-of-file, and we can append our entry */
+  retcod = fprintf(fd, "%s %s\n", hash, subject);
+
+  fclose(fd);
+  if (retcod < 0) return JOB_REGISTRY_FWRITE_FAIL;
+  return JOB_REGISTRY_SUCCESS;
+}
+
+/*
+ * job_registry_lookup_subject_hash
+ *
+ * Find in a file archive (linear search) the full proxy subject cached 
+ * under a given MD5 hash.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
+ * @param hash    Pointer to a string containing the MD5 hash of subject.
+ *
+ * @return Pointer to dynamically allocated string holding the full
+ *         subject name, if found. NULL in case of failure
+ *         (errno is set accordingly).
+ */
+
+char *
+job_registry_lookup_subject_hash(const job_registry_handle *rha,
+                                 const char *hash)
+{
+  FILE *fd;
+  char subline[JOB_REGISTRY_MAX_SUBJECTLIST_LINE];
+  int retcod;
+  char *en;
+
+  fd = fopen(rha->subjectlist, "r");
+  if (fd == NULL) return NULL;
+
+  if (job_registry_rdlock(rha, fd) < 0)
+   {
+    fclose(fd);
+    return NULL;
+   }
+
+  while (!feof(fd))
+   {
+    if (fgets(subline, sizeof(subline), fd) != NULL)
+     {
+      if (strncmp(subline, hash, strlen(hash)) == 0)
+       {
+        /* Found entry */
+        en = strchr(subline, ' ');
+        if (en == NULL) continue; /* Bogus entry ?! */
+        en++;
+
+        fclose(fd);
+        return strdup(en);
+       }
+     }
+   }
+
+  fclose(fd);
+
+  /* Could the entry be pending a privileged update ? */
+  fd = fopen(rha->npusubjectlist, "r");
+  if (fd == NULL) return NULL;
+
+  if (job_registry_rdlock(rha, fd) < 0)
+   {
+    fclose(fd);
+    return NULL;
+   }
+
+  while (!feof(fd))
+   {
+    if (fgets(subline, sizeof(subline), fd) != NULL)
+     {
+      if (strncmp(subline, hash, strlen(hash)) == 0)
+       {
+        /* Found entry */
+        en = strchr(subline, ' ');
+        if (en == NULL) continue; /* Bogus entry ?! */
+        en++;
+
+        fclose(fd);
+        return strdup(en);
+       }
+     }
+   }
+
+  fclose(fd);
+  return NULL;
+}
+
+/*
+ * job_registry_get_next_hash_match
+ *
+ * Get the next registry entry in open stream fd whose 'subject_hash'
+ * field matches the 'hash' argument. Try making sure it is consistent.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
+ * @param fd Open (at least for reading) stream descriptor into a registry file
+ *        The stream must be positioned at the beginning of a valid entry,
+ *        or an error will be returned. Use job_registry_seek_next if the
+ *        stream needs to be positioned.
+ * @param hash string pointer to a MD5 hash of a proxy subject (as stored 
+ *        in the subject_hash field of registry entries).
+ *
+ * @return Dynamically allocated registry entry. Needs to be free'd.
+ */
+
+job_registry_entry *
+job_registry_get_next_hash_match(const job_registry_handle *rha,
+                                 FILE *fd, const char *hash)
+{
+  job_registry_entry *result = NULL;
+
+  for (;;) /* Will exit via break. */
+   {
+    result = job_registry_get_next(rha, fd);
+    if (result == NULL) break;
+
+    if (strncmp(result->subject_hash, hash, strlen(hash)) == 0) break;
+    
+    free(result);
+   }
+   
+  return result;
 }

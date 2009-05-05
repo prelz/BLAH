@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.37 2009/04/30 13:38:34 fprelz Exp $ 
+# $Id: Makefile.am,v 1.38 2009/05/05 09:05:31 fprelz Exp $ 
 #
 # File:           Makefile.am
 #
@@ -27,7 +27,7 @@ endif
 bin_PROGRAMS = blahpd blahpd_daemon BLClient BLParserLSF BLParserPBS BDlogger test_condor_logger blah_job_registry_add blah_job_registry_lkup BUpdaterCondor BNotifier BUpdaterLSF BUpdaterPBS BUpdaterSGE $(GLOBUS_EXECS)  blparser_master
 noinst_PROGRAMS = test_job_registry_create test_job_registry_purge test_job_registry_update test_job_registry_access
 
-common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C proxy_hashcontainer.c config.c job_registry.c Bfunctions.c blah_utils.c env_helper.c mapped_exec.c
+common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C proxy_hashcontainer.c config.c job_registry.c Bfunctions.c blah_utils.c env_helper.c mapped_exec.c md5.c
 
 blahpd_SOURCES = main.c $(common_sources)
 
@@ -78,43 +78,43 @@ BDlogger_LDADD =
 test_condor_logger_SOURCES = test_condor_create_log.c condor_create_log.c config.c blah_utils.c
 test_condor_logger_CFLAGS = $(AM_CFLAGS)
 
-blah_job_registry_add_SOURCES = blah_job_registry_add.c job_registry.c config.c
+blah_job_registry_add_SOURCES = blah_job_registry_add.c job_registry.c md5.c config.c
 blah_job_registry_add_CFLAGS = $(AM_CFLAGS)
 
-blah_job_registry_lkup_SOURCES = blah_job_registry_lkup.c job_registry.c config.c
+blah_job_registry_lkup_SOURCES = blah_job_registry_lkup.c job_registry.c md5.c config.c
 blah_job_registry_lkup_CFLAGS = $(AM_CFLAGS)
 
-test_job_registry_purge_SOURCES = test_job_registry_purge.c job_registry.c
+test_job_registry_purge_SOURCES = test_job_registry_purge.c job_registry.c md5.c
 test_job_registry_purge_CFLAGS = $(AM_CFLAGS)
 
-test_job_registry_create_SOURCES = test_job_registry_create.c job_registry.c
+test_job_registry_create_SOURCES = test_job_registry_create.c job_registry.c md5.c
 test_job_registry_create_CFLAGS = $(AM_CFLAGS)
 
-test_job_registry_update_SOURCES = test_job_registry_update.c job_registry.c
+test_job_registry_update_SOURCES = test_job_registry_update.c job_registry.c md5.c
 test_job_registry_update_CFLAGS = $(AM_CFLAGS)
 
-test_job_registry_access_SOURCES = test_job_registry_access.c job_registry.c
+test_job_registry_access_SOURCES = test_job_registry_access.c job_registry.c md5.c
 test_job_registry_access_CFLAGS = $(AM_CFLAGS)
 
-BUpdaterCondor_SOURCES = BUpdaterCondor.c Bfunctions.c job_registry.c config.c
+BUpdaterCondor_SOURCES = BUpdaterCondor.c Bfunctions.c job_registry.c md5.c config.c
 BUpdaterCondor_LDADD = -lpopt -lpthread
 
-BNotifier_SOURCES = BNotifier.c Bfunctions.c job_registry.c config.c
+BNotifier_SOURCES = BNotifier.c Bfunctions.c job_registry.c md5.c config.c
 BNotifier_LDADD = -lpopt -lpthread
 
-BUpdaterLSF_SOURCES = BUpdaterLSF.c Bfunctions.c job_registry.c config.c
+BUpdaterLSF_SOURCES = BUpdaterLSF.c Bfunctions.c job_registry.c md5.c config.c
 BUpdaterLSF_LDADD = -lpopt -lpthread
 
-BUpdaterPBS_SOURCES = BUpdaterPBS.c Bfunctions.c job_registry.c config.c
+BUpdaterPBS_SOURCES = BUpdaterPBS.c Bfunctions.c job_registry.c md5.c config.c
 BUpdaterPBS_LDADD = -lpopt -lpthread -lm
 
-BUpdaterSGE_SOURCES = BUpdaterSGE.c Bfunctions.c job_registry.c config.c
+BUpdaterSGE_SOURCES = BUpdaterSGE.c Bfunctions.c job_registry.c md5.c config.c
 BUpdaterSGE_LDADD = -lpopt -lpthread
 
 blparser_master_SOURCES = blparser_master.c config.c blah_utils.c
 blparser_master_LDADD = 
 
-noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h condor_create_log.h proxy_hashcontainer.h job_registry.h config.h BUpdaterCondor.h Bfunctions.h BNotifier.h BUpdaterLSF.h BUpdaterPBS.h BUpdaterSGE.h blah_utils.h env_helper.h mapped_exec.h
+noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h condor_create_log.h proxy_hashcontainer.h job_registry.h md5.h config.h BUpdaterCondor.h Bfunctions.h BNotifier.h BUpdaterLSF.h BUpdaterPBS.h BUpdaterSGE.h blah_utils.h env_helper.h mapped_exec.h
 
 #bin_SCRIPTS = pbs_cancel.sh pbs_status.sh pbs_submit.sh lsf_cancel.sh lsf_status.sh lsf_submit.sh
 
