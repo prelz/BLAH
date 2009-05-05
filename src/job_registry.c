@@ -2483,6 +2483,7 @@ job_registry_lookup_subject_hash(const job_registry_handle *rha,
         en++;
 
         fclose(fd);
+        if (en[strlen(en)-1] == '\n') en[strlen(en)-1] = '\000';
         return strdup(en);
        }
      }
@@ -2512,6 +2513,7 @@ job_registry_lookup_subject_hash(const job_registry_handle *rha,
         en++;
 
         fclose(fd);
+        if (en[strlen(en)-1] == '\n') en[strlen(en)-1] = '\000';
         return strdup(en);
        }
      }
