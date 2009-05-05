@@ -112,6 +112,8 @@ main(int argc, char *argv[])
   job_registry_handle *rha;
   FILE *fd;
   char *arg = "";
+  char *looked_up_subject = NULL;
+  char *lookup_subject = NULL;
   char *lookup_hash;
   int format_args = -1;
   int ifr;
@@ -159,6 +161,7 @@ main(int argc, char *argv[])
       break;
     case 's':
       job_registry_compute_subject_hash(&hen, arg);
+      lookup_subject = arg;
       lookup_hash = hen.subject_hash;
       break;
     default:
@@ -209,6 +212,22 @@ main(int argc, char *argv[])
   /* Filename is stored in job registry handle. - Don't need these anymore */
   if (cha != NULL) config_free(cha);
   if (need_to_free_registry_file) free(registry_file);
+
+  looked_up_subject = job_registry_lookup_subject_hash(rha, lookup_hash);
+  if (looked_up_subject == NULL)
+   {
+    fprintf(stderr,"%s: Hash %s is not found in registry %s.\n",argv[0],
+            lookup_hash, rha->path);
+    job_registry_destroy(rha);
+    return 5;
+   } else {
+    if ((lookup_subject != NULL) && 
+        (strcmp(looked_up_subject, lookup_subject) != 0))
+     {
+      fprintf(stderr, "%s: Warning: cached subject (%s) differs from the requested subject (%s)\n", argv[0], looked_up_subject, lookup_subject);
+     }
+    free(looked_up_subject);
+   }
 
   fd = job_registry_open(rha, "r");
   if (fd == NULL)
