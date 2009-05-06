@@ -1027,9 +1027,6 @@ BLAHPD README and command documentation : Version 0.4 - 20080123
 
                 BLAH_SET_GLEXEC_OFF <CRLF>
 
-                * reqid = integer Request ID, set to the value specified in
-                    the corresponding Request Line.
-
 	+ Return Line:
 
 		One of the following:
