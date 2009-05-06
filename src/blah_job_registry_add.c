@@ -165,6 +165,7 @@ main(int argc, char *argv[])
     else en.renew_proxy = renew_proxy;
    }
 
+  en.subject_hash[0] = '\000';
   if (strlen(proxy_subject) > 0)
    {
     job_registry_compute_subject_hash(&en, proxy_subject);
