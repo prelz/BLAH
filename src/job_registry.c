@@ -150,6 +150,7 @@ job_registry_purge(const char *path, time_t oldest_creation_date,
   int ret;
   mode_t old_umask;
   job_registry_handle *jra;
+  job_registry_hash_store hst;
 
   jra = job_registry_init(path, NAMES_ONLY);
   if (jra == NULL) return -1;
@@ -245,6 +246,9 @@ job_registry_purge(const char *path, time_t oldest_creation_date,
    }
   else job_registry_unlink_proxy(jra, &first);
 
+  hst.data = NULL;
+  hst.n_data = 0;
+
   while (!feof(fd))
    {
     if ((ret = job_registry_seek_next(fd,&cur)) < 0)
@@ -253,9 +257,12 @@ job_registry_purge(const char *path, time_t oldest_creation_date,
       fclose(fdw);
       free(newreg_path);
       job_registry_destroy(jra);
+      job_registry_free_hash_store(&hst); 
       return JOB_REGISTRY_NO_VALID_RECORD;
      }
     if (ret == 0) break;
+
+    job_registry_store_hash(&hst, cur.subject_hash);
 
     /* Sanitize sequence numbers */
     if (cur.recnum != (last_recnum+1)) cur.recnum = last_recnum + 1;
@@ -272,6 +279,7 @@ job_registry_purge(const char *path, time_t oldest_creation_date,
       fclose(fdw);
       free(newreg_path);
       job_registry_destroy(jra);
+      job_registry_free_hash_store(&hst); 
       return JOB_REGISTRY_FWRITE_FAIL;
      }
    }
@@ -283,11 +291,15 @@ job_registry_purge(const char *path, time_t oldest_creation_date,
     fclose(fd);
     free(newreg_path);
     job_registry_destroy(jra);
+    job_registry_free_hash_store(&hst); 
     return JOB_REGISTRY_RENAME_FAIL;
    }
 
   /* Closing fd will release the write lock. */
   fclose (fd);
+
+  job_registry_purge_subject_hash_list(jra, &hst);
+  job_registry_free_hash_store(&hst); 
 
   free(newreg_path);
 
@@ -2353,6 +2365,8 @@ job_registry_compute_subject_hash(job_registry_entry *en, const char *subject)
   char nibble[4];
   int i;
 
+  if (en == NULL || subject == NULL) return;
+
   md5_init(&ctx);
   md5_append(&ctx, subject, strlen(subject));
   md5_finish(&ctx, digest);
@@ -2392,6 +2406,8 @@ job_registry_record_subject_hash(const job_registry_handle *rha,
   FILE *fd;
   char subline[JOB_REGISTRY_MAX_SUBJECTLIST_LINE];
   int retcod;
+
+  if (rha == NULL || hash == NULL || subject == NULL) return -1;
 
   fd = fopen(rha->subjectlist, "a+");
   if (fd == NULL)
@@ -2461,6 +2477,8 @@ job_registry_lookup_subject_hash(const job_registry_handle *rha,
   char subline[JOB_REGISTRY_MAX_SUBJECTLIST_LINE];
   int retcod;
   char *en;
+
+  if (rha == NULL || hash == NULL) return NULL;
 
   fd = fopen(rha->subjectlist, "r");
   if (fd == NULL) return NULL;
@@ -2544,6 +2562,8 @@ job_registry_entry *
 job_registry_get_next_hash_match(const job_registry_handle *rha,
                                  FILE *fd, const char *hash)
 {
+  if (rha == NULL || fd == NULL || hash == NULL) return NULL;
+
   job_registry_entry *result = NULL;
 
   for (;;) /* Will exit via break. */
@@ -2557,4 +2577,256 @@ job_registry_get_next_hash_match(const job_registry_handle *rha,
    }
    
   return result;
+}
+
+/*
+ * job_registry_store_hash
+ *
+ * Store a hash string in an ordered array for fast lookup.
+ * This is used to purge the subjectlist.
+ *
+ * @param hst Pointer to a hash store handle. It will be initialised if 
+ *        hst->data is NULL.
+ * @param hash Hash string to store.
+ *
+ * @return <0 in case of failure (typically ENOMEM, as set by malloc). 
+ */
+
+int
+job_registry_store_hash(job_registry_hash_store *hst,
+                        const char *hash)
+{
+  char **new_data;
+  char *hash_copy;
+  char *swap1, *swap2;
+  int i, insert;
+
+  if (hst == NULL || hash == NULL) return -1;
+   
+  if (strlen(hash) <= 0) return 0;
+
+  if (hst->data == NULL)
+   {
+    hst->data = (char **)malloc(sizeof(char *));
+    if (hst->data == NULL)
+     {
+      hst->n_data = 0;
+      return -1;
+     }
+    hst->data[0] = strdup(hash);
+    if (hst->data[0] == NULL)
+     {
+      hst->n_data = 0;
+      return -1;
+     }
+    hst->n_data = 1;
+    return 0;
+   }
+
+  if (job_registry_lookup_hash(hst, hash, &insert) >= 0) return 0;
+
+  new_data = realloc(hst->data , (hst->n_data+1) * sizeof(char *));
+  if (new_data == NULL) return -1;
+
+  hash_copy = strdup(hash);
+  if (hash_copy == NULL) return -1;
+
+  hst->data = new_data;
+  
+  swap1 = hst->data[insert];
+  hst->data[insert] = hash_copy;
+
+  for (i=insert+1; i<=hst->n_data; i++)
+   {
+    swap2 = hst->data[i];
+    hst->data[i] = swap1;
+    swap1 = swap2;
+   }
+  
+  hst->n_data++;
+  return 0;
+}
+
+/*
+ * job_registry_lookup_hash
+ *
+ * Look a hash string up (binary search) in an ordered array.
+ *
+ * @param hst Pointer to a hash store handle. 
+ * @param hash Hash string to look up.
+ * @param loc Location of found record (or of insertion point
+ *            of missing record). May be NULL if not needed;
+ *
+ * @return <0 if entry not found. Index of array entry if found. 
+ */
+
+int
+job_registry_lookup_hash(const job_registry_hash_store *hst,
+                         const char *hash,
+                         int *loc)
+{
+  int left,right,cur;
+  int found=-1;
+  int cmp;
+
+  if (hst == NULL || hash == NULL) return -1;
+
+  if (loc != NULL) *loc = 0;
+
+  left = 0;
+  right = hst->n_data -1;
+
+  while (right >= left)
+   {
+    cur = (right + left) /2;
+    cmp = strcmp(hst->data[cur],hash);
+    if (cmp == 0)
+     {
+      found = cur;
+      break;
+     }
+    else if (cmp < 0)
+     {
+      left = cur+1;
+     }
+    else
+     {
+      right = cur-1;
+     }
+   }
+
+  if (found < 0)
+   {
+    if (loc != NULL)
+     {
+      if (hst->n_data == 0) *loc = 0;
+      else *loc = left;
+     }
+   }
+  else
+   {
+    if (loc != NULL) *loc = found;
+   }
+
+  return found;
+}
+
+/*
+ * job_registry_free_hash_store
+ *
+ * Free hash storage.
+ *
+ * @param hst Pointer to a hash store handle. 
+ *
+ */
+
+void
+job_registry_free_hash_store(job_registry_hash_store *hst)
+{
+  int i;
+
+  if (hst == NULL) return;
+
+  if (hst->data == NULL)
+   {
+    hst->n_data = 0;
+    return;
+   }
+
+  for (i=0; i < hst->n_data; i++)
+   {
+    if ((hst->data[i]) != NULL) free(hst->data[i]);
+   }
+  free(hst->data);
+  hst->data = NULL;
+  hst->n_data = 0;
+}
+
+/*
+ * job_registry_purge_subject_hash_list
+ *
+ * Purge the subject list in the job registry, leaving only the entries
+ * listed in the supplied hash store.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
+ * @param hst Pointer to a job_registry_hash_store containing an
+ *            ordered array of the entries to be saved.
+ *
+ * @return 0 in case of success, < 0 in case of failure 
+ *                               (errno is set accordingly).
+ */
+
+int
+job_registry_purge_subject_hash_list(const job_registry_handle *rha,
+                                     const job_registry_hash_store *hst)
+{
+  FILE *rfd, *wfd;
+  char subline[JOB_REGISTRY_MAX_SUBJECTLIST_LINE];
+  int retcod;
+  char *en;
+  char *templist = NULL;
+
+  if (rha == NULL || hst == NULL) return -1;
+
+  rfd = fopen(rha->subjectlist, "r");
+  if (rfd == NULL) return -1;
+
+  /* Create purged registry file that will be rotated in place */
+  /* of the current registry. */
+  templist = jobregistry_construct_path("%s/%s.new_subjectlist.%d", 
+                                        rha->path, getpid());
+  if (templist == NULL) 
+   {
+    fclose(rfd);
+    return -1;
+   }
+
+  if ((wfd = fopen(templist, "w")) == NULL)
+   {
+    fclose(rfd);
+    free(templist);
+    return -1;
+   }
+
+  if (job_registry_rdlock(rha, rfd) < 0)
+   {
+    fclose(rfd);
+    fclose(wfd);
+    unlink(templist);
+    free(templist);
+    return -1;
+   }
+
+  while (!feof(rfd))
+   {
+    if (fgets(subline, sizeof(subline), rfd) != NULL)
+     {
+      en = strchr(subline, ' ');
+      if (en == NULL) continue; /* Bogus entry ?! */
+      *en = '\000';
+      if (job_registry_lookup_hash(hst, subline, NULL) >= 0)
+       {
+        /* Entry found. Write it out. */
+        *en = ' ';
+        if (fputs(subline, wfd) < 0)
+         {
+          fclose(rfd);
+          fclose(wfd);
+          unlink(templist);
+          free(templist);
+          return -1;
+         }
+       }
+     }
+   }
+
+  fclose(rfd);
+  fclose(wfd);
+
+  /* Rotate new subjectlist in place */
+  retcod = rename(templist, rha->subjectlist);
+  if (retcod < 0) unlink(templist);
+  free(templist);
+
+  return retcod;
 }

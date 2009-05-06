@@ -136,6 +136,12 @@ typedef struct job_registry_split_id_s
    char *proxy_id;
  } job_registry_split_id;
 
+typedef struct job_registry_hash_store_s
+ {
+   char **data;
+   int n_data;
+ } job_registry_hash_store;
+
 #define JOB_REGISTRY_SUCCESS          0
 #define JOB_REGISTRY_FAIL            -1 
 #define JOB_REGISTRY_NO_INDEX        -2 
@@ -231,6 +237,13 @@ char *job_registry_lookup_subject_hash(const job_registry_handle *rha,
 job_registry_entry *job_registry_get_next_hash_match(
                                  const job_registry_handle *rha,
                                  FILE *fd, const char *hash);
+int job_registry_store_hash(job_registry_hash_store *hst,
+                            const char *hash);
+int job_registry_lookup_hash(const job_registry_hash_store *hst,
+                             const char *hash, int *loc);
+void job_registry_free_hash_store(job_registry_hash_store *hst);
+int job_registry_purge_subject_hash_list(const job_registry_handle *rha,
+                                         const job_registry_hash_store *hst);
 
 
 #ifndef TRUE
