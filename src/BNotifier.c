@@ -160,6 +160,12 @@ main(int argc, char *argv[])
 		{
 			continue;
 		}
+
+		if(setsockopt(list_c, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0) 
+		{
+			close(list_c);
+			syserror("setsockopt() failed: %r");
+		}
 		if (bind(list_c,cur_ans->ai_addr, cur_ans->ai_addrlen) == 0) 
 		{
 			address_found = 1;
@@ -171,11 +177,6 @@ main(int argc, char *argv[])
 
 	if ( address_found == 0 ) {
 		sysfatal("Error creating and binding socket: %r");
-	}
-
-	if(setsockopt(list_c, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0) {
-		close(list_c);
-		syserror("setsockopt() failed: %r");
 	}
 
 	if ( listen(list_c, LISTENQ) < 0 ) {
