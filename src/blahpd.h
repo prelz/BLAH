@@ -11,6 +11,7 @@
 
 #define DEFAULT_GLITE_LOCATION "/opt/glite"
 #define DEFAULT_GLEXEC_COMMAND "/opt/glite/sbin/glexec"
+#define DEFAULT_SUDO_COMMAND "/usr/bin/sudo"
 
 /* Change this in order to select the default batch system
  * (overridden by BLAH_LRMS env variable)*/

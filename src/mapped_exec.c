@@ -206,7 +206,7 @@ execute_cmd(exec_cmd_t *cmd)
 	case MEXEC_GLEXEC:
 		if ((cfg_id_mapping_command = config_get("blah_id_mapping_command_glexec", blah_config_handle)) == NULL)
 		{
-			id_mapping_command = "/opt/glite/sbin/glexec";
+			id_mapping_command = DEFAULT_GLEXEC_COMMAND;
 			BLAHDBG("execute_cmd: ID mapping requested but no blah_id_mapping_command_glexec found in config file. Using default value: %s\n", id_mapping_command);
 		}
 		else
@@ -240,7 +240,7 @@ execute_cmd(exec_cmd_t *cmd)
 	case MEXEC_SUDO:
 		if ((cfg_id_mapping_command = config_get("blah_id_mapping_command_sudo", blah_config_handle)) == NULL)
 		{
-			id_mapping_command = "/usr/bin/sudo";
+			id_mapping_command = DEFAULT_SUDO_COMMAND;
 			BLAHDBG("execute_cmd: ID mapping requested but no blah_id_mapping_command_sudo found in config file. Using default value: %s\n", id_mapping_command);
 		}
 		else

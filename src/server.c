@@ -157,7 +157,6 @@ static mapping_t current_mapping_mode = MEXEC_NO_MAPPING;
 char *tmp_dir;
 struct stat tmp_stat;
 char *bssp = NULL;
-char *gloc = NULL;
 int enable_condor_glexec = FALSE;
 int require_proxy_on_submit = FALSE;
 int disable_wn_proxy_renewal = FALSE;
@@ -343,10 +342,6 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	
 	blah_script_location = strdup(blah_config_handle->bin_path);
 	blah_version = make_message(RCSID_VERSION, VERSION, "poly,new_esc_format");
-	if ((gloc=getenv("GLEXEC_COMMAND")) == NULL)
-	{
-		gloc = DEFAULT_GLEXEC_COMMAND;
-	}
 	require_proxy_on_submit = config_test_boolean(config_get("blah_require_proxy_on_submit",blah_config_handle));
 	enable_condor_glexec = config_test_boolean(config_get("blah_enable_glexec_from_condor",blah_config_handle));
 	disable_wn_proxy_renewal = config_test_boolean(config_get("blah_disable_wn_proxy_renewal",blah_config_handle));
