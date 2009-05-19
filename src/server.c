@@ -777,10 +777,9 @@ cmd_results(void *args)
 	return(result);
 }
 
-void *
-cmd_unset_glexec_dn(void *args)
+void
+reset_mapping_parameters(void)
 {
-	char *result;
 	int i;
 
 	for (i = 0; i < MEXEC_PARAM_COUNT; i++)
@@ -789,10 +788,27 @@ cmd_unset_glexec_dn(void *args)
 			free(mapping_parameter[i]);
 			mapping_parameter[i] = NULL;
 		}
-	current_mapping_mode = 0;
+	current_mapping_mode = MEXEC_NO_MAPPING;
+}
 
+void *
+cmd_unset_glexec_dn(void *args)
+{
+	char *result;
+
+	reset_mapping_parameters();
 	result = make_message("S Glexec\\ mode\\ off");
-	return (result);
+	return(result);
+}
+
+void *
+cmd_set_sudo_off(void *args)
+{
+	char *result;
+
+	reset_mapping_parameters();
+	result = make_message("S Sudo\\ mode\\ off");
+	return(result);
 }
 
 void *
@@ -804,15 +820,10 @@ cmd_set_glexec_dn(void *args)
 	char **argv = (char **)args;
 	char *proxt4= argv[1];
 	char *ssl_client_cert = argv[2];
-	char *dummy;
 	int res = 0;
 	char *proxynameNew = NULL;
 	
-	if (current_mapping_mode)
-	{
-		dummy = (char *)cmd_unset_glexec_dn(NULL);
-		free(dummy);
-	}
+	if (current_mapping_mode != MEXEC_NO_MAPPING) reset_mapping_parameters();
 
 	if((!stat(proxt4, &buf)) && (!stat(ssl_client_cert, &buf)))
 	{
@@ -847,6 +858,25 @@ cmd_set_glexec_dn(void *args)
 	{
 		result = strdup("F Cannot\\ stat\\ proxy\\ file");
 	}
+	return(result);
+}
+
+void *
+cmd_set_sudo_id(void *args)
+{
+	char *result = NULL;
+	char **argv = (char **)args;
+	char *user_id = argv[1];
+
+	if (current_mapping_mode != MEXEC_NO_MAPPING) reset_mapping_parameters();
+
+	mapping_parameter[MEXEC_PARAM_DELEGCRED] = strdup(user_id);
+	current_mapping_mode = MEXEC_SUDO;
+	/* string version needed to pass it as char* parameter to threaded functions */
+	mapping_parameter[MEXEC_PARAM_DELEGTYPE] = make_message("%d", current_mapping_mode);
+	mapping_parameter[MEXEC_PARAM_SRCPROXY] = strdup("");
+
+	result = strdup("S Sudo\\ mode\\ on");
 	return(result);
 }
 

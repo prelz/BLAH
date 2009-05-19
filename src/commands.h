@@ -26,6 +26,8 @@ void *cmd_resume_job(void *args);
 void *cmd_get_hostport(void *args);
 void *cmd_set_glexec_dn(void *args);
 void *cmd_unset_glexec_dn(void *args);
+void *cmd_set_sudo_id(void *args);
+void *cmd_set_sudo_off(void *args);
 void *cmd_unknown(void *args);
 void *cmd_cache_proxy_from_file(void *args);
 void *cmd_use_cached_proxy(void *args);

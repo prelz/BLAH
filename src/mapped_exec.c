@@ -245,7 +245,7 @@ execute_cmd(exec_cmd_t *cmd)
 		}
 		else
 			id_mapping_command = cfg_id_mapping_command->value;
-		if (cmd->source_proxy)
+		if (cmd->source_proxy && (strlen(cmd->source_proxy) > 0))
 		{
 			if (cmd->special_cmd == MEXEC_PROXY_COMMAND)
 			{
