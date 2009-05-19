@@ -27,7 +27,6 @@ int
 main(int argc, char **argv)
 {
 	int fd_socket;
-	struct sockaddr_in servAddr;
 	int server_port;
 	struct timeval tv;
 	int retcod, status;
