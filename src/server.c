@@ -1184,7 +1184,7 @@ cmd_submit_job(void *args)
 	if (retcod != 0)
 	{
 		escpd_cmd_err = escape_spaces(strerror(errno));
-		if (escpd_cmd_err == NULL) escpd_cmd_err = blah_omem_msg;
+		if (escpd_cmd_err == NULL) escpd_cmd_err = (char *)blah_omem_msg;
 		resultLine = make_message("%s 3 Error\\ executing\\ the\\ submission\\ command:\\ %s", reqId, escpd_cmd_err);
 		if (escpd_cmd_err != blah_omem_msg) free(escpd_cmd_err);
 		goto cleanup_cmd_out;
@@ -1313,7 +1313,7 @@ cmd_cancel_job(void* args)
 	if (retcod != 0)
 	{
 		escpd_cmd_err = escape_spaces(strerror(errno));
-		if (escpd_cmd_err == NULL) escpd_cmd_err = blah_omem_msg;
+		if (escpd_cmd_err == NULL) escpd_cmd_err = (char *)blah_omem_msg;
 		resultLine = make_message("%s 3 Error\\ executing\\ the\\ cancel\\ command:\\ %s", reqId, escpd_cmd_err);
 		if (escpd_cmd_err != blah_omem_msg) free(escpd_cmd_err);
 		goto cleanup_command;
@@ -2459,6 +2459,9 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 	char *limit_command_output;
 	int tmpfd;
 	exec_cmd_t exe_command = EXEC_CMD_DEFAULT;
+	int get_lock_on_limited_proxy;
+	struct flock plock;
+	FILE *fpr;
 
 	globuslocation = (getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus");
 	exe_command.command = make_message("%s/bin/grid-proxy-info -timeleft -file %s",
@@ -2500,6 +2503,8 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 		}
 	}
         
+	get_lock_on_limited_proxy = config_test_boolean(config_get("blah_get_lock_on_limited_proxies",blah_config_handle));
+
 	if (seconds_left <= 0)
 	{
 		/* Something's wrong with the current proxy - use defaults */
@@ -2513,8 +2518,39 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 		exe_command.command = make_message("%s/bin/grid-proxy-init -old -limited -valid %d:%d -cert %s -key %s -out %s",
 	                          globuslocation, hours_left, minutes_left, proxy_name, proxy_name, limit_command_output);
 	}
+
+ 	if ((limit_command_output == limited_proxy_name) &&
+	    get_lock_on_limited_proxy)
+	{
+		fpr = fopen(limited_proxy_name, "a");
+		if (fpr == NULL)
+		{
+			fprintf(stderr, "blahpd limit_proxy: Cannot open %s in append mode to obtain file lock: %s\n", limited_proxy_name, strerror(errno));
+			return(-1);
+		}
+		/* Acquire lock on limited proxy */
+  		plock.l_type = F_WRLCK;
+		plock.l_whence = SEEK_SET;
+		plock.l_start = 0;
+		plock.l_len = 0; /* Lock whole file */
+  		if (fcntl(fileno(fpr), F_SETLKW, &plock) < 0)
+		{
+			fclose(fpr);
+			fprintf(stderr, "blahpd limit_proxy: Cannot obtain write file lock on %s: %s\n", limited_proxy_name, strerror(errno));
+			return(-1);
+		}
+	} 
+
 	res = execute_cmd(&exe_command);
 	free(exe_command.command);
+
+ 	if ((limit_command_output == limited_proxy_name) &&
+	    get_lock_on_limited_proxy)
+	{
+		/* Release lock by closing file*/
+		fclose(fpr);
+	}
+
 	if (res != 0) 
 	{
 		if (limit_command_output != limited_proxy_name)
@@ -2542,8 +2578,37 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 
 	if (limit_command_output != limited_proxy_name)
 	{
+ 		if (get_lock_on_limited_proxy)
+		{
+			fpr = fopen(limited_proxy_name, "a");
+			if (fpr == NULL)
+			{
+				fprintf(stderr, "blahpd limit_proxy: Cannot open %s in append mode to obtain file lock: %s\n", limited_proxy_name, strerror(errno));
+				unlink(limit_command_output);
+				free(limit_command_output);
+				return(-1);
+			}	
+			/* Acquire lock on limited proxy */
+  			plock.l_type = F_WRLCK;
+			plock.l_whence = SEEK_SET;
+			plock.l_start = 0;
+			plock.l_len = 0; /* Lock whole file */
+  			if (fcntl(fileno(fpr), F_SETLKW, &plock) < 0)
+			{
+				fclose(fpr);
+				fprintf(stderr, "blahpd limit_proxy: Cannot obtain write file lock on %s: %s\n", limited_proxy_name, strerror(errno));
+				unlink(limit_command_output);
+				free(limit_command_output);
+				return(-1);
+			}
+		}
+
 		/* Rotate limited proxy in place via atomic rename */
 		res = rename(limit_command_output, limited_proxy_name);
+		if (res < 0) unlink(limit_command_output);
+
+ 		if (get_lock_on_limited_proxy) fclose(fpr); /* Release lock */
+
 		free(limit_command_output);
 	}
 	return res;
