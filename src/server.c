@@ -1079,14 +1079,12 @@ cmd_submit_job(void *args)
 		{
 			/* PUSH A FAILURE */
 			resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
-			free(req_file);
 			goto cleanup_req;
 		}
 		/* Swap new command in */
 		free(command);
 		command = command_ext;
 	}
-	free(req_file);
 
 	/* All other attributes are optional: fail only on memory error 
 	   IMPORTANT: Args must alway be the last!
@@ -1239,7 +1237,11 @@ cleanup_regbuf:
 cleanup_cmd_out:
 	cleanup_cmd(&submit_command);
 cleanup_req:
-	unlink(req_file);
+	if (req_file != NULL)
+	{
+		unlink(req_file);
+		free(req_file);
+	}
 cleanup_command:
 	free(command);
 cleanup_proxyname:
