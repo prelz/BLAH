@@ -56,18 +56,22 @@ unlink_proxy_symlink(const char *jobDesc, classad_context *cad, char **deleg_par
 		{
 			if (job_status == (int)REMOVED || job_status == (int)COMPLETED )
 			{
-				exec_command.command = make_message("/bin/rm %s/.blah_jobproxy_dir/%s.proxy",
-				                                     getenv("HOME"), spid->proxy_id);
-				if (exec_command.command == NULL)
-				{
-					fprintf(stderr, "blahpd: out of memory");
-					exit(1);
-				}
-
 				if (*deleg_parameters) /* GLEXEC Mode ? */
 				{
 					exec_command.delegation_type = atoi(deleg_parameters[MEXEC_PARAM_DELEGTYPE]);
 					exec_command.delegation_cred = deleg_parameters[MEXEC_PARAM_DELEGCRED];
+					/* Proxy link location is relative to the HOME of the *mapped* user in this case. */
+					exec_command.command = make_message("/bin/rm .blah_jobproxy_dir/%s.proxy",
+			 							spid->proxy_id);
+				} else {
+					exec_command.command = make_message("/bin/rm %s/.blah_jobproxy_dir/%s.proxy",
+										getenv("HOME"), spid->proxy_id);
+				}
+
+				if (exec_command.command == NULL)
+				{
+					fprintf(stderr, "blahpd: out of memory");
+					exit(1);
 				}
 
 				retcod = execute_cmd(&exec_command);
