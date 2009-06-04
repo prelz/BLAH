@@ -434,7 +434,7 @@ function bls_add_job_wrapper ()
       echo "\${GLITE_LOCATION:-/opt/glite}/libexec/jobwrapper $bls_opt_the_command" >> $bls_tmp_file
       echo "elif [ -x /opt/lcg/libexec/jobwrapper ]" >> $bls_tmp_file
       echo "then" >> $bls_tmp_file
-      echo "/opt/lcg/libexec/jobwrapper $bls_opt_the_command" >>$bls_tmp_file
+      echo "/opt/lcg/libexec/jobwrapper $bls_opt_the_command $bls_arguments" >>$bls_tmp_file
       echo "else" >>$bls_tmp_file
       echo "if [ ! -x $bls_opt_the_command ]; then chmod u+x $bls_opt_the_command; fi" >> $bls_tmp_file
       echo "\$new_home/`basename $bls_opt_the_command` $bls_arguments &" >> $bls_tmp_file
