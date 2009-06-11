@@ -122,7 +122,7 @@ int set_cmd_list_option(char **command, classad_context cad, const char *attribu
 int set_cmd_string_option(char **command, classad_context cad, const char *attribute, const char *option, const int quote_style);
 int set_cmd_int_option(char **command, classad_context cad, const char *attribute, const char *option, const int quote_style);
 int set_cmd_bool_option(char **command, classad_context cad, const char *attribute, const char *option, const int quote_style);
-int limit_proxy(char* proxy_name, char* limited_proxy_name);
+char *limit_proxy(char* proxy_name, char *requested_name);
 int getProxyInfo(char* proxname, char* fqan, char* userDN);
 int logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char* userDN, char** environment);
 int CEReq_parse(classad_context cad, char* filename);
@@ -826,10 +826,8 @@ cmd_set_glexec_dn(void *args)
 		/* proxt4 must be limited for subsequent submission */		
 		if(argv[3][0]=='0')
 		{
-			proxynameNew = make_message("%s.lmt", proxt4);
-			if(res = limit_proxy(proxt4, proxynameNew))
+			if((proxynameNew = limit_proxy(proxt4, NULL)) == NULL)
 			{
-				free(proxynameNew);
 				free(mapping_parameter[MEXEC_PARAM_DELEGCRED]);
 				mapping_parameter[MEXEC_PARAM_DELEGCRED] = NULL;
 				result = strdup("F Cannot\\ limit\\ proxy\\ file");
@@ -917,7 +915,7 @@ cmd_submit_job(void *args)
 	char *conv_environment=NULL;
 	struct stat buf;
 	exec_cmd_t submit_command = EXEC_CMD_DEFAULT;
-
+	char *saved_proxyname=NULL;
 
 	/* Parse the job description classad */
 	if ((cad = classad_parse(jobDescr)) == NULL)
@@ -956,9 +954,14 @@ cmd_submit_job(void *args)
 		submit_command.delegation_cred = argv[CMD_SUBMIT_JOB_ARGS + 1 + MEXEC_PARAM_DELEGCRED];
 		if (proxyname != NULL)
 		{
-			submit_command.source_proxy = argv[CMD_SUBMIT_JOB_ARGS + 1 + MEXEC_PARAM_SRCPROXY];
-			/* Add the target proxy - cause glexec to move it to another file */
-			proxynameNew = make_message("%s.glexec", proxyname);
+			if ((atoi(argv[CMD_SUBMIT_JOB_ARGS + 1 + MEXEC_PARAM_DELEGTYPE ]) != MEXEC_GLEXEC))
+			{
+				saved_proxyname = strdup(proxyname);
+				submit_command.source_proxy = saved_proxyname;
+			}
+			else submit_command.source_proxy = argv[CMD_SUBMIT_JOB_ARGS + 1 + MEXEC_PARAM_SRCPROXY];
+			/* Add the target proxy - cause glexec or sudo to move it to another file */
+			proxynameNew = make_message("%s.mapped", proxyname);
 			free(proxyname);
 			proxyname = proxynameNew;
 			submit_command.dest_proxy = proxyname;
@@ -968,12 +971,10 @@ cmd_submit_job(void *args)
 	else if (proxyname != NULL)
 	{
 		/* not in glexec mode: need to limit the proxy */
-		proxynameNew = make_message("%s.lmt", proxyname);
-		if(limit_proxy(proxyname, proxynameNew))
+		if((proxynameNew = limit_proxy(proxyname, NULL)) == NULL)
 		{
 			/* PUSH A FAILURE */
 			resultLine = make_message("%s 1 Unable\\ to\\ limit\\ the\\ proxy N/A", reqId);
-			free(proxynameNew);
 			goto cleanup_proxyname;
 		}
 		free(proxyname);
@@ -1246,6 +1247,7 @@ cleanup_command:
 	free(command);
 cleanup_proxyname:
 	if (proxyname != NULL) free(proxyname);
+	if (saved_proxyname != NULL) free(saved_proxyname);
 	if (proxysubject != NULL) free(proxysubject);
 cleanup_lrms:
 	free(server_lrms);
@@ -1742,14 +1744,17 @@ cmd_renew_proxy(void *args)
 	int i, jobStatus, retcod, count;
 	char *error_string = NULL;
 	char *proxyFileNameNew = NULL;
-	int use_glexec;
+	int use_glexec, use_mapping;
 	exec_cmd_t exe_command = EXEC_CMD_DEFAULT;
+	char *limited_proxy_name = NULL;
 
-	use_glexec = (argv[CMD_RENEW_PROXY_ARGS + 1] != NULL);
+	use_mapping = (argv[CMD_RENEW_PROXY_ARGS + 1] != NULL);
+	use_glexec = ( use_mapping &&
+                       (atoi(argv[CMD_RENEW_PROXY_ARGS + 1 + MEXEC_PARAM_DELEGTYPE ]) == MEXEC_GLEXEC) );
 
 	if (blah_children_count>0) check_on_children(blah_children, blah_children_count);
 
-	if ((jobStatus=get_status_and_old_proxy(use_glexec, jobDescr, argv + CMD_RENEW_PROXY_ARGS + 1, &old_proxy, &workernode, &error_string)) < 0)
+	if ((jobStatus=get_status_and_old_proxy(use_mapping, jobDescr, argv + CMD_RENEW_PROXY_ARGS + 1, &old_proxy, &workernode, &error_string)) < 0)
 	{
 		resultLine = make_message("%s 1 Cannot\\ locate\\ old\\ proxy:\\ %s", reqId, error_string);
 		if (BLAH_DYN_ALLOCATED(error_string)) free(error_string);
@@ -1762,7 +1767,7 @@ cmd_renew_proxy(void *args)
 		switch(jobStatus)
 		{
 			case 1: /* job queued: copy the proxy locally */
-				if (!use_glexec)
+				if (!use_mapping)
 				{
 					limit_proxy(proxyFileName, old_proxy); /*FIXME: should check if limited proxies are enabled? */ 
 					resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
@@ -1771,15 +1776,27 @@ cmd_renew_proxy(void *args)
 				{
 					exe_command.delegation_type = atoi(argv[CMD_RENEW_PROXY_ARGS + 1 + MEXEC_PARAM_DELEGTYPE]);
 					exe_command.delegation_cred = argv[CMD_RENEW_PROXY_ARGS + 1 + MEXEC_PARAM_DELEGCRED];
-					exe_command.source_proxy = argv[CMD_RENEW_PROXY_ARGS + 1 + MEXEC_PARAM_SRCPROXY];
-					exe_command.dest_proxy = old_proxy;
-					retcod = execute_cmd(&exe_command);
-					if (retcod == 0)
+					if (use_glexec)
 					{
-						resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
+						exe_command.source_proxy = argv[CMD_RENEW_PROXY_ARGS + 1 + MEXEC_PARAM_SRCPROXY];
 					} else {
-						resultLine = make_message("%s 1 glexec\\ failed\\ (exitcode==%d)", reqId, retcod);
+						limited_proxy_name = limit_proxy(proxyFileName, NULL);
+						exe_command.source_proxy = limited_proxy_name;
 					}
+					exe_command.dest_proxy = old_proxy;
+					if (exe_command.source_proxy == NULL)
+					{
+						resultLine = make_message("%s 1 renew\\ failed\\ (error\\ limiting\\ proxy)", reqId);
+					} else {
+						retcod = execute_cmd(&exe_command);
+						if (retcod == 0)
+						{
+							resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
+						} else {
+							resultLine = make_message("%s 1 user\\ mapping\\ command\\ failed\\ (exitcode==%d)", reqId, retcod);
+						}
+					}
+					if (limited_proxy_name != NULL) free(limited_proxy_name);
 					cleanup_cmd(&exe_command);
 				}
 				break;
@@ -1868,12 +1885,18 @@ cmd_send_proxy_to_worker_node(void *args)
 
 	char *delegate_switch;
 
+	int use_mapping;
+	int use_glexec;
+
+	use_mapping = (argv[CMD_RENEW_PROXY_ARGS + 1] != NULL);
+	use_glexec = ( use_mapping &&
+                     (atoi(argv[CMD_RENEW_PROXY_ARGS + 1 + MEXEC_PARAM_DELEGTYPE ]) == MEXEC_GLEXEC) );
+
 	if (workernode != NULL && strcmp(workernode, ""))
 	{
-		if(argv[CMD_SEND_PROXY_TO_WORKER_NODE_ARGS + 1] == NULL)
+		if(!use_glexec)
 		{
-			proxyFileNameNew = make_message("%s.lmt", proxyFileName);
-			limit_proxy(proxyFileName, proxyFileNameNew);
+			proxyFileNameNew = limit_proxy(proxyFileName, NULL);
 		}
 		else
 			proxyFileNameNew = strdup(argv[CMD_SEND_PROXY_TO_WORKER_NODE_ARGS + MEXEC_PARAM_SRCPROXY + 1]);
@@ -2451,7 +2474,7 @@ set_cmd_list_option(char **command, classad_context cad, const char *attribute, 
 	return(result);
 }
 
-int
+char *
 limit_proxy(char* proxy_name, char *limited_proxy_name)
 {
 	int seconds_left, hours_left, minutes_left;
@@ -2464,6 +2487,15 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 	int get_lock_on_limited_proxy;
 	struct flock plock;
 	FILE *fpr;
+	char *limited_proxy_made_up_name=NULL;
+
+	if (limited_proxy_name == NULL)
+	{
+		/* If no name is supplied, figure one out */
+		limited_proxy_made_up_name = make_message("%s.lmt", proxy_name);
+		if (limited_proxy_made_up_name == NULL) return (NULL);
+		limited_proxy_name = limited_proxy_made_up_name;
+	}
 
 	globuslocation = (getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus");
 	exe_command.command = make_message("%s/bin/grid-proxy-info -timeleft -file %s",
@@ -2479,7 +2511,8 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 	if (res != 0)
 	{
 		perror("blahpd error invoking grid-proxy-info");
-		return(-1);
+		if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+		return(NULL);
 	}
 	else
 	{
@@ -2528,7 +2561,8 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 		if (fpr == NULL)
 		{
 			fprintf(stderr, "blahpd limit_proxy: Cannot open %s in append mode to obtain file lock: %s\n", limited_proxy_name, strerror(errno));
-			return(-1);
+			if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+			return(NULL);
 		}
 		/* Acquire lock on limited proxy */
   		plock.l_type = F_WRLCK;
@@ -2539,7 +2573,8 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 		{
 			fclose(fpr);
 			fprintf(stderr, "blahpd limit_proxy: Cannot obtain write file lock on %s: %s\n", limited_proxy_name, strerror(errno));
-			return(-1);
+			if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+			return(NULL);
 		}
 	} 
 
@@ -2557,7 +2592,8 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 	{
 		if (limit_command_output != limited_proxy_name)
 			free(limit_command_output);
-		return(-1);
+		if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+		return(NULL);
 	}
 
 	/* If exitcode != 0 there may be a problem due to a warning by grid-proxy-init but */
@@ -2572,7 +2608,8 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 		{
 			if (limit_command_output != limited_proxy_name)
 				free(limit_command_output);
-			return(-1);
+			if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+			return(NULL);
 		}
 	}
 
@@ -2588,7 +2625,8 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 				fprintf(stderr, "blahpd limit_proxy: Cannot open %s in append mode to obtain file lock: %s\n", limited_proxy_name, strerror(errno));
 				unlink(limit_command_output);
 				free(limit_command_output);
-				return(-1);
+				if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+				return(NULL);
 			}	
 			/* Acquire lock on limited proxy */
   			plock.l_type = F_WRLCK;
@@ -2601,7 +2639,8 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 				fprintf(stderr, "blahpd limit_proxy: Cannot obtain write file lock on %s: %s\n", limited_proxy_name, strerror(errno));
 				unlink(limit_command_output);
 				free(limit_command_output);
-				return(-1);
+				if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+				return(NULL);
 			}
 		}
 
@@ -2613,7 +2652,7 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 
 		free(limit_command_output);
 	}
-	return res;
+	return(limited_proxy_name);
 }
 
 
