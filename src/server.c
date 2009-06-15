@@ -898,7 +898,7 @@ cmd_submit_job(void *args)
 	char *proxyname = NULL;
 	char *proxysubject = NULL;
 	char *proxynameNew   = NULL;
-	char *log_proxy;
+	char *log_proxy = NULL;
 	char *command_ext = NULL;
 	char fqan[MAX_TEMP_ARRAY_SIZE], userDN[MAX_TEMP_ARRAY_SIZE];
 	int count = 0;
@@ -965,7 +965,7 @@ cmd_submit_job(void *args)
 			free(proxyname);
 			proxyname = proxynameNew;
 			submit_command.dest_proxy = proxyname;
-			log_proxy = argv[CMD_SUBMIT_JOB_ARGS + 1 + MEXEC_PARAM_SRCPROXY];
+			log_proxy = submit_command.source_proxy;
 		}
 	}
 	else if (proxyname != NULL)
@@ -984,7 +984,7 @@ cmd_submit_job(void *args)
 
 	userDN[0] = '\000'; /* FIXME: these should really be dynamic */
 	fqan[0] = '\000';   /* FIXME: these should really be dynamic */
-	if (proxyname != NULL)
+	if (log_proxy != NULL)
 	{
 		/* DGAS accounting */
 		if (getProxyInfo(log_proxy, fqan, userDN))
