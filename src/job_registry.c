@@ -619,6 +619,23 @@ job_registry_init(const char *path,
     return NULL;
    }
 
+  /* Create path for subject list */
+  rha->subjectlist = jobregistry_construct_path("%s/%s.subjectlist",rha->path,0);
+  if (rha->subjectlist == NULL)
+   {
+    job_registry_destroy(rha);
+    errno = ENOMEM;
+    return NULL;
+   }
+  /* Create path for non-privileged updates to the subject list */
+  rha->npusubjectlist = jobregistry_construct_path("%s/%s.npusubjectlist",rha->path,0);
+  if (rha->npusubjectlist == NULL)
+   {
+    job_registry_destroy(rha);
+    errno = ENOMEM;
+    return NULL;
+   }
+
   if (mode != NAMES_ONLY)
    {
     if (stat(rha->lockfile, &lst) < 0)
@@ -627,6 +644,26 @@ job_registry_init(const char *path,
        {
         old_umask = umask(0);
         if ((cfd=creat(rha->lockfile,0666)) < 0)
+         {
+          umask(old_umask);
+          job_registry_destroy(rha);
+          return NULL;
+         }
+	close(cfd);
+        umask(old_umask);
+       }
+      else
+       {
+        job_registry_destroy(rha);
+        return NULL;
+       }
+     }
+    if (stat(rha->subjectlist, &lst) < 0)
+     {
+      if (errno == ENOENT)
+       {
+        old_umask = umask(0);
+        if ((cfd=creat(rha->subjectlist,0664)) < 0)
          {
           umask(old_umask);
           job_registry_destroy(rha);
@@ -652,22 +689,6 @@ job_registry_init(const char *path,
     return NULL;
    }
 
-  /* Create path for subject list */
-  rha->subjectlist = jobregistry_construct_path("%s/%s.subjectlist",rha->path,0);
-  if (rha->subjectlist == NULL)
-   {
-    job_registry_destroy(rha);
-    errno = ENOMEM;
-    return NULL;
-   }
-  /* Create path for non-privileged updates to the subject list */
-  rha->npusubjectlist = jobregistry_construct_path("%s/%s.npusubjectlist",rha->path,0);
-  if (rha->npusubjectlist == NULL)
-   {
-    job_registry_destroy(rha);
-    errno = ENOMEM;
-    return NULL;
-   }
 
   if (mode != NAMES_ONLY)
    {
