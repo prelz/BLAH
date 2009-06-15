@@ -160,6 +160,7 @@ char *bssp = NULL;
 int enable_condor_glexec = FALSE;
 int require_proxy_on_submit = FALSE;
 int disable_wn_proxy_renewal = FALSE;
+int synchronous_termination = FALSE;
 
 static char *mapping_parameter[MEXEC_PARAM_COUNT];
 
@@ -295,6 +296,8 @@ serveConnection(int cli_socket, char* cli_ip_addr)
         config_entry *child_config_exe, *child_config_pid;
 	int max_threaded_cmds = MAX_PENDING_COMMANDS;
 	config_entry *max_threaded_conf;
+	int n_threads_value;
+	char *final_results;
 
 	blah_config_handle = config_read(NULL);
 	if (blah_config_handle == NULL)
@@ -544,8 +547,35 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 		}
 		else /* command was NULL */
 		{
-			fprintf(stderr, "Connection closed by remote host\n");
-			exitcode = 1;
+			if (synchronous_termination)
+			{
+				fprintf(stderr, "Waiting for threads to terminate.\n");
+				for (;;)
+				{
+					if (sem_getvalue(&sem_total_commands, &n_threads_value) < 0)
+					{
+						fprintf(stderr, "Error getting value of sem_total_commands semaphore\n");
+						exitcode = 1;
+						break;
+					}
+					if (n_threads_value >= max_threaded_cmds)
+					{
+						final_results = get_lines();						
+						if (final_results != NULL)
+						{
+							printf("%s\n",final_results);
+							free(final_results);
+						}
+						exitcode = 0;
+						break;
+					}
+					sleep(2); /* Carefully researched figure. */
+				}
+				
+			} else {
+				fprintf(stderr, "Connection closed by remote host\n");
+				exitcode = 1;
+			}
 			break;
 		}
 

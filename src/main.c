@@ -36,6 +36,7 @@
 #include "server.h"
 #include "console.h"
 
+extern int synchronous_termination;
 /* #define MTRACE_ON */
 
 int
@@ -55,6 +56,9 @@ main(int argc, char *argv[])
     setenv("MALLOC_TRACE", mtrace_log, 1);
     mtrace();
 #endif
+
+    if ((argc > 1) && (strncmp(argv[1],"-s",2) == 0))
+        synchronous_termination = TRUE; 
 
     serveConnection(0, "(stdin)");
 
