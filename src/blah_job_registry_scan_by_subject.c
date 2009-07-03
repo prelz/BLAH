@@ -25,6 +25,112 @@
 #include "job_registry.h"
 #include "config.h"
 
+#define JOB_STATE_MAX_NAMES 6
+char *job_state_names[JOB_STATE_MAX_NAMES+1] = {
+  "unexpanded",
+  "idle",
+  "running",
+  "removed",
+  "completed",
+  "held",
+  NULL
+};
+
+typedef int job_state_condition; /* OR bitmask */
+
+job_state_condition 
+parse_job_state_condition(const char *arg)
+{
+  char *or_location;
+  const char *argp=arg;
+  const char *arge;
+  int arg_len;
+  char *tmparg;
+  char *cp;
+  int all_numeric;
+  int numarg;
+  int i;
+  job_state_condition ret = 0;
+  
+  for(;;) /* Will exit loop when no more data is found */
+   {
+    or_location = strchr(argp, '|');
+
+    /* Skip over non-parsable content */
+    while (*argp < '0' || (*argp > '9' && *argp < 'A') ||
+          (*argp > 'Z' && *argp < 'a') || *argp > 'z')
+     {
+      if (*argp == '\000') return ret;
+      argp++;
+     }
+
+    arge = argp;
+
+    all_numeric = TRUE;
+    while ( (*arge >= '0' && *arge <= '9') ||
+            (*arge >= 'a' && *arge <= 'z') ||
+            (*arge >= 'Z' && *arge <= 'Z') )
+     {
+      if (*arge > '9') all_numeric = FALSE;
+      arge++;
+     }
+    
+    arg_len = (int)(arge - argp);
+    tmparg = (char *) malloc(arg_len +1);
+    if (tmparg == NULL) break;
+    strncpy(tmparg, argp, arg_len);
+    tmparg[arg_len] = '\000';
+
+    if (all_numeric)
+     {
+      numarg = atoi(tmparg);
+      if (numarg < JOB_STATE_MAX_NAMES)
+       {
+        ret |= (1<<(numarg));
+       }
+      goto continue_parse;
+     }
+
+    /* Must be a string. Make it lowercase. */
+
+    for (cp = tmparg; *cp != '\000'; cp++)
+     {
+      if ((*cp >= 'A') && (*cp <= 'Z')) *cp += ('a' - 'A');
+     }
+
+    numarg = -1;
+    for (i=0; i < JOB_STATE_MAX_NAMES; i++)
+     {
+      if (strncmp(tmparg, job_state_names[i], strlen(tmparg)) == 0)
+       {
+        numarg = i;
+        break;
+       }
+     }
+
+     if (numarg >= 0) ret |= (1<<(numarg));
+
+continue_parse:
+
+    if (or_location == NULL) break;
+    argp = or_location+1;
+   }
+
+  return ret;
+}
+
+int
+check_job_state_condition(job_state_condition cnd, int jst)
+{
+  int check;
+
+  if (jst < 0 || jst >= JOB_STATE_MAX_NAMES) return FALSE; 
+
+  check = (1 << jst);
+  if ((check & cnd) != 0) return TRUE;
+  return FALSE;
+}
+
 void
 undo_escapes(char *string)
 {
@@ -169,7 +275,21 @@ get_format_type(char *fmt, int which, int *totfmts)
   return result;
 }
 
-#define USAGE_STRING "ERROR Usage: %s (<-s (proxy subject)>|<-h (proxy subject hash>) [-j job status] \"Optional arg1 format\" arg1 \"Optional arg2 format\" arg2, etc.\n"
+#define USAGE_STRING "ERROR Usage: %s (<-s (proxy subject)>|<-h (proxy subject hash>) [-j job_status[\\|job_status]] \"Optional arg1 format\" arg1 \"Optional arg2 format\" arg2, etc.\n"
+
+static void 
+print_usage(char *name)
+{
+  int i;
+
+  fprintf(stderr,USAGE_STRING,name);
+  fprintf(stderr,"Available job status for -j option:\n");
+  for (i=0; i<JOB_STATE_MAX_NAMES; i++)
+   {
+    fprintf(stderr," - %s (%d)\n", job_state_names[i], i);
+   }
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -191,7 +311,7 @@ main(int argc, char *argv[])
   char *lookup_hash = NULL;
   int cur_arg;
   int format_args;
-  int select_by_job_status = -1;
+  int select_by_job_status = 0;
   int ifr;
   int njobs = 0;
   format_type first_fmt;
@@ -199,7 +319,7 @@ main(int argc, char *argv[])
  
   if (argc < 2)
    {
-    fprintf(stderr,USAGE_STRING,argv[0]);
+    print_usage(argv[0]);
     return 1;
    }
 
@@ -228,7 +348,7 @@ main(int argc, char *argv[])
 
     if (strlen(arg) <= 0)
      {
-      fprintf(stderr,USAGE_STRING,argv[0]);
+      print_usage(argv[0]);
       return 1;
      }
 
@@ -237,7 +357,7 @@ main(int argc, char *argv[])
       case 'h':
         if (lookup_hash != NULL)
          {
-          fprintf(stderr,USAGE_STRING,argv[0]);
+          print_usage(argv[0]);
           return 1;
          }
         lookup_hash = arg;
@@ -245,7 +365,7 @@ main(int argc, char *argv[])
       case 's':
         if (lookup_hash != NULL)
          {
-          fprintf(stderr,USAGE_STRING,argv[0]);
+          print_usage(argv[0]);
           return 1;
          }
         job_registry_compute_subject_hash(&hen, arg);
@@ -253,10 +373,10 @@ main(int argc, char *argv[])
         lookup_hash = hen.subject_hash;
         break;
       case 'j':
-        select_by_job_status = atoi(arg);
+        select_by_job_status = parse_job_state_condition(arg);
         break;
       default:
-        fprintf(stderr,USAGE_STRING,argv[0]);
+        print_usage(argv[0]);
         return 1;
      }
     if ((format_args > 0) && (format_args < argc)) cur_arg = format_args;
@@ -265,7 +385,7 @@ main(int argc, char *argv[])
     
   if (lookup_hash == NULL)
    {
-    fprintf(stderr,USAGE_STRING,argv[0]);
+    print_usage(argv[0]);
     return 1;
    }
 
@@ -355,7 +475,8 @@ main(int argc, char *argv[])
   while ((ren = job_registry_get_next_hash_match(rha, fd, lookup_hash)) != NULL)
    {
     /* Is the current entry in the requested job status ? */
-    if ((select_by_job_status > 0) && (ren->status != select_by_job_status))
+    if ((select_by_job_status != 0) && 
+        (!check_job_state_condition(select_by_job_status, ren->status)))
       continue;
 
     njobs++;
@@ -399,7 +520,13 @@ main(int argc, char *argv[])
              }
             else if (classad_get_int_attribute(pcad, argv[ifr+1], &iarg) == C_CLASSAD_NO_ERROR)
              {
-              if (first_fmt == FORMAT_INT) printf(argv[ifr],iarg);
+              /* Print a readable job status string if job status is */
+              /* requested as a string. */
+              if (first_fmt == FORMAT_STRING && 
+                  strncmp(argv[ifr+1], "JobStatus", 9) == 0 &&
+                  iarg < JOB_STATE_MAX_NAMES)
+                printf(argv[ifr],job_state_names[iarg]);
+              else if (first_fmt == FORMAT_INT) printf(argv[ifr],iarg);
              }
            }
          }
