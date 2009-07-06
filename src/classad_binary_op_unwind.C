@@ -2,7 +2,7 @@
 //  File :     classad_binary_op_unwind.C
 //
 //
-//  Author :   Francesco Prelz ($Author: drebatto $)
+//  Author :   Francesco Prelz ($Author: fprelz $)
 //  e-mail :   "francesco.prelz@mi.infn.it"
 //
 //  Revision history :
@@ -58,6 +58,7 @@ UnparseAux(std::string &buffer,Operation::OpKind op, ExprTree *t1, ExprTree *t2,
     ExprTree *attr, *value;
     bool args_ok = false;
     bool value_at_right;
+    bool numeric_value;
     std::string attribute_name;
     std::string attribute_value; 
 
@@ -78,6 +79,8 @@ UnparseAux(std::string &buffer,Operation::OpKind op, ExprTree *t1, ExprTree *t2,
       value_at_right = true;
      }
 
+    numeric_value = false;
+
     if (args_ok)
      {
       ExprTree *expr;
@@ -96,6 +99,7 @@ UnparseAux(std::string &buffer,Operation::OpKind op, ExprTree *t1, ExprTree *t2,
       if (v.IsIntegerValue( intres ))
        {
         Unparse( attribute_value, v );
+        numeric_value = true;
        }
       else if (v.IsStringValue( strres ))
        {
@@ -107,14 +111,20 @@ UnparseAux(std::string &buffer,Operation::OpKind op, ExprTree *t1, ExprTree *t2,
        }
      }
 
+    /* Comparison on numeric value ?*/
+    if ((!numeric_value) &&
+         op != Operation::EQUAL_OP && op != Operation::IS_OP)
+      args_ok = false;
+
     if (args_ok)
      {
       if ( ( value_at_right  && ( op == Operation::LESS_THAN_OP || op == Operation::LESS_OR_EQUAL_OP ) ) ||
            ( !value_at_right && ( op == Operation::GREATER_THAN_OP || op == Operation::GREATER_OR_EQUAL_OP ) ) )
        {
         std::string result_line = attribute_name;
-        result_line.append("_Max=");
+        result_line.append("_Max='");
         result_line.append(attribute_value);
+        result_line.append("'");
         m_unwind_output.push_back(result_line);
        }
 
@@ -122,8 +132,9 @@ UnparseAux(std::string &buffer,Operation::OpKind op, ExprTree *t1, ExprTree *t2,
            ( value_at_right && ( op == Operation::GREATER_THAN_OP || op == Operation::GREATER_OR_EQUAL_OP ) ) )
        {
         std::string result_line = attribute_name;
-        result_line.append("_Min=");
+        result_line.append("_Min='");
         result_line.append(attribute_value);
+        result_line.append("'");
         m_unwind_output.push_back(result_line);
        }
 
@@ -131,8 +142,9 @@ UnparseAux(std::string &buffer,Operation::OpKind op, ExprTree *t1, ExprTree *t2,
            op == Operation::IS_OP )
        {
         std::string result_line = attribute_name;
-        result_line.append("=");
+        result_line.append("='");
         result_line.append(attribute_value);
+        result_line.append("'");
         m_unwind_output.push_back(result_line);
        }
 
