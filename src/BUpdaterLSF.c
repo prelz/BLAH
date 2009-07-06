@@ -592,7 +592,7 @@ IntStateQuery()
 				en.udate=tmstampepoch;
 				en.status=RUNNING;
 				free(timestamp);
-				wn_str=strdel(token[6],"<>,");
+				wn_str=strdel(token[6],"<>,;");
 				JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
 				free(wn_str);
 				freetoken(&token,maxtok_t);
