@@ -134,6 +134,7 @@ char *ConvertArgs(char* args, char sep);
 struct blah_managed_child {
 	char *exefile;
 	char *pidfile;
+	time_t lastfork;
 };
 static struct blah_managed_child *blah_children=NULL;
 static int blah_children_count=0;
@@ -168,7 +169,7 @@ static char *mapping_parameter[MEXEC_PARAM_COUNT];
 /* Check on good health of our managed children
  **/
 void
-check_on_children(const struct blah_managed_child *children, const int count)
+check_on_children(struct blah_managed_child *children, const int count)
 {
 	FILE *pid;
 	pid_t ch_pid;
@@ -176,8 +177,6 @@ check_on_children(const struct blah_managed_child *children, const int count)
 	int i;
 	int try_to_restart;
 	int fret;
-	static time_t lastfork=0;
-	time_t new_lastfork;
 	static time_t calldiff=0;
 	const time_t default_calldiff = 150;
 	config_entry *ccld;
@@ -192,7 +191,6 @@ check_on_children(const struct blah_managed_child *children, const int count)
 	}
 
 	time(&now);
-	new_lastfork = lastfork;
 
 	for (i=0; i<count; i++)
 	{
@@ -217,12 +215,12 @@ check_on_children(const struct blah_managed_child *children, const int count)
 		if (try_to_restart)
 		{
 			/* Don't attempt to restart too often. */
-			if ((now - lastfork) < calldiff) 
+			if ((now - children[i].lastfork) < calldiff) 
 			{
 				fprintf(stderr,"Restarting %s too frequently.\n",
 					children[i].exefile);
 				fprintf(stderr,"Last restart %d seconds ago (<%d).\n",
-					(int)(now-lastfork), calldiff);
+					(int)(now - children[i].lastfork), calldiff);
 				continue;
 			}
 			fret = fork();
@@ -241,14 +239,12 @@ check_on_children(const struct blah_managed_child *children, const int count)
 					children[i].exefile,
 					strerror(errno));
 			}
-			new_lastfork = now;
+			children[i].lastfork = now;
 		}
 	}
 
 	/* Reap dead children. Yuck.*/
 	while (waitpid(-1, &junk, WNOHANG) > 0) /* Empty loop */;
-
-	lastfork = new_lastfork;
 
 	pthread_mutex_unlock(&bfork_lock);
 }
@@ -455,6 +451,7 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 				fprintf(stderr, "Out of memory\n");
 				exit(MALLOC_ERROR);
 			}
+			blah_children[blah_children_count].lastfork = 0;
 			blah_children_count++;
 			
 		}
