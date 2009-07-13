@@ -270,31 +270,31 @@ int
 main(int argc, char *argv[])
 {
 
-	char *blah_location=NULL;
+	char *blah_location="";
         char *parser_names[3] = {"BLParserPBS", "BLParserLSF", NULL};
 	
-	char *useparserpbs=NULL;
-	char *debuglevelpbs=NULL;
-	char *debuglogfilepbstmp=NULL;
-	char *debuglogfilepbs=NULL;
-	char *spooldirpbs=NULL;
+	char *useparserpbs="";
+	char *debuglevelpbs="";
+	char *debuglogfilepbstmp="";
+	char *debuglogfilepbs="";
+	char *spooldirpbs="";
 	
-	char *useparserlsf=NULL;
-	char *debuglevellsf=NULL;
-	char *debuglogfilelsftmp=NULL;
-	char *debuglogfilelsf=NULL;
-	char *binpathlsf=NULL;
-	char *confpathlsf=NULL;
+	char *useparserlsf="";
+	char *debuglevellsf="";
+	char *debuglogfilelsftmp="";
+	char *debuglogfilelsf="";
+	char *binpathlsf="";
+	char *confpathlsf="";
 	
-	char *portpbskey=NULL;
-	char *creamportpbskey=NULL;
-	char *portpbs=NULL;
-	char *creamportpbs=NULL;
+	char *portpbskey="";
+	char *creamportpbskey="";
+	char *portpbs="";
+	char *creamportpbs="";
 	
-	char *portlsfkey=NULL;
-	char *creamportlsfkey=NULL;
-	char *portlsf=NULL;
-	char *creamportlsf=NULL;
+	char *portlsfkey="";
+	char *creamportlsfkey="";
+	char *portlsf="";
+	char *creamportlsf="";
 	
 	int i,j;
 	
@@ -308,7 +308,10 @@ main(int argc, char *argv[])
 	}
 	
 	config_file = (char *)malloc(strlen(CONFIG_FILE_PARSER)+strlen(blah_location)+6);
-	if (config_file == NULL) return -1;
+	if(config_file == NULL){
+		fprintf(stderr, "Out of memory\n");
+		exit(MALLOC_ERROR);
+	}
 	sprintf(config_file,"%s/etc/%s",blah_location,CONFIG_FILE_PARSER);
 
         blah_config_handle = config_read(config_file);
@@ -319,24 +322,14 @@ main(int argc, char *argv[])
                 return -1;
         }
 
-        ret = config_get("GLITE_CE_BLPARSERPBS_DAEMON",blah_config_handle);
-        if (ret != NULL){
-                useparserpbs=strdup(ret->value);
-                if(useparserpbs && strstr(useparserpbs,"yes")){
-			usepbs=1;
-		}
-		if(useparserpbs) free(useparserpbs);
-        }
+	if (config_test_boolean(config_get("GLITE_CE_USE_BLPARSERPBS",blah_config_handle))){
+		usepbs=1;
+	}
 	
-        ret = config_get("GLITE_CE_BLPARSERLSF_DAEMON",blah_config_handle);
-        if (ret != NULL){
-                useparserlsf=strdup(ret->value);
-                if(useparserlsf && strstr(useparserlsf,"yes")){
-			uselsf=1;
-		}
-		if(useparserlsf) free(useparserlsf);
-        }
-	
+	if (config_test_boolean(config_get("GLITE_CE_USE_BLPARSERLSF",blah_config_handle))){
+		uselsf=1;
+	}
+		
 	parser_pbs=malloc(MAXPARSERNUM*sizeof(struct blah_managed_child));
 	parser_lsf=malloc(MAXPARSERNUM*sizeof(struct blah_managed_child));
 	
@@ -352,16 +345,28 @@ main(int argc, char *argv[])
         	ret = config_get("GLITE_CE_BLPARSERPBS_DEBUGLEVEL",blah_config_handle);
         	if (ret != NULL){
 			debuglevelpbs = make_message("-d %s",ret->value);
+			if(debuglevelpbs == NULL){
+				fprintf(stderr, "Out of memory\n");
+				exit(MALLOC_ERROR);
+			}
         	}
 
         	ret = config_get("GLITE_CE_BLPARSERPBS_DEBUGLOGFILE",blah_config_handle);
         	if (ret != NULL){
 			debuglogfilepbstmp = make_message("-l %s",ret->value);
+			if(debuglogfilepbstmp == NULL){
+				fprintf(stderr, "Out of memory\n");
+				exit(MALLOC_ERROR);
+			}
         	}
 
         	ret = config_get("GLITE_CE_BLPARSERPBS_SPOOLDIR",blah_config_handle);
         	if (ret != NULL){
 			spooldirpbs = make_message("-s %s",ret->value);
+			if(spooldirpbs == NULL){
+				fprintf(stderr, "Out of memory\n");
+				exit(MALLOC_ERROR);
+			}
         	}
 
         	ret = config_get("GLITE_CE_BLPARSERPBS_NUM",blah_config_handle);
@@ -381,29 +386,49 @@ main(int argc, char *argv[])
 			ret = config_get(portpbskey,blah_config_handle);
 			if (ret != NULL){
 				portpbs = make_message("-p %s",ret->value);
+				if(portpbs == NULL){
+					fprintf(stderr, "Out of memory\n");
+					exit(MALLOC_ERROR);
+				}
 			}
 			ret = config_get(creamportpbskey,blah_config_handle);
 			if (ret != NULL){
 				creamportpbs = make_message("-m %s",ret->value);
+				if(creamportpbs == NULL){
+					fprintf(stderr, "Out of memory\n");
+					exit(MALLOC_ERROR);
+				}
 			}
 			if(parsernumpbs>1){
 				debuglogfilepbs=make_message("%s-%d",debuglogfilepbstmp,i+1);
+				if(debuglogfilepbs == NULL){
+					fprintf(stderr, "Out of memory\n");
+					exit(MALLOC_ERROR);
+				}
 			}else{
 				debuglogfilepbs=strdup(debuglogfilepbstmp);
+				if(debuglogfilepbs == NULL){
+					fprintf(stderr, "Out of memory\n");
+					exit(MALLOC_ERROR);
+				}
 			}
 			parser_pbs[i].exefile = make_message("%s/bin/%s %s %s %s %s %s",blah_location,parser_names[0],debuglevelpbs,debuglogfilepbs,spooldirpbs,portpbs,creamportpbs);
 			parser_pbs[i].pidfile = make_message("%s/%s%d.pid",PID_DIR,parser_names[0],i+1);
+
+			if(parser_pbs[i].exefile == NULL || parser_pbs[i].pidfile == NULL){
+				fprintf(stderr, "Out of memory\n");
+				exit(MALLOC_ERROR);
+			}
 			
-			/* Do the shell expansion */	
 			free(portpbskey);
 			free(creamportpbskey);
-			if(portpbs) free(portpbs);
-			if(creamportpbs) free(creamportpbs);
+			free(portpbs);
+			free(creamportpbs);
 		}
-		if(debuglevelpbs) free(debuglevelpbs);
-		if(debuglogfilepbstmp) free(debuglogfilepbstmp);
-		if(debuglogfilepbs) free(debuglogfilepbs);
-		if(spooldirpbs) free(spooldirpbs);
+		free(debuglevelpbs);
+		free(debuglogfilepbstmp);
+		free(debuglogfilepbs);
+		free(spooldirpbs);
 	}
 	
 	/* LSF part */
@@ -413,21 +438,37 @@ main(int argc, char *argv[])
         	ret = config_get("GLITE_CE_BLPARSERLSF_DEBUGLEVEL",blah_config_handle);
         	if (ret != NULL){
 			debuglevellsf = make_message("-d %s",ret->value);
+			if(debuglevellsf == NULL){
+				fprintf(stderr, "Out of memory\n");
+				exit(MALLOC_ERROR);
+			}
         	}
 
         	ret = config_get("GLITE_CE_BLPARSERLSF_DEBUGLOGFILE",blah_config_handle);
         	if (ret != NULL){
 			debuglogfilelsftmp = make_message("-l %s",ret->value);
+			if(debuglogfilelsftmp == NULL){
+				fprintf(stderr, "Out of memory\n");
+				exit(MALLOC_ERROR);
+			}
         	}
 
         	ret = config_get("GLITE_CE_BLPARSERLSF_BINPATH",blah_config_handle);
         	if (ret != NULL){
 			binpathlsf = make_message("-b %s",ret->value);
+			if(binpathlsf == NULL){
+				fprintf(stderr, "Out of memory\n");
+				exit(MALLOC_ERROR);
+			}
         	}
 
         	ret = config_get("GLITE_CE_BLPARSERLSF_CONFPATH",blah_config_handle);
         	if (ret != NULL){
 			confpathlsf = make_message("-c %s",ret->value);
+			if(confpathlsf == NULL){
+				fprintf(stderr, "Out of memory\n");
+				exit(MALLOC_ERROR);
+			}
         	}
 
         	ret = config_get("GLITE_CE_BLPARSERLSF_NUM",blah_config_handle);
@@ -447,30 +488,50 @@ main(int argc, char *argv[])
 			ret = config_get(portlsfkey,blah_config_handle);
 			if (ret != NULL){
 				portlsf = make_message("-p %s",ret->value);
+				if(portlsf == NULL){
+					fprintf(stderr, "Out of memory\n");
+					exit(MALLOC_ERROR);
+				}
 			}
 			ret = config_get(creamportlsfkey,blah_config_handle);
 			if (ret != NULL){
 				creamportlsf = make_message("-m %s",ret->value);
+				if(creamportlsf == NULL){
+					fprintf(stderr, "Out of memory\n");
+					exit(MALLOC_ERROR);
+				}
 			}
 			if(parsernumpbs>1){
 				debuglogfilelsf=make_message("%s-%d",debuglogfilelsftmp,i+1);
+				if(debuglogfilelsf == NULL){
+					fprintf(stderr, "Out of memory\n");
+					exit(MALLOC_ERROR);
+				}
 			}else{
 				debuglogfilelsf=strdup(debuglogfilelsftmp);
+				if(debuglogfilelsf == NULL){
+					fprintf(stderr, "Out of memory\n");
+					exit(MALLOC_ERROR);
+				}
 			}
 			parser_lsf[i].exefile = make_message("%s/bin/%s %s %s %s %s %s %s",blah_location,parser_names[1],debuglevellsf,debuglogfilelsf,binpathlsf,confpathlsf,portlsf,creamportlsf);
 			parser_lsf[i].pidfile = make_message("%s/%s%d.pid",PID_DIR,parser_names[1],i+1);
 			
-			/* Do the shell expansion */	
-			if(portlsfkey) free(portlsfkey);
-			if(creamportlsfkey) free(creamportlsfkey);
-			if(portlsf) free(portlsf);
-			if(creamportlsf) free(creamportlsf);
+			if(parser_lsf[i].exefile == NULL || parser_lsf[i].pidfile == NULL){
+				fprintf(stderr, "Out of memory\n");
+				exit(MALLOC_ERROR);
+			}
+
+			free(portlsfkey);
+			free(creamportlsfkey);
+			free(portlsf);
+			free(creamportlsf);
 		}
-		if(debuglevellsf) free(debuglevellsf);
-		if(debuglogfilelsftmp) free(debuglogfilelsftmp);
-		if(debuglogfilelsf) free(debuglogfilelsf);
-		if(binpathlsf) free(binpathlsf);
-		if(confpathlsf) free(confpathlsf);
+		free(debuglevellsf);
+		free(debuglogfilelsftmp);
+		free(debuglogfilelsf);
+		free(binpathlsf);
+		free(confpathlsf);
 	}
 	
 	/* signal handler */
