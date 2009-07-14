@@ -273,13 +273,11 @@ main(int argc, char *argv[])
 	char *blah_location="";
         char *parser_names[3] = {"BLParserPBS", "BLParserLSF", NULL};
 	
-	char *useparserpbs="";
 	char *debuglevelpbs="";
 	char *debuglogfilepbstmp="";
 	char *debuglogfilepbs="";
 	char *spooldirpbs="";
 	
-	char *useparserlsf="";
 	char *debuglevellsf="";
 	char *debuglogfilelsftmp="";
 	char *debuglogfilelsf="";

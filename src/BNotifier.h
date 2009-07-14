@@ -65,7 +65,7 @@ char *notiffile=NOTIF_FILE;
 
 char *registry_file;
 
-char *creamfilter=NULL;
+char *creamfilter="";
 
 int async_notif_port;
 
@@ -82,4 +82,4 @@ int creamisconn=FALSE;
 int startnotify=FALSE;
 int startnotifyjob=FALSE;
 int firstnotify=FALSE;
-char *joblist_string=NULL;
+char *joblist_string="";

@@ -90,6 +90,9 @@ main(int argc, char *argv[])
 	ret = config_get("bnotifier_debug_logfile",cha);
 	if (ret != NULL){
 		debuglogname=strdup(ret->value);
+                if(debuglogname == NULL){
+                        sysfatal("strdup failed for debuglogname in main: %r");
+                }
 	}
 	
 	if(debug <=0){
@@ -112,6 +115,9 @@ main(int argc, char *argv[])
 		}
 	} else {
 		registry_file=strdup(ret->value);
+                if(registry_file == NULL){
+                        sysfatal("strdup failed for registry_file in main: %r");
+                }
 	}
 	
 	ret = config_get("async_notification_port",cha);
@@ -132,6 +138,9 @@ main(int argc, char *argv[])
 		}
 	} else {
 		pidfile=strdup(ret->value);
+                if(pidfile == NULL){
+                        sysfatal("strdup failed for pidfile in main: %r");
+                }
 	}
 	
 	/* create listening socket for Cream */
@@ -566,6 +575,9 @@ GetFilter(char *buffer)
 
         if(tbuf[1]){
                 creamfilter=strdup(tbuf[1]);
+        	if(creamfilter == NULL){
+                	sysfatal("strdup failed for creamfilter in GetFilter: %r");
+        	}
                 if ((cp = strrchr (creamfilter, '\n')) != NULL){
                 	*cp = '\0';
                 }
@@ -606,6 +618,9 @@ NotifyStart(char *buffer)
 
         if(tbuf[1]){
                 notifdate=strdup(tbuf[1]);
+        	if(notifdate == NULL){
+                	sysfatal("strdup failed for notifdate in NotifyStart: %r");
+        	}
                 if ((cp = strrchr (notifdate, '\n')) != NULL){
                         *cp = '\0';
                 }
@@ -637,6 +652,9 @@ GetJobList(char *buffer)
 
         if(tbuf[1]){
                 joblist_string=strdup(tbuf[1]);
+        	if(joblist_string == NULL){
+                	sysfatal("strdup failed for joblist_string in GetJobList: %r");
+        	}
                 if ((cp = strrchr (joblist_string, '\n')) != NULL){
                         *cp = '\0';
                 }

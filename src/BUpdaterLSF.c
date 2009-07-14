@@ -89,6 +89,9 @@ int main(int argc, char *argv[]){
 	ret = config_get("bupdater_debug_logfile",cha);
 	if (ret != NULL){
 		debuglogname=strdup(ret->value);
+                if(debuglogname == NULL){
+                        sysfatal("strdup failed for debuglogname in main: %r");
+                }
 	}
 	if(debug <=0){
 		debug=0;
@@ -112,6 +115,9 @@ int main(int argc, char *argv[]){
 		}
         } else {
                 lsf_binpath=strdup(ret->value);
+                if(lsf_binpath == NULL){
+                        sysfatal("strdup failed for lsf_binpath in main: %r");
+                }
         }
 	
 	ret = config_get("job_registry",cha);
@@ -124,6 +130,9 @@ int main(int argc, char *argv[]){
 		}
 	} else {
 		registry_file=strdup(ret->value);
+                if(registry_file == NULL){
+                        sysfatal("strdup failed for registry_file in main: %r");
+                }
 	}
 	
 	ret = config_get("purge_interval",cha);
@@ -184,6 +193,9 @@ int main(int argc, char *argv[]){
 		}
 	} else {
 		pidfile=strdup(ret->value);
+                if(pidfile == NULL){
+                        sysfatal("strdup failed for pidfile in main: %r");
+                }
 	}
 
 	ret = config_get("bupdater_loop_interval",cha);
@@ -208,6 +220,9 @@ int main(int argc, char *argv[]){
 		}
 	} else {
 		bjobs_long_format=strdup(ret->value);
+                if(bjobs_long_format == NULL){
+                        sysfatal("strdup failed for bjobs_long_format in main: %r");
+                }
 	}
 	
 	ret = config_get("bupdater_use_bhist_for_susp",cha);
@@ -220,6 +235,9 @@ int main(int argc, char *argv[]){
 		}
 	} else {
 		use_bhist_for_susp=strdup(ret->value);
+                if(use_bhist_for_susp == NULL){
+                        sysfatal("strdup failed for use_bhist_for_susp in main: %r");
+                }
 	}
 	
 	if( !nodmn ) daemonize();
@@ -389,6 +407,9 @@ IntStateQueryShort()
 				*cp = '\0';
 			}
 			tmp=strdup(line);
+                	if(tmp == NULL){
+                        	sysfatal("strdup failed for tmp in IntStateQueryShort: %r");
+                	}
 			if ((cp = strchr (tmp, ' ')) != NULL){
 				*cp = '\0';
 			}

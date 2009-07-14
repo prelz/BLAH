@@ -94,6 +94,9 @@ int main(int argc, char *argv[]){
 	ret = config_get("bupdater_debug_logfile",cha);
 	if (ret != NULL){
 		debuglogname=strdup(ret->value);
+                if(debuglogname == NULL){
+                        sysfatal("strdup failed for debuglogname in main: %r");
+                }
 	}
 	if(debug <=0){
 		debug=0;
@@ -117,6 +120,9 @@ int main(int argc, char *argv[]){
 		}
         } else {
                 pbs_binpath=strdup(ret->value);
+                if(pbs_binpath == NULL){
+                        sysfatal("strdup failed for pbs_binpath in main: %r");
+                }
         }
 	
         ret = config_get("pbs_spoolpath",cha);
@@ -129,6 +135,9 @@ int main(int argc, char *argv[]){
 		}
         } else {
                 pbs_spoolpath=strdup(ret->value);
+                if(pbs_spoolpath == NULL){
+                        sysfatal("strdup failed for pbs_spoolpath in main: %r");
+                }
         }
 	
 	ret = config_get("job_registry",cha);
@@ -141,6 +150,9 @@ int main(int argc, char *argv[]){
 		}
 	} else {
 		registry_file=strdup(ret->value);
+                if(registry_file == NULL){
+                        sysfatal("strdup failed for registry_file in main: %r");
+                }
 	}
 	
 	ret = config_get("purge_interval",cha);
@@ -201,6 +213,9 @@ int main(int argc, char *argv[]){
 		}
 	} else {
 		pidfile=strdup(ret->value);
+                if(pidfile == NULL){
+                        sysfatal("strdup failed for pidfile in main: %r");
+                }
 	}
 	
 	if( !nodmn ) daemonize();
@@ -443,6 +458,9 @@ Job Id: 11.cream-12.pd.infn.it
 			}else if(line && strstr(line,"exec_host = ")){	
 				maxtok_t = strtoken(line, '=', &token);
 				twn_str=strdup(token[1]);
+                		if(twn_str == NULL){
+                        		sysfatal("strdup failed for twn_str in IntStateQuery: %r");
+                		}
 				freetoken(&token,maxtok_t);
 				maxtok_t = strtoken(twn_str, '/', &token);
 				wn_str=strdel(token[0]," ");
@@ -624,6 +642,9 @@ Job: 13.cream-12.pd.infn.it
                         		sprintf(timestamp,"%s %s",token[0],token[1]);
 					tmstampepoch=str2epoch(timestamp,"A");
 					exit_str=strdup(token[3]);
+                			if(exit_str == NULL){
+                        			sysfatal("strdup failed for exit_str in FinalStateQuery: %r");
+                			}
 					free(timestamp);
 					freetoken(&token,maxtok_t);
 					maxtok_t = strtoken(exit_str, '=', &token);
