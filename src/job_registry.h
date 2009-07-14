@@ -47,8 +47,8 @@ typedef uint32_t job_registry_update_bitmask_t;
 #define JOB_REGISTRY_MAX_PROXY_LINK  40
 #define JOB_REGISTRY_MAX_SUBJECTLIST_LINE 512
 
-/* Get rid of corrupted NPU files after one week */
-#define JOB_REGISTRY_CORRUPTED_NPU_FILES_MAX_LIFETIME 604800
+/* Get rid of corrupted NPU files after one day since their last MTIME */
+#define JOB_REGISTRY_CORRUPTED_NPU_FILES_MAX_LIFETIME 86400
 
 typedef uint32_t job_registry_entry_magic_t;
 typedef struct job_registry_entry_s
