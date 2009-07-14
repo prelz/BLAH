@@ -1328,9 +1328,13 @@ job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
       frret = job_registry_probe_next_record(cfd, &en);
       if (frret == 0)
        {
-        /* Can't get anything out of this file. Get rid of it. */
+        /* Can't get anything out of this file. It could be in the  */
+        /* process of being written */
         fclose(cfd);
-        unlink(cfp);
+        /* Get rid of the file only if it was last modified "long" time ago */
+        if ((time(0) - cfp_st.st_mtime) > 
+            JOB_REGISTRY_CORRUPTED_NPU_FILES_MAX_LIFETIME) 
+          unlink(cfp);
         free(cfp);
         continue;
        }
