@@ -101,6 +101,7 @@ int cream_recycled=0;
 
 pthread_mutex_t cr_write_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t write_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t writeline_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 char *progname="BLParserPBS";
 

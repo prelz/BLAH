@@ -285,6 +285,9 @@ Writeline(int sockd, const void *vptr, size_t n)
 	buffer = vptr;
 	nleft  = n;
 
+	/* set write lock */
+	pthread_mutex_lock( &writeline_mutex );
+
 	while ( nleft > 0 ) {
 		if ( (nwritten = write(sockd, (char *)vptr, nleft)) <= 0 ) {
 			if ( errno == EINTR ) {
@@ -296,6 +299,9 @@ Writeline(int sockd, const void *vptr, size_t n)
 		nleft  -= nwritten;
 		buffer += nwritten;
 	}
+
+	/* release write lock */
+	pthread_mutex_unlock( &writeline_mutex );
 
 	return n;
 }

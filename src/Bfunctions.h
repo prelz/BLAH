@@ -38,6 +38,7 @@
 #include <popt.h>
 #include <math.h>
 #include <signal.h>
+#include <pthread.h>
 #include "blahpd.h"
 
 #define STR_CHARS          50000

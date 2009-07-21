@@ -11,8 +11,6 @@
 #include <popt.h>
 #include <netdb.h>
 
-#include "BLhelper.h"
-
 #define MAX_LINE            100000
 #define STR_CHARS           1000
 #define CONN_TIMEOUT_SEC    0

@@ -25,6 +25,7 @@
 #include "Bfunctions.h"
 
 int bfunctions_poll_timeout = 600000; /* Default 10 minutes */
+pthread_mutex_t writeline_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 ssize_t
 Readline(int sockd, void *vptr, size_t maxlen)
@@ -69,6 +70,9 @@ Writeline(int sockd, const void *vptr, size_t n)
 	buffer = vptr;
 	nleft  = n;
 
+	/* set write lock */
+	pthread_mutex_lock( &writeline_mutex );
+
 	while ( nleft > 0 ) {
 
 		if ( (nwritten = write(sockd, (char *)vptr, nleft)) <= 0 ) {
@@ -81,6 +85,9 @@ Writeline(int sockd, const void *vptr, size_t n)
 		nleft  -= nwritten;
 		buffer += nwritten;
 	}
+
+	/* release write lock */
+	pthread_mutex_unlock( &writeline_mutex );
 
 	return n;
 }
