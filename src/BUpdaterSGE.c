@@ -73,6 +73,9 @@ int main(int argc, char *argv[]){
 	ret = config_get("debug_logfile",cha);
 	if (ret != NULL){
 		debuglogname=strdup(ret->value);
+                if(debuglogname == NULL){
+                        sysfatal("strdup failed for debuglogname in main: %r");
+                }
 	}
 	if(debug <=0){
 		debug=0;
@@ -94,6 +97,9 @@ int main(int argc, char *argv[]){
 		}
         } else {
                 sge_helper_path=strdup(ret->value);
+                if(sge_helper_path == NULL){
+                        sysfatal("strdup failed for sge_helper_path in main: %r");
+                }
         }
 	
         ret = config_get("sge_root",cha);
@@ -104,6 +110,9 @@ int main(int argc, char *argv[]){
 		}
         } else {
                 sge_root=strdup(ret->value);
+                if(sge_root == NULL){
+                        sysfatal("strdup failed for sge_root in main: %r");
+                }
         }
 	
         ret = config_get("sge_cell",cha);
@@ -114,6 +123,9 @@ int main(int argc, char *argv[]){
 		}
         } else {
                 sge_cell=strdup(ret->value);
+                if(sge_cell == NULL){
+                        sysfatal("strdup failed for sge_cell in main: %r");
+                }
         }
 	
 	ret = config_get("job_registry",cha);
@@ -124,6 +136,9 @@ int main(int argc, char *argv[]){
 		}
 	} else {
 		registry_file=strdup(ret->value);
+                if(registry_file == NULL){
+                        sysfatal("strdup failed for registry_file in main: %r");
+                }
 	}
 	
 	ret = config_get("purge_interval",cha);
@@ -164,6 +179,9 @@ int main(int argc, char *argv[]){
 		}
 	} else {
 		pidfile=strdup(ret->value);
+                if(pidfile == NULL){
+                        sysfatal("strdup failed for pidfile in main: %r");
+                }
 	}
 	
 	if( !nodmn ) daemonize();
