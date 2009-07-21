@@ -12,11 +12,14 @@
 #       Council for the Central Laboratory of the Research Councils (CCLRC), United Kingdom
 #
 #       Authors: Francesco Prelz <francesco.prelz@mi.infn.it>
-#       Version info: $Id: configure.ac,v 1.45 2009/05/19 09:04:56 drebatto Exp $
+#       Version info: $Id: configure.ac,v 1.46 2009/07/21 15:08:56 fprelz Exp $
 #       Release: $Name:  $
 #
 #       Revision history:
 #       $Log: configure.ac,v $
+#       Revision 1.46  2009/07/21 15:08:56  fprelz
+#       Bumped version up to 1.15.0.
+#
 #       Revision 1.45  2009/05/19 09:04:56  drebatto
 #       Added BLAH_SET_SUDO_ID and BLAH_SET_SUDO_OFF commands.
 #       Bumped version to 1.13.4.
@@ -135,7 +138,7 @@
 #
 
 AC_PREREQ(2.57)
-AC_INIT([GLite CE blahp], [1.13.4])
+AC_INIT([GLite CE blahp], [1.15.0])
 AC_CONFIG_AUX_DIR([./project])
 AM_INIT_AUTOMAKE([1.6.3 subdir-objects])
 AC_CONFIG_SRCDIR([src/main.c])
