@@ -1213,14 +1213,14 @@ GetEventsInOldLogs(char *logdate)
 char *
 GetLogList(char *logdate)
 {
-	DIR             *dirh;
-	struct dirent   *direntry;
+	struct dirent   **direntry;
 	int             rc;
 	struct stat     sbuf;
 	time_t          tage;
 	char            *s,*p,*dir;
 	struct tm       tmthr;
 	char            *slogs;
+	int 		i,n;
 
 	if((slogs=calloc(MAX_CHARS,1)) == 0){
 		sysfatal("can't malloc slogs: %r");
@@ -1233,33 +1233,38 @@ GetLogList(char *logdate)
 		return NULL;
 	}
 	tage=mktime(&tmthr);
-
-	if( !(dirh=opendir(ldir)) ) {
-		syserror("Cannot open directory %s: %r", ldir);
+	
+	n = scandir(ldir, &direntry, 0, alphasort);
+	if (n < 0){
+		syserror("scandir error: %r");
 		return NULL;
-	}
-
-	while ( (direntry=readdir(dirh)) ) {
-		if( *(direntry->d_name) == '.' ) continue;
-		if((s=calloc(strlen(direntry->d_name)+strlen(ldir)+2,1)) == 0){
-			sysfatal("can't malloc s: %r");
+	} else {
+		for (i = 0; i < n; i++) {
+			if( *(direntry[i]->d_name) == '.' ) continue;
+			if((s=calloc(strlen(direntry[i]->d_name)+strlen(ldir)+2,1)) == 0){
+				sysfatal("can't malloc s: %r");
+			}
+			sprintf(s,"%s/%s",ldir,direntry[i]->d_name);
+			rc=stat(s,&sbuf);
+			if(rc) {
+				syserror("Cannot stat file %s: %r", s);
+				return NULL;
+			}
+			if ( sbuf.st_mtime > tage ) {
+				strcat(slogs,s);
+				strcat(slogs," ");
+			}  
+			free(s);
+			free(direntry[i]);
 		}
-		sprintf(s,"%s/%s",ldir,direntry->d_name);
-		rc=stat(s,&sbuf);
-		if(rc) {
-			syserror("Cannot stat file %s: %r", s);
-			return NULL;
-		}
-		if ( sbuf.st_mtime > tage ) {
-			strcat(slogs,s);
-			strcat(slogs," ");
-		}  
-
-		free(s);
+		free(direntry);
 	}
-
-	closedir(dirh);
 	 
+	if(debug){
+		fprintf(debuglogfile, "Log list:%s\n",slogs);
+		fflush(debuglogfile);
+	}
+	
 	return(slogs);
 
 }
