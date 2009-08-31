@@ -621,7 +621,7 @@ Job: 13.cream-12.pd.infn.it
 				if ((cp = strrchr (line, '\n')) != NULL){
 					*cp = '\0';
 				}
-				if(line && strstr(line,"Job deleted")){	
+				if(line && (strstr(line,"Job deleted") || (strstr(line,"dequeuing from") && strstr(line,"state RUNNING")))){	
 					maxtok_t = strtoken(line, ' ', &token);
  					if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + 4)) == 0){
                         		        sysfatal("can't malloc timestamp in FinalStateQuery: %r");

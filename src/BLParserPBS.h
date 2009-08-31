@@ -146,3 +146,5 @@ char * rex_shold     = "Holds s set";
 char * rex_uresume   = "Holds u released";
 char * rex_oresume   = "Holds o released";
 char * rex_sresume   = "Holds s released";
+char * rex_dequeue   = "dequeuing from";
+char * rex_staterun  = "state RUNNING";
