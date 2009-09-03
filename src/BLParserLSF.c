@@ -1370,7 +1370,7 @@ GetLogList(char *logdate)
 	char            *s,*p,*dir;
 	struct tm       tmthr;
 	char            *slogs;
-	int 		i,n;
+	int 		n;
 
 	if((slogs=calloc(MAX_CHARS,1)) == 0){
 		sysfatal("can't malloc slogs: %r");
@@ -1384,17 +1384,17 @@ GetLogList(char *logdate)
 	}
 	tage=mktime(&tmthr);
 
-	n = scandir(ldir, &direntry, 0, alphasort);
+	n = scandir(ldir, &direntry, 0, versionsort);
 	if (n < 0){
 		syserror("scandir error: %r");
 		return NULL;
 	} else {
-		for (i = 0; i < n; i++) {
-			if( *(direntry[i]->d_name) == '.' ) continue;
-			if((s=calloc(strlen(direntry[i]->d_name)+strlen(ldir)+2,1)) == 0){
+		while(n--) {
+			if( *(direntry[n]->d_name) == '.' ) continue;
+			if((s=calloc(strlen(direntry[n]->d_name)+strlen(ldir)+2,1)) == 0){
 				sysfatal("can't malloc s: %r");
 			}
-			sprintf(s,"%s/%s",ldir,direntry[i]->d_name);
+			sprintf(s,"%s/%s",ldir,direntry[n]->d_name);
 			rc=stat(s,&sbuf);
 			if(rc) {
 				syserror("Cannot stat file %s: %r", s);
@@ -1407,7 +1407,7 @@ GetLogList(char *logdate)
 				}
 			}  
 			free(s);
-			free(direntry[i]);
+			free(direntry[n]);
 		}
 		free(direntry);
 	}
