@@ -28,7 +28,7 @@
 #define STR_CHARS          3000
 #define NUM_CHARS          300
 #define RDXHASHSIZE        60000
-#define CRMHASHSIZE        360000
+#define CRMHASHSIZE        1000000
 #define NUMTHRDS           3
 #define ERRMAX             80
 #define TBUFSIZE           100000
