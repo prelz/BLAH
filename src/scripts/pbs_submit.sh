@@ -94,13 +94,16 @@ then
 fi
 
 #local batch system-specific file output must be added to the submit file
-if [ ! -z $bls_opt_req_file ] ; then
-    echo \#\!/bin/sh >> ${bls_opt_req_file}-temp_req_script
-    cat $bls_opt_req_file >> ${bls_opt_req_file}-temp_req_script
-    echo "source ${GLITE_LOCATION:-/opt/glite}/bin/pbs_local_submit_attributes.sh" >> ${bls_opt_req_file}-temp_req_script
-    chmod +x ${bls_opt_req_file}-temp_req_script
-    ${bls_opt_req_file}-temp_req_script  >> $bls_tmp_file 2> /dev/null
-    rm -f ${bls_opt_req_file}-temp_req_script
+local_submit_attributes_file=${GLITE_LOCATION:-/opt/glite}/bin/pbs_local_submit_attributes.sh
+if [ -r $local_submit_attributes_file ] ; then
+    echo \#\!/bin/sh > $bls_opt_tmp_req_file
+    if [ ! -z $bls_opt_req_file ] ; then
+        cat $bls_opt_req_file >> $bls_opt_tmp_req_file
+    fi
+    echo "source $local_submit_attributes_file" >> $bls_opt_tmp_req_file
+    chmod +x $bls_opt_tmp_req_file
+    $bls_opt_tmp_req_file >> $bls_tmp_file 2> /dev/null
+    rm -f $bls_opt_tmp_req_file
 fi
 
 if [ ! -z "$bls_opt_xtra_args" ] ; then

@@ -275,6 +275,13 @@ function bls_setup_all_files ()
       bls_tmp_file="/dev/tty"
   fi
   
+  # Set up temp file name for requirement passing
+  if [ ! -z $bls_opt_req_file ] ; then
+     bls_opt_tmp_req_file=${bls_opt_req_file}-temp_req_script
+  else
+     bls_opt_tmp_req_file=`mktemp $bls_opt_temp_dir/temp_req_script_XXXXXXXXXX` 
+  fi
+
   # Create unique extension for filenames
   uni_uid=`id -u`
   uni_pid=$$
