@@ -137,8 +137,8 @@ purge_interval=7200
 #final state query interval(default:30)
 finalstate_query_interval=30
 
-#after that interval an unseen job is set as done (status == 4) and exitstatus == -1 (default:600)
-alldone_interval=600
+#after that interval an unseen job is set as done (status == 4) and exitstatus == -1 (default:3600)
+alldone_interval=3600
 
 #path to condor_config
 export CONDOR_CONFIG="/opt/condor-c/etc/condor_config"

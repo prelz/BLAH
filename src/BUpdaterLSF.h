@@ -45,7 +45,7 @@ char *lsf_binpath;
 char *registry_file;
 int purge_interval=864000;
 int finalstate_query_interval=30;
-int alldone_interval=600;
+int alldone_interval=3600;
 int bhist_logs_to_read=1;
 char *bjobs_long_format="yes";
 char *use_bhist_for_susp="no";

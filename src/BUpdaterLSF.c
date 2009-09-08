@@ -43,6 +43,9 @@ int main(int argc, char *argv[]){
 	time_t finalquery_start_date;
 	int loop_interval=DEFAULT_LOOP_INTERVAL;
 	
+	bact.njobs = 0;
+	bact.jobs = NULL;
+	
 	struct poptOption poptopt[] = {     
 		{ "nodaemon",      'o', POPT_ARG_NONE,   &nodmn, 	    0, "do not run as daemon",    NULL },
 		{ "version",       'v', POPT_ARG_NONE,   &version,	    0, "print version and exit",  NULL },
@@ -575,6 +578,7 @@ IntStateQuery()
 				maxtok_t = strtoken(line, ',', &token);
 				batch_str=strdel(token[0],"Job <>");
 				JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
+				bupdater_push_active_job(&bact, en.batch_id);
 				free(batch_str);
 				freetoken(&token,maxtok_t);
 				if(!first) free(ren);
