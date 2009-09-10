@@ -543,19 +543,37 @@ write_c:
 					NotifyStart(buffer);
 					startnotify=TRUE;
 					firstnotify=TRUE;
-				}
-				if(buffer && strstr(buffer,"STARTNOTIFYJOB/")!=NULL){
+				} else if(buffer && strstr(buffer,"STARTNOTIFYJOB/")!=NULL){
 					GetJobList(buffer);
 					startnotifyjob=TRUE;
 					firstnotify=TRUE;
-				}
-                                if(buffer && strstr(buffer,"CREAMFILTER/")!=NULL){
+				} else if(buffer && strstr(buffer,"CREAMFILTER/")!=NULL){
                                         GetFilter(buffer);
 					creamisconn=TRUE;
+				} else if(buffer && strstr(buffer,"PARSERVERSION/")!=NULL){
+                                        GetVersion();
                                 }
 			}
 		}
 	} 
+}
+
+int 
+GetVersion()
+{
+
+	char *out_buf;
+
+	if((out_buf=calloc(STR_CHARS,1)) == 0){
+		sysfatal("can't malloc out_buf: %r");
+	}
+	
+	sprintf(out_buf,"%s__1\n",VERSION);
+	Writeline(conn_c, out_buf, strlen(out_buf));
+	free(out_buf);
+	
+	return 0;
+	
 }
 
 int 

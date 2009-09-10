@@ -52,6 +52,7 @@ void *LookupAndSend (int m_sock);
 int GetEventsInOldLogs(char *logdate);
 char *GetLogList(char *logdate);
 void CreamConnection(int c_sock);
+int GetVersion();
 int NotifyFromDate(char *in_buf);
 int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason, char *timestamp, int flag);
 int UpdatePtr(int jid, char *fulljobid, int is_que, int has_bl);

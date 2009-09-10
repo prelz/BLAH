@@ -53,6 +53,7 @@ int GetEventsInOldLogs(char *logdate);
 char *GetLogDir(int largc, char *largv[]);
 char *GetLogList(char *logdate);
 void CreamConnection(int c_sock);
+int GetVersion();
 int NotifyFromDate(char *in_buf);
 int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason, char *timestamp, int flag);
 int UpdatePtr(int jid, char *rx, int has_bl);

@@ -1519,12 +1519,32 @@ write_c:
 					fflush(debuglogfile);
 					free(buftmp);
 				}
-				if(buffer && ((strstr(buffer,"STARTNOTIFY")!=NULL) ||(strstr(buffer,"CREAMFILTER")!=NULL))){
+				if(buffer && ((strstr(buffer,"STARTNOTIFY/")!=NULL) || (strstr(buffer,"STARTNOTIFYJOB/")!=NULL) || (strstr(buffer,"CREAMFILTER/")!=NULL))){
 					NotifyFromDate(buffer);
+				}else if(buffer && (strstr(buffer,"PARSERVERSION/")!=NULL)){
+					GetVersion();
 				}
 			}
 		}
 	} 
+}
+
+int 
+GetVersion()
+{
+
+	char *out_buf;
+	
+	if((out_buf=calloc(STR_CHARS,1)) == 0){
+		sysfatal("can't malloc out_buf: %r");
+	}
+	
+	sprintf(out_buf,"%s__0\n",VERSION);
+	Writeline(conn_c, out_buf, strlen(out_buf));
+	free(out_buf);
+	
+	return 0;
+	
 }
 
 int
@@ -1599,6 +1619,78 @@ NotifyFromDate(char *in_buf)
 			fflush(debuglogfile); 
 		}
 	}else if(notstr && strcmp(notstr,"STARTNOTIFY")==0){
+    
+		creamisconn=1;
+      
+		notepoch=str2epoch(notdate,"S");
+      
+		if(cream_recycled){
+			logepoch=nti[jcount];
+		}else{
+			logepoch=nti[0];
+		} 
+		if(logepoch<=0){
+			logepoch=time(NULL);
+		}     
+		if(notepoch<=logepoch){
+			lnotdate=iepoch2str(notepoch);
+			GetEventsInOldLogs(lnotdate);
+		}
+      
+		if(cream_recycled){
+
+			for(ii=jcount;ii<CRMHASHSIZE;ii++){
+				if(notepoch<=nti[ii]){
+					now=time(NULL);
+					nowtm=ctime(&now);
+					if ((cp = strrchr (nowtm, '\n')) != NULL){
+						*cp = '\0';
+					}
+					sprintf(fullblahstring,"BlahJobName=\"%s",cream_string);
+					if(ntf[ii] && strstr(ntf[ii],fullblahstring)!=NULL){
+						sprintf(out_buf,"NTFDATE/%s",ntf[ii]);
+						Writeline(conn_c, out_buf, strlen(out_buf));
+						if(debug){
+							fprintf(debuglogfile, "%s Sent for Cream_nftdate:%s",nowtm,out_buf);
+							fflush(debuglogfile); 
+						}
+					}
+				}
+			}
+
+		}
+            
+		for(ii=0;ii<=jcount;ii++){
+			if(notepoch<=nti[ii]){
+				now=time(NULL);
+				nowtm=ctime(&now);
+				if ((cp = strrchr (nowtm, '\n')) != NULL){
+					*cp = '\0';
+				}
+				sprintf(fullblahstring,"BlahJobName=\"%s",cream_string);
+				if(ntf[ii] && strstr(ntf[ii],fullblahstring)!=NULL){
+					sprintf(out_buf,"NTFDATE/%s",ntf[ii]);  
+					Writeline(conn_c, out_buf, strlen(out_buf));
+					if(debug){
+						fprintf(debuglogfile, "%s Sent for Cream_nftdate:%s",nowtm,out_buf);
+						fflush(debuglogfile);
+					}
+				}
+			}
+		}
+		Writeline(conn_c, "NTFDATE/END\n", strlen("NTFDATE/END\n"));
+		if(debug){
+			fprintf(debuglogfile, "Sent for Cream_nftdate:NTFDATE/END\n");
+			fflush(debuglogfile);
+		}
+      
+		free(out_buf);
+		free(notstr);
+		free(notdate);
+		free(fullblahstring);
+
+		return 0;    
+	}else if(notstr && strcmp(notstr,"STARTNOTIFYJOB")==0){
     
 		creamisconn=1;
       

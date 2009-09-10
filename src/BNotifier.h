@@ -50,6 +50,7 @@ int PollDB();
 int UpdateFileTime(int sec);
 char *ComposeClassad(job_registry_entry *en);
 int NotifyStart(char *buffer);
+int GetVersion();
 int GetFilter(char *buffer);
 int GetJobList(char *buffer);
 int GetModTime(char *filename);

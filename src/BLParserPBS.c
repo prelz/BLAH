@@ -1368,12 +1368,32 @@ write_c:
 					fflush(debuglogfile);
 					free(buftmp);
 				}
-				if(buffer && ((strstr(buffer,"STARTNOTIFY")!=NULL) ||(strstr(buffer,"CREAMFILTER")!=NULL))){
+				if(buffer && ((strstr(buffer,"STARTNOTIFY/")!=NULL) || (strstr(buffer,"STARTNOTIFYJOB/")!=NULL) || (strstr(buffer,"CREAMFILTER/")!=NULL))){
 					NotifyFromDate(buffer);
+				}else if(buffer && (strstr(buffer,"PARSERVERSION/")!=NULL)){
+					GetVersion();
 				}
 			}
 		}
 	}
+}
+
+int 
+GetVersion()
+{
+
+	char *out_buf;
+	
+	if((out_buf=calloc(STR_CHARS,1)) == 0){
+		sysfatal("can't malloc out_buf: %r");
+	}
+	
+	sprintf(out_buf,"%s__0\n",VERSION);
+	Writeline(conn_c, out_buf, strlen(out_buf));
+	free(out_buf);
+	
+	return 0;
+	
 }
 
 int
@@ -1521,6 +1541,7 @@ NotifyFromDate(char *in_buf)
 		free(fullblahstring);
       
 		return 0;    
+	}else if(notstr && strcmp(notstr,"STARTNOTIFYJOB")==0){
 	}
     
 	free(out_buf);
