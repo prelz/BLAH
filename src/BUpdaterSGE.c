@@ -264,12 +264,6 @@ int main(int argc, char *argv[]){
 		while ((en = job_registry_get_next(rha, fd)) != NULL)
 		{
 
-			/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4) */
-			if((now - en->mdate > alldone_interval) && en->status!=3 && en->status!=4)
-			{
-				AssignFinalState(en->batch_id);	
-			}
-			
 			if((now- en->mdate > finalstate_query_interval) && en->status!=3 && en->status!=4)
 			{
 				/* create the constraint that will be used in condor_history command in FinalStateQuery*/
@@ -291,6 +285,13 @@ int main(int argc, char *argv[]){
 				strcat(query,constraint);
 				runfinal=TRUE;
 			}
+			
+			/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4) */
+			if((now - en->mdate > alldone_interval) && en->status!=3 && en->status!=4 && !runfinal)
+			{
+				AssignFinalState(en->batch_id);	
+			}
+			
 			free(en);
 		}
 		

@@ -323,17 +323,21 @@ int main(int argc, char *argv[]){
 		while ((en = job_registry_get_next(rha, fd)) != NULL){
 
 			if((bupdater_lookup_active_jobs(&bact,en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && en->status!=REMOVED && en->status!=COMPLETED){
+
+				if(now-en->mdate>finalstate_query_interval){
+					if (en->mdate < finalquery_start_date) finalquery_start_date=en->mdate;
+					runfinal=TRUE;
+					free(en);
+					continue;
+				}
+				
 				/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
-				if(now-en->mdate>alldone_interval){
+				if(now-en->mdate>alldone_interval && !runfinal){
 					AssignFinalState(en->batch_id);
 					free(en);
 					continue;
 				}
 			
-				if(now-en->mdate>finalstate_query_interval){
-					if (en->mdate < finalquery_start_date) finalquery_start_date=en->mdate;
-					runfinal=TRUE;
-				}
 			}
 			free(en);
 		}
