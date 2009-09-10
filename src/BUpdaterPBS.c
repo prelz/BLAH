@@ -294,13 +294,7 @@ int main(int argc, char *argv[]){
 		
 		while ((en = job_registry_get_next(rha, fd)) != NULL){
 			if((bupdater_lookup_active_jobs(&bact, en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && en->status!=REMOVED && en->status!=COMPLETED){
-				/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
-				if(now-en->mdate>alldone_interval){
-					AssignFinalState(en->batch_id);	
-					free(en);
-					continue;
-				}
-			
+				
 				if((now-en->mdate>finalstate_query_interval) && (now > next_finalstatequery)){
 					if((final_string=realloc(final_string,finstr_len + strlen(en->batch_id) + 2)) == 0){
                        	        		sysfatal("can't malloc final_string: %r");
@@ -312,6 +306,14 @@ int main(int argc, char *argv[]){
 					finstr_len=strlen(final_string);
 					runfinal=TRUE;
 				}
+				
+				/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
+				if(now-en->mdate>alldone_interval && !runfinal){
+					AssignFinalState(en->batch_id);	
+					free(en);
+					continue;
+				}
+			
 			}
 			free(en);
 		}
@@ -455,6 +457,8 @@ Job Id: 11.cream-12.pd.infn.it
 				}
 				free(status_str);
 				freetoken(&token,maxtok_t);
+			}else if(line && strstr(line,"unable to run job")){
+				en.status=IDLE;	
 			}else if(line && strstr(line,"exec_host = ")){	
 				maxtok_t = strtoken(line, '=', &token);
 				twn_str=strdup(token[1]);
