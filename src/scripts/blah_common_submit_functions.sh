@@ -229,6 +229,11 @@ function bls_parse_submit_options ()
       bls_opt_stgproxy="no"
   fi
 
+  bls_opt_proxyrenew_numeric=0
+  if [ "x$bls_opt_proxyrenew" == "xyes" ] ; then
+      bls_opt_proxyrenew_numeric=1
+  fi
+
   shift `expr $OPTIND - 1`
   bls_arguments=$*
 }

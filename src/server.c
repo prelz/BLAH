@@ -1767,6 +1767,7 @@ cmd_renew_proxy(void *args)
 	char *proxyFileName = argv[3];
 	char *workernode = NULL;
 	char *old_proxy = NULL;
+	int old_proxy_len;
 	
 	int i, jobStatus, retcod, count;
 	char *error_string = NULL;
@@ -1781,7 +1782,10 @@ cmd_renew_proxy(void *args)
 
 	if (blah_children_count>0) check_on_children(blah_children, blah_children_count);
 
-	if ((jobStatus=get_status_and_old_proxy(use_mapping, jobDescr, argv + CMD_RENEW_PROXY_ARGS + 1, &old_proxy, &workernode, &error_string)) < 0)
+	jobStatus=get_status_and_old_proxy(use_mapping, jobDescr, argv + CMD_RENEW_PROXY_ARGS + 1, &old_proxy, &workernode, &error_string);
+	old_proxy_len = -1;
+	if (old_proxy != NULL) old_proxy_len = strlen(old_proxy);
+	if ((jobStatus < 0) || (old_proxy == NULL) || (old_proxy_len <= 0))
 	{
 		resultLine = make_message("%s 1 Cannot\\ locate\\ old\\ proxy:\\ %s", reqId, error_string);
 		if (BLAH_DYN_ALLOCATED(error_string)) free(error_string);
