@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.39 2009/05/05 11:17:49 fprelz Exp $ 
+# $Id: Makefile.am,v 1.40 2009/09/14 10:40:44 fprelz Exp $ 
 #
 # File:           Makefile.am
 #
@@ -24,7 +24,7 @@ else
 GLOBUS_EXECS =
 endif
 
-bin_PROGRAMS = blahpd blahpd_daemon BLClient BLParserLSF BLParserPBS BDlogger test_condor_logger blah_job_registry_add blah_job_registry_lkup blah_job_registry_scan_by_subject BUpdaterCondor BNotifier BUpdaterLSF BUpdaterPBS BUpdaterSGE $(GLOBUS_EXECS)  blparser_master
+bin_PROGRAMS = blahpd blahpd_daemon BLClient BLParserLSF BLParserPBS test_condor_logger blah_job_registry_add blah_job_registry_lkup blah_job_registry_scan_by_subject BUpdaterCondor BNotifier BUpdaterLSF BUpdaterPBS BUpdaterSGE $(GLOBUS_EXECS)  blparser_master
 noinst_PROGRAMS = test_job_registry_create test_job_registry_purge test_job_registry_update test_job_registry_access
 
 common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C proxy_hashcontainer.c config.c job_registry.c Bfunctions.c blah_utils.c env_helper.c mapped_exec.c md5.c
@@ -70,10 +70,6 @@ BLParserPBS_LDADD = -lpopt
 
 #BAClient_LDADD = -lpopt \
 #$(GLOBUS_GSS_NOTHR_LIBS) $(GLOBUS_SSL_NOTHR_LIBS)
-
-BDlogger_SOURCES = BDlogger.c
-
-BDlogger_LDADD =
 
 test_condor_logger_SOURCES = test_condor_create_log.c condor_create_log.c config.c blah_utils.c
 test_condor_logger_CFLAGS = $(AM_CFLAGS)

@@ -1,3 +1,2 @@
-/bin/chmod u+s ${RPM_INSTALL_PREFIX}/bin/BDlogger
 /bin/mv ${RPM_INSTALL_PREFIX}/bin/condor_status.sh ${RPM_INSTALL_PREFIX}/bin/condor_status.sh.save
 /bin/cp ${RPM_INSTALL_PREFIX}/bin/blah_job_registry_lkup ${RPM_INSTALL_PREFIX}/bin/condor_status.sh

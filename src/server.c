@@ -140,6 +140,8 @@ static struct blah_managed_child *blah_children=NULL;
 static int blah_children_count=0;
 
 config_handle *blah_config_handle = NULL;
+config_entry *blah_accounting_log_location = NULL;
+config_entry *blah_accounting_log_umask = NULL;
 job_registry_handle *blah_jr_handle = NULL;
 static int server_socket;
 static int exit_program = 0;
@@ -303,6 +305,8 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 		exit(MALLOC_ERROR);
 	}
 
+	blah_accounting_log_location = config_get("BLAHPD_ACCOUNTING_INFO_LOG",blah_config_handle);
+	blah_accounting_log_umask = config_get("blah_accounting_log_umask",blah_config_handle);
 	max_threaded_conf = config_get("blah_max_threaded_cmds",blah_config_handle);
 	if (max_threaded_conf != NULL) max_threaded_cmds = atoi(max_threaded_conf->value);
 
@@ -2691,7 +2695,6 @@ int
 logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char* userDN, char** environment)
 {
 	int i=0, rc=0, cs=0, result=0, fd = -1, count = 0, slen = 0, slen2 = 0;
-	char *log_line;
 	char *gridjobid=NULL;
 	char *ce_id=NULL;
 	char *ce_idtmp=NULL;
@@ -2705,21 +2708,26 @@ logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char
 	char *lrms_jobid=NULL;
 	char *bs;
 	char *queue=NULL;
-	char *esc_userDN=NULL;
 	char *uid;
+	FILE *logf;
+	char *logf_name;
+	mode_t saved_umask;
+	mode_t log_umask = 0007;
+	struct flock plock;
 	job_registry_split_id *spid;
 	exec_cmd_t exe_command = EXEC_CMD_DEFAULT;
+	int retcode = 1; /* Nonzero is failure */
 
-	/* Get values from environment and compose the logfile pathname */
-	if ((glite_loc = getenv("GLITE_LOCATION")) == NULL)
-	{
-		glite_loc = DEFAULT_GLITE_LOCATION;
-	}
+	if (blah_accounting_log_location == NULL) return retcode; /* No location to write to. */
 
 	/* Submission time */
 	time(&tt);
 	t_m = gmtime(&tt);
-	sprintf(date_str, "%04d-%02d-%02d\\ %02d:%02d:%02d", 1900+t_m->tm_year,
+
+	logf_name = make_message("%s-%04d%02d%02d", blah_accounting_log_location->value, 1900+t_m->tm_year, t_m->tm_mon+1, t_m->tm_mday);
+	if (logf_name == NULL) return retcode;
+
+	snprintf(date_str, sizeof(date_str), "%04d-%02d-%02d %02d:%02d:%02d", 1900+t_m->tm_year,
 	                  t_m->tm_mon+1, t_m->tm_mday, t_m->tm_hour, t_m->tm_min, t_m->tm_sec);
 
 	/* These data must be logged in the log file:
@@ -2738,18 +2746,17 @@ logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char
 	/* lrms job ID */
 	if((spid = job_registry_split_blah_id(jobId)) == NULL)
 	{
-		fprintf(stderr, "blahpd: logAccInf called with bad jobId <%s>. Nothing will be logged\n", jobId);
-		return(1);
+		fprintf(stderr, "blahpd: logAccInfo called with bad jobId <%s>. Nothing will be logged\n", jobId);
+		goto free_1;
 	}
 	lrms_jobid = spid->proxy_id;
-
-
 
 	/* Ce ID */
 	bs = spid->lrms;
 	classad_get_dstring_attribute(cad, "CeID", &ce_id);
 	if(!ce_id) 
 	{
+		gethostname(host_name, sizeof(host_name));
 		classad_get_dstring_attribute(cad, "Queue", &queue);
 		if(queue)
 		{
@@ -2778,8 +2785,9 @@ logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char
 		exe_command.command = make_message("/usr/bin/id -u");
 		result = execute_cmd(&exe_command);
 		free(exe_command.command);
-		if (result != 0 || exe_command.exit_code != 0)
-			return 1;
+		if (result != 0 || exe_command.exit_code != 0) {
+			goto free_2;
+		}
 		uid = strdup(exe_command.output);
 		cleanup_cmd(&exe_command);
 		uid[strlen(uid)-1] = 0;
@@ -2787,19 +2795,40 @@ logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char
 	else
 		uid = make_message("%d", getuid());
 
-	/* log line with in addiction unixuser */
-	esc_userDN=escape_spaces(userDN);
-	/* log_line=make_message("%s/BDlogger %s \\\"timestamp=%s\\\"\\\ \\\"userDN=%s\\\"\\\ %s\\\"ceID=%s\\\"\\\ \\\"jobID=%s\\\"\\\ \\\"lrmsID=%s\\\"\\\ \\\"localUser=%s\\\"", blah_script_location, blah_config_handle->config_path, date_str, esc_userDN, fqan, ce_id, gridjobid, lrms_jobid, uid); */
-	log_line=make_message("%s/BDlogger %s \\\"timestamp=%s\\\"\\ \\\"userDN=%s\\\"\\ %s\\\"ceID=%s\\\"\\ \\\"jobID=%s\\\"\\ \\\"lrmsID=%s\\\"\\ \\\"localUser=%s\\\"", blah_script_location, blah_config_handle->config_path, date_str, esc_userDN, fqan, ce_id, gridjobid, lrms_jobid, uid);
-	system(log_line);
-	if(gridjobid) free(gridjobid);
+	if (blah_accounting_log_umask != NULL) {
+		log_umask = strtol(blah_accounting_log_umask->value, (char **) NULL, 8);
+	}
+
+	saved_umask = umask(log_umask);
+	logf = fopen(logf_name, "a");
+	umask(saved_umask);
+
+	if (logf == NULL) goto free_3;
+
+	/* Try acquiring a write lock on the file */
+  	plock.l_type = F_WRLCK;
+	plock.l_whence = SEEK_SET;
+	plock.l_start = 0;
+	plock.l_len = 0; /* Lock whole file */
+  	if (fcntl(fileno(logf), F_SETLKW, &plock) >= 0) {
+		if (fprintf(logf, "\"timestamp=%s\" \"userDN=%s\" %s \"ceID=%s\" \"jobID=%s\" \"lrmsID=%s\" \"localUser=%s\"\n", date_str, userDN, fqan, ce_id, gridjobid, lrms_jobid, uid) >= 0) retcode = 0;
+	}
+
+	fclose(logf);
+
+free_3:
 	free(uid);
-	free(log_line);
-	if (BLAH_DYN_ALLOCATED(esc_userDN)) free(esc_userDN);
+
+free_2:
+	if(gridjobid) free(gridjobid);
 	if (ce_id) free(ce_id);
-	memset(fqan,0,MAX_TEMP_ARRAY_SIZE);
 	job_registry_free_split_id(spid);
-	return 0;
+
+free_1:
+	free(logf_name);
+	memset(fqan,0,MAX_TEMP_ARRAY_SIZE);
+
+	return retcode;
 }
 
 int
@@ -2856,13 +2885,13 @@ getProxyInfo(char* proxname, char* fqan, char* userDN)
 	for (begin_res = exe_command.output; end_res = memchr(exe_command.output, '\n', res_length); begin_res = end_res + 1)
 	{
 		*end_res = 0;
-		fqanlong_tmp = make_message("%s\\\"userFQAN=%s\\\"\\ ", fqanlong, begin_res);
+		fqanlong_tmp = make_message("%s\"userFQAN=%s\"", fqanlong, begin_res);
 		free(fqanlong);
 		fqanlong = fqanlong_tmp;
 	}
 	strncpy(fqan, fqanlong, MAX_TEMP_ARRAY_SIZE);
 	cleanup_cmd(&exe_command);
-	if (fqan[0] == '\000') snprintf(fqan, MAX_TEMP_ARRAY_SIZE, "\\\"userFQAN=\\\"\\ ");
+	if (fqan[0] == '\000') snprintf(fqan, MAX_TEMP_ARRAY_SIZE, "\"userFQAN=\"");
 	BLAHDBG("DEBUG: getProxyInfo returns: userDN:%s  ", userDN);
 	BLAHDBG("fqan:  %s\n", fqan);
 	return 0;
