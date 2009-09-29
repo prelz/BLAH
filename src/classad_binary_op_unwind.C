@@ -41,6 +41,16 @@ BinaryOpUnwind::
 {
 }
 
+void BinaryOpUnwind::collapse_quotes(std::string &arg)
+{
+  size_t qpos;
+
+  while ((qpos = arg.find_first_of('\'')) != std::string::npos)
+   {
+    arg.erase(qpos,1);
+   }
+}
+
 void BinaryOpUnwind::
 UnparseAux(std::string &buffer,Operation::OpKind op, ExprTree *t1, ExprTree *t2,
 	   ExprTree *t3)
@@ -111,6 +121,8 @@ UnparseAux(std::string &buffer,Operation::OpKind op, ExprTree *t1, ExprTree *t2,
        }
      }
 
+    collapse_quotes(attribute_value);
+
     /* Comparison on numeric value ?*/
     if ((!numeric_value) &&
          op != Operation::EQUAL_OP && op != Operation::IS_OP)
@@ -178,9 +190,10 @@ UnparseAux( std::string &buffer, std::string &fnName, std::vector<ExprTree*>& ar
 
       args[0]->Evaluate(state,v);
       Unparse( attribute_value, v );
+      collapse_quotes(attribute_value);
 
       std::stringstream result_line;
-      result_line << attribute_name << "[" << m_member_list_counter_[attribute_name]++ << "]=" << attribute_value;
+      result_line << attribute_name << "[" << m_member_list_counter_[attribute_name]++ << "]='" << attribute_value << "'";
       m_unwind_output.push_back(result_line.str());
      }
    }

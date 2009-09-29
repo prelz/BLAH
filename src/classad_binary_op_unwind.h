@@ -2,7 +2,7 @@
 //  File :     classad_binary_op_unwind.h
 //
 //
-//  Author :   Francesco Prelz ($Author: drebatto $)
+//  Author :   Francesco Prelz ($Author: fprelz $)
 //  e-mail :   "francesco.prelz@mi.infn.it"
 //
 //  Revision history :
@@ -32,6 +32,7 @@ class BinaryOpUnwind : public ClassAdUnParser
     private:
         // Counter for values appearing in each attribute inspected by 'member' function
         std::map<std::string, std::size_t> m_member_list_counter_;
+	void collapse_quotes(std::string &arg);
     public:
           /// Constructor
         BinaryOpUnwind( );
