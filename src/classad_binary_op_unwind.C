@@ -113,7 +113,8 @@ UnparseAux(std::string &buffer,Operation::OpKind op, ExprTree *t1, ExprTree *t2,
        }
       else if (v.IsStringValue( strres ))
        {
-        attribute_value = strres;
+        // There's extra quoting rules in the string Unparse function.
+        Unparse( attribute_value, v );
        }
       else
        {
