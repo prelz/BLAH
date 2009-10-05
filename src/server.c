@@ -163,6 +163,7 @@ char *bssp = NULL;
 int enable_condor_glexec = FALSE;
 int require_proxy_on_submit = FALSE;
 int disable_wn_proxy_renewal = FALSE;
+int disable_proxy_user_copy = FALSE;
 int synchronous_termination = FALSE;
 
 static char *mapping_parameter[MEXEC_PARAM_COUNT];
@@ -348,6 +349,7 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	require_proxy_on_submit = config_test_boolean(config_get("blah_require_proxy_on_submit",blah_config_handle));
 	enable_condor_glexec = config_test_boolean(config_get("blah_enable_glexec_from_condor",blah_config_handle));
 	disable_wn_proxy_renewal = config_test_boolean(config_get("blah_disable_wn_proxy_renewal",blah_config_handle));
+	disable_proxy_user_copy = config_test_boolean(config_get("blah_disable_proxy_user_copy",blah_config_handle));
 				
 	if (enable_condor_glexec)
 	{
@@ -983,20 +985,32 @@ cmd_submit_job(void *args)
 	{
 		submit_command.delegation_type = atoi(argv[CMD_SUBMIT_JOB_ARGS + 1 + MEXEC_PARAM_DELEGTYPE]);
 		submit_command.delegation_cred = argv[CMD_SUBMIT_JOB_ARGS + 1 + MEXEC_PARAM_DELEGCRED];
-		if (proxyname != NULL)
+		if ((proxyname != NULL) && (!disable_proxy_user_copy))
 		{
 			if ((atoi(argv[CMD_SUBMIT_JOB_ARGS + 1 + MEXEC_PARAM_DELEGTYPE ]) != MEXEC_GLEXEC))
 			{
 				saved_proxyname = strdup(proxyname);
 				submit_command.source_proxy = saved_proxyname;
+				proxynameNew = make_message("%s.mapped", proxyname);
 			}
-			else submit_command.source_proxy = argv[CMD_SUBMIT_JOB_ARGS + 1 + MEXEC_PARAM_SRCPROXY];
+			else
+			{
+				submit_command.source_proxy = argv[CMD_SUBMIT_JOB_ARGS + 1 + MEXEC_PARAM_SRCPROXY];
+				proxynameNew = make_message("%s.glexec", proxyname);
+			}
 			/* Add the target proxy - cause glexec or sudo to move it to another file */
-			proxynameNew = make_message("%s.mapped", proxyname);
-			free(proxyname);
-			proxyname = proxynameNew;
-			submit_command.dest_proxy = proxyname;
-			log_proxy = submit_command.source_proxy;
+			if (proxynameNew)
+			{
+				free(proxyname);
+				proxyname = proxynameNew;
+				submit_command.dest_proxy = proxyname;
+				log_proxy = submit_command.source_proxy;
+			}
+			else
+			{
+				fprintf(stderr, "blahpd: out of memory! Exiting...\n");
+				exit(MALLOC_ERROR);
+			}
 		}
 	}
 	else if (proxyname != NULL)
