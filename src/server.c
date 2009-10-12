@@ -1374,7 +1374,7 @@ cmd_cancel_job(void* args)
 		escpd_cmd_out = escape_spaces(cancel_command.output);
 		escpd_cmd_err = escape_spaces(cancel_command.error);
 		resultLine = make_message("%s %d Cancellation\\ command\\ failed\\ (stdout:%s)\\ (stderr:%s)",
-		                           reqId, retcod, escpd_cmd_out, escpd_cmd_err);
+		                           reqId, cancel_command.exit_code, escpd_cmd_out, escpd_cmd_err);
 		if (BLAH_DYN_ALLOCATED(escpd_cmd_out)) free(escpd_cmd_out);
 		if (BLAH_DYN_ALLOCATED(escpd_cmd_err)) free(escpd_cmd_err);
 		goto cleanup_command;
@@ -2053,8 +2053,8 @@ hold_res_exec(char* jobdescr, char* reqId, char* action, int status, char **argv
 	{
 		escpd_cmd_out = escape_spaces(hold_command.output);
 		escpd_cmd_err = escape_spaces(hold_command.error);
-		resultLine = make_message("%s %d Job\\ %s:\\ %s\\ not\\ supported\\ by\\ %s\\ (stdout:%s)\\ (stderr:%s)",
-		                          reqId, retcod, statusstring[status - 1], action, spid->lrms, escpd_cmd_out, escpd_cmd_err);
+		resultLine = make_message("%s %d Job\\ %s:\\ %s\\ %s\\ command\\ failed\\ (stdout:%s)\\ (stderr:%s)",
+		                          reqId, hold_command.exit_code, statusstring[status - 1], spid->lrms, action, escpd_cmd_out, escpd_cmd_err);
 		if (BLAH_DYN_ALLOCATED(escpd_cmd_out)) free(escpd_cmd_out);
 		if (BLAH_DYN_ALLOCATED(escpd_cmd_err)) free(escpd_cmd_err);
 	}
