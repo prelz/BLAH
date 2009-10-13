@@ -466,7 +466,7 @@ execute_cmd(exec_cmd_t *cmd)
 					if (successful_read == 0)
 					{
 						/* add a message to stderr if the signal is not POLLHUP */
-						if (!((pipe_poll[0].revents & POLLHUP) && (pipe_poll[1].revents & POLLHUP)))
+						if (!((pipe_poll[0].revents & POLLHUP) || (pipe_poll[1].revents & POLLHUP)))
 						{
 							new_cmd_error = make_message(killed_for_poll_signal, cmd->error, pipe_poll[0].revents, pipe_poll[1].revents);
 							if (new_cmd_error != NULL)
