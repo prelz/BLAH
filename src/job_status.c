@@ -157,7 +157,7 @@ get_status(const char *jobDesc, classad_context *cad, char **deleg_parameters, c
 		exit(1);
 	}
 
-	if (deleg_parameters) /* glexec mode */
+	if (*deleg_parameters) /* glexec mode */
 	{
 		exec_command.delegation_type = atoi(deleg_parameters[MEXEC_PARAM_DELEGTYPE]);
 		exec_command.delegation_cred = deleg_parameters[MEXEC_PARAM_DELEGCRED];
