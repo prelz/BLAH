@@ -376,6 +376,9 @@ execute_cmd(exec_cmd_t *cmd)
 
 			/* Execute the command */
 			execve(args.we_wordv[0], args.we_wordv, cmd_env);
+
+			/* If we are still here, execve failed */
+			fprintf(stderr, "%s: %s", args.we_wordv[0], strerror(errno));
 			exit(errno);
 
 		default: /* Parent process */
