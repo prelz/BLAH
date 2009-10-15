@@ -1,4 +1,4 @@
-#!/bin/bash -xv
+#!/bin/bash
 #
 # File:     sge_submit.sh
 # Author:   Keith Sephton (kms@doc.ic.ac.uk)
@@ -20,11 +20,12 @@
 #
 #
 
-exec 2>> /tmp/submit.log
+#exec 2>> /tmp/submit.log
 
 . `dirname $0`/blah_common_submit_functions.sh
 
-if [ ! -z "$sge_root" -a -f "$sge_root/${sge_cell:-default}/common/settings.sh" ]
+if [ -z "$sge_root" ]; then sge_root="/usr/local/sge/pro"; fi
+if [ -r "$sge_root/${sge_cell:-default}/common/settings.sh" ]
 then
   . $sge_root/${sge_cell:-default}/common/settings.sh
 fi

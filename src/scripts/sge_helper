@@ -102,7 +102,7 @@ if ( $QSTAT ) {
 		my $status = ( $job_info->{'state'}->[1] || '' );
 		
 		$jobinfo{'BatchJobId'} = $jobid.'.'.$cell;
-		$jobinfo{'JobStatus'} = ( $status =~ /h/    ) ? BLAH_HELD
+		$jobinfo{'JobStatus'} = ( $status =~ /hr/    ) ? BLAH_HELD
 		    :        ( $status =~ /d/    ) ? BLAH_DELETED
 		    :        ( $status =~ /[rt]/ ) ? BLAH_RUNNING
 		    :        ( $status =~ /E/    ) ? BLAH_FINISHED
@@ -129,7 +129,67 @@ if ( $QSTAT ) {
 }
 
 if ( $QACCT ) {
-    # For --qacct,   we are only concerned with requested jobs
+=begin GHOSTCODE
+
+# For --qacct,   we are only concerned with requested jobs
+
+# ASG: Create SGE accounting cache file
+
+
+my $offset;
+my $mydate=time;
+my $tlimit=600;
+
+# Change this by a configurable path
+my $cachefile="/tmp/acct_cache";
+my $offsetfile="/tmp/acct_offset";
+
+my ($dev, $ino, $mode, $nlink, $uid, $gid, $rdev, $size, $atime, $mtime, $ctime, $blksize, $blocks) = stat($cachefile);
+
+
+# Checks cache file date
+my $diff = ( $mydate - $mtime );
+
+
+
+if ( $diff > $tlimit ) {
+
+	open (ACCTOFFST, "< /tmp/acct_offset");
+
+	my @lines = <ACCTOFFST>;	
+	close(ACCTOFFST);
+
+        $offset=$lines[0];
+
+# Checks if offset is a valid number
+if ($offset =~ /^[+-]?\d+$/ ) {
+    #print "$offset\n";
+} else {
+    $offset = 0;
+}
+
+
+	open (ACCOUNTING, "< /usr/local/sge/pro/default/common/accounting") or die "cannot open file for reading: $!";
+	open (ACCTCACHE, "> $cachefile") or die "cannot open file for writing: $!";
+	open (ACCTOFFST, "> /tmp/acct_offset") or die "cannot open file for writing: $!";
+
+	seek ACCOUNTING, $offset, 0;
+	while(<ACCOUNTING>)
+	{
+   	print ACCTCACHE;
+	}
+
+	$offset=tell ACCOUNTING;
+	print ACCTOFFST $offset;
+
+	close(ACCOUNTING);
+	close(ACCTCACHE);
+	close(ACCTOFFST);
+
+}
+
+# ASG: End of cache script
+
 
     foreach my $cell ( keys %joblist ) {
 	foreach my $jobid ( keys %{$joblist{$cell}} ) {
@@ -140,7 +200,7 @@ if ( $QACCT ) {
 	    
 	    my %jobinfo;
 
-	    my $qacct = &run_sge_command( $cell, '2>&1', 'qacct', '-j', $jobid )
+	    my $qacct = &run_sge_command( $cell, '2>&1', 'qacct', '-f /tmp/acct_cache -j', $jobid )
 		or die;
 
 	    while ( defined( $_ = $qacct->getline ) ) {
@@ -168,7 +228,14 @@ if ( $QACCT ) {
 	    $results[$jl->[0]] = \%jobinfo;
 	}
     }
+
+=end GHOSTCODE
+
+=cut
 }
+
+
+
 
 foreach my $i ( 0 .. $#results ) {
     my $jobstatus = $results[$i]->{'JobStatus'};

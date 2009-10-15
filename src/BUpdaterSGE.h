@@ -21,8 +21,6 @@
 #include "Bfunctions.h"
 #include "config.h"
 
-#define CSTR_CHARS         25
-
 #ifndef VERSION
 #define VERSION            "1.8.0"
 #endif

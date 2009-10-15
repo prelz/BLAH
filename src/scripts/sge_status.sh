@@ -33,7 +33,8 @@ then
     exec `dirname $0`/blah_job_registry_lkup -n
 fi
 
-if [ ! -z "$sge_root" -a -f "$sge_root/${sge_cell:-default}/common/settings.sh" ]
+if [ -z "$sge_root" ]; then sge_root="/usr/local/sge/pro"; fi
+if [ -r "$sge_root/${sge_cell:-default}/common/settings.sh" ]
 then
   . $sge_root/${sge_cell:-default}/common/settings.sh
 fi
