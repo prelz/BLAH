@@ -31,26 +31,39 @@ proxy_dir=~/.blah_jobproxy_dir
 original_args="$@"
 # Note: -s (stage command) s ignored as it is not relevant for Condor.
 
-while getopts "a:i:o:e:j:v:V:c:w:x:u:q:s:T:I:O:R:" arg 
+# script debug flag: currently unused
+debug=no
+
+# number of MPI nodes: currently unused
+mpinodes=0
+
+# Name of local requirements file: currently unused
+req_file=""
+
+while getopts "a:i:o:de:j:n:v:V:c:w:x:u:q:r:s:T:I:O:R:C:" arg 
 do
     case "$arg" in
     a) xtra_args="$OPTARG" ;;
     i) stdin="$OPTARG" ;;
     o) stdout="$OPTARG" ;;
+    d) debug="yes" ;;
     e) stderr="$OPTARG" ;;
     j) creamjobid="$OPTARG" ;;
     v) envir="$OPTARG";;
     V) environment="$OPTARG";;
     c) command="$OPTARG" ;;
+    n) mpinodes="$OPTARG" ;;
     w) workdir="$OPTARG";;
     x) proxy_file="$OPTARG" ;;
     u) proxy_subject="$OPTARG" ;;
-    q) queue="$OPTARG";;
+    q) queue="$OPTARG" ;;
+    r) dummy_proxyrenew="$OPTARG" ;;
     s) stgcmd="$OPTARG" ;;
     T) temp_dir="$OPTARG" ;;
     I) inputflstring="$OPTARG" ;;
     O) outputflstring="$OPTARG" ;;
     R) remaps="$OPTARG" ;;
+    C) req_file="$OPTARG" ;;
     -) break ;;
     ?) echo $usage_string
        exit 1 ;;
