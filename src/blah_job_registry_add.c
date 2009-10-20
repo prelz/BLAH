@@ -49,10 +49,21 @@ main(int argc, char *argv[])
   config_handle *cha;
   config_entry *rge;
   job_registry_handle *rha, *rhano;
+  job_registry_index_mode rgin_mode = NO_INDEX;
+
+  if (argc > 1 && (strcmp(argv[1], "-u") == 0))
+   {
+    /* Obtain an index to the registry so that we can */
+    /* check that the record is unique. */
+    rgin_mode = BY_BLAH_ID;
+    argv[1] = argv[0];
+    argc--;
+    argv++;
+   }
 
   if (argc < 3)
    {
-    fprintf(stderr,"Usage: %s <BLAH id> <batch id> [job status] [udate] [user prefix] [user proxy] [renew proxy] [proxy subject] [worker node] [exit code] [exit reason]\n",argv[0]);
+    fprintf(stderr,"Usage: %s [-u] <BLAH id> <batch id> [job status] [udate] [user prefix] [user proxy] [renew proxy] [proxy subject] [worker node] [exit code] [exit reason]\n",argv[0]);
     return 1;
    }
 
@@ -109,7 +120,7 @@ main(int argc, char *argv[])
   en.proxy_link[0] = '\000'; /* Start with a valid string */
   en.renew_proxy = 0; /* Enable renewal only if a proxy is found */
 
-  rha=job_registry_init(registry_file, BY_BLAH_ID);
+  rha=job_registry_init(registry_file, rgin_mode);
 
   if (rha == NULL)
    {
