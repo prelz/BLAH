@@ -208,8 +208,16 @@ int job_registry_update_select(job_registry_handle *rhandle,
                         job_registry_update_bitmask_t upbits);
 int job_registry_update(job_registry_handle *rhandle, 
                         job_registry_entry *entry);
+int job_registry_update_recn_select(job_registry_handle *rhandle, 
+                        job_registry_entry *entry,
+                        job_registry_recnum_t recn,
+                        job_registry_update_bitmask_t upbits);
+int job_registry_update_recn(job_registry_handle *rhandle, 
+                        job_registry_entry *entry,
+                        job_registry_recnum_t recn);
 int job_registry_update_op(job_registry_handle *rhandle, 
-                        job_registry_entry *entry, FILE *fd,
+                        job_registry_entry *entry,
+                        int use_recn, FILE *fd,
                         job_registry_update_bitmask_t upbits);
 job_registry_entry *job_registry_get(job_registry_handle *rhandle,
                                      const char *id);

@@ -12,6 +12,7 @@
  *  3-Mar-2008  Added non-privileged updates to fit CREAM's file and process
  *              ownership model.
  *  8-Jan-2009  Added job_registry_update_select call.
+ * 20-Oct-2009  Added update_recn calls to save on record lookup operations.
  *
  *  Description:
  *    File-based container to cache job IDs and statuses to implement
@@ -1115,7 +1116,8 @@ job_registry_append_op(job_registry_handle *rha,
       found = job_registry_lookup_op(rha, entry->batch_id, fd);
     if (found != 0)
      { 
-      return job_registry_update_op(rha, entry, fd, JOB_REGISTRY_UPDATE_ALL);
+      entry->recnum = found;
+      return job_registry_update_op(rha, entry, TRUE, fd, JOB_REGISTRY_UPDATE_ALL);
      }
    }
 
@@ -1411,6 +1413,8 @@ job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
 /*
  * job_registry_update
  * job_registry_update_select
+ * job_registry_update_recn
+ * job_registry_update_recn_select
  * job_registry_update_op
  *
  * Update an existing entry in the job registry pointed to by rha.
@@ -1426,6 +1430,9 @@ job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
  *        will be used for the update.
  *        The entry is updated with the actual registry contents upon
  *        successful return.
+ * @param recn Cause an update of the specified record number.
+ * @param use_recn If TRUE use the recnum field in 'entry' instead 
+ *        of an index lookup operation.
  * @param fd Stream descriptor of an open (for write) and writelocked 
  *        registry file. The file will be opened and closed if fd==NULL.
  * @param upbits Bitmask selecting which registry fields should get updated by
@@ -1446,19 +1453,38 @@ job_registry_update_select(job_registry_handle *rha,
                            job_registry_entry *entry,
                            job_registry_update_bitmask_t upbits)
 {
-  return job_registry_update_op(rha, entry, NULL, upbits);
+  return job_registry_update_op(rha, entry, FALSE, NULL, upbits);
 }
 
 int
 job_registry_update(job_registry_handle *rha,
                     job_registry_entry *entry)
 {
-  return job_registry_update_op(rha, entry, NULL, JOB_REGISTRY_UPDATE_ALL);
+  return job_registry_update_op(rha, entry, FALSE, NULL, JOB_REGISTRY_UPDATE_ALL);
+}
+
+int
+job_registry_update_recn_select(job_registry_handle *rha,
+                           job_registry_entry *entry,
+                           job_registry_recnum_t recn,
+                           job_registry_update_bitmask_t upbits)
+{
+  entry->recnum = recn;
+  return job_registry_update_op(rha, entry, TRUE, NULL, upbits);
+}
+
+int
+job_registry_update_recn(job_registry_handle *rha,
+                         job_registry_entry *entry,
+                         job_registry_recnum_t recn)
+{
+  entry->recnum = recn;
+  return job_registry_update_op(rha, entry, TRUE, NULL, JOB_REGISTRY_UPDATE_ALL);
 }
 
 int
 job_registry_update_op(job_registry_handle *rha,
-                       job_registry_entry *entry, FILE *fd,
+                       job_registry_entry *entry, int use_recn, FILE *fd,
                        job_registry_update_bitmask_t upbits)
 {
   job_registry_recnum_t found, firstrec, req_recn;
@@ -1466,15 +1492,22 @@ job_registry_update_op(job_registry_handle *rha,
   int need_to_fclose = FALSE;
   int need_to_update = FALSE;
 
-  if (rha->mode == NO_INDEX)
-    return JOB_REGISTRY_NO_INDEX;
-  else if (rha->mode == BY_BLAH_ID) 
-    found = job_registry_lookup_op(rha, entry->blah_id, fd);
-  else
-    found = job_registry_lookup_op(rha, entry->batch_id, fd);
-  if (found == 0)
+  if (use_recn)
    {
-    return JOB_REGISTRY_NOT_FOUND;
+    found = entry->recnum;
+   }
+  else
+   {
+    if (rha->mode == NO_INDEX)
+      return JOB_REGISTRY_NO_INDEX;
+    else if (rha->mode == BY_BLAH_ID) 
+      found = job_registry_lookup_op(rha, entry->blah_id, fd);
+    else
+      found = job_registry_lookup_op(rha, entry->batch_id, fd);
+    if (found == 0)
+     {
+      return JOB_REGISTRY_NOT_FOUND;
+     }
    }
 
   if (fd == NULL)
