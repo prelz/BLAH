@@ -194,6 +194,17 @@ int main(int argc, char *argv[]){
 	
 	config_free(cha);
 
+	rha=job_registry_init(registry_file, BY_BATCH_ID);
+	
+	if (rha == NULL){
+		if(debug){
+			fprintf(debuglogfile, "%s: Error initialising job registry %s\n",argv0,registry_file);
+			fflush(debuglogfile);
+		}
+		fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
+		perror("");
+	}
+		
 	for(;;){
 		/* Purge old entries from registry */
 		now=time(0);
@@ -211,19 +222,6 @@ int main(int argc, char *argv[]){
 			}else{
 				purge_time=time(0);
 			}
-		}
-	       
-		rha=job_registry_init(registry_file, BY_BATCH_ID);
-		if (rha == NULL)
-		{
-			if(debug){
-				fprintf(debuglogfile, "%s: Error initialising job registry %s\n",argv0,registry_file);
-				fflush(debuglogfile);
-			}
-			fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
-			perror("");
-			sleep(2);
-			continue;
 		}
 
 		IntStateQuery();
@@ -302,10 +300,11 @@ int main(int argc, char *argv[]){
 		free(constraint);		
 		free(query);
 		fclose(fd);		
-		job_registry_destroy(rha);
 		sleep(10); /* Was 2 seconds,  but that is a bit too frequent for running qstat etc */
 	}
 	
+	job_registry_destroy(rha);
+		
 	return(0);
 	
 }

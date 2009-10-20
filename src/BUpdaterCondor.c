@@ -210,6 +210,18 @@ int main(int argc, char *argv[]){
 	}
 	
 	config_free(cha);
+	
+	rha=job_registry_init(registry_file, BY_BATCH_ID);
+	if (rha == NULL){
+		if(debug){
+			dgbtimestamp=iepoch2str(time(0));
+			fprintf(debuglogfile, "%s %s: Error initialising job registry %s\n",dgbtimestamp,argv0,registry_file);
+			fflush(debuglogfile);
+			free(dgbtimestamp);
+		}
+		fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
+		perror("");
+	}
 
 	for(;;){
 		/* Purge old entries from registry */
@@ -229,22 +241,7 @@ int main(int argc, char *argv[]){
 			}else{
 				purge_time=time(0);
 			}
-		}
-	       
-		rha=job_registry_init(registry_file, BY_BATCH_ID);
-		if (rha == NULL)
-		{
-			if(debug){
-				dgbtimestamp=iepoch2str(time(0));
-				fprintf(debuglogfile, "%s %s: Error initialising job registry %s\n",dgbtimestamp,argv0,registry_file);
-				fflush(debuglogfile);
-				free(dgbtimestamp);
-			}
-			fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
-			perror("");
-			sleep(loop_interval);
-			continue;
-		}
+		}	       
 
 		IntStateQuery();
 		
@@ -325,9 +322,10 @@ int main(int argc, char *argv[]){
 			query = NULL;
 		}
 		fclose(fd);		
-		job_registry_destroy(rha);
 		sleep(loop_interval);
 	}
+	
+	job_registry_destroy(rha);
 	
 	return 0;
 	

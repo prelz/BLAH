@@ -40,6 +40,8 @@
 #define LISTENQ            1024
 #define NOTIF_FILE         "/tmp/.notiftime.txt" 
 
+#define DEFAULT_LOOP_INTERVAL 5
+
 #ifndef VERSION
 #define VERSION            "1.8.0"
 #endif
@@ -83,4 +85,8 @@ int creamisconn=FALSE;
 int startnotify=FALSE;
 int startnotifyjob=FALSE;
 int firstnotify=FALSE;
+int sentendonce=TRUE;
+
 char *joblist_string="";
+
+int loop_interval=DEFAULT_LOOP_INTERVAL;

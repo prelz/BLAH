@@ -171,7 +171,7 @@ int main(int argc, char *argv[]){
 	if (ret == NULL){
                 if(debug){
 			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%d %s: key finalstate_query_interval not found using the default:%d\n",dgbtimestamp,argv0,finalstate_query_interval);
+			fprintf(debuglogfile, "%s %s: key finalstate_query_interval not found using the default:%d\n",dgbtimestamp,argv0,finalstate_query_interval);
 			fflush(debuglogfile);
 			free(dgbtimestamp);
 		}
@@ -228,6 +228,18 @@ int main(int argc, char *argv[]){
 	
 	config_free(cha);
 
+	rha=job_registry_init(registry_file, BY_BATCH_ID);
+	if (rha == NULL){
+		if(debug){
+			dgbtimestamp=iepoch2str(time(0));
+			fprintf(debuglogfile, "%s %s: Error initialising job registry %s\n",dgbtimestamp,argv0,registry_file);
+			fflush(debuglogfile);
+			free(dgbtimestamp);
+		}
+		fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
+		perror("");
+	}
+	
 	for(;;){
 		/* Purge old entries from registry */
 		now=time(0);
@@ -248,20 +260,6 @@ int main(int argc, char *argv[]){
 			}
 		}
 	       
-		rha=job_registry_init(registry_file, BY_BATCH_ID);
-		if (rha == NULL){
-			if(debug){
-				dgbtimestamp=iepoch2str(time(0));
-				fprintf(debuglogfile, "%s %s: Error initialising job registry %s\n",dgbtimestamp,argv0,registry_file);
-				fflush(debuglogfile);
-				free(dgbtimestamp);
-			}
-			fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
-			perror("");
-			sleep(loop_interval);
-			continue;
-		}
-
 		IntStateQuery();
 		
 		fd = job_registry_open(rha, "r");
@@ -283,7 +281,7 @@ int main(int argc, char *argv[]){
 				fprintf(debuglogfile, "%s %s: Error read locking job registry %s\n",dgbtimestamp,argv0,registry_file);
 				fflush(debuglogfile);
 				free(dgbtimestamp);
-		}
+			}
 			fprintf(stderr,"%s: Error read locking job registry %s :",argv0,registry_file);
 			perror("");
 			sleep(loop_interval);
@@ -328,10 +326,11 @@ int main(int argc, char *argv[]){
 			finstr_len = 0;
 		}
 		fclose(fd);		
-		job_registry_destroy(rha);
 		sleep(loop_interval);
 	}
 	
+	job_registry_destroy(rha);
+		
 	return 0;
 	
 }

@@ -36,7 +36,6 @@ main(int argc, char *argv[])
 	struct addrinfo ai_req, *ai_ans, *cur_ans;
 	int address_found;
 
-
 	pthread_t CreamThd;
 	pthread_t PollThd;
 	config_handle *cha;
@@ -52,7 +51,8 @@ main(int argc, char *argv[])
 		POPT_AUTOHELP
 		POPT_TABLEEND
 	};
-	
+		int loop_interval=DEFAULT_LOOP_INTERVAL;
+
 	argv0 = argv[0];
 	
 	/*Ignore sigpipe*/
@@ -130,6 +130,16 @@ main(int argc, char *argv[])
 		async_notif_port =atoi(ret->value);
 	}
 
+	ret = config_get("bnotifier_loop_interval",cha);
+	if (ret == NULL){
+                if(debug){
+			fprintf(debuglogfile, "%s: key bnotifier_loop_interval not found using the default:%d\n",argv0,loop_interval);
+			fflush(debuglogfile);
+		}
+	} else {
+		loop_interval=atoi(ret->value);
+	}
+	
 	ret = config_get("bnotifier_pidfile",cha);
 	if (ret == NULL){
                 if(debug){
@@ -222,7 +232,17 @@ PollDB()
         int  maxtok,i;
         char **tbuf;
 	
-	while(1){
+	rha=job_registry_init(registry_file, BY_BATCH_ID);
+	if (rha == NULL){
+		if(debug){
+			fprintf(debuglogfile, "%s: Error initialising job registry %s",argv0,registry_file);
+			fflush(debuglogfile);
+		}
+		fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
+		perror("");
+	}
+	
+	for(;;){
 	
 		now=time(NULL);
 	
@@ -231,42 +251,30 @@ PollDB()
 			continue;
 		}
 
-		rha=job_registry_init(registry_file, BY_BATCH_ID);
-		if (rha == NULL)
-                {
-			if(debug){
-				fprintf(debuglogfile, "%s: Error initialising job registry %s",argv0,registry_file);
-				fflush(debuglogfile);
-			}
-			fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
-                        perror("");
-			sleep(2);
-                        continue;
-                }
-		fd = job_registry_open(rha, "r");
-		if (fd == NULL)
-		{
-			if(debug){
-				fprintf(debuglogfile, "%s: Error opening job registry %s",argv0,registry_file);
-				fflush(debuglogfile);
-			}
-			fprintf(stderr,"%s: Error opening job registry %s :",argv0,registry_file);
-			perror("");
-			sleep(2);
-			continue;
-		}
-		if (job_registry_rdlock(rha, fd) < 0)
-		{
-			if(debug){
-				fprintf(debuglogfile, "%s: Error read locking registry %s",argv0,registry_file);
-				fflush(debuglogfile);
-			}
-			fprintf(stderr,"%s: Error read locking registry %s :",argv0,registry_file);
-			perror("");
-			sleep(2);
-			continue;
-		}
 		if(startnotify){
+			fd = job_registry_open(rha, "r");
+			if (fd == NULL)
+			{
+				if(debug){
+					fprintf(debuglogfile, "%s: Error opening job registry %s",argv0,registry_file);
+					fflush(debuglogfile);
+				}
+				fprintf(stderr,"%s: Error opening job registry %s :",argv0,registry_file);
+				perror("");
+				sleep(loop_interval);
+				continue;
+			}
+			if (job_registry_rdlock(rha, fd) < 0)
+			{
+				if(debug){
+					fprintf(debuglogfile, "%s: Error read locking registry %s",argv0,registry_file);
+					fflush(debuglogfile);
+				}
+				fprintf(stderr,"%s: Error read locking registry %s :",argv0,registry_file);
+				perror("");
+				sleep(loop_interval);
+				continue;
+			}
 			while ((en = job_registry_get_next(rha, fd)) != NULL)
 			{
 		
@@ -279,6 +287,8 @@ PollDB()
 				free(en);
 			}
 
+			fclose(fd);
+			
 	        	/* change date of notification file */
 			UpdateFileTime(now);
 			
@@ -310,14 +320,16 @@ PollDB()
 			startnotify=TRUE;
 		}
 
-		if(firstnotify){
+		if(firstnotify && sentendonce){
 			NotifyCream("NTFDATE/END\n");
+			sentendonce=FALSE;
 			firstnotify=FALSE;
 		}		
-		fclose(fd);
-                job_registry_destroy(rha);
-		sleep(2);
+		sleep(loop_interval);
 	}
+                
+	job_registry_destroy(rha);
+	
 	return 0;
 }
 
@@ -446,6 +458,30 @@ GetModTime(char *filename)
 void 
 CreamConnection(int c_sock)
 { 
+/*
+startnotify 	controls the normal operation in PollDB
+startnotifyjob 	is used to send notification of jobs contained in joblist_string 
+firstnotify 	controls if NTFDATE/END has to be sent (together with sentendonce)
+sentendonce 	controls if NTFDATE/END has to be sent (is used to permit STARTNOTIFYJOBLIST to be used during
+            	normal notifier operation without sending NTFDATE/END). It is reset to TRUE only by CREAMFILTER command
+            	otherwise it remains FALSE after the first notification (finished with NTFDATE/END).
+creamisconn 	starts all the normal usage: without it no notifications are sent to cream
+
+So the initial commands should be:
+CREAMFILTER
+PARSERVERSION
+
+STARTNOTIFY 
+or 
+STARTNOTIFYJOBLIST
+STARTNOTIFYJOBEND
+
+during the normal usage to have info about a list of job:
+STARTNOTIFYJOBLIST
+STARTNOTIFYJOBEND
+
+*/
+
 
 	char      *buffer;
 	int       retcod;
@@ -543,13 +579,16 @@ write_c:
 					NotifyStart(buffer);
 					startnotify=TRUE;
 					firstnotify=TRUE;
-				} else if(buffer && strstr(buffer,"STARTNOTIFYJOB/")!=NULL){
+				} else if(buffer && strstr(buffer,"STARTNOTIFYJOBLIST/")!=NULL){
 					GetJobList(buffer);
 					startnotifyjob=TRUE;
+                                } else if(buffer && strstr(buffer,"STARTNOTIFYJOBEND/")!=NULL){
+                                        startnotify=TRUE;
 					firstnotify=TRUE;
 				} else if(buffer && strstr(buffer,"CREAMFILTER/")!=NULL){
                                         GetFilter(buffer);
 					creamisconn=TRUE;
+					sentendonce=TRUE;
 				} else if(buffer && strstr(buffer,"PARSERVERSION/")!=NULL){
                                         GetVersion();
                                 }
