@@ -13,6 +13,7 @@
  *              ownership model.
  *  8-Jan-2009  Added job_registry_update_select call.
  * 20-Oct-2009  Added update_recn calls to save on record lookup operations.
+ *              and job_registry_unlock call.
  *
  *  Description:
  *    File-based container to cache job IDs and statuses to implement
@@ -1805,6 +1806,38 @@ job_registry_open(job_registry_handle *rha, const char *mode)
   fd = fopen(rha->path, mode);
 
   return fd;
+}
+
+/*
+ * job_registry_unlock
+ *
+ * Release any lock on open file sfd. This is useful to yield
+ * permission to other processes on long read cycles.
+ *
+ * @param sfd Stream descriptor of an open where fcntl locks are released.
+ * 
+ * @return Less than zero on error (errno is set by fcntl call).
+ */
+
+int
+job_registry_unlock(FILE *sfd)
+{
+  int fd, lfd;
+  struct flock ulock;
+  int ret;
+
+  fd = fileno(sfd);
+  if (fd < 0) return fd; /* sfd is an invalid stream */
+
+  /* Now release any lock on the whole file */
+
+  ulock.l_type = F_UNLCK;
+  ulock.l_whence = SEEK_SET;
+  ulock.l_start = 0;
+  ulock.l_len = 0; /* Lock whole file */
+  
+  ret = fcntl(fd, F_SETLKW, &ulock);
+  return ret;
 }
 
 /*

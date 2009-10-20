@@ -224,6 +224,7 @@ job_registry_entry *job_registry_get(job_registry_handle *rhandle,
 FILE *job_registry_open(job_registry_handle *rhandle, const char *mode);
 int job_registry_rdlock(const job_registry_handle *rhandle, FILE *sfd);
 int job_registry_wrlock(const job_registry_handle *rhandle, FILE *sfd);
+int job_registry_unlock(FILE *sfd);
 job_registry_entry *job_registry_get_next(const job_registry_handle *rhandle,
                                           FILE *fd);
 int job_registry_seek_next(FILE *fd, job_registry_entry *result);
