@@ -520,9 +520,11 @@ function bls_wrap_up_submit ()
   # DEBUG: cp $bls_tmp_file /tmp
   rm -f $bls_tmp_file
   
-  # Create a softlink to proxy file for proxy renewal
-  if [ -r "$bls_proxy_local_file" -a -f "$bls_proxy_local_file" ] ; then
-      [ -d "$bls_proxy_dir" ] || mkdir $bls_proxy_dir
-      ln -s $bls_proxy_local_file $bls_proxy_dir/$jobID.proxy
+  if [ "x$job_registry" == "x" ]; then
+    # Create a softlink to proxy file for proxy renewal
+    if [ -r "$bls_proxy_local_file" -a -f "$bls_proxy_local_file" ] ; then
+        [ -d "$bls_proxy_dir" ] || mkdir $bls_proxy_dir
+        ln -s $bls_proxy_local_file $bls_proxy_dir/$jobID.proxy
+    fi
   fi
 }

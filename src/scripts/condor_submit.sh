@@ -292,9 +292,11 @@ fi
 # Create a softlink to proxy file for proxy renewal - local renewal 
 # of limited proxy only.
 
-if [ -r "$proxy_file" -a -f "$proxy_file" ] ; then
-    [ -d "$proxy_dir" ] || mkdir $proxy_dir
-    ln -s $proxy_file $proxy_dir/$jobID.proxy.norenew
+if [ "x$job_registry" == "x" ]; then
+    if [ -r "$proxy_file" -a -f "$proxy_file" ] ; then
+        [ -d "$proxy_dir" ] || mkdir $proxy_dir
+        ln -s $proxy_file $proxy_dir/$jobID.proxy.norenew
+    fi
 fi
 
 exit $return_code
