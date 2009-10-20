@@ -41,54 +41,19 @@ extern pthread_mutex_t blah_jr_lock;
 
 #define TSF_DEBUG
 
-int
-unlink_proxy_symlink(const char *jobDesc, classad_context *cad, char **deleg_parameters)
+void
+unlink_proxy_symlink(job_registry_entry *en, classad_context *cad, const job_registry_handle *rha)
 {
-	job_registry_split_id *spid;
 	int job_status;
-	char *proxy_link;
-	int retcod = -2;
-	exec_cmd_t exec_command = EXEC_CMD_DEFAULT;
 
-	if ((spid = job_registry_split_blah_id(jobDesc)) != NULL)
+	if (classad_get_int_attribute(cad, "JobStatus", &job_status) == C_CLASSAD_NO_ERROR)
 	{
-		if (classad_get_int_attribute(cad, "JobStatus", &job_status) == C_CLASSAD_NO_ERROR)
+		if (job_status == (int)REMOVED || job_status == (int)COMPLETED )
 		{
-			if (job_status == (int)REMOVED || job_status == (int)COMPLETED )
-			{
-				if (*deleg_parameters) /* GLEXEC Mode ? */
-				{
-					exec_command.delegation_type = atoi(deleg_parameters[MEXEC_PARAM_DELEGTYPE]);
-					exec_command.delegation_cred = deleg_parameters[MEXEC_PARAM_DELEGCRED];
-					/* Proxy link location is relative to the HOME of the *mapped* user in this case. */
-					exec_command.command = make_message("/bin/rm .blah_jobproxy_dir/%s.proxy",
-			 							spid->proxy_id);
-				} else {
-					exec_command.command = make_message("/bin/rm %s/.blah_jobproxy_dir/%s.proxy",
-										getenv("HOME"), spid->proxy_id);
-				}
-
-				if (exec_command.command == NULL)
-				{
-					fprintf(stderr, "blahpd: out of memory");
-					exit(1);
-				}
-
-				retcod = execute_cmd(&exec_command);
-
-				if (exec_command.exit_code != 0) /* Try the '.norenew' file in case of failure. */
-				{
-					recycle_cmd(&exec_command);
-					exec_command.append_to_command = ".norenew";
-					execute_cmd(&exec_command);
-				}
-				free(exec_command.command);
-				cleanup_cmd(&exec_command);
-			}
+			job_registry_unlink_proxy(rha, en);
 		}
-		job_registry_free_split_id(spid);
 	}
-	return(retcod);
+	return;
 }
 
 int
@@ -122,10 +87,9 @@ get_status(const char *jobDesc, classad_context *cad, char **deleg_parameters, c
 				free(cadstr);
 				if (tmpcad != NULL)
 				{
-					/* Need to undo the proxy symlink as the status scripts do. */
-					/* FIXME: This can be removed when the proxy file is moved */
-					/* FIXME: into the registry. */
-					unlink_proxy_symlink(jobDesc, tmpcad, deleg_parameters);					
+					/* Undo the proxy symlink in the job registry for completed jobs. */
+					/* This saves a few inodes. */
+					unlink_proxy_symlink(ren, tmpcad, blah_jr_handle);					
 					*job_nr = 1;
 					strncpy(error_str[0], "No Error", ERROR_MAX_LEN);
 					cad[0] = tmpcad;
