@@ -82,7 +82,7 @@ main(int argc, char *argv[])
     memcpy(en.blah_id,rha->entries[pick].id,sizeof(en.blah_id));
     en.batch_id[0]='\000';
 
-    ret = job_registry_update_select(rha, &en,
+    ret = job_registry_update_recn_select(rha, &en, rha->entries[pick].recnum, 
                                      JOB_REGISTRY_UPDATE_UDATE |
                                      JOB_REGISTRY_UPDATE_STATUS |
                                      JOB_REGISTRY_UPDATE_EXITCODE );
