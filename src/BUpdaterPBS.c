@@ -412,7 +412,7 @@ Job Id: 11.cream-12.pd.infn.it
 			}
 			if(line && strstr(line,"Job Id: ")){
 				if(!first && en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD)) && ren && (en.status!=ren->status)){
-                        		if ((ret=job_registry_update(rha, &en)) < 0){
+                        		if ((ret=job_registry_update_recn(rha, &en, ren->recnum)) < 0){
 						if(ret != JOB_REGISTRY_NOT_FOUND){
                 	                		fprintf(stderr,"Append of record returns %d: ",ret);
 							perror("");
@@ -488,7 +488,7 @@ Job Id: 11.cream-12.pd.infn.it
 	}
 	
 	if(en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD)) && ren && (en.status!=ren->status)){
-		if ((ret=job_registry_update(rha, &en)) < 0){
+		if ((ret=job_registry_update_recn(rha, &en, ren->recnum)) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
 				fprintf(stderr,"Append of record returns %d: ",ret);
 				perror("");

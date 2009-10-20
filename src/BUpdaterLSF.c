@@ -428,7 +428,7 @@ IntStateQueryShort()
 				continue;
 			}
 			if(!first && en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD)) && ren && (en.status!=ren->status)){	
-				if ((ret=job_registry_update(rha, &en)) < 0){
+				if ((ret=job_registry_update_recn(rha, &en, ren->recnum)) < 0){
 					if(ret != JOB_REGISTRY_NOT_FOUND){
 						fprintf(stderr,"Append of record returns %d: ",ret);
 						perror("");
@@ -481,7 +481,7 @@ IntStateQueryShort()
 	}
 	
 	if(en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD)) && ren && (en.status!=ren->status)){	
-		if ((ret=job_registry_update(rha, &en)) < 0){
+		if ((ret=job_registry_update_recn(rha, &en, ren->recnum)) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
 				fprintf(stderr,"Append of record returns %d: ",ret);
 				perror("");
@@ -566,7 +566,7 @@ IntStateQuery()
 			if(line && strstr(line,"Job <")){
 				isresumed=FALSE;
 				if(!first && en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD)) && ren && (en.status!=ren->status)){	
-					if ((ret=job_registry_update(rha, &en)) < 0){
+					if ((ret=job_registry_update_recn(rha, &en, ren->recnum)) < 0){
 						if(ret != JOB_REGISTRY_NOT_FOUND){
 							fprintf(stderr,"Append of record returns %d: ",ret);
 							perror("");
@@ -633,7 +633,7 @@ IntStateQuery()
 	}
 		
 	if(en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD)) && ren && (en.status!=ren->status)){	
-		if ((ret=job_registry_update(rha, &en)) < 0){
+		if ((ret=job_registry_update_recn(rha, &en, ren->recnum)) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
 				fprintf(stderr,"Append of record returns %d: ",ret);
 				perror("");
