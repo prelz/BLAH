@@ -106,6 +106,7 @@ main(int argc, char *argv[])
           fprintf(stderr,"%s: stat of %s fails: ", argv[0], pname);
           perror("");
          }
+        free(pname);
        }
      }
     if ((spid = job_registry_split_blah_id(en->blah_id)) == NULL)
