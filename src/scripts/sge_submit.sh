@@ -61,6 +61,8 @@ if [ -r $local_submit_attributes_file ] ; then
     echo "source $local_submit_attributes_file" >> $bls_opt_tmp_req_file
     chmod +x $bls_opt_tmp_req_file
     $bls_opt_tmp_req_file >> $bls_tmp_file 2> /dev/null
+fi
+if [ -e $bls_opt_tmp_req_file ] ; then
     rm -f $bls_opt_tmp_req_file
 fi
 
