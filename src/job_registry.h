@@ -145,6 +145,7 @@ typedef struct job_registry_hash_store_s
    int n_data;
  } job_registry_hash_store;
 
+#define JOB_REGISTRY_CHANGED          1
 #define JOB_REGISTRY_SUCCESS          0
 #define JOB_REGISTRY_FAIL            -1 
 #define JOB_REGISTRY_NO_INDEX        -2 

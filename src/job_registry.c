@@ -14,6 +14,7 @@
  *  8-Jan-2009  Added job_registry_update_select call.
  * 20-Oct-2009  Added update_recn calls to save on record lookup operations.
  *              and job_registry_unlock call.
+ * 23-Oct-2009  Avoid unnecessary registry sort when the disk registry is unchanged.
  *
  *  Description:
  *    File-based container to cache job IDs and statuses to implement
@@ -892,7 +893,8 @@ job_registry_firstrec(FILE *fd)
  *        fd *must* be at least read locked before calling this function. 
  * @param rha Pointer to a job registry handle returned by job_registry_init
  *
- * @return Less than zero on error. See job_registry.h for error codes.
+ * @return Less than zero on error. Zero un unchanged registru. Greater than 0
+ *         if registry changed, See job_registry.h for error codes.
  *         errno is also set in case of error.
  */
 
@@ -901,9 +903,13 @@ job_registry_resync(job_registry_handle *rha, FILE *fd)
 {
 
   job_registry_recnum_t firstrec;
+  job_registry_recnum_t old_firstrec, old_lastrec;
   job_registry_entry *ren;
   job_registry_index *new_entries;
   char *chosen_id;
+
+  old_lastrec = rha->lastrec;
+  old_firstrec = rha->firstrec;
 
   firstrec = job_registry_firstrec(fd);
 
@@ -972,7 +978,11 @@ job_registry_resync(job_registry_handle *rha, FILE *fd)
     (rha->entries[rha->n_entries-1]).recnum = ren->recnum; 
     free(ren);
    }
-  job_registry_sort(rha);
+  if ((rha->lastrec != old_lastrec) || (rha->firstrec != old_firstrec))
+   {
+    job_registry_sort(rha);
+    return JOB_REGISTRY_CHANGED;
+   }
   return JOB_REGISTRY_SUCCESS;
 }
 
@@ -1708,7 +1718,7 @@ job_registry_lookup_op(job_registry_handle *rha,
          }
         need_to_fclose = TRUE;
        }
-      if (job_registry_resync(rha, fd) < 0)
+      if (job_registry_resync(rha, fd) <= 0)
        {
         if (need_to_fclose) fclose(fd);
         break;
