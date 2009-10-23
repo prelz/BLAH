@@ -15,6 +15,7 @@
  * 20-Oct-2009  Added update_recn calls to save on record lookup operations.
  *              and job_registry_unlock call.
  * 23-Oct-2009  Avoid unnecessary registry sort when the disk registry is unchanged.
+ *              Make sure 'firstrec' is recomputed for record sanity checks.
  *
  *  Description:
  *    File-based container to cache job IDs and statuses to implement
@@ -511,6 +512,7 @@ job_registry_init(const char *path,
    }
 
   rha->mode = mode;
+  rha->disk_firstrec = 0;
 
   /* Resolve symbolic link, if any */
   if (lstat(path, &fst) >= 0)
@@ -849,6 +851,7 @@ job_registry_destroy(job_registry_handle *rha)
  * pointed to by fd. 
  * Record numbers are supposed to be in ascending order, with no gaps. 
  *
+ * @param rha Pointer to a job registry handle returned by job_registry_init
  * @param fd Stream descriptor of an open registry file.
  *        fd *must* be at least read locked before calling this function. 
  *        The file will be left positioned after the first record.
@@ -858,10 +861,13 @@ job_registry_destroy(job_registry_handle *rha)
  */
 
 job_registry_recnum_t
-job_registry_firstrec(FILE *fd)
+job_registry_firstrec(job_registry_handle *rha, FILE *fd)
 {
   int ret;
   job_registry_entry first; 
+
+  rha->disk_firstrec = 0;
+
   ret = fseek(fd, 0L, SEEK_SET);
   if (ret < 0) return ret; 
 
@@ -879,6 +885,7 @@ job_registry_firstrec(FILE *fd)
     return JOB_REGISTRY_CORRUPT_RECORD;
    }
 
+  rha->disk_firstrec = first.recnum;
   return first.recnum;
 }
 
@@ -911,7 +918,7 @@ job_registry_resync(job_registry_handle *rha, FILE *fd)
   old_lastrec = rha->lastrec;
   old_firstrec = rha->firstrec;
 
-  firstrec = job_registry_firstrec(fd);
+  firstrec = job_registry_firstrec(rha,fd);
 
        /* File new or changed? */
   if ( (rha->lastrec == 0 && rha->firstrec == 0) || firstrec != rha->firstrec)
@@ -1536,7 +1543,13 @@ job_registry_update_op(job_registry_handle *rha,
     need_to_fclose = TRUE;
    }
 
-  firstrec = job_registry_firstrec(fd);
+  firstrec = job_registry_firstrec(rha,fd);
+  /* Was this record just purged ? */
+  if ((firstrec > rha->firstrec) && (found >= rha->firstrec) && (found < firstrec))
+   {
+    if (need_to_fclose) fclose(fd);
+    return JOB_REGISTRY_NOT_FOUND;
+   }
   JOB_REGISTRY_GET_REC_OFFSET(req_recn,found,firstrec)
   
   if (fseek(fd, (long)(req_recn*sizeof(job_registry_entry)), SEEK_SET) < 0)
@@ -1778,7 +1791,13 @@ job_registry_get(job_registry_handle *rha,
     return NULL;
    }
 
-  firstrec = job_registry_firstrec(fd);
+  firstrec = job_registry_firstrec(rha,fd);
+  /* Was this record just purged ? */
+  if ((firstrec > rha->firstrec) && (found >= rha->firstrec) && (found < firstrec))
+   {
+    fclose(fd);
+    return NULL;
+   }
   JOB_REGISTRY_GET_REC_OFFSET(req_recn,found,firstrec)
   
   if (fseek(fd, (long)(req_recn*sizeof(job_registry_entry)), SEEK_SET) < 0)
@@ -2011,11 +2030,11 @@ job_registry_get_next(const job_registry_handle *rha,
     return NULL;
    }
 
-  if (rha->firstrec > 0) /* Keep checking file consistency */
-                         /* (correspondence of file offset and record num) */
+  if (rha->disk_firstrec > 0) /* Keep checking file consistency */
+                              /* (correspondence of file offset and record num) */
    {
     curr_pos = ftell(fd);
-    JOB_REGISTRY_GET_REC_OFFSET(curr_recn,result->recnum,rha->firstrec)
+    JOB_REGISTRY_GET_REC_OFFSET(curr_recn,result->recnum,rha->disk_firstrec)
     if (curr_pos != ((curr_recn+1)*sizeof(job_registry_entry)))
      {
       errno = EBADMSG;

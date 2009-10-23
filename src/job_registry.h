@@ -122,6 +122,7 @@ typedef struct job_registry_handle_s
    int n_entries;
    int n_alloc;
    job_registry_index_mode mode;
+   uint32_t disk_firstrec;
  } job_registry_handle;
 
 typedef enum job_registry_sort_state_e
@@ -177,7 +178,7 @@ int job_registry_purge(const char *path, time_t oldest_creation_date,
 job_registry_handle *job_registry_init(const char *path, 
                                        job_registry_index_mode mode);
 void job_registry_destroy(job_registry_handle *rhandle);
-job_registry_recnum_t job_registry_firstrec(FILE *fd);
+job_registry_recnum_t job_registry_firstrec(job_registry_handle *rhandle, FILE *fd);
 int job_registry_resync(job_registry_handle *rhandle, FILE *fd);
 int job_registry_sort(job_registry_handle *rhandle);
 job_registry_recnum_t job_registry_get_recnum(const job_registry_handle *rha,
