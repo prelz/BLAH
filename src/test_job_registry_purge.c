@@ -93,6 +93,7 @@ main(int argc, char *argv[])
   printf("Last  cdate == %d\n", last_cdate);
   for (i=0;i<10;i++) printf("count[%2d] == %d\n",i,count[i]);
 
+  fclose(fd);
   job_registry_destroy(rha);
   return 0;
 }
