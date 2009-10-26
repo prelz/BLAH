@@ -35,6 +35,7 @@ int main(int argc, char *argv[]){
 	char *q=NULL;
 	char *pidfile=NULL;
 	char *final_string=NULL;
+	char *cp=NULL;
 	
 	poptContext poptcon;
 	int rc=0;			     
@@ -54,7 +55,7 @@ int main(int argc, char *argv[]){
 		POPT_AUTOHELP
 		POPT_TABLEEND
 	};
-		
+	
 	argv0 = argv[0];
 
         signal(SIGHUP,sighup);
@@ -263,6 +264,7 @@ int main(int argc, char *argv[]){
 		IntStateQuery();
 		
 		fd = job_registry_open(rha, "r");
+		
 		if (fd == NULL){
 			if(debug){
 				dgbtimestamp=iepoch2str(time(0));
@@ -287,7 +289,9 @@ int main(int argc, char *argv[]){
 			sleep(loop_interval);
 			continue;
 		}
-
+		job_registry_firstrec(rha,fd);
+		fseek(fd,0L,SEEK_SET);
+		
 		first=TRUE;
 		
 		while ((en = job_registry_get_next(rha, fd)) != NULL){
@@ -317,6 +321,9 @@ int main(int argc, char *argv[]){
 		}
 		
 		if(runfinal){
+			if (final_string[finstr_len-1] == ':' && (cp = strrchr (final_string, ':')) != NULL){
+				*cp = '\0';
+			}
 			FinalStateQuery(final_string);
 			runfinal=FALSE;
 		}
@@ -435,7 +442,7 @@ Job Id: 11.cream-12.pd.infn.it
 				freetoken(&token,maxtok_t);
 				if(!first) free(ren);
 				if ((ren=job_registry_get(rha, en.batch_id)) == NULL){
-						fprintf(stderr,"Get of record returns error ");
+						fprintf(stderr,"Get of record returns error for %s ",en.batch_id);
 						perror("");
 				}
 				first=FALSE;				
@@ -620,7 +627,10 @@ Job: 13.cream-12.pd.infn.it
 
 		if(fp!=NULL){
 			while(!feof(fp) && (line=get_line(fp))){
-				if(line && strlen(line)==0) continue;
+				if(line && strlen(line)==0){
+					free(line);
+					continue;
+				}
 				if ((cp = strrchr (line, '\n')) != NULL){
 					*cp = '\0';
 				}
