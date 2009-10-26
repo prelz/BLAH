@@ -228,9 +228,12 @@ PollDB()
         job_registry_entry *en;
 	job_registry_handle *rha;
 	char *buffer=NULL;
+	char *finalbuffer=NULL;
 	time_t now;
         int  maxtok,i;
         char **tbuf;
+	int size;
+	int len;
 	
 	rha=job_registry_init(registry_file, BY_BATCH_ID);
 	if (rha == NULL){
@@ -281,12 +284,21 @@ PollDB()
 				if(en->mdate >= GetModTime(notiffile) && en->mdate < now && en->user_prefix && strstr(en->user_prefix,creamfilter)!=NULL)
 				{
 					buffer=ComposeClassad(en);
-					NotifyCream(buffer);
+					len=strlen(buffer);
+					size+=len+2;
+					finalbuffer = realloc(finalbuffer,size);
+					strcat(finalbuffer,buffer);
 					free(buffer);
 				}
 				free(en);
 			}
 
+			if(finalbuffer != NULL){
+				NotifyCream(finalbuffer);
+				free(finalbuffer);
+				finalbuffer=NULL;
+			}
+			
 			fclose(fd);
 			
 	        	/* change date of notification file */
@@ -736,7 +748,7 @@ NotifyCream(char *buffer)
 	struct   pollfd fds[2];
 	struct   pollfd *pfds;
 	int      nfds = 1;
-	int      timeout= 5000;
+	int      timeout= 1000000;
     
 	time_t   now;
 	char     *nowtm;
@@ -758,7 +770,7 @@ NotifyCream(char *buffer)
 	if(retcod <0){
 		close(conn_c);
 		if(debug){
-			fprintf(debuglogfile, "Fatal Error:Poll error in NotifyCream\n");
+			fprintf(debuglogfile, "Fatal Error:Poll error in NotifyCream errno:%d\n",errno);
 			fflush(debuglogfile);
 		}
 		sysfatal("Poll error in NotifyCream: %r");
