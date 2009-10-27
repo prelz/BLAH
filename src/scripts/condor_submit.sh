@@ -6,6 +6,7 @@
 #
 # 	Revision history:
 # 	08-Aug-2006: Original release
+#       27-Oct-2009: Added support for 'local' requirements file.
 #
 # 	Description:
 #   	Submission script for Condor, to be invoked by blahpd server.
@@ -236,9 +237,31 @@ $submit_file_environment
 # Hang around for 1 day (86400 seconds) ?
 # Hang around for 30 minutes (1800 seconds) ?
 leave_in_queue = JobStatus == 4 && (CompletionDate =?= UNDEFINED || CompletionDate == 0 || ((CurrentTime - CompletionDate) < 1800))
-
-queue 1
 EOF
+
+# Set up temp file name for requirement passing
+if [ ! -z $req_file ] ; then
+   tmp_req_file=${req_file}-temp_req_script
+else
+   tmp_req_file=`mktemp $temp_dir/temp_req_script_XXXXXXXXXX`
+fi
+
+#local batch system-specific file output must be added to the submit file
+local_submit_attributes_file=${GLITE_LOCATION:-/opt/glite}/bin/condor_local_submit_attributes.sh
+if [ -r $local_submit_attributes_file ] ; then
+    echo \#\!/bin/sh > $tmp_req_file
+    if [ ! -z $req_file ] ; then
+        cat $req_file >> $tmp_req_file
+    fi
+    echo "source $local_submit_attributes_file" >> $tmp_req_file
+    chmod +x $tmp_req_file
+    $tmp_req_file >> $submit_file 2> /dev/null
+fi
+if [ -e $tmp_req_file ] ; then
+    rm -f $tmp_req_file
+fi
+
+echo "queue 1" >> $submit_file
 
 ###############################################################
 # Perform submission
@@ -287,7 +310,7 @@ else
 fi
 
 # Clean temporary files -- There only temp file is the one we submit
-#rm -f $submit_file
+rm -f $submit_file
 
 # Create a softlink to proxy file for proxy renewal - local renewal 
 # of limited proxy only.
