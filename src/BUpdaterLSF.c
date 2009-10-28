@@ -316,7 +316,9 @@ int main(int argc, char *argv[]){
 			sleep(loop_interval);
 			continue;
 		}
-
+		job_registry_firstrec(rha,fd);
+		fseek(fd,0L,SEEK_SET);
+		
 		first=TRUE;
 		finalquery_start_date = time(0);
 		
@@ -453,7 +455,7 @@ IntStateQueryShort()
 			
 			if(!first) free(ren);
 			if ((ren=job_registry_get(rha, en.batch_id)) == NULL){
-					fprintf(stderr,"Get of record returns error ");
+					fprintf(stderr,"Get of record returns error for %s ",en.batch_id);
 					perror("");
 			}
 			first=FALSE;        

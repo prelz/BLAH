@@ -249,6 +249,8 @@ int main(int argc, char *argv[]){
 			sleep(2);
 			continue;
 		}
+		job_registry_firstrec(rha,fd);
+		fseek(fd,0L,SEEK_SET);
 
 		if((constraint=calloc(STR_CHARS,1)) == 0){
 			sysfatal("can't malloc constraint %r");
