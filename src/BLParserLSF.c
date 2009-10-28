@@ -1644,6 +1644,7 @@ NotifyFromDate(char *in_buf)
 		if(notepoch<=logepoch){
 			lnotdate=iepoch2str(notepoch);
 			GetEventsInOldLogs(lnotdate);
+			free(lnotdate);
 		}
       
 		if(cream_recycled){
@@ -1698,7 +1699,8 @@ NotifyFromDate(char *in_buf)
 		free(notdate);
 		free(fullblahstring);
 
-		return 0;    
+		return 0;
+
 	}else if(notstr && strcmp(notstr,"STARTNOTIFYJOBEND")==0){
 	
 		Writeline(conn_c, "NTFDATE/END\n", strlen("NTFDATE/END\n"));
@@ -1753,6 +1755,7 @@ NotifyFromDate(char *in_buf)
 		if(notepoch<=logepoch){
 			lnotdate=iepoch2str(notepoch);
 			GetEventsInOldLogs(lnotdate);
+			free(lnotdate);
 		}
       
 		if(cream_recycled){
@@ -1861,7 +1864,7 @@ NotifyFromDate(char *in_buf)
 	free(notdate);
 	free(fullblahstring);
     	    
-	return 0;
+	return -1;
 }
 
 int

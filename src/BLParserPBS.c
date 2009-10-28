@@ -1368,7 +1368,7 @@ write_c:
 					fflush(debuglogfile);
 					free(buftmp);
 				}
-				if(buffer && ((strstr(buffer,"STARTNOTIFY/")!=NULL) || (strstr(buffer,"STARTNOTIFYJOB/")!=NULL) || (strstr(buffer,"CREAMFILTER/")!=NULL))){
+				if(buffer && ((strstr(buffer,"STARTNOTIFY/")!=NULL) || (strstr(buffer,"STARTNOTIFYJOBLIST/")!=NULL) || (strstr(buffer,"STARTNOTIFYJOBEND/")!=NULL) || (strstr(buffer,"CREAMFILTER/")!=NULL))){
 					NotifyFromDate(buffer);
 				}else if(buffer && (strstr(buffer,"PARSERVERSION/")!=NULL)){
 					GetVersion();
@@ -1407,12 +1407,21 @@ NotifyFromDate(char *in_buf)
 	char *notdate;
 	int   notepoch;
 	int   logepoch;
+	int   reqjobidnum=0;;
+	int   jfound=0;;
 
-	int  maxtok,j; 
+	int  maxtok,j,maxtok_s,maxtok_l,maxtok_c; 
 	char **tbuf;
+	char **sbuf;
+	char **lbuf;
+	char **cbuf;
 	char *cp;
 	char *nowtm;
 	char *fullblahstring;
+	char *joblist_string="";
+	char *tjoblist_string="";
+	char *fulljobid;
+	char *tjobid;
 	time_t now;
 
 	/* printf("thread/0x%08lx\n",pthread_self()); */
@@ -1537,11 +1546,172 @@ NotifyFromDate(char *in_buf)
       
 		free(out_buf);
 		free(notstr);
+		free(notstrshort);
 		free(notdate);
 		free(fullblahstring);
       
+		return 0;
+	
+	}else if(notstr && strcmp(notstr,"STARTNOTIFYJOBEND")==0){
+	
+		Writeline(conn_c, "NTFDATE/END\n", strlen("NTFDATE/END\n"));
+		if(debug){
+			fprintf(debuglogfile, "Sent for Cream_nftdate:NTFDATE/END\n");
+			fflush(debuglogfile);
+		}
+		
+	}else if(notstr && strcmp(notstr,"STARTNOTIFYJOBLIST")==0){
+    
+		creamisconn=1;
+		
+		if((sbuf=calloc(10 * sizeof *sbuf,1)) == 0){
+			sysfatal("can't malloc sbuf: %r");
+		}
+		if((cbuf=calloc(10 * sizeof *cbuf,1)) == 0){
+			sysfatal("can't malloc cbuf: %r");
+		}
+      
+		maxtok_s=strtoken(notdate,':',sbuf);
+		
+		notepoch=str2epoch(sbuf[0],"S");
+		notstrshort=iepoch2str(notepoch,"S");      
+		tjoblist_string=strdup(sbuf[1]);
+		
+		/* count number of requested jobid to know when we have finished*/
+		maxtok_c=strtoken(tjoblist_string,',',cbuf);
+		reqjobidnum=maxtok_c;
+		for(j=0;j<maxtok_c;j++){
+			free(cbuf[j]);
+		}
+		free(cbuf);
+		
+		if((joblist_string=calloc(strlen(tjoblist_string)+10,1)) == 0){
+			sysfatal("can't malloc joblist_string: %r");
+		}
+		
+		sprintf(joblist_string,",%s,",tjoblist_string);
+		
+		for(j=0;j<maxtok_s;j++){
+			free(sbuf[j]);
+		}
+		free(sbuf);
+		
+		if(cream_recycled){
+			logepoch=nti[jcount];
+		}else{
+			if(nti[0]==0){
+				logepoch=time(NULL);
+			}else{
+				logepoch=nti[0];
+			}
+		} 
+		if(logepoch<=0){
+			logepoch=time(NULL);
+		}     
+		if(notepoch<=logepoch){
+			GetEventsInOldLogs(notstrshort);
+		}
+      
+		if(cream_recycled){
+
+			for(ii=jcount;ii<CRMHASHSIZE;ii++){
+				if(jfound>=reqjobidnum){
+					break;
+				}
+				if(notepoch<=nti[ii]){
+					now=time(NULL);
+					nowtm=ctime(&now);
+					if ((cp = strrchr (nowtm, '\n')) != NULL){
+						*cp = '\0';
+					}
+					
+					if((lbuf=calloc(10 * sizeof *lbuf,1)) == 0){
+						sysfatal("can't malloc lbuf: %r");
+					}
+					if((fulljobid=calloc(300,1)) == 0){
+						sysfatal("can't malloc fulljobid: %r");
+					}
+					if((tjobid=calloc(300,1)) == 0){
+						sysfatal("can't malloc tjobid: %r");
+					}
+					maxtok_l=strtoken(ntf[ii],';',lbuf);
+					tjobid=strdel(lbuf[0],"[BatchJobId=\"");
+					sprintf(fulljobid,",%s,",tjobid);
+					
+					free(tjobid);
+					
+					for(j=0;j<maxtok_l;j++){
+						free(lbuf[j]);
+					}
+					free(lbuf);
+					
+					
+					if(ntf[ii] && strstr(joblist_string,fulljobid)!=NULL){
+						jfound++;
+						sprintf(out_buf,"NTFDATE/%s",ntf[ii]);
+						Writeline(conn_c, out_buf, strlen(out_buf));
+						if(debug){
+							fprintf(debuglogfile, "%s Sent for Cream_nftdate:%s",nowtm,out_buf);
+							fflush(debuglogfile); 
+						}
+					}
+					free(fulljobid);
+				}
+			}
+
+		}
+            
+		for(ii=0;ii<=jcount;ii++){
+			if(jfound>=reqjobidnum){
+				break;
+			}
+			if(notepoch<=nti[ii]){
+				now=time(NULL);
+				nowtm=ctime(&now);
+				if ((cp = strrchr (nowtm, '\n')) != NULL){
+					*cp = '\0';
+				}
+				if((lbuf=calloc(10 * sizeof *lbuf,1)) == 0){
+					sysfatal("can't malloc lbuf: %r");
+				}
+				if((fulljobid=calloc(300,1)) == 0){
+					sysfatal("can't malloc fulljobid: %r");
+				}
+				if((tjobid=calloc(300,1)) == 0){
+					sysfatal("can't malloc tjobid: %r");
+				}
+				maxtok_l=strtoken(ntf[ii],';',lbuf);
+				tjobid=strdel(lbuf[0],"[BatchJobId=\"");
+				sprintf(fulljobid,",%s,",tjobid);
+					
+				free(tjobid);
+				
+				for(j=0;j<maxtok_l;j++){
+					free(lbuf[j]);
+				}
+				free(lbuf);
+				
+				if(ntf[ii] && strstr(joblist_string,fulljobid)!=NULL){
+					jfound++;
+					sprintf(out_buf,"NTFDATE/%s",ntf[ii]);  
+					Writeline(conn_c, out_buf, strlen(out_buf));
+					if(debug){
+						fprintf(debuglogfile, "%s Sent for Cream_nftdate:%s",nowtm,out_buf);
+						fflush(debuglogfile);
+					}
+				}
+				free(fulljobid);
+			}
+		}
+      
+		free(out_buf);
+		free(notstr);
+		free(notstrshort);
+		free(notdate);
+		free(joblist_string);
+		free(tjoblist_string);
+
 		return 0;    
-	}else if(notstr && strcmp(notstr,"STARTNOTIFYJOB")==0){
 	}
     
 	free(out_buf);
