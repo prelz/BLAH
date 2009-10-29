@@ -369,9 +369,7 @@ int StateQuery(char *command_string)
  Unfilled entries:
  exitreason
 */
-	char *output;
         FILE *file_output;
-	int len;
 	char line[STR_CHARS];
 	char *token[6];
 	job_registry_entry en;

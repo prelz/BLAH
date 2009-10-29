@@ -9,7 +9,6 @@ main(int argc, char *argv[])
 	int       status;
 	int       list_s;
 	int       list_c;
-	FILE      *fpt;
 	char ainfo_port_string[16];
 	struct addrinfo ai_req, *ai_ans, *cur_ans;
 	int address_found;
@@ -259,8 +258,6 @@ follow(char *infile, char *line)
 	long off = 0;
 	long real_off = 0;
 	long tmp_off = 0;
-	char *s;
-	char *ts;
 	
 	for(;;){
 	
@@ -308,7 +305,6 @@ follow(char *infile, char *line)
 long
 tail(FILE *fp, char *line, long old_off)
 {
-	long off=0;
 	long act_off=old_off;
 
 	while(fgets(line, MAX_CHARS, fp)){
@@ -1150,7 +1146,6 @@ GetLogDir(int largc, char *largv[])
   
 	FILE *fp;
 	FILE *file_output;
-	FILE *ls_output;
     
 	const char *nport;
 
@@ -1367,7 +1362,7 @@ GetLogList(char *logdate)
 	int             rc;
 	struct stat     sbuf;
 	time_t          tage;
-	char            *s,*p,*dir;
+	char            *s,*p;
 	struct tm       tmthr;
 	char            *slogs;
 	int 		n;

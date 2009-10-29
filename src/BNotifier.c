@@ -631,7 +631,7 @@ int
 GetFilter(char *buffer)
 {
 
-        int  maxtok,i;
+        int  maxtok;
         char **tbuf;
         char *cp=NULL;
         char * out_buf;
@@ -677,7 +677,7 @@ int
 NotifyStart(char *buffer)
 {
 
-        int  maxtok,i;
+        int  maxtok;
         char **tbuf;
         char *cp=NULL;
 	char *notifdate=NULL;
@@ -713,7 +713,7 @@ int
 GetJobList(char *buffer)
 {
 
-        int  maxtok,i;
+        int  maxtok;
         char **tbuf;
         char *cp=NULL;
 	

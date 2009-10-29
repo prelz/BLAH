@@ -357,7 +357,6 @@ IntStateQuery()
 */
 
         FILE *fp;
-	int len=0;
 	char *line=NULL;
 	char **token;
 	int maxtok_t=0;
@@ -452,7 +451,6 @@ FinalStateQuery(char *query)
  exitreason
 */
         FILE *fp;
-	int len=0;
 	char *line=NULL;
 	char **token;
 	int maxtok_t=0;

@@ -32,7 +32,6 @@ int main(int argc, char *argv[]){
 	job_registry_entry *en;
 	time_t now;
 	time_t purge_time=0;
-	char *q=NULL;
 	char *pidfile=NULL;
 	char *final_string=NULL;
 	char *cp=NULL;
@@ -373,7 +372,6 @@ Job Id: 11.cream-12.pd.infn.it
 
 
         FILE *fp;
-	int len;
 	char *line=NULL;
 	char **token;
 	int maxtok_t=0;
@@ -559,7 +557,6 @@ Job: 13.cream-12.pd.infn.it
 */
 
         FILE *fp;
-	int len;
 	char *line=NULL;
 	char **token;
 	char **jobid;
@@ -568,8 +565,6 @@ Job: 13.cream-12.pd.infn.it
 	int ret;
 	char *timestamp;
 	int tmstampepoch;
-	char *batch_str=NULL;
-	char *wn_str=NULL; 
 	char *exit_str=NULL;
 	int failed_count=0;
 	int time_to_add=0;

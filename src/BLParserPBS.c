@@ -41,7 +41,6 @@ main(int argc, char *argv[])
 	};
     
 	char *espooldir;
-	FILE      *fpt;
 
 	argv0 = argv[0];
 
@@ -412,7 +411,6 @@ follow(char *infile, char *line)
 long
 tail(FILE *fp, char *line, long old_off)
 {
-	long off=0;
 	long act_off=old_off;
 
 	while(fgets(line, STR_CHARS, fp)){
@@ -1087,7 +1085,7 @@ LookupAndSend(int m_sock)
 				if((out_buf=calloc(STR_CHARS,1)) == 0){
 					sysfatal("can't malloc out_buf in LookupAndSend: %r");
 				}
-				sprintf(out_buf,"\n",jobid);
+				sprintf(out_buf,"\n");
 				goto close;
 			}
 		}
@@ -1217,7 +1215,7 @@ GetLogList(char *logdate)
 	int             rc;
 	struct stat     sbuf;
 	time_t          tage;
-	char            *s,*p,*dir;
+	char            *s,*p;
 	struct tm       tmthr;
 	char            *slogs;
 	int 		i,n;

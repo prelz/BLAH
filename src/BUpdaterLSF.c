@@ -380,10 +380,9 @@ IntStateQueryShort()
 
 
         FILE *fp;
-	int len;
 	char *line=NULL;
 	char **token;
-	int maxtok_l=0,i;
+	int maxtok_l=0;
 	job_registry_entry en;
 	int ret;
 	char *timestamp;
@@ -393,7 +392,6 @@ IntStateQueryShort()
 	char *cp=NULL; 
 	char *command_string=NULL;
 	job_registry_entry *ren=NULL;
-	int isresumed=FALSE;
 	int first=TRUE;
 
 	if((command_string=malloc(strlen(lsf_binpath) + 17)) == 0){
@@ -461,7 +459,7 @@ IntStateQueryShort()
 			first=FALSE;        
 			if(token[2] && strcmp(token[2],"PEND")==0){ 
 				en.status=IDLE;
-			}else if(token[2] && (strcmp(token[2],"USUSP")==0) || (strcmp(token[2],"PSUSP")==0) ||(strcmp(token[2],"SSUSP")==0)){ 
+			}else if(token[2] && ((strcmp(token[2],"USUSP")==0) || (strcmp(token[2],"PSUSP")==0) ||(strcmp(token[2],"SSUSP")==0))){ 
 				en.status=HELD;
 			}else if(token[2] && strcmp(token[2],"RUN")==0){ 
 				en.status=RUNNING;
@@ -522,7 +520,6 @@ IntStateQuery()
 
 
         FILE *fp;
-	int len;
 	char *line=NULL;
 	char **token;
 	int maxtok_t=0;
@@ -531,7 +528,6 @@ IntStateQuery()
 	char *timestamp;
 	int tmstampepoch;
 	char *dgbtimestamp;
-	char *tmp=NULL; 
 	char *cp=NULL; 
 	char *wn_str=NULL; 
 	char *batch_str=NULL;
@@ -687,7 +683,6 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 */
 
         FILE *fp;
-	int len;
 	char *line=NULL;
 	char **token;
 	int maxtok_t=0;
@@ -844,15 +839,12 @@ get_susp_timestamp(char *jobid)
 {
 
         FILE *fp;
-	int len;
 	char *line=NULL;
 	char **token;
 	int maxtok_t=0;
-	int ret;
 	char *timestamp;
 	int tmstampepoch;
 	char *cp=NULL; 
-	char *dgbtimestamp;
 	char *command_string=NULL;
 	
 	if((command_string=malloc(strlen(lsf_binpath) + NUM_CHARS + 20)) == 0){
@@ -898,15 +890,12 @@ get_resume_timestamp(char *jobid)
 {
 
         FILE *fp;
-	int len;
 	char *line=NULL;
 	char **token;
 	int maxtok_t=0;
-	int ret;
 	char *timestamp;
 	int tmstampepoch;
 	char *cp=NULL; 
-	char *dgbtimestamp;
 	char *command_string=NULL;
 	
 	if((command_string=malloc(strlen(lsf_binpath) + NUM_CHARS + 20)) == 0){
