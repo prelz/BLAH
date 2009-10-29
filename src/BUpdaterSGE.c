@@ -134,6 +134,7 @@ int main(int argc, char *argv[]){
 			fprintf(debuglogfile, "%s: key job_registry not found\n",argv0);
 			fflush(debuglogfile);
 		}
+		sysfatal("job_registry not defined. Exiting");
 	} else {
 		registry_file=strdup(ret->value);
                 if(registry_file == NULL){

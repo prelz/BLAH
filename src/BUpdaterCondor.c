@@ -131,6 +131,7 @@ int main(int argc, char *argv[]){
 			fflush(debuglogfile);
 			free(dgbtimestamp);
 		}
+		sysfatal("job_registry not defined. Exiting");
 	} else {
 		registry_file=strdup(ret->value);
                 if(registry_file == NULL){
