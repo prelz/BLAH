@@ -9,18 +9,20 @@ for job in  $@ ; do
 done
 for  job in  $@ ; do
         requested=`echo $job | sed 's/^.*\///'`
-        ${pbs_binpath}/qdel $requested >/dev/null 2>&1
-        if [ "$?" == "0" ] ; then
+        cmdout=`${pbs_binpath}/qdel $requested 2>&1`
+        retcode=$?
+        if [ "$retcode" == "0" ] ; then
                 if [ "$jnr" == "1" ]; then
                         echo " 0 No\\ error"
                 else
                         echo .$jc" 0 No\\ error"
                 fi
         else
+                escaped_cmdout=`echo $cmdout|sed "s/ /\\\\\ /g"`
                 if [ "$jnr" == "1" ]; then
-                        echo " 1 Error"
+                        echo " $retcode $escaped_cmdout"
                 else
-                        echo .$jc" 1 Error"
+                        echo .$jc" $retcode $escaped_cmdout"
                 fi
         fi
         jc=$(($jc+1))
