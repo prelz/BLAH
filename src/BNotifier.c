@@ -230,6 +230,7 @@ PollDB()
 	job_registry_handle *rha;
 	char *buffer=NULL;
 	char *finalbuffer=NULL;
+	char *new_finalbuffer;
 	time_t now;
         int  maxtok,i;
         char **tbuf;
@@ -287,7 +288,14 @@ PollDB()
 					buffer=ComposeClassad(en);
 					len=strlen(buffer);
 					size+=len+2;
-					finalbuffer = realloc(finalbuffer,size);
+					new_finalbuffer = realloc(finalbuffer,size);
+					if (new_finalbuffer == NULL)
+					{
+						fprintf(stderr,"%s: Out of memory.",argv0);
+						continue;
+					}
+					if (finalbuffer == NULL) new_finalbuffer[0] = '\000';
+					finalbuffer = new_finalbuffer;
 					strcat(finalbuffer,buffer);
 					free(buffer);
 				}
