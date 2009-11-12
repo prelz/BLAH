@@ -369,7 +369,6 @@ IntStateQueryShort()
  batch_id
  wn_addr
  status
- exitcode
  udate
  
  Filled by submit script:
@@ -377,6 +376,7 @@ IntStateQueryShort()
  
  Unfilled entries:
  exitreason
+ exitcode
 */
 
 
@@ -403,7 +403,7 @@ IntStateQueryShort()
 	fp = popen(command_string,"r");
 
 	en.status=UNDEFINED;
-	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"N/A");
+	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 	bupdater_free_active_jobs(&bact);
 	
 	if(fp!=NULL){
@@ -429,9 +429,9 @@ IntStateQueryShort()
 				continue;
 			}
 			if(!first && en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD)) && ren && (en.status!=ren->status)){	
-				if ((ret=job_registry_update_recn(rha, &en, ren->recnum)) < 0){
+				if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum, JOB_REGISTRY_UPDATE_WN_ADDR|JOB_REGISTRY_UPDATE_STATUS|JOB_REGISTRY_UPDATE_UDATE)) < 0){
 					if(ret != JOB_REGISTRY_NOT_FOUND){
-						fprintf(stderr,"Append of record returns %d: ",ret);
+						fprintf(stderr,"Update of record returns %d: ",ret);
 						perror("");
 					}
 				}
@@ -442,6 +442,7 @@ IntStateQueryShort()
 					free(dgbtimestamp);
 				}
 				en.status = UNDEFINED;
+				JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 			}
 				
 			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,tmp);
@@ -482,9 +483,9 @@ IntStateQueryShort()
 	}
 	
 	if(en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD)) && ren && (en.status!=ren->status)){	
-		if ((ret=job_registry_update_recn(rha, &en, ren->recnum)) < 0){
+		if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum, JOB_REGISTRY_UPDATE_WN_ADDR|JOB_REGISTRY_UPDATE_STATUS|JOB_REGISTRY_UPDATE_UDATE)) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
-				fprintf(stderr,"Append of record returns %d: ",ret);
+				fprintf(stderr,"Update of record returns %d: ",ret);
 				perror("");
 			}
 		}
@@ -516,6 +517,7 @@ IntStateQuery()
  blah_id 
  
  Unfilled entries:
+ exitcode
  exitreason
 */
 
@@ -545,6 +547,7 @@ IntStateQuery()
 	fp = popen(command_string,"r");
 
 	en.status=UNDEFINED;
+	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 	bupdater_free_active_jobs(&bact);
 
 	if(fp!=NULL){
@@ -565,9 +568,9 @@ IntStateQuery()
 			if(line && strstr(line,"Job <")){
 				isresumed=FALSE;
 				if(!first && en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD)) && ren && (en.status!=ren->status)){	
-					if ((ret=job_registry_update_recn(rha, &en, ren->recnum)) < 0){
+					if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum, JOB_REGISTRY_UPDATE_WN_ADDR|JOB_REGISTRY_UPDATE_STATUS|JOB_REGISTRY_UPDATE_UDATE)) < 0){
 						if(ret != JOB_REGISTRY_NOT_FOUND){
-							fprintf(stderr,"Append of record returns %d: ",ret);
+							fprintf(stderr,"Update of record returns %d: ",ret);
 							perror("");
 						}
 					}
@@ -578,6 +581,7 @@ IntStateQuery()
 						free(dgbtimestamp);
 					}
 					en.status = UNDEFINED;
+					JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 				}
 				maxtok_t = strtoken(line, ',', &token);
 				batch_str=strdel(token[0],"Job <>");
@@ -634,7 +638,7 @@ IntStateQuery()
 	if(en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD)) && ren && (en.status!=ren->status)){	
 		if ((ret=job_registry_update_recn(rha, &en, ren->recnum)) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
-				fprintf(stderr,"Append of record returns %d: ",ret);
+				fprintf(stderr,"Update of record returns %d: ",ret);
 				perror("");
 			}
 		}
@@ -745,7 +749,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 					JOB_REGISTRY_UPDATE_EXITCODE |
 					JOB_REGISTRY_UPDATE_EXITREASON )) < 0){
 						if(ret != JOB_REGISTRY_NOT_FOUND){
-                	                		fprintf(stderr,"Append of record returns %d: ",ret);
+                	                		fprintf(stderr,"Update of record returns %d: ",ret);
 							perror("");
 						}
 					}
@@ -819,7 +823,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 		JOB_REGISTRY_UPDATE_EXITCODE |
 		JOB_REGISTRY_UPDATE_EXITREASON )) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
-				fprintf(stderr,"Append of record returns %d: ",ret);
+				fprintf(stderr,"Update of record returns %d: ",ret);
 				perror("");
 			}
 		}
@@ -955,7 +959,7 @@ int AssignFinalState(char *batchid){
 		
 	if ((ret=job_registry_update(rha, &en)) < 0){
 		if(ret != JOB_REGISTRY_NOT_FOUND){
-			fprintf(stderr,"Append of record %d returns %d: ",i,ret);
+			fprintf(stderr,"Update of record %d returns %d: ",i,ret);
 			perror("");
 		}
 	}

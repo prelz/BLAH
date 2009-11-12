@@ -361,7 +361,6 @@ Job Id: 11.cream-12.pd.infn.it
  batch_id
  wn_addr
  status
- exitcode
  udate
  
  Filled by submit script:
@@ -418,9 +417,9 @@ Job Id: 11.cream-12.pd.infn.it
 			}
 			if(line && strstr(line,"Job Id: ")){
 				if(!first && en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD)) && ren && (en.status!=ren->status)){
-                        		if ((ret=job_registry_update_recn(rha, &en, ren->recnum)) < 0){
+                        		if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum, JOB_REGISTRY_UPDATE_WN_ADDR|JOB_REGISTRY_UPDATE_STATUS|JOB_REGISTRY_UPDATE_UDATE)) < 1){
 						if(ret != JOB_REGISTRY_NOT_FOUND){
-                	                		fprintf(stderr,"Append of record returns %d: ",ret);
+                	                		fprintf(stderr,"Update of record returns %d: ",ret);
 							perror("");
 						}
 					}
@@ -494,9 +493,9 @@ Job Id: 11.cream-12.pd.infn.it
 	}
 	
 	if(en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD)) && ren && (en.status!=ren->status)){
-		if ((ret=job_registry_update_recn(rha, &en, ren->recnum)) < 0){
+		if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum, JOB_REGISTRY_UPDATE_WN_ADDR|JOB_REGISTRY_UPDATE_STATUS|JOB_REGISTRY_UPDATE_UDATE)) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
-				fprintf(stderr,"Append of record returns %d: ",ret);
+				fprintf(stderr,"Update of record returns %d: ",ret);
 				perror("");
 			}
 		}
@@ -676,7 +675,7 @@ Job: 13.cream-12.pd.infn.it
 			JOB_REGISTRY_UPDATE_EXITCODE |
 			JOB_REGISTRY_UPDATE_EXITREASON )) < 0){
 				if(ret != JOB_REGISTRY_NOT_FOUND){
-					fprintf(stderr,"Append of record returns %d: ",ret);
+					fprintf(stderr,"Update of record returns %d: ",ret);
 					perror("");
 				}
 			}
@@ -725,7 +724,7 @@ int AssignFinalState(char *batchid){
 		
 	if ((ret=job_registry_update(rha, &en)) < 0){
 		if(ret != JOB_REGISTRY_NOT_FOUND){
-			fprintf(stderr,"Append of record %d returns %d: ",i,ret);
+			fprintf(stderr,"Update of record %d returns %d: ",i,ret);
 			perror("");
 		}
 	}
