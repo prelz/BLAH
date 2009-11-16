@@ -636,7 +636,7 @@ IntStateQuery()
 	}
 		
 	if(en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD)) && ren && (en.status!=ren->status)){	
-		if ((ret=job_registry_update_recn(rha, &en, ren->recnum)) < 0){
+		if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum, JOB_REGISTRY_UPDATE_WN_ADDR|JOB_REGISTRY_UPDATE_STATUS|JOB_REGISTRY_UPDATE_UDATE)) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
 				fprintf(stderr,"Update of record returns %d: ",ret);
 				perror("");
