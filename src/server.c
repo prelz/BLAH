@@ -123,7 +123,7 @@ int set_cmd_string_option(char **command, classad_context cad, const char *attri
 int set_cmd_int_option(char **command, classad_context cad, const char *attribute, const char *option, const int quote_style);
 int set_cmd_bool_option(char **command, classad_context cad, const char *attribute, const char *option, const int quote_style);
 char *limit_proxy(char* proxy_name, char *requested_name);
-int getProxyInfo(char* proxname, char* fqan, char* userDN);
+int getProxyInfo(char* proxname, char** subject, char** fqan);
 int logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char* userDN, char** environment);
 int CEReq_parse(classad_context cad, char* filename);
 char* outputfileRemaps(char *sb,char *sbrmp);
@@ -930,10 +930,11 @@ cmd_submit_job(void *args)
 	int res = 1;
 	char *proxyname = NULL;
 	char *proxysubject = NULL;
+	char *proxyfqan = NULL;
 	char *proxynameNew   = NULL;
 	char *log_proxy = NULL;
 	char *command_ext = NULL;
-	char fqan[MAX_TEMP_ARRAY_SIZE], userDN[MAX_TEMP_ARRAY_SIZE];
+	char *tmp_subject, *tmp_fqan;
 	int count = 0;
 	int enable_log = 0;
 	struct timeval ts;
@@ -966,6 +967,12 @@ cmd_submit_job(void *args)
 		goto cleanup_cad;
 	}
 
+	/* These two attributes are used in case the proxy supplied in */
+        /* 'x509UserProxy' is not readable by the BLAH user */
+        /* (e.g. when SUDO is used) */
+	classad_get_dstring_attribute(cad, "x509UserProxySubject", &proxysubject);
+	classad_get_dstring_attribute(cad, "x509UserProxyFQAN", &proxyfqan);
+
 	/* Get the proxy name from classad attribute "X509UserProxy" */
 	if (classad_get_dstring_attribute(cad, "x509UserProxy", &proxyname) != C_CLASSAD_NO_ERROR)
 	{
@@ -976,7 +983,6 @@ cmd_submit_job(void *args)
 			goto cleanup_lrms;
 		} else {
 			proxyname = NULL;
-			classad_get_dstring_attribute(cad, "x509UserProxySubject", &proxysubject);
 		}
 	}
 
@@ -1027,18 +1033,31 @@ cmd_submit_job(void *args)
 		log_proxy = proxynameNew;
 	}
 
-	userDN[0] = '\000'; /* FIXME: these should really be dynamic */
-	fqan[0] = '\000';   /* FIXME: these should really be dynamic */
 	if (log_proxy != NULL)
 	{
 		/* DGAS accounting */
-		if (getProxyInfo(log_proxy, fqan, userDN))
+		if (getProxyInfo(log_proxy, &tmp_subject, &tmp_fqan))
 		{
 			/* PUSH A FAILURE */
 			resultLine = make_message("%s 1 Credentials\\ not\\ valid N/A", reqId);
 			goto cleanup_command;
 		}
-		if (strlen(userDN) > 0) enable_log=1;
+		/* Subject and FQAN read from a valid proxy take precedence */
+		/* over those supplied in the submit command. */
+		if (tmp_subject != NULL)
+		{
+			if (proxysubject != NULL) free(proxysubject);
+			proxysubject = tmp_subject;
+		}
+		if (tmp_fqan != NULL)
+		{
+			if (proxyfqan != NULL) free(proxyfqan);
+			proxyfqan = tmp_fqan;
+		}
+	}
+	if ((proxysubject != NULL) && (proxyfqan != NULL)) 
+	{
+		enable_log = 1;
 	}
 
 	command = make_message("%s/%s_submit.sh", blah_script_location, server_lrms);
@@ -1054,7 +1073,7 @@ cmd_submit_job(void *args)
 	command_ext = NULL;
 	if (proxyname != NULL)
 	{
-		command_ext = make_message("%s -x %s -u \"%s\" ", command, proxyname, userDN);
+		command_ext = make_message("%s -x %s -u \"%s\" ", command, proxyname, proxysubject);
 		if (command_ext == NULL)
 		{
 			/* PUSH A FAILURE */
@@ -1274,7 +1293,7 @@ cmd_submit_job(void *args)
 	
 	/* DGAS accounting */
 	if (enable_log)
-		logAccInfo(jobId, server_lrms, cad, fqan, userDN, argv + CMD_SUBMIT_JOB_ARGS + 1);
+		logAccInfo(jobId, server_lrms, cad, proxyfqan, proxysubject, argv + CMD_SUBMIT_JOB_ARGS + 1);
 
 	/* Free up all arguments and exit (exit point in case of error is the label
 	   pointing to last successfully allocated variable) */
@@ -1293,8 +1312,9 @@ cleanup_command:
 cleanup_proxyname:
 	if (proxyname != NULL) free(proxyname);
 	if (saved_proxyname != NULL) free(saved_proxyname);
-	if (proxysubject != NULL) free(proxysubject);
 cleanup_lrms:
+	if (proxysubject != NULL) free(proxysubject);
+	if (proxyfqan != NULL) free(proxyfqan);
 	free(server_lrms);
 cleanup_cad:
 	classad_free(cad);
@@ -2840,22 +2860,24 @@ free_2:
 
 free_1:
 	free(logf_name);
-	memset(fqan,0,MAX_TEMP_ARRAY_SIZE);
 
 	return retcode;
 }
 
 int
-getProxyInfo(char* proxname, char* fqan, char* userDN)
+getProxyInfo(char* proxname, char** subject, char** fqan)
 {
 	int  slen=0;
 	int  count=0;
 	char *begin_res;
 	char *end_res;
-	int res_length;
 	char *fqanlong;
-	char *fqanlong_tmp;
+	char *new_fqanlong;
 	exec_cmd_t exe_command = EXEC_CMD_DEFAULT;
+
+	if ((fqan == NULL) || (subject == NULL)) return 1;
+	*fqan = NULL;
+	*subject = NULL;
 
 	exe_command.command = make_message("%s/voms-proxy-info -file %s ", blah_script_location, proxname);
 	exe_command.append_to_command = "-subject";
@@ -2888,26 +2910,42 @@ getProxyInfo(char* proxname, char* fqan, char* userDN)
 		}else
 		          break;
 	}
-	strncpy(userDN, fqanlong, MAX_TEMP_ARRAY_SIZE);
+	*subject = strdup(fqanlong);
 	recycle_cmd(&exe_command);
 	exe_command.append_to_command = "-fqan";
 	if (execute_cmd(&exe_command) != 0)
 		return 1;
-	fqanlong = strdup("");
-	fqan[0] = '\000';
-	res_length = strlen(exe_command.output);
-	for (begin_res = exe_command.output; end_res = memchr(exe_command.output, '\n', res_length); begin_res = end_res + 1)
+	fqanlong = NULL;
+	for (begin_res = exe_command.output; end_res = strchr(begin_res, '\n'); begin_res = end_res + 1)
 	{
 		*end_res = 0;
-		fqanlong_tmp = make_message("%s\"userFQAN=%s\"", fqanlong, begin_res);
-		free(fqanlong);
-		fqanlong = fqanlong_tmp;
+		if (fqanlong == NULL)
+		{
+			fqanlong = make_message("\"userFQAN=%s\"", begin_res);
+		} else {
+			new_fqanlong = make_message("%s\"userFQAN=%s\"", fqanlong, begin_res);
+			if (new_fqanlong != NULL) 
+			{
+				free(fqanlong);
+				fqanlong = new_fqanlong;
+			}
+		}
 	}
-	strncpy(fqan, fqanlong, MAX_TEMP_ARRAY_SIZE);
+	if (fqanlong != NULL)
+	{
+		*fqan = fqanlong;
+	} else {
+		if (strlen(begin_res) > 0)
+		{
+	        	*fqan = make_message("\"userFQAN=%s\"", begin_res);
+		} else {
+	        	*fqan = strdup("\"userFQAN=\"");
+		}
+	}
 	cleanup_cmd(&exe_command);
-	if (fqan[0] == '\000') snprintf(fqan, MAX_TEMP_ARRAY_SIZE, "\"userFQAN=\"");
-	BLAHDBG("DEBUG: getProxyInfo returns: userDN:%s  ", userDN);
-	BLAHDBG("fqan:  %s\n", fqan);
+	BLAHDBG("DEBUG: getProxyInfo returns: subject:%s  ", *subject);
+	BLAHDBG("fqan:  %s\n", *fqan);
+
 	return 0;
 }
 
