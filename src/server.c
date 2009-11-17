@@ -2923,7 +2923,7 @@ getProxyInfo(char* proxname, char** subject, char** fqan)
 		{
 			fqanlong = make_message("\"userFQAN=%s\"", begin_res);
 		} else {
-			new_fqanlong = make_message("%s\"userFQAN=%s\"", fqanlong, begin_res);
+			new_fqanlong = make_message("%s \"userFQAN=%s\"", fqanlong, begin_res);
 			if (new_fqanlong != NULL) 
 			{
 				free(fqanlong);
