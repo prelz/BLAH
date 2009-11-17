@@ -410,8 +410,7 @@ IntStateQuery()
 						fprintf(stderr,"Append of record returns %d: ",ret);
 						perror("");
 					}
-				}
-				if(debug>1){
+				}else if(debug>1){
 					dgbtimestamp=iepoch2str(time(0));
 					fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
 					fflush(debuglogfile);
@@ -498,9 +497,7 @@ FinalStateQuery(char *query)
 						fprintf(stderr,"Append of record returns %d: ",ret);
 						perror("");
 					}
-				}
-		
-				if(debug>1){
+				}else if(debug>1){
 					dgbtimestamp=iepoch2str(time(0));
 					fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
 					fflush(debuglogfile);
@@ -538,8 +535,7 @@ int AssignFinalState(char *batchid){
 			fprintf(stderr,"Append of record %d returns %d: ",i,ret);
 			perror("");
 		}
-	}
-	if(debug>1){
+	}else if(debug>1){
 		dgbtimestamp=iepoch2str(time(0));
 		fprintf(debuglogfile, "%s %s: registry update in AssignStateQuery for: jobid=%s creamjobid=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.status);
 		fflush(debuglogfile);

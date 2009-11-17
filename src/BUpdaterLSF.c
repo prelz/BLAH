@@ -434,8 +434,7 @@ IntStateQueryShort()
 						fprintf(stderr,"Update of record returns %d: ",ret);
 						perror("");
 					}
-				}
-				if(debug>1){
+				}else if(debug>1){
 					dgbtimestamp=iepoch2str(time(0));
 					fprintf(debuglogfile, "%s %s: registry update in IntStateQueryShort for: jobid=%s creamjobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
 					fflush(debuglogfile);
@@ -488,8 +487,7 @@ IntStateQueryShort()
 				fprintf(stderr,"Update of record returns %d: ",ret);
 				perror("");
 			}
-		}
-		if(debug>1){
+		}else if(debug>1){
 			dgbtimestamp=iepoch2str(time(0));
 			fprintf(debuglogfile, "%s %s: registry update in IntStateQueryShort for: jobid=%s creamjobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
 			fflush(debuglogfile);
@@ -573,8 +571,7 @@ IntStateQuery()
 							fprintf(stderr,"Update of record returns %d: ",ret);
 							perror("");
 						}
-					}
-					if(debug>1){
+					}else if(debug>1){
 						dgbtimestamp=iepoch2str(time(0));
 						fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
 						fflush(debuglogfile);
@@ -597,6 +594,16 @@ IntStateQuery()
 				first=FALSE;
 			}else if(line && strstr(line," <PEND>, ")){	
 				en.status=IDLE;
+				if(use_bhist_for_susp && strcmp(use_bhist_for_susp,"yes")==0){
+				/*If status was HELD we have to check timestamp of resume to pend with bhist (the info is not there with bjobs)*/
+					if(ren && ren->status==HELD){
+						tmstampepoch=get_pend_timestamp(en.batch_id);
+						en.udate=tmstampepoch;
+					}
+				}
+				if(ren && (ren->status==IDLE || ren->status==HELD)){
+					JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
+				}
 			}else if(line && strstr(line," <RUN>, ")){	
 				en.status=RUNNING;
 				if(use_bhist_for_susp && strcmp(use_bhist_for_susp,"yes")==0){
@@ -609,6 +616,9 @@ IntStateQuery()
 				}
 			}else if(line && (strstr(line," <USUSP>,") || strstr(line," <PSUSP>,") || strstr(line," <SSUSP>,"))){	
 				en.status=HELD;
+				if(ren && ren->status==IDLE){
+					JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
+				}
 				/*If status is HELD we check timestamp of suspension with bhist (the info is not there with bjobs)*/
 				if(use_bhist_for_susp && strcmp(use_bhist_for_susp,"yes")==0){ 
 					tmstampepoch=get_susp_timestamp(en.batch_id);
@@ -641,8 +651,7 @@ IntStateQuery()
 				fprintf(stderr,"Update of record returns %d: ",ret);
 				perror("");
 			}
-		}
-		if(debug>1){
+		}else if(debug>1){
 			dgbtimestamp=iepoch2str(time(0));
 			fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
 			fflush(debuglogfile);
@@ -752,8 +761,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
                 	                		fprintf(stderr,"Update of record returns %d: ",ret);
 							perror("");
 						}
-					}
-					if(debug>1){
+					}else if(debug>1){
 						dgbtimestamp=iepoch2str(time(0));
 						fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s creamjobid=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.status);
 						fflush(debuglogfile);
@@ -826,8 +834,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				fprintf(stderr,"Update of record returns %d: ",ret);
 				perror("");
 			}
-		}
-		if(debug>1){
+		}else if(debug>1){
 			dgbtimestamp=iepoch2str(time(0));
 			fprintf(debuglogfile, "%s %s: f registry update in FinalStateQuery for: jobid=%s creamjobid=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.status);
 			fflush(debuglogfile);
@@ -941,6 +948,57 @@ get_resume_timestamp(char *jobid)
 	return tmstampepoch;
 }
 
+int
+get_pend_timestamp(char *jobid)
+{
+
+        FILE *fp;
+	char *line=NULL;
+	char **token;
+	int maxtok_t=0;
+	char *timestamp;
+	int tmstampepoch;
+	char *cp=NULL; 
+	char *command_string=NULL;
+	
+	if((command_string=malloc(strlen(lsf_binpath) + NUM_CHARS + 20)) == 0){
+		sysfatal("can't malloc command_string %r");
+	}
+
+	sprintf(command_string,"%s/bhist -u all -l %s",lsf_binpath,jobid);
+
+	fp = popen(command_string,"r");
+		
+	if(fp!=NULL){
+		while(!feof(fp) && (line=get_line(fp))){
+			if(line && strlen(line)==0){
+				free(line);
+				continue;
+			}
+			if ((cp = strrchr (line, '\n')) != NULL){
+				*cp = '\0';
+			}
+			if(line && strstr(line," Pending: Waiting for scheduling after resumed")){	
+				maxtok_t = strtoken(line, ' ', &token);
+                        	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
+					sysfatal("can't malloc timestamp in get_pend_timestamp: %r");
+				}
+				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp[strlen(timestamp)-1]='\0';
+				tmstampepoch=str2epoch(timestamp,"W");
+				free(timestamp);
+				freetoken(&token,maxtok_t);
+			}
+			free(line);
+		}
+		pclose(fp);
+	}
+	
+
+	free(command_string);
+	return tmstampepoch;
+}
+
 int AssignFinalState(char *batchid){
 
 	job_registry_entry en;
@@ -962,8 +1020,7 @@ int AssignFinalState(char *batchid){
 			fprintf(stderr,"Update of record %d returns %d: ",i,ret);
 			perror("");
 		}
-	}
-	if(debug>1){
+	}else if(debug>1){
 		dgbtimestamp=iepoch2str(time(0));
 		fprintf(debuglogfile, "%s %s: registry update in AssignStateQuery for: jobid=%s creamjobid=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.status);
 		fflush(debuglogfile);

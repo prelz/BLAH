@@ -417,13 +417,12 @@ Job Id: 11.cream-12.pd.infn.it
 			}
 			if(line && strstr(line,"Job Id: ")){
 				if(!first && en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD)) && ren && (en.status!=ren->status)){
-                        		if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum, JOB_REGISTRY_UPDATE_WN_ADDR|JOB_REGISTRY_UPDATE_STATUS|JOB_REGISTRY_UPDATE_UDATE)) < 1){
+                        		if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum, JOB_REGISTRY_UPDATE_WN_ADDR|JOB_REGISTRY_UPDATE_STATUS|JOB_REGISTRY_UPDATE_UDATE)) < 0){
 						if(ret != JOB_REGISTRY_NOT_FOUND){
                 	                		fprintf(stderr,"Update of record returns %d: ",ret);
 							perror("");
 						}
-					}
-					if(debug>1){
+					}else if(debug>1){
 						dgbtimestamp=iepoch2str(time(0));
 						fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.wn_addr,en.status);
 						fflush(debuglogfile);
@@ -498,8 +497,7 @@ Job Id: 11.cream-12.pd.infn.it
 				fprintf(stderr,"Update of record returns %d: ",ret);
 				perror("");
 			}
-		}
-		if(debug>1){
+		}else if(debug>1){
 			dgbtimestamp=iepoch2str(time(0));
 			fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.wn_addr,en.status);
 			fflush(debuglogfile);
@@ -678,8 +676,7 @@ Job: 13.cream-12.pd.infn.it
 					fprintf(stderr,"Update of record returns %d: ",ret);
 					perror("");
 				}
-			}
-			if(debug>1){
+			}else if(debug>1){
 				dgbtimestamp=iepoch2str(time(0));
 				fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s exitcode=%d status=%d\n",dgbtimestamp,argv0,en.batch_id,en.exitcode,en.status);
 				fflush(debuglogfile);
@@ -727,8 +724,7 @@ int AssignFinalState(char *batchid){
 			fprintf(stderr,"Update of record %d returns %d: ",i,ret);
 			perror("");
 		}
-	}
-	if(debug>1){
+	}else if(debug>1){
 		dgbtimestamp=iepoch2str(time(0));
 		fprintf(debuglogfile, "%s %s: registry update in AssignStateQuery for: jobid=%s creamjobid=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.status);
 		fflush(debuglogfile);
