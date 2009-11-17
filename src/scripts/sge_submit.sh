@@ -8,6 +8,7 @@
 #
 # Revision history:
 #    xx-Apr-2008: Original release
+#    11-Nov-2009: Mario David (david@lip.pt). Removed CELL information from $jobID
 #
 # Description:
 #   Submission script for SGE, to be invoked by blahpd server.
@@ -94,10 +95,12 @@ if [ "$retcode" != "0" -o -z "$jobID" ] ; then
 	rm -f $bls_tmp_file
 	exit 1
 fi
-jobID=$jobID.${SGE_CELL:-default}
+# 11/11/09 Mario David fix (remove CELL)
+#jobID=$jobID.${SGE_CELL:-default}
 
 # Compose the blahp jobID ("sge/" + datenow + sge jobid)
-blahp_jobID=sge/`date +%Y%m%d%H%M%S`/$jobID
+# 11/11/09 Mario David fix 
+blahp_jobID=sge/`date +%Y%m%d%H%M%S`.${SGE_CELL:-default}/$jobID
 
 if [ "x$job_registry" != "x" ]; then
   now=`date +%s`

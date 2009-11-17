@@ -100,8 +100,8 @@ if ( $QSTAT ) {
 		my $jl = $joblist{$cell}->{$jobid};
 
 		my $status = ( $job_info->{'state'}->[1] || '' );
-		
-		$jobinfo{'BatchJobId'} = $jobid.'.'.$cell;
+	 	# 11/11/09 Mario David fix (remove CELL)
+		$jobinfo{'BatchJobId'} = $jobid;
 		$jobinfo{'JobStatus'} = ( $status =~ /hr/    ) ? BLAH_HELD
 		    :        ( $status =~ /d/    ) ? BLAH_DELETED
 		    :        ( $status =~ /[rt]/ ) ? BLAH_RUNNING
@@ -205,7 +205,8 @@ if ($offset =~ /^[+-]?\d+$/ ) {
 
 	    while ( defined( $_ = $qacct->getline ) ) {
 		if ( /^exit_status\s+(\d+)/ ) {
-		    $jobinfo{'BatchJobId'} = $jobid.'.'.$cell;
+		    # 11/11/09 Mario David fix (remove CELL)
+		    $jobinfo{'BatchJobId'} = $jobid;
 		    $jobinfo{'ExitCode'} = $1;
 		    $jobinfo{'JobStatus'} = BLAH_FINISHED;
 		} elsif ( $CLASSAD && /^qsub_time\s+(.+)$/ ) {
