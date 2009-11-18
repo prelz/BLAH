@@ -91,7 +91,7 @@ fi
 curdir=`pwd`
 if [ "x$workdir" == "x" ]; then
     if [ "x$blah_set_default_workdir_to_home" == "xyes" ]; then
-        workdir=$HOME;
+        workdir=$HOME
     fi
 fi
 

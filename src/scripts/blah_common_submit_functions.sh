@@ -501,7 +501,7 @@ function bls_add_job_wrapper ()
   if [ "x$bls_opt_workdir" != "x" ]; then
       cd $bls_opt_workdir
   elif [ "x$blah_set_default_workdir_to_home" == "xyes" ]; then
-      cd $HOME;
+      cd $HOME
   fi
 
   if [ $? -ne 0 ]; then
