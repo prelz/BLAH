@@ -89,6 +89,12 @@ fi
 
 # Move into the IWD so we don't clutter the current working directory.
 curdir=`pwd`
+if [ "x$workdir" == "x" ]; then
+    if [ "x$blah_set_default_workdir_to_home" == "xyes" ]; then
+        workdir=$HOME;
+    fi
+fi
+
 if [ "x$workdir" != "x" ]; then
     cd $workdir
     if [ $? -ne 0 ]; then
