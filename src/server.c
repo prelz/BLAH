@@ -951,6 +951,8 @@ cmd_submit_job(void *args)
 	exec_cmd_t submit_command = EXEC_CMD_DEFAULT;
 	char *saved_proxyname=NULL;
 
+        if (blah_children_count>0) check_on_children(blah_children, blah_children_count);
+
 	/* Parse the job description classad */
 	if ((cad = classad_parse(jobDescr)) == NULL)
 	{
