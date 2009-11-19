@@ -186,6 +186,12 @@ config_read(const char *ipath)
           CONFIG_SKIP_WHITESPACE_FWD(val_start);
           val_end = line + line_len - 1;
           if (val_end > val_start) CONFIG_SKIP_WHITESPACE_BCK(val_end);
+          /* remove single quotes added around values that contain whitespace */
+          if (val_end > val_start && ((*val_start) == '\'') && ((*val_end) == '\'') )
+           {
+            val_start++;
+            val_end--;
+           }
           val_end++;
           if (key_end > key_start && val_end > val_start)
            {
