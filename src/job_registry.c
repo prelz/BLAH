@@ -16,6 +16,7 @@
  *              and job_registry_unlock call.
  * 23-Oct-2009  Avoid unnecessary registry sort when the disk registry is unchanged.
  *              Make sure 'firstrec' is recomputed for record sanity checks.
+ * 19-Nov-2009  Added BY_USER_PREFIX as an indexing mode.
  *
  *  Description:
  *    File-based container to cache job IDs and statuses to implement
@@ -476,7 +477,8 @@ job_registry_update_reg(const job_registry_handle *rha,
  * @param mode Operation of the index cache: NO_INDEX disables the cache
  *             (job_registry_lookup, job_registry_update and job_registry_get
  *             cannot be used), BY_BATCH_ID uses batch_id as the cache index 
- *             key while BY_BLAH_ID sets blah_id as the cache index key.
+ *             key,  BY_BLAH_ID sets blah_id as the cache index key and
+ *             BY_USER_PREFIX uses the user_prefix entry (must be unique!).
  *             NAMES_ONLY will fill the rha structure with the appropriate
  *             file paths without performing any file access.
  *
@@ -976,8 +978,9 @@ job_registry_resync(job_registry_handle *rha, FILE *fd)
        }
       rha->entries = new_entries;
      }
-    if (rha->mode == BY_BLAH_ID) chosen_id = ren->blah_id;
-    else                         chosen_id = ren->batch_id;
+    if (rha->mode == BY_BLAH_ID)         chosen_id = ren->blah_id;
+    else if(rha->mode == BY_USER_PREFIX) chosen_id = ren->user_prefix;
+    else                                 chosen_id = ren->batch_id;
 
     JOB_REGISTRY_ASSIGN_ENTRY((rha->entries[rha->n_entries-1]).id,
                               chosen_id);
@@ -1130,6 +1133,8 @@ job_registry_append_op(job_registry_handle *rha,
    {
     if (rha->mode == BY_BLAH_ID) 
       found = job_registry_lookup_op(rha, entry->blah_id, fd);
+    else if (rha->mode == BY_USER_PREFIX)
+      found = job_registry_lookup_op(rha, entry->user_prefix, fd);
     else
       found = job_registry_lookup_op(rha, entry->batch_id, fd);
     if (found != 0)
@@ -1520,6 +1525,8 @@ job_registry_update_op(job_registry_handle *rha,
       return JOB_REGISTRY_NO_INDEX;
     else if (rha->mode == BY_BLAH_ID) 
       found = job_registry_lookup_op(rha, entry->blah_id, fd);
+    else if (rha->mode == BY_USER_PREFIX) 
+      found = job_registry_lookup_op(rha, entry->user_prefix, fd);
     else
       found = job_registry_lookup_op(rha, entry->batch_id, fd);
     if (found == 0)

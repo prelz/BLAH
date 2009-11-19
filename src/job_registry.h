@@ -12,6 +12,7 @@
  *   3-Mar-2008 Added non-privileged updates to fit CREAM's file and process
  *              ownership model.
  *   8-Jan-2009 Added job_registry_update_select call.
+ *  19-Nov-2009  Added BY_USER_PREFIX as an indexing mode.
  *
  *  Description:
  *    Prototypes of functions defined in job_registry.c
@@ -104,7 +105,8 @@ typedef enum job_registry_index_mode_e
    NO_INDEX,
    BY_BLAH_ID,
    BY_BATCH_ID,
-   NAMES_ONLY
+   NAMES_ONLY,
+   BY_USER_PREFIX
  } job_registry_index_mode;
 
 typedef struct job_registry_handle_s
