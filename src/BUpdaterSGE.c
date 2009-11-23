@@ -399,8 +399,13 @@ int StateQuery(char *command_string)
 		  
 		  if ((ret=job_registry_update(rha, &en)) < 0)
 		    {
-		      fprintf(stderr,"Append of record returns %d: ", ret);
+		      fprintf(stderr,"Update of record returns %d: ", ret);
 		      perror("");
+		    }
+		  else
+		    {
+		      if (en.status == REMOVED || en.status == COMPLETED)
+			job_registry_unlink_proxy(rha, &en);
 		    }
 		}
 	}
@@ -418,7 +423,7 @@ int AssignFinalState(char *batchid){
 	now=time(0);
 	
 	JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batchid);
-	en.status=4;
+	en.status=COMPLETED;
 	en.exitcode=-1;
 	en.udate=now;
 	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
@@ -426,8 +431,9 @@ int AssignFinalState(char *batchid){
 		
 	if ((ret=job_registry_update(rha, &en)) < 0)
 	{
-		fprintf(stderr,"Append of record %d returns %d: ",i,ret);
+		fprintf(stderr,"Update of record %d returns %d: ",i,ret);
 		perror("");
 	}
+	else job_registry_unlink_proxy(rha, &en);
 	return(0);
 }

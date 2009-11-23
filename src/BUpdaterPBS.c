@@ -422,11 +422,15 @@ Job Id: 11.cream-12.pd.infn.it
                 	                		fprintf(stderr,"Update of record returns %d: ",ret);
 							perror("");
 						}
-					}else if(debug>1){
-						dgbtimestamp=iepoch2str(time(0));
-						fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.wn_addr,en.status);
-						fflush(debuglogfile);
-						free(dgbtimestamp);
+					} else {
+						if(debug>1){
+							dgbtimestamp=iepoch2str(time(0));
+							fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.wn_addr,en.status);
+							fflush(debuglogfile);
+							free(dgbtimestamp);
+						}
+						if (en.status == REMOVED || en.status == COMPLETED)
+							job_registry_unlink_proxy(rha, &en);
 					}
 					en.status = UNDEFINED;
 					JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
@@ -497,11 +501,15 @@ Job Id: 11.cream-12.pd.infn.it
 				fprintf(stderr,"Update of record returns %d: ",ret);
 				perror("");
 			}
-		}else if(debug>1){
-			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.wn_addr,en.status);
-			fflush(debuglogfile);
-			free(dgbtimestamp);
+		} else {
+			if(debug>1){
+				dgbtimestamp=iepoch2str(time(0));
+				fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.wn_addr,en.status);
+				fflush(debuglogfile);
+				free(dgbtimestamp);
+			}
+			if (en.status == REMOVED || en.status == COMPLETED)
+				job_registry_unlink_proxy(rha, &en);
 		}
 	}				
 
@@ -676,11 +684,15 @@ Job: 13.cream-12.pd.infn.it
 					fprintf(stderr,"Update of record returns %d: ",ret);
 					perror("");
 				}
-			}else if(debug>1){
-				dgbtimestamp=iepoch2str(time(0));
-				fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s exitcode=%d status=%d\n",dgbtimestamp,argv0,en.batch_id,en.exitcode,en.status);
-				fflush(debuglogfile);
-				free(dgbtimestamp);
+			} else {
+				if(debug>1){
+					dgbtimestamp=iepoch2str(time(0));
+					fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s exitcode=%d status=%d\n",dgbtimestamp,argv0,en.batch_id,en.exitcode,en.status);
+					fflush(debuglogfile);
+					free(dgbtimestamp);
+				}
+				if (en.status == REMOVED || en.status == COMPLETED)
+					job_registry_unlink_proxy(rha, &en);
 			}
 		}else{
 			failed_count++;
@@ -724,11 +736,14 @@ int AssignFinalState(char *batchid){
 			fprintf(stderr,"Update of record %d returns %d: ",i,ret);
 			perror("");
 		}
-	}else if(debug>1){
-		dgbtimestamp=iepoch2str(time(0));
-		fprintf(debuglogfile, "%s %s: registry update in AssignStateQuery for: jobid=%s creamjobid=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.status);
-		fflush(debuglogfile);
-		free(dgbtimestamp);
+	} else {
+		if(debug>1){
+			dgbtimestamp=iepoch2str(time(0));
+			fprintf(debuglogfile, "%s %s: registry update in AssignStateQuery for: jobid=%s creamjobid=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.status);
+			fflush(debuglogfile);
+			free(dgbtimestamp);
+		}
+		job_registry_unlink_proxy(rha, &en);
 	}
 
 	return 0;
