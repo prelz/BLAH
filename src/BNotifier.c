@@ -603,6 +603,7 @@ write_c:
 				} else if(buffer && strstr(buffer,"STARTNOTIFYJOBLIST/")!=NULL){
 					GetJobList(buffer);
 					startnotifyjob=TRUE;
+                                        startnotify=FALSE;
                                 } else if(buffer && strstr(buffer,"STARTNOTIFYJOBEND/")!=NULL){
                                         startnotify=TRUE;
 					firstnotify=TRUE;
@@ -630,6 +631,10 @@ GetVersion()
 	
 	sprintf(out_buf,"%s__1\n",VERSION);
 	Writeline(conn_c, out_buf, strlen(out_buf));
+	if(debug){
+		fprintf(debuglogfile, "Sent Reply for PARSERVERSION command:%s",out_buf);
+		fflush(debuglogfile);
+	}
 	free(out_buf);
 	
 	return 0;
