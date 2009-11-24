@@ -504,7 +504,7 @@ FinalStateQuery(char *query)
 				} else {
 					if(debug>1){
 						dgbtimestamp=iepoch2str(time(0));
-						fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
+						fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
 						fflush(debuglogfile);
 						free(dgbtimestamp);
 					}
