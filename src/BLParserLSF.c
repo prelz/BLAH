@@ -1566,8 +1566,8 @@ NotifyFromDate(char *in_buf)
 	char *fullblahstring;
 	char *joblist_string="";
 	char *tjoblist_string="";
-	char *fulljobid;
-	char *tjobid;
+	char *fullbljobid;
+	char *tbljobid;
 	time_t now;
 
 	/* printf("thread/0x%08lx\n",pthread_self()); */
@@ -1769,17 +1769,17 @@ NotifyFromDate(char *in_buf)
 					if((lbuf=calloc(10 * sizeof *lbuf,1)) == 0){
 						sysfatal("can't malloc lbuf: %r");
 					}
-					if((fulljobid=calloc(300,1)) == 0){
-						sysfatal("can't malloc fulljobid: %r");
+					if((fullbljobid=calloc(300,1)) == 0){
+						sysfatal("can't malloc fullbljobid: %r");
 					}
-					if((tjobid=calloc(300,1)) == 0){
-						sysfatal("can't malloc tjobid: %r");
+					if((tbljobid=calloc(300,1)) == 0){
+						sysfatal("can't malloc tbljobid: %r");
 					}
 					maxtok_l=strtoken(ntf[ii],';',lbuf);
-					tjobid=strdel(lbuf[0],"[BatchJobId=\"");
-					sprintf(fulljobid,",%s,",tjobid);
+					tbljobid=strdel(lbuf[0],"BlahJobName=\"");
+					sprintf(fullbljobid,",%s,",tbljobid);
 					
-					free(tjobid);
+					free(tbljobid);
 					
 					for(j=0;j<maxtok_l;j++){
 						free(lbuf[j]);
@@ -1787,7 +1787,7 @@ NotifyFromDate(char *in_buf)
 					free(lbuf);
 					
 					
-					if(ntf[ii] && strstr(joblist_string,fulljobid)!=NULL){
+					if(ntf[ii] && strstr(joblist_string,fullbljobid)!=NULL){
 						jfound++;
 						sprintf(out_buf,"NTFDATE/%s",ntf[ii]);
 						Writeline(conn_c, out_buf, strlen(out_buf));
@@ -1796,7 +1796,7 @@ NotifyFromDate(char *in_buf)
 							fflush(debuglogfile); 
 						}
 					}
-					free(fulljobid);
+					free(fullbljobid);
 				}
 			}
 
@@ -1815,24 +1815,24 @@ NotifyFromDate(char *in_buf)
 				if((lbuf=calloc(10 * sizeof *lbuf,1)) == 0){
 					sysfatal("can't malloc lbuf: %r");
 				}
-				if((fulljobid=calloc(300,1)) == 0){
-					sysfatal("can't malloc fulljobid: %r");
+				if((fullbljobid=calloc(300,1)) == 0){
+					sysfatal("can't malloc fullbljobid: %r");
 				}
-				if((tjobid=calloc(300,1)) == 0){
-					sysfatal("can't malloc tjobid: %r");
+				if((tbljobid=calloc(300,1)) == 0){
+					sysfatal("can't malloc tbljobid: %r");
 				}
 				maxtok_l=strtoken(ntf[ii],';',lbuf);
-				tjobid=strdel(lbuf[0],"[BatchJobId=\"");
-				sprintf(fulljobid,",%s,",tjobid);
+				tbljobid=strdel(lbuf[0],"BlahJobName=\"");
+				sprintf(fullbljobid,",%s,",tbljobid);
 					
-				free(tjobid);
+				free(tbljobid);
 				
 				for(j=0;j<maxtok_l;j++){
 					free(lbuf[j]);
 				}
 				free(lbuf);
 				
-				if(ntf[ii] && strstr(joblist_string,fulljobid)!=NULL){
+				if(ntf[ii] && strstr(joblist_string,fullbljobid)!=NULL){
 					jfound++;
 					sprintf(out_buf,"NTFDATE/%s",ntf[ii]);  
 					Writeline(conn_c, out_buf, strlen(out_buf));
@@ -1841,7 +1841,7 @@ NotifyFromDate(char *in_buf)
 						fflush(debuglogfile);
 					}
 				}
-				free(fulljobid);
+				free(fullbljobid);
 			}
 		}
       

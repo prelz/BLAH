@@ -228,6 +228,7 @@ PollDB()
         FILE *fd;
         job_registry_entry *en;
 	job_registry_handle *rha;
+	job_registry_handle *rhc;
 	char *buffer=NULL;
 	char *finalbuffer=NULL;
 	char *new_finalbuffer;
@@ -314,20 +315,29 @@ PollDB()
 			UpdateFileTime(now);
 			
 		}else if(startnotifyjob){
+			rhc=job_registry_init(registry_file, BY_USER_PREFIX);
+			if (rhc == NULL){
+				if(debug){
+					fprintf(debuglogfile, "%s: Error initialising job registry %s",argv0,registry_file);
+					fflush(debuglogfile);
+				}
+				fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
+				perror("");
+			}
 			if(debug>1){
 				fprintf(debuglogfile, "%s:Job list for notification:%s\n",argv0,joblist_string);
 				fflush(debuglogfile);
 			}
 			maxtok=strtoken(joblist_string,',',&tbuf);
    			for(i=0;i<maxtok;i++){
-        			if ((en=job_registry_get(rha, tbuf[i])) != NULL){
+        			if ((en=job_registry_get(rhc, tbuf[i])) != NULL){
 					buffer=ComposeClassad(en);
 					NotifyCream(buffer);
 				}else{
 					if((buffer=calloc(STR_CHARS,1)) == 0){
 						sysfatal("can't malloc buffer in PollDB: %r");
 					}
-					sprintf(buffer,"Jobid %s not found in registry\n",tbuf[i]);	
+					sprintf(buffer,"CreamJobid %s not found in registry\n",tbuf[i]);	
 					NotifyCream(buffer);
 				}
 				free(en);
@@ -339,6 +349,7 @@ PollDB()
 			UpdateFileTime(now);
 			startnotifyjob=FALSE;
 			startnotify=TRUE;
+			job_registry_destroy(rhc);
 		}
 
 		if(firstnotify && sentendonce){
