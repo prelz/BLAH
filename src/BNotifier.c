@@ -337,7 +337,7 @@ PollDB()
 					if((buffer=calloc(STR_CHARS,1)) == 0){
 						sysfatal("can't malloc buffer in PollDB: %r");
 					}
-					sprintf(buffer,"CreamJobid %s not found in registry\n",tbuf[i]);	
+				sprintf(buffer,"[BlahJobName=\"%s\"; JobStatus=4; ExitCode=999; ExitReason=\"job not found\";]\n",tbuf[i]);
 					NotifyCream(buffer);
 				}
 				free(en);
