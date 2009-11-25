@@ -373,6 +373,12 @@ IntStateQuery()
 	}
 	
 	sprintf(command_string,"%s/condor_q -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus|grep -v condorc-",condor_binpath);
+	if(debug){
+		dgbtimestamp=iepoch2str(time(0));
+		fprintf(debuglogfile, "%s %s: command_string in IntStateQuery:%s\n",dgbtimestamp,argv0,command_string);
+		fflush(debuglogfile);
+		free(dgbtimestamp);
+	}
 	fp = popen(command_string,"r");
 
 	if(fp!=NULL){
@@ -469,6 +475,12 @@ FinalStateQuery(char *query)
 	}
 
 	sprintf(command_string,"%s/condor_history -constraint \"%s\" -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus",condor_binpath,query);
+	if(debug){
+		dgbtimestamp=iepoch2str(time(0));
+		fprintf(debuglogfile, "%s %s: command_string in FinalStateQuery:%s\n",dgbtimestamp,argv0,command_string);
+		fflush(debuglogfile);
+		free(dgbtimestamp);
+	}
 	fp = popen(command_string,"r");
 
 	if(fp!=NULL){
