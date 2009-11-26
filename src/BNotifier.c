@@ -232,6 +232,7 @@ PollDB()
 	char *buffer=NULL;
 	char *finalbuffer=NULL;
 	char *new_finalbuffer;
+        char *cdate=NULL;
 	time_t now;
         int  maxtok,i;
         char **tbuf;
@@ -337,7 +338,9 @@ PollDB()
 					if((buffer=calloc(STR_CHARS,1)) == 0){
 						sysfatal("can't malloc buffer in PollDB: %r");
 					}
-				sprintf(buffer,"[BlahJobName=\"%s\"; JobStatus=4; ExitCode=999; ExitReason=\"job not found\";]\n",tbuf[i]);
+					cdate=iepoch2str(now);
+					sprintf(buffer,"[BlahJobName=\"%s\"; JobStatus=4; ExitCode=999; ExitReason=\"job not found\"; ChangeTime=\"%s\"; ]\n",tbuf[i],cdate);
+					free(cdate);
 					NotifyCream(buffer);
 				}
 				free(en);
