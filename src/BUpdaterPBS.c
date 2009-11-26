@@ -599,13 +599,13 @@ Job: 13.cream-12.pd.infn.it
 			}
 			sprintf(pbs_spool,"-p %s",pbs_spoolpath);
 			
-			if((command_string=malloc(strlen(pbs_binpath) + strlen(pbs_spool) + strlen(jobid[k]) + 20)) == 0){
+			if((command_string=malloc(strlen(pbs_binpath) + strlen(pbs_spool) + strlen(jobid[k]) + 30)) == 0){
 				sysfatal("can't malloc command_string %r");
 			}
 		
 			sprintf(command_string,"%s/tracejob %s -m -l -a %s",pbs_binpath,pbs_spool,jobid[k]);
 		}else{
-			if((command_string=malloc(strlen(pbs_binpath) + strlen(jobid[k]) + 20)) == 0){
+			if((command_string=malloc(strlen(pbs_binpath) + strlen(jobid[k]) + 30)) == 0){
 				sysfatal("can't malloc command_string %r");
 			}
 		

@@ -230,19 +230,15 @@ epoch2str(char *epoch)
   
 	char *dateout;
 
-	struct tm *tm;
-	if((tm=calloc(NUM_CHARS,1)) == 0){
-		sysfatal("can't malloc tm in epoch2str: %r");
-	}
+	struct tm tm;
 
-	strptime(epoch,"%s",tm);
+	strptime(epoch,"%s",&tm);
  
 	if((dateout=calloc(NUM_CHARS,1)) == 0){
 		sysfatal("can't malloc dateout in epoch2str: %r");
 	}
  
-	strftime(dateout,NUM_CHARS,"%Y-%m-%d %T",tm);
-	free(tm);
+	strftime(dateout,NUM_CHARS,"%Y-%m-%d %T",&tm);
  
 	return dateout;
  
@@ -255,25 +251,21 @@ iepoch2str(int epoch)
 	char *dateout;
 	char *lepoch;
 
-	struct tm *tm;
+	struct tm tm;
 	
-	if((tm=calloc(STR_CHARS,1)) == 0){
-	sysfatal("can't malloc tm in iepoch2str: %r");
-	}
 	if((lepoch=calloc(STR_CHARS,1)) == 0){
 	sysfatal("can't malloc lepoch in iepoch2str: %r");
 	}
  
 	sprintf(lepoch,"%d",epoch);
  
-	strptime(lepoch,"%s",tm);
+	strptime(lepoch,"%s",&tm);
  
 	if((dateout=calloc(NUM_CHARS,1)) == 0){
 		sysfatal("can't malloc dateout in iepoch2str: %r");
 	}
  
-        strftime(dateout,NUM_CHARS,"%Y-%m-%d %T",tm);
-	free(tm);
+        strftime(dateout,NUM_CHARS,"%Y-%m-%d %T",&tm);
 	free(lepoch);
  
 	return dateout;
@@ -288,20 +280,17 @@ str2epoch(char *str, char * f)
 	int idate;
 	time_t now;
 
-	struct tm *tm;
+	struct tm tm;
         struct tm *tmnow;
 	
 	int mdlog,mdnow;
 	
-	if((tm=calloc(NUM_CHARS,1)) == 0){
-		sysfatal("can't malloc tm in str2epoch: %r");
-	}
 	if(strcmp(f,"S")==0){
-		strptime(str,"%Y-%m-%d %T",tm);
+		strptime(str,"%Y-%m-%d %T",&tm);
 	}else if(strcmp(f,"L")==0){
-		strptime(str,"%a %b %d %T %Y",tm);
+		strptime(str,"%a %b %d %T %Y",&tm);
         }else if(strcmp(f,"A")==0){
-                strptime(str,"%m/%d/%Y %T",tm);
+                strptime(str,"%m/%d/%Y %T",&tm);
 	}else if(strcmp(f,"W")==0){
 		
 	/* If do not have the year in the date we compare day and month and set the year */
@@ -311,17 +300,17 @@ str2epoch(char *str, char * f)
 		}
 	
 		sprintf(strtmp,"%s 2000",str);
-                strptime(strtmp,"%a %b %d %T %Y",tm);
+                strptime(strtmp,"%a %b %d %T %Y",&tm);
 		
 		now=time(0);
 		tmnow=localtime(&now);
 		
-		mdlog=(tm->tm_mon)*100+tm->tm_mday;
+		mdlog=(tm.tm_mon)*100+tm.tm_mday;
 		mdnow=(tmnow->tm_mon)*100+tmnow->tm_mday;
 		if(mdlog > mdnow){
-			tm->tm_year=tmnow->tm_year-1;
+			tm.tm_year=tmnow->tm_year-1;
 		}else{
-			tm->tm_year=tmnow->tm_year;
+			tm.tm_year=tmnow->tm_year;
 		}
 		
 	        free(strtmp);
@@ -334,27 +323,25 @@ str2epoch(char *str, char * f)
                 }
 
                 sprintf(strtmp,"%s 2000",str);
-                strptime(strtmp,"%b %d %H:%M %Y",tm);
+                strptime(strtmp,"%b %d %H:%M %Y",&tm);
                 
                 now=time(0);
                 tmnow=localtime(&now);
 
-                mdlog=(tm->tm_mon)*100+tm->tm_mday;
+                mdlog=(tm.tm_mon)*100+tm.tm_mday;
                 mdnow=(tmnow->tm_mon)*100+tmnow->tm_mday;
                 if(mdlog > mdnow){
-                        tm->tm_year=tmnow->tm_year-1;
+                        tm.tm_year=tmnow->tm_year-1;
                 }else{
-                        tm->tm_year=tmnow->tm_year;
+                        tm.tm_year=tmnow->tm_year;
                 }
 
                 free(strtmp);
 
         }
  
-	tm->tm_isdst=-1;
-	idate=mktime(tm);
- 
-	free(tm);
+	tm.tm_isdst=-1;
+	idate=mktime(&tm);
  
 	return idate;
  
