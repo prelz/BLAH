@@ -335,11 +335,8 @@ PollDB()
 					buffer=ComposeClassad(en);
 					NotifyCream(buffer);
 				}else{
-					if((buffer=calloc(STR_CHARS,1)) == 0){
-						sysfatal("can't malloc buffer in PollDB: %r");
-					}
 					cdate=iepoch2str(now);
-					sprintf(buffer,"[BlahJobName=\"%s\"; JobStatus=4; ExitCode=999; ExitReason=\"job not found\"; ChangeTime=\"%s\"; ]\n",tbuf[i],cdate);
+					buffer=make_message("[BlahJobName=\"%s\"; JobStatus=4; ExitCode=999; ExitReason=\"job not found\"; ChangeTime=\"%s\"; ]\n",tbuf[i],cdate);
 					free(cdate);
 					NotifyCream(buffer);
 				}
@@ -392,33 +389,21 @@ ComposeClassad(job_registry_entry *en)
 	free(strudate);
 
 	if (strlen(en->wn_addr) > 0){
-		if((wn=malloc(strlen(en->wn_addr) + 22)) == 0){
-			sysfatal("can't malloc wn in ComposeClassad: %r");
-		}
-		sprintf(wn," WorkerNode=\"%s\";",en->wn_addr);
+		wn=make_message(" WorkerNode=\"%s\";",en->wn_addr);
 		strcat(buffer,wn);
 		free(wn);
 		}
 	if (en->status == 3 || en->status == 4){
-		if((excode=malloc(NUM_CHARS + 45)) == 0){
-			sysfatal("can't malloc excode in ComposeClassad: %r");
-		}
-		sprintf(excode," ExitCode=%d; Reason=\"reason=%d\";", en->exitcode, en->exitcode);
+		excode=make_message(" ExitCode=%d; Reason=\"reason=%d\";", en->exitcode, en->exitcode);
 		strcat(buffer,excode);
 		free(excode);
 	}
 	if (strlen(en->exitreason) > 0){
-		if((exreas=malloc(strlen(en->exitreason) + 20)) == 0){
-			sysfatal("can't malloc exreas in ComposeClassad: %r");
-		}
-		sprintf(exreas," ExitReason=\"%s\";", en->exitreason);
+		exreas=make_message(" ExitReason=\"%s\";", en->exitreason);
 		strcat(buffer,exreas);
 		free(exreas);
 	}
 	if (strlen(en->user_prefix) > 0){
-		if((blahid=calloc(STR_CHARS,1)) == 0){
-			sysfatal("can't malloc blahid in ComposeClassad: %r");
-		}
 		if((clientid=calloc(STR_CHARS,1)) == 0){
 			sysfatal("can't malloc clientid in ComposeClassad: %r");
 		}
@@ -432,7 +417,7 @@ ComposeClassad(job_registry_entry *en)
 			}
 			 sprintf(clientid," ClientJobId=\"%s\";",tbuf[1]);
 		}
-		sprintf(blahid,"%s BlahJobName=\"%s\";",clientid, en->user_prefix);
+		blahid=make_message("%s BlahJobName=\"%s\";",clientid, en->user_prefix);
 		strcat(buffer,blahid);
 		free(blahid);
 		freetoken(&tbuf,maxtok);
@@ -639,11 +624,7 @@ GetVersion()
 
 	char *out_buf;
 
-	if((out_buf=calloc(STR_CHARS,1)) == 0){
-		sysfatal("can't malloc out_buf: %r");
-	}
-	
-	sprintf(out_buf,"%s__1\n",VERSION);
+	out_buf=make_message("%s__1\n",VERSION);
 	Writeline(conn_c, out_buf, strlen(out_buf));
 	if(debug){
 		fprintf(debuglogfile, "Sent Reply for PARSERVERSION command:%s",out_buf);

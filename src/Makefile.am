@@ -2,11 +2,11 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.40 2009/09/14 10:40:44 fprelz Exp $ 
+# $Id: Makefile.am,v 1.41 2009/12/01 10:14:18 mezzadri Exp $ 
 #
 # File:           Makefile.am
 #
-# Author(s):      Francesco Prelz ($Author: fprelz $)
+# Author(s):      Francesco Prelz ($Author: mezzadri $)
 #        e-mail: "Francesco.Prelz@mi.infn.it"
 #
 # Revision history:
@@ -96,16 +96,16 @@ test_job_registry_update_CFLAGS = $(AM_CFLAGS)
 test_job_registry_access_SOURCES = test_job_registry_access.c job_registry.c md5.c
 test_job_registry_access_CFLAGS = $(AM_CFLAGS)
 
-BUpdaterCondor_SOURCES = BUpdaterCondor.c Bfunctions.c job_registry.c md5.c config.c
+BUpdaterCondor_SOURCES = BUpdaterCondor.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c
 BUpdaterCondor_LDADD = -lpopt -lpthread
 
-BNotifier_SOURCES = BNotifier.c Bfunctions.c job_registry.c md5.c config.c
+BNotifier_SOURCES = BNotifier.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c
 BNotifier_LDADD = -lpopt -lpthread
 
-BUpdaterLSF_SOURCES = BUpdaterLSF.c Bfunctions.c job_registry.c md5.c config.c
+BUpdaterLSF_SOURCES = BUpdaterLSF.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c
 BUpdaterLSF_LDADD = -lpopt -lpthread
 
-BUpdaterPBS_SOURCES = BUpdaterPBS.c Bfunctions.c job_registry.c md5.c config.c
+BUpdaterPBS_SOURCES = BUpdaterPBS.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c
 BUpdaterPBS_LDADD = -lpopt -lpthread -lm
 
 BUpdaterSGE_SOURCES = BUpdaterSGE.c Bfunctions.c job_registry.c md5.c config.c

@@ -389,11 +389,7 @@ Job Id: 11.cream-12.pd.infn.it
 	job_registry_entry *ren=NULL;
 	int first=TRUE;
 
-	if((command_string=malloc(strlen(pbs_binpath) + 10)) == 0){
-		sysfatal("can't malloc command_string %r");
-	}
-		
-	sprintf(command_string,"%s/qstat -f",pbs_binpath);
+	command_string=make_message("%s/qstat -f",pbs_binpath);
 	fp = popen(command_string,"r");
 
 	en.status=UNDEFINED;
@@ -481,10 +477,7 @@ Job Id: 11.cream-12.pd.infn.it
 				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line,"mtime = ")){	
                         	maxtok_t = strtoken(line, ' ', &token);
-                        	if((timestamp=malloc(strlen(token[2]) + strlen(token[3]) + strlen(token[4]) + strlen(token[5]) + strlen(token[6]) + 6)) == 0){
-                        	        sysfatal("can't malloc timestamp in IntStateQuery: %r");
-                        	}
-                        	sprintf(timestamp,"%s %s %s %s %s",token[2],token[3],token[4],token[5],token[6]);
+				timestamp=make_message("%s %s %s %s %s",token[2],token[3],token[4],token[5],token[6]);
                         	tmstampepoch=str2epoch(timestamp,"L");
 				free(timestamp);
 				en.udate=tmstampepoch;
@@ -594,22 +587,10 @@ Job: 13.cream-12.pd.infn.it
 		if(jobid[k] && strlen(jobid[k])==0) continue;
 
 		if(pbs_spoolpath){
-			if((pbs_spool=malloc(strlen(pbs_spoolpath) + 4)) == 0){
-				sysfatal("can't malloc pbs_spool %r");
-			}
-			sprintf(pbs_spool,"-p %s",pbs_spoolpath);
-			
-			if((command_string=malloc(strlen(pbs_binpath) + strlen(pbs_spool) + strlen(jobid[k]) + 30)) == 0){
-				sysfatal("can't malloc command_string %r");
-			}
-		
-			sprintf(command_string,"%s/tracejob %s -m -l -a %s",pbs_binpath,pbs_spool,jobid[k]);
+			pbs_spool=make_message("-p %s",pbs_spoolpath);
+			command_string=make_message("%s/tracejob %s -m -l -a %s",pbs_binpath,pbs_spool,jobid[k]);
 		}else{
-			if((command_string=malloc(strlen(pbs_binpath) + strlen(jobid[k]) + 30)) == 0){
-				sysfatal("can't malloc command_string %r");
-			}
-		
-			sprintf(command_string,"%s/tracejob -m -l -a %s",pbs_binpath,jobid[k]);
+			command_string=make_message("%s/tracejob -m -l -a %s",pbs_binpath,jobid[k]);
 		}
 		
 		fp = popen(command_string,"r");
@@ -637,10 +618,7 @@ Job: 13.cream-12.pd.infn.it
 				}
 				if(line && (strstr(line,"Job deleted") || (strstr(line,"dequeuing from") && strstr(line,"state RUNNING")))){	
 					maxtok_t = strtoken(line, ' ', &token);
- 					if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + 4)) == 0){
-                        		        sysfatal("can't malloc timestamp in FinalStateQuery: %r");
-                        		}
-                        		sprintf(timestamp,"%s %s",token[0],token[1]);
+					timestamp=make_message("%s %s",token[0],token[1]);
 					tmstampepoch=str2epoch(timestamp,"A");
 					free(timestamp);
 					freetoken(&token,maxtok_t);
@@ -650,10 +628,7 @@ Job: 13.cream-12.pd.infn.it
 					JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				}else if(line && strstr(line,"Exit_status=") && en.status != REMOVED){	
 					maxtok_t = strtoken(line, ' ', &token);
- 					if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + 4)) == 0){
-                        		        sysfatal("can't malloc timestamp in FinalStateQuery: %r");
-                        		}
-                        		sprintf(timestamp,"%s %s",token[0],token[1]);
+					timestamp=make_message("%s %s",token[0],token[1]);
 					tmstampepoch=str2epoch(timestamp,"A");
 					exit_str=strdup(token[3]);
                 			if(exit_str == NULL){

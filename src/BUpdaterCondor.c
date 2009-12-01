@@ -286,10 +286,7 @@ int main(int argc, char *argv[]){
 					/* create the constraint that will be used in condor_history command in FinalStateQuery*/
 					if(!first) strcat(query," ||");	
 					if(first) first=FALSE;
-					if((constraint=malloc(strlen(en->batch_id) + 14)) == 0){
-						sysfatal("can't malloc constraint %r");
-        				}
-					sprintf(constraint," ClusterId==%s",en->batch_id);
+					constraint=make_message(" ClusterId==%s",en->batch_id);
 					
 					if (query != NULL) qlen = strlen(query);
 					else               qlen = 0;
@@ -368,11 +365,7 @@ IntStateQuery()
 	char *command_string=NULL;
 	job_registry_entry *ren=NULL;
 
-	if((command_string=malloc(strlen(condor_binpath) + NUM_CHARS)) == 0){
-		sysfatal("can't malloc command_string %r");
-	}
-	
-	sprintf(command_string,"%s/condor_q -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus|grep -v condorc-",condor_binpath);
+	command_string=make_message("%s/condor_q -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus|grep -v condorc-",condor_binpath);
 	if(debug){
 		dgbtimestamp=iepoch2str(time(0));
 		fprintf(debuglogfile, "%s %s: command_string in IntStateQuery:%s\n",dgbtimestamp,argv0,command_string);
@@ -470,11 +463,7 @@ FinalStateQuery(char *query)
 	char *dgbtimestamp;
 	char *command_string=NULL;
 
-	if((command_string=malloc(NUM_CHARS + strlen(query) +strlen(condor_binpath))) == 0){
-		sysfatal("can't malloc command_string %r");
-	}
-
-	sprintf(command_string,"%s/condor_history -constraint \"%s\" -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus",condor_binpath,query);
+	command_string=make_message("%s/condor_history -constraint \"%s\" -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus",condor_binpath,query);
 	if(debug){
 		dgbtimestamp=iepoch2str(time(0));
 		fprintf(debuglogfile, "%s %s: command_string in FinalStateQuery:%s\n",dgbtimestamp,argv0,command_string);

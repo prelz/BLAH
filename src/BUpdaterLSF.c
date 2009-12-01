@@ -395,11 +395,7 @@ IntStateQueryShort()
 	job_registry_entry *ren=NULL;
 	int first=TRUE;
 
-	if((command_string=malloc(strlen(lsf_binpath) + 17)) == 0){
-		sysfatal("can't malloc command_string %r");
-	}
-	
-	sprintf(command_string,"%s/bjobs -u all -w",lsf_binpath);
+	command_string=make_message("%s/bjobs -u all -w",lsf_binpath);
 	fp = popen(command_string,"r");
 
 	en.status=UNDEFINED;
@@ -470,10 +466,7 @@ IntStateQueryShort()
 				en.status=RUNNING;
 			}
 			
-			if((timestamp=malloc(strlen(token[7]) + strlen(token[8]) + strlen(token[9]) + 4)) == 0){
-				sysfatal("can't malloc timestamp: %r");
-			}
-			sprintf(timestamp,"%s %s %s",token[7],token[8],token[9]);
+			timestamp=make_message("%s %s %s",token[7],token[8],token[9]);
 			tmstampepoch=str2epoch(timestamp,"V");
 			free(timestamp);
 			en.udate=tmstampepoch;
@@ -545,11 +538,7 @@ IntStateQuery()
 	int isresumed=FALSE;
 	int first=TRUE;
 
-	if((command_string=malloc(strlen(lsf_binpath) + 17)) == 0){
-		sysfatal("can't malloc command_string %r");
-	}
-	
-	sprintf(command_string,"%s/bjobs -u all -l",lsf_binpath);
+	command_string=make_message("%s/bjobs -u all -l",lsf_binpath);
 	fp = popen(command_string,"r");
 
 	en.status=UNDEFINED;
@@ -638,10 +627,7 @@ IntStateQuery()
 				}
 			}else if(line && strstr(line,"Started on ") && (en.status == RUNNING) && (!isresumed)){	
 				maxtok_t = strtoken(line, ' ', &token);
-                        	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
-					sysfatal("can't malloc timestamp in IntStateQuery: %r");
-				}
-				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp=make_message("%s %s %s %s",token[0],token[1],token[2],token[3]);
 				timestamp[strlen(timestamp)-1]='\0';
 				tmstampepoch=str2epoch(timestamp,"W");
 				en.udate=tmstampepoch;
@@ -728,11 +714,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	char start_date_str[80];
 	char *command_string=NULL;
 
-	if((command_string=malloc(strlen(lsf_binpath) + NUM_CHARS + sizeof(start_date_str) + 24)) == 0){
-		sysfatal("can't malloc command_string %r");
-	}
-
-	sprintf(command_string,"%s/bhist -u all -d -l -n %d",lsf_binpath,bhist_logs_to_read);
+	command_string=make_message("%s/bhist -u all -d -l -n %d",lsf_binpath,bhist_logs_to_read);
 	if (localtime_r(&start_date, &start_date_tm) != NULL){
 		if (strftime(start_date_str, sizeof(start_date_str), " -C %Y/%m/%d/%H:%M,", &start_date_tm) > 0){
 			strcat(command_string,start_date_str);
@@ -796,10 +778,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line," Signal <KILL>")){	
 				maxtok_t = strtoken(line, ' ', &token);
-                        	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
-					sysfatal("can't malloc timestamp in FinalStateQuery: %r");
-				}
-				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp=make_message("%s %s %s %s",token[0],token[1],token[2],token[3]);
 				timestamp[strlen(timestamp)-1]='\0';
 				tmstampepoch=str2epoch(timestamp,"W");
 				en.udate=tmstampepoch;
@@ -810,10 +789,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line," Exited with exit code") && en.status != REMOVED){	
 				maxtok_t = strtoken(line, ' ', &token);
-                        	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
-					sysfatal("can't malloc timestamp in FinalStateQuery: %r");
-				}
-				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp=make_message("%s %s %s %s",token[0],token[1],token[2],token[3]);
 				timestamp[strlen(timestamp)-1]='\0';
 				tmstampepoch=str2epoch(timestamp,"W");
 				en.udate=tmstampepoch;
@@ -826,10 +802,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line," Done successfully") && en.status != REMOVED){	
 				maxtok_t = strtoken(line, ' ', &token);
-                        	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
-					sysfatal("can't malloc timestamp in FinalStateQuery: %r");
-				}
-				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp=make_message("%s %s %s %s",token[0],token[1],token[2],token[3]);
 				timestamp[strlen(timestamp)-1]='\0';
 				tmstampepoch=str2epoch(timestamp,"W");
 				en.udate=tmstampepoch;
@@ -883,11 +856,7 @@ get_susp_timestamp(char *jobid)
 	char *cp=NULL; 
 	char *command_string=NULL;
 	
-	if((command_string=malloc(strlen(lsf_binpath) + NUM_CHARS + 20)) == 0){
-		sysfatal("can't malloc command_string %r");
-	}
-
-	sprintf(command_string,"%s/bhist -u all -l %s",lsf_binpath,jobid);
+	command_string=make_message("%s/bhist -u all -l %s",lsf_binpath,jobid);
 
 	fp = popen(command_string,"r");
 		
@@ -902,10 +871,7 @@ get_susp_timestamp(char *jobid)
 			}
 			if(line && strstr(line," Suspended by")){	
 				maxtok_t = strtoken(line, ' ', &token);
-                        	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
-					sysfatal("can't malloc timestamp in get_susp_timestamp: %r");
-				}
-				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp=make_message("%s %s %s %s",token[0],token[1],token[2],token[3]);
 				timestamp[strlen(timestamp)-1]='\0';
 				tmstampepoch=str2epoch(timestamp,"W");
 				free(timestamp);
@@ -934,11 +900,7 @@ get_resume_timestamp(char *jobid)
 	char *cp=NULL; 
 	char *command_string=NULL;
 	
-	if((command_string=malloc(strlen(lsf_binpath) + NUM_CHARS + 20)) == 0){
-		sysfatal("can't malloc command_string %r");
-	}
-
-	sprintf(command_string,"%s/bhist -u all -l %s",lsf_binpath,jobid);
+	command_string=make_message("%s/bhist -u all -l %s",lsf_binpath,jobid);
 
 	fp = popen(command_string,"r");
 		
@@ -953,10 +915,7 @@ get_resume_timestamp(char *jobid)
 			}
 			if(line && strstr(line," Running;")){	
 				maxtok_t = strtoken(line, ' ', &token);
-                        	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
-					sysfatal("can't malloc timestamp in get_susp_timestamp: %r");
-				}
-				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp=make_message("%s %s %s %s",token[0],token[1],token[2],token[3]);
 				timestamp[strlen(timestamp)-1]='\0';
 				tmstampepoch=str2epoch(timestamp,"W");
 				free(timestamp);
@@ -985,11 +944,7 @@ get_pend_timestamp(char *jobid)
 	char *cp=NULL; 
 	char *command_string=NULL;
 	
-	if((command_string=malloc(strlen(lsf_binpath) + NUM_CHARS + 20)) == 0){
-		sysfatal("can't malloc command_string %r");
-	}
-
-	sprintf(command_string,"%s/bhist -u all -l %s",lsf_binpath,jobid);
+	command_string=make_message("%s/bhist -u all -l %s",lsf_binpath,jobid);
 
 	fp = popen(command_string,"r");
 		
@@ -1004,10 +959,7 @@ get_pend_timestamp(char *jobid)
 			}
 			if(line && strstr(line," Pending: Waiting for scheduling after resumed")){	
 				maxtok_t = strtoken(line, ' ', &token);
-                        	if((timestamp=malloc(strlen(token[0]) + strlen(token[1]) + strlen(token[2]) + strlen(token[3]) + 4)) == 0){
-					sysfatal("can't malloc timestamp in get_pend_timestamp: %r");
-				}
-				sprintf(timestamp,"%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp=make_message("%s %s %s %s",token[0],token[1],token[2],token[3]);
 				timestamp[strlen(timestamp)-1]='\0';
 				tmstampepoch=str2epoch(timestamp,"W");
 				free(timestamp);
