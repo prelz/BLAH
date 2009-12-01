@@ -445,7 +445,7 @@ ComposeClassad(job_registry_entry *en)
 }
 
 int
-UpdateFileTime(int sec)
+UpdateFileTime(time_t sec)
 {
 	
 	int fd;
@@ -709,7 +709,7 @@ NotifyStart(char *buffer)
         char **tbuf;
         char *cp=NULL;
 	char *notifdate=NULL;
-        int   notifepoch;
+        time_t   notifepoch;
 	
         maxtok=strtoken(buffer,'/',&tbuf);
 

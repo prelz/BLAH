@@ -49,7 +49,7 @@
 /*  Function declarations  */
 
 int PollDB();
-int UpdateFileTime(int sec);
+int UpdateFileTime(time_t sec);
 char *ComposeClassad(job_registry_entry *en);
 int NotifyStart(char *buffer);
 int GetVersion();

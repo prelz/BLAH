@@ -378,7 +378,7 @@ Job Id: 11.cream-12.pd.infn.it
 	job_registry_entry en;
 	int ret;
 	char *timestamp;
-	int tmstampepoch;
+	time_t tmstampepoch;
 	char *batch_str=NULL;
 	char *wn_str=NULL; 
         char *twn_str=NULL;
@@ -570,7 +570,7 @@ Job: 13.cream-12.pd.infn.it
 	job_registry_entry en;
 	int ret;
 	char *timestamp;
-	int tmstampepoch;
+	time_t tmstampepoch;
 	char *exit_str=NULL;
 	int failed_count=0;
 	int time_to_add=0;

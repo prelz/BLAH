@@ -36,9 +36,9 @@ int IntStateQueryShort();
 int IntStateQuery();
 int FinalStateQuery(time_t start_date);
 int AssignFinalState(char *batchid);
-int get_susp_timestamp(char *jobid);
-int get_resume_timestamp(char *jobid);
-int get_pend_timestamp(char *jobid);
+time_t get_susp_timestamp(char *jobid);
+time_t get_resume_timestamp(char *jobid);
+time_t get_pend_timestamp(char *jobid);
 void sighup();
 
 int runfinal=FALSE;

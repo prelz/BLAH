@@ -245,7 +245,7 @@ epoch2str(char *epoch)
 }
 
 char *
-iepoch2str(int epoch)
+iepoch2str(time_t epoch)
 {
   
 	char *dateout;
@@ -272,16 +272,16 @@ iepoch2str(int epoch)
  
 }
 
-int
+time_t
 str2epoch(char *str, char * f)
 {
   
 	char *strtmp;
-	int idate;
+	time_t idate;
 	time_t now;
 
 	struct tm tm;
-        struct tm *tmnow;
+        struct tm tmnow;
 	
 	int mdlog,mdnow;
 	
@@ -303,14 +303,14 @@ str2epoch(char *str, char * f)
                 strptime(strtmp,"%a %b %d %T %Y",&tm);
 		
 		now=time(0);
-		tmnow=localtime(&now);
+		localtime_r(&now,&tmnow);
 		
 		mdlog=(tm.tm_mon)*100+tm.tm_mday;
-		mdnow=(tmnow->tm_mon)*100+tmnow->tm_mday;
+		mdnow=(tmnow.tm_mon)*100+tmnow.tm_mday;
 		if(mdlog > mdnow){
-			tm.tm_year=tmnow->tm_year-1;
+			tm.tm_year=tmnow.tm_year-1;
 		}else{
-			tm.tm_year=tmnow->tm_year;
+			tm.tm_year=tmnow.tm_year;
 		}
 		
 	        free(strtmp);
@@ -326,14 +326,14 @@ str2epoch(char *str, char * f)
                 strptime(strtmp,"%b %d %H:%M %Y",&tm);
                 
                 now=time(0);
-                tmnow=localtime(&now);
+		localtime_r(&now,&tmnow);
 
                 mdlog=(tm.tm_mon)*100+tm.tm_mday;
-                mdnow=(tmnow->tm_mon)*100+tmnow->tm_mday;
+                mdnow=(tmnow.tm_mon)*100+tmnow.tm_mday;
                 if(mdlog > mdnow){
-                        tm.tm_year=tmnow->tm_year-1;
+                        tm.tm_year=tmnow.tm_year-1;
                 }else{
-                        tm.tm_year=tmnow->tm_year;
+                        tm.tm_year=tmnow.tm_year;
                 }
 
                 free(strtmp);

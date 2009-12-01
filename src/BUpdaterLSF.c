@@ -387,7 +387,7 @@ IntStateQueryShort()
 	job_registry_entry en;
 	int ret;
 	char *timestamp;
-	int tmstampepoch;
+	time_t tmstampepoch;
 	char *dgbtimestamp;
 	char *tmp=NULL; 
 	char *cp=NULL; 
@@ -535,7 +535,7 @@ IntStateQuery()
 	job_registry_entry en;
 	int ret;
 	char *timestamp;
-	int tmstampepoch;
+	time_t tmstampepoch;
 	char *dgbtimestamp;
 	char *cp=NULL; 
 	char *wn_str=NULL; 
@@ -719,7 +719,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	job_registry_entry en;
 	int ret;
 	char *timestamp;
-	int tmstampepoch;
+	time_t tmstampepoch;
 	char *batch_str=NULL;
 	char *ex_str=NULL; 
 	char *cp=NULL; 
@@ -870,7 +870,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	return 0;
 }
 
-int
+time_t
 get_susp_timestamp(char *jobid)
 {
 
@@ -879,7 +879,7 @@ get_susp_timestamp(char *jobid)
 	char **token;
 	int maxtok_t=0;
 	char *timestamp;
-	int tmstampepoch;
+	time_t tmstampepoch;
 	char *cp=NULL; 
 	char *command_string=NULL;
 	
@@ -921,7 +921,7 @@ get_susp_timestamp(char *jobid)
 	return tmstampepoch;
 }
 
-int
+time_t
 get_resume_timestamp(char *jobid)
 {
 
@@ -930,7 +930,7 @@ get_resume_timestamp(char *jobid)
 	char **token;
 	int maxtok_t=0;
 	char *timestamp;
-	int tmstampepoch;
+	time_t tmstampepoch;
 	char *cp=NULL; 
 	char *command_string=NULL;
 	
@@ -972,7 +972,7 @@ get_resume_timestamp(char *jobid)
 	return tmstampepoch;
 }
 
-int
+time_t
 get_pend_timestamp(char *jobid)
 {
 
@@ -981,7 +981,7 @@ get_pend_timestamp(char *jobid)
 	char **token;
 	int maxtok_t=0;
 	char *timestamp;
-	int tmstampepoch;
+	time_t tmstampepoch;
 	char *cp=NULL; 
 	char *command_string=NULL;
 	
