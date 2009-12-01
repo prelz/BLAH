@@ -1388,6 +1388,11 @@ GetVersion()
 	
 	sprintf(out_buf,"%s__0\n",VERSION);
 	Writeline(conn_c, out_buf, strlen(out_buf));
+	if(debug){
+		fprintf(debuglogfile, "Sent Reply for PARSERVERSION command:%s",out_buf);
+		fflush(debuglogfile);
+	}
+
 	free(out_buf);
 	
 	return 0;
