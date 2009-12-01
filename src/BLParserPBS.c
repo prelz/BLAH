@@ -1574,7 +1574,7 @@ NotifyFromDate(char *in_buf)
 			sysfatal("can't malloc cbuf: %r");
 		}
       
-		maxtok_s=strtoken(notdate,':',sbuf);
+		maxtok_s=strtoken(notdate,';',sbuf);
 		
 		notepoch=str2epoch(sbuf[0],"S");
 		notstrshort=iepoch2str(notepoch,"S");      
