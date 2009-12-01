@@ -40,6 +40,7 @@
 #include <signal.h>
 #include <pthread.h>
 #include "blahpd.h"
+#include "blah_utils.h"
 
 #define STR_CHARS          50000
 #define NUM_CHARS          300
