@@ -1703,6 +1703,8 @@ NotifyFromDate(char *in_buf)
 
 	}else if(notstr && strcmp(notstr,"STARTNOTIFYJOBEND")==0){
 	
+		creamisconn=1;
+		
 		Writeline(conn_c, "NTFDATE/END\n", strlen("NTFDATE/END\n"));
 		if(debug){
 			fprintf(debuglogfile, "Sent for Cream_nftdate:NTFDATE/END\n");
