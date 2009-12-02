@@ -254,7 +254,7 @@ iepoch2str(time_t epoch)
 	struct tm tm;
 	
 	if((lepoch=calloc(STR_CHARS,1)) == 0){
-	sysfatal("can't malloc lepoch in iepoch2str: %r");
+		sysfatal("can't malloc lepoch in iepoch2str: %r");
 	}
  
 	sprintf(lepoch,"%d",epoch);
@@ -574,3 +574,20 @@ bupdater_free_active_jobs(bupdater_active_jobs *bact)
   bact->njobs = 0;
 }
 
+int do_log(FILE *debuglogfile, int debuglevel, int dbgthresh, const char *fmt, ...){
+
+        va_list ap;
+	char *dbgtimestamp;
+	
+        if(debuglevel>=dbgthresh){
+		dbgtimestamp=iepoch2str(time(0));
+		fprintf(debuglogfile,"%s ",dbgtimestamp);
+		free(dbgtimestamp);
+		va_start(ap, fmt);
+		vfprintf(debuglogfile,fmt,ap);
+		fflush(debuglogfile);
+        	va_end(ap);
+	}
+	
+	return 0;	
+} 

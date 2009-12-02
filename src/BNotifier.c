@@ -109,10 +109,7 @@ main(int argc, char *argv[])
         
 	ret = config_get("job_registry",cha);
 	if (ret == NULL){
-                if(debug){
-			fprintf(debuglogfile, "%s: key job_registry not found\n",argv0);
-			fflush(debuglogfile);
-		}
+		do_log(debuglogfile, debug, 1, "%s: key job_registry not found\n",argv0);
 		sysfatal("job_registry not defined. Exiting");
 	} else {
 		registry_file=strdup(ret->value);
@@ -123,30 +120,21 @@ main(int argc, char *argv[])
 	
 	ret = config_get("async_notification_port",cha);
 	if (ret == NULL){
-                if(debug){
-			fprintf(debuglogfile, "%s: key async_notification_port not found\n",argv0);
-			fflush(debuglogfile);
-		}
+		do_log(debuglogfile, debug, 1, "%s: key async_notification_port not found\n",argv0);
 	} else {
 		async_notif_port =atoi(ret->value);
 	}
 
 	ret = config_get("bnotifier_loop_interval",cha);
 	if (ret == NULL){
-                if(debug){
-			fprintf(debuglogfile, "%s: key bnotifier_loop_interval not found using the default:%d\n",argv0,loop_interval);
-			fflush(debuglogfile);
-		}
+		do_log(debuglogfile, debug, 1, "%s: key bnotifier_loop_interval not found using the default:%d\n",argv0,loop_interval);
 	} else {
 		loop_interval=atoi(ret->value);
 	}
 	
 	ret = config_get("bnotifier_pidfile",cha);
 	if (ret == NULL){
-                if(debug){
-			fprintf(debuglogfile, "%s: key bnotifier_pidfile not found\n",argv0);
-			fflush(debuglogfile);
-		}
+		do_log(debuglogfile, debug, 1, "%s: key bnotifier_pidfile not found\n",argv0);
 	} else {
 		pidfile=strdup(ret->value);
                 if(pidfile == NULL){
@@ -241,10 +229,7 @@ PollDB()
 	
 	rha=job_registry_init(registry_file, BY_BATCH_ID);
 	if (rha == NULL){
-		if(debug){
-			fprintf(debuglogfile, "%s: Error initialising job registry %s",argv0,registry_file);
-			fflush(debuglogfile);
-		}
+		do_log(debuglogfile, debug, 1, "%s: Error initialising job registry %s",argv0,registry_file);
 		fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
 		perror("");
 	}
@@ -262,10 +247,7 @@ PollDB()
 			fd = job_registry_open(rha, "r");
 			if (fd == NULL)
 			{
-				if(debug){
-					fprintf(debuglogfile, "%s: Error opening job registry %s",argv0,registry_file);
-					fflush(debuglogfile);
-				}
+				do_log(debuglogfile, debug, 1, "%s: Error opening job registry %s",argv0,registry_file);
 				fprintf(stderr,"%s: Error opening job registry %s :",argv0,registry_file);
 				perror("");
 				sleep(loop_interval);
@@ -273,10 +255,7 @@ PollDB()
 			}
 			if (job_registry_rdlock(rha, fd) < 0)
 			{
-				if(debug){
-					fprintf(debuglogfile, "%s: Error read locking registry %s",argv0,registry_file);
-					fflush(debuglogfile);
-				}
+				do_log(debuglogfile, debug, 1, "%s: Error read locking registry %s",argv0,registry_file);
 				fprintf(stderr,"%s: Error read locking registry %s :",argv0,registry_file);
 				perror("");
 				sleep(loop_interval);
@@ -318,17 +297,11 @@ PollDB()
 		}else if(startnotifyjob){
 			rhc=job_registry_init(registry_file, BY_USER_PREFIX);
 			if (rhc == NULL){
-				if(debug){
-					fprintf(debuglogfile, "%s: Error initialising job registry %s",argv0,registry_file);
-					fflush(debuglogfile);
-				}
+				do_log(debuglogfile, debug, 1, "%s: Error initialising job registry %s",argv0,registry_file);
 				fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
 				perror("");
 			}
-			if(debug>1){
-				fprintf(debuglogfile, "%s:Job list for notification:%s\n",argv0,joblist_string);
-				fflush(debuglogfile);
-			}
+			do_log(debuglogfile, debug, 2, "%s:Job list for notification:%s\n",argv0,joblist_string);
 			maxtok=strtoken(joblist_string,',',&tbuf);
    			for(i=0;i<maxtok;i++){
         			if ((en=job_registry_get(rhc, tbuf[i])) != NULL){
@@ -439,10 +412,7 @@ UpdateFileTime(time_t sec)
 		
 	fd = open(notiffile, O_RDWR | O_CREAT,S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 	if (fd < 0) {
-		if(debug){
-			fprintf(debuglogfile, "Error opening file in UpdateFileTime\n");
-			fflush(debuglogfile);
-		}
+		do_log(debuglogfile, debug, 1, "Error opening file in UpdateFileTime\n");
 		fprintf(stderr,"Error opening file in UpdateFileTime: ");
 		perror("");
 		return 1;
@@ -454,10 +424,7 @@ UpdateFileTime(time_t sec)
 	utb.modtime = sec;
 
 	if (utime(notiffile, &utb)) {
-		if(debug){
-			fprintf(debuglogfile, "Error in utime in UpdateFileTime\n");
-			fflush(debuglogfile);
-		}
+		do_log(debuglogfile, debug, 1, "Error in utime in UpdateFileTime\n");
 		fprintf(stderr,"Error in utime in UpdateFileTime: ");
 		perror("");
 		return 1;
@@ -528,10 +495,7 @@ STARTNOTIFYJOBEND
 		
 			if(retcod <0){
 				close(conn_c);
-				if(debug){
-					fprintf(debuglogfile, "Fatal Error:Poll error in CreamConnection\n");
-					fflush(debuglogfile);
-				}
+				do_log(debuglogfile, debug, 1, "Fatal Error:Poll error in CreamConnection\n");
 				sysfatal("Poll error in CreamConnection: %r");
 			}
     
@@ -540,34 +504,22 @@ ret_c:
 				if ( ( fds[0].revents & ( POLLERR | POLLNVAL | POLLHUP) )){
 					switch (fds[0].revents){
 					case POLLNVAL:
-						if(debug){
-							fprintf(debuglogfile, "Error:poll() file descriptor error in CreamConnection\n");
-							fflush(debuglogfile);
-						}
+						do_log(debuglogfile, debug, 1, "Error:poll() file descriptor error in CreamConnection\n");
 						syserror("poll() file descriptor error in CreamConnection: %r");
 						break;
 					case POLLHUP:
-						if(debug){
-							fprintf(debuglogfile, "Error:Connection closed in CreamConnection\n");
-							fflush(debuglogfile);
-						}
+						do_log(debuglogfile, debug, 1, "Error:Connection closed in CreamConnection\n");
 						syserror("Connection closed in CreamConnection: %r");
 						break;
 					case POLLERR:
-						if(debug){
-							fprintf(debuglogfile, "Error:poll() POLLERR in CreamConnection\n");
-							fflush(debuglogfile);
-						}
+						do_log(debuglogfile, debug, 1, "Error:poll() POLLERR in CreamConnection\n");
 						syserror("poll() POLLERR in CreamConnection: %r");
 						break;
 					}
 				} else {
             
 					if ( (conn_c = accept(c_sock, NULL, NULL) ) < 0 ) {
-						if(debug){
-							fprintf(debuglogfile, "Fatal Error:Error calling accept() in CreamConnection\n");
-							fflush(debuglogfile);
-						}
+						do_log(debuglogfile, debug, 1, "Fatal Error:Error calling accept() in CreamConnection\n");
 						sysfatal("Error calling accept() in CreamConnection: %r");
 					}
 					goto write_c;
@@ -577,10 +529,7 @@ ret_c:
 			retcod = poll(pfds, nfds, timeout);
 			if( retcod < 0 ){
 				close(conn_c);
-				if(debug){
-					fprintf(debuglogfile, "Fatal Error:Poll error in CreamConnection\n");
-					fflush(debuglogfile);
-				}
+				do_log(debuglogfile, debug, 1, "Fatal Error:Poll error in CreamConnection\n");
 				sysfatal("Poll error in CreamConnection: %r");
 			}
 			if(retcod > 0 ){
@@ -591,10 +540,7 @@ write_c:
 			buffer[0]='\0';
 			Readline(conn_c, buffer, STR_CHARS-1);
 			if(strlen(buffer)>0){
-				if(debug){
-					fprintf(debuglogfile, "Received for Cream:%s\n",buffer);
-					fflush(debuglogfile);
-				}
+				do_log(debuglogfile, debug, 1, "Received for Cream:%s\n",buffer);
 				if(buffer && strstr(buffer,"STARTNOTIFY/")!=NULL){
 					NotifyStart(buffer);
 					startnotify=TRUE;
@@ -626,10 +572,7 @@ GetVersion()
 
 	out_buf=make_message("%s__1\n",VERSION);
 	Writeline(conn_c, out_buf, strlen(out_buf));
-	if(debug){
-		fprintf(debuglogfile, "Sent Reply for PARSERVERSION command:%s",out_buf);
-		fflush(debuglogfile);
-	}
+	do_log(debuglogfile, debug, 1, "Sent Reply for PARSERVERSION command:%s",out_buf);
 	free(out_buf);
 	
 	return 0;
@@ -670,10 +613,7 @@ GetFilter(char *buffer)
 		
 	Writeline(conn_c, out_buf, strlen(out_buf));
 
-	if(debug){
-		fprintf(debuglogfile, "Sent Reply for CREAMFILTER command:%s",out_buf);
-		fflush(debuglogfile);
-	}
+	do_log(debuglogfile, debug, 1, "Sent Reply for CREAMFILTER command:%s",out_buf);
 
 	freetoken(&tbuf,maxtok);
         free(out_buf);
@@ -759,10 +699,6 @@ NotifyCream(char *buffer)
 	int      nfds = 1;
 	int      timeout= 1000000;
     
-	time_t   now;
-	char     *nowtm;
-	char     *cp;
-    
 	fds[0].fd = conn_c;
 	fds[0].events = 0;
 	fds[0].events = ( POLLIN | POLLOUT | POLLPRI | POLLERR | POLLHUP | POLLNVAL ) ;
@@ -778,10 +714,7 @@ NotifyCream(char *buffer)
         
 	if(retcod <0){
 		close(conn_c);
-		if(debug){
-			fprintf(debuglogfile, "Fatal Error:Poll error in NotifyCream errno:%d\n",errno);
-			fflush(debuglogfile);
-		}
+		do_log(debuglogfile, debug, 1, "Fatal Error:Poll error in NotifyCream errno:%d\n",errno);
 		sysfatal("Poll error in NotifyCream: %r");
 	}
     
@@ -789,42 +722,22 @@ NotifyCream(char *buffer)
 		if ( ( fds[0].revents & ( POLLERR | POLLNVAL | POLLHUP) )){
 			switch (fds[0].revents){
 			case POLLNVAL:
-				if(debug){
-					fprintf(debuglogfile, "Error:poll() file descriptor error in NotifyCream\n");
-					fflush(debuglogfile);
-				}
+				do_log(debuglogfile, debug, 1, "Error:poll() file descriptor error in NotifyCream\n");
 				syserror("poll() file descriptor error in NotifyCream: %r");
 				break;
 			case POLLHUP:
-				if(debug){
-					fprintf(debuglogfile, "Connection closed in NotifyCream\n");
-					fflush(debuglogfile);
-				}
+				do_log(debuglogfile, debug, 1, "Connection closed in NotifyCream\n");
 				syserror("Connection closed in NotifyCream: %r");
 				break;
 			case POLLERR:
-				if(debug){
-					fprintf(debuglogfile, "Error:poll() POLLERR in NotifyCream\n");
-					fflush(debuglogfile);
-				}
+				do_log(debuglogfile, debug, 1, "Error:poll() POLLERR in NotifyCream\n");
 				syserror("poll() POLLERR in NotifyCream: %r");
 				break;
 			}
 		} else {
-			now=time(NULL);
-			nowtm=ctime(&now);
-			if ((cp = strrchr (nowtm, '\n')) != NULL){
-				*cp = '\0';
-			}
-			if ((cp = strrchr (nowtm, '\r')) != NULL){
-				*cp = '\0';
-			}
 			
 			Writeline(conn_c, buffer, strlen(buffer));
-			if(debug){
-				fprintf(debuglogfile, "%s Sent for Cream:%s",nowtm,buffer);
-				fflush(debuglogfile);
-			}
+			do_log(debuglogfile, debug, 1, "Sent for Cream:%s",buffer);
 		} 
 	}       
 

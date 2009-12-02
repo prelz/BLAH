@@ -41,7 +41,6 @@ int main(int argc, char *argv[]){
 	int version=0;
 	int first=TRUE;
 	int tmptim;
-	char *dgbtimestamp;
 	int finstr_len=0;
 	int loop_interval=DEFAULT_LOOP_INTERVAL;
 	
@@ -112,12 +111,7 @@ int main(int argc, char *argv[]){
 	
         ret = config_get("pbs_binpath",cha);
         if (ret == NULL){
-                if(debug){
-			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%s %s: key pbs_binpath not found\n",dgbtimestamp,argv0);
-			fflush(debuglogfile);
-			free(dgbtimestamp);
-		}
+		do_log(debuglogfile, debug, 1, "%s: key pbs_binpath not found\n",argv0);
         } else {
                 pbs_binpath=strdup(ret->value);
                 if(pbs_binpath == NULL){
@@ -127,12 +121,7 @@ int main(int argc, char *argv[]){
 	
         ret = config_get("pbs_spoolpath",cha);
         if (ret == NULL){
-                if(debug){
-			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%s %s: key pbs_spoolpath not found\n",dgbtimestamp,argv0);
-			fflush(debuglogfile);
-			free(dgbtimestamp);
-		}
+		do_log(debuglogfile, debug, 1, "%s: key pbs_spoolpath not found\n",argv0);
         } else {
                 pbs_spoolpath=strdup(ret->value);
                 if(pbs_spoolpath == NULL){
@@ -142,12 +131,7 @@ int main(int argc, char *argv[]){
 	
 	ret = config_get("job_registry",cha);
 	if (ret == NULL){
-                if(debug){
-			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%s %s: key job_registry not found\n",dgbtimestamp,argv0);
-			fflush(debuglogfile);
-			free(dgbtimestamp);
-		}
+		do_log(debuglogfile, debug, 1, "%s: key job_registry not found\n",argv0);
 		sysfatal("job_registry not defined. Exiting");
 	} else {
 		registry_file=strdup(ret->value);
@@ -158,60 +142,35 @@ int main(int argc, char *argv[]){
 	
 	ret = config_get("purge_interval",cha);
 	if (ret == NULL){
-                if(debug){
-			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%s %s: key purge_interval not found using the default:%d\n",dgbtimestamp,argv0,purge_interval);
-			fflush(debuglogfile);
-			free(dgbtimestamp);
-		}
+		do_log(debuglogfile, debug, 1, "%s: key purge_interval not found using the default:%d\n",argv0,purge_interval);
 	} else {
 		purge_interval=atoi(ret->value);
 	}
 	
 	ret = config_get("finalstate_query_interval",cha);
 	if (ret == NULL){
-                if(debug){
-			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%s %s: key finalstate_query_interval not found using the default:%d\n",dgbtimestamp,argv0,finalstate_query_interval);
-			fflush(debuglogfile);
-			free(dgbtimestamp);
-		}
+		do_log(debuglogfile, debug, 1, "%s: key finalstate_query_interval not found using the default:%d\n",argv0,finalstate_query_interval);
 	} else {
 		finalstate_query_interval=atoi(ret->value);
 	}
 	
 	ret = config_get("alldone_interval",cha);
 	if (ret == NULL){
-                if(debug){
-			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%s %s: key alldone_interval not found using the default:%d\n",dgbtimestamp,argv0,alldone_interval);
-			fflush(debuglogfile);
-			free(dgbtimestamp);
-		}
+		do_log(debuglogfile, debug, 1, "%s: key alldone_interval not found using the default:%d\n",argv0,alldone_interval);
 	} else {
 		alldone_interval=atoi(ret->value);
 	}
 
 	ret = config_get("bupdater_loop_interval",cha);
 	if (ret == NULL){
-                if(debug){
-			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%s %s: key bupdater_loop_interval not found using the default:%d\n",dgbtimestamp,argv0,loop_interval);
-			fflush(debuglogfile);
-			free(dgbtimestamp);
-		}
+		do_log(debuglogfile, debug, 1, "%s: key bupdater_loop_interval not found using the default:%d\n",argv0,loop_interval);
 	} else {
 		loop_interval=atoi(ret->value);
 	}
 	
 	ret = config_get("bupdater_pidfile",cha);
 	if (ret == NULL){
-                if(debug){
-			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%s %s: key bupdater_pidfile not found\n",dgbtimestamp,argv0);
-			fflush(debuglogfile);
-			free(dgbtimestamp);
-		}
+		do_log(debuglogfile, debug, 1, "%s: key bupdater_pidfile not found\n",argv0);
 	} else {
 		pidfile=strdup(ret->value);
                 if(pidfile == NULL){
@@ -231,12 +190,7 @@ int main(int argc, char *argv[]){
 
 	rha=job_registry_init(registry_file, BY_BATCH_ID);
 	if (rha == NULL){
-		if(debug){
-			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%s %s: Error initialising job registry %s\n",dgbtimestamp,argv0,registry_file);
-			fflush(debuglogfile);
-			free(dgbtimestamp);
-		}
+		do_log(debuglogfile, debug, 1, "%s: Error initialising job registry %s\n",argv0,registry_file);
 		fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
 		perror("");
 	}
@@ -246,13 +200,7 @@ int main(int argc, char *argv[]){
 		now=time(0);
 		if(now - purge_time > 86400){
 			if(job_registry_purge(registry_file, now-purge_interval,0)<0){
-
-				if(debug){
-					dgbtimestamp=iepoch2str(time(0));
-					fprintf(debuglogfile, "%s %s: Error purging job registry %s\n",dgbtimestamp,argv0,registry_file);
-					fflush(debuglogfile);
-					free(dgbtimestamp);
-				}
+				do_log(debuglogfile, debug, 1, "%s: Error purging job registry %s\n",argv0,registry_file);
                 	        fprintf(stderr,"%s: Error purging job registry %s :",argv0,registry_file);
                 	        perror("");
 
@@ -266,24 +214,14 @@ int main(int argc, char *argv[]){
 		fd = job_registry_open(rha, "r");
 		
 		if (fd == NULL){
-			if(debug){
-				dgbtimestamp=iepoch2str(time(0));
-				fprintf(debuglogfile, "%s %s: Error opening job registry %s\n",dgbtimestamp,argv0,registry_file);
-				fflush(debuglogfile);
-				free(dgbtimestamp);
-			}
+			do_log(debuglogfile, debug, 1, "%s: Error opening job registry %s\n",argv0,registry_file);
 			fprintf(stderr,"%s: Error opening job registry %s :",argv0,registry_file);
 			perror("");
 			sleep(loop_interval);
 			continue;
 		}
 		if (job_registry_rdlock(rha, fd) < 0){
-			if(debug){
-				dgbtimestamp=iepoch2str(time(0));
-				fprintf(debuglogfile, "%s %s: Error read locking job registry %s\n",dgbtimestamp,argv0,registry_file);
-				fflush(debuglogfile);
-				free(dgbtimestamp);
-			}
+			do_log(debuglogfile, debug, 1, "%s: Error read locking job registry %s\n",argv0,registry_file);
 			fprintf(stderr,"%s: Error read locking job registry %s :",argv0,registry_file);
 			perror("");
 			sleep(loop_interval);
@@ -383,7 +321,6 @@ Job Id: 11.cream-12.pd.infn.it
 	char *wn_str=NULL; 
         char *twn_str=NULL;
         char *status_str=NULL;
-	char *dgbtimestamp;
 	char *cp=NULL;
 	char *command_string=NULL;
 	job_registry_entry *ren=NULL;
@@ -405,12 +342,7 @@ Job Id: 11.cream-12.pd.infn.it
 			if ((cp = strrchr (line, '\n')) != NULL){
 				*cp = '\0';
 			}
-			if(debug>3){
-				dgbtimestamp=iepoch2str(time(0));
-				fprintf(debuglogfile, "%s %s: line in IntStateQuery is:%s\n",dgbtimestamp,argv0,line);
-				fflush(debuglogfile);
-				free(dgbtimestamp);
-			}
+			do_log(debuglogfile, debug, 4, "%s: line in IntStateQuery is:%s\n",argv0,line);
 			if(line && strstr(line,"Job Id: ")){
 				if(!first && en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD)) && ren && (en.status!=ren->status)){
                         		if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum, JOB_REGISTRY_UPDATE_WN_ADDR|JOB_REGISTRY_UPDATE_STATUS|JOB_REGISTRY_UPDATE_UDATE)) < 0){
@@ -419,12 +351,7 @@ Job Id: 11.cream-12.pd.infn.it
 							perror("");
 						}
 					} else {
-						if(debug>1){
-							dgbtimestamp=iepoch2str(time(0));
-							fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.wn_addr,en.status);
-							fflush(debuglogfile);
-							free(dgbtimestamp);
-						}
+						do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.wn_addr,en.status);
 						if (en.status == REMOVED || en.status == COMPLETED)
 							job_registry_unlink_proxy(rha, &en);
 					}
@@ -495,12 +422,7 @@ Job Id: 11.cream-12.pd.infn.it
 				perror("");
 			}
 		} else {
-			if(debug>1){
-				dgbtimestamp=iepoch2str(time(0));
-				fprintf(debuglogfile, "%s %s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.wn_addr,en.status);
-				fflush(debuglogfile);
-				free(dgbtimestamp);
-			}
+			do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.wn_addr,en.status);
 			if (en.status == REMOVED || en.status == COMPLETED)
 				job_registry_unlink_proxy(rha, &en);
 		}
@@ -568,17 +490,11 @@ Job: 13.cream-12.pd.infn.it
 	int failed_count=0;
 	int time_to_add=0;
 	time_t now;
-	char *dgbtimestamp;
 	char *cp=NULL;
 	char *command_string=NULL;
 	char *pbs_spool=NULL;
 
-	if(debug>2){
-		dgbtimestamp=iepoch2str(time(0));
-		fprintf(debuglogfile, "%s %s: input_string in FinalStateQuery is:%s\n",dgbtimestamp,argv0,input_string);
-		fflush(debuglogfile);
-		free(dgbtimestamp);
-	}
+	do_log(debuglogfile, debug, 3, "%s: input_string in FinalStateQuery is:%s\n",argv0,input_string);
 	
 	maxtok_j = strtoken(input_string, ':', &jobid);
 	
@@ -595,12 +511,7 @@ Job: 13.cream-12.pd.infn.it
 		
 		fp = popen(command_string,"r");
 		
-		if(debug>2){
-			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%s %s: command_string in FinalStateQuery is:%s\n",dgbtimestamp,argv0,command_string);
-			fflush(debuglogfile);
-			free(dgbtimestamp);
-		}
+		do_log(debuglogfile, debug, 3, "%s: command_string in FinalStateQuery is:%s\n",argv0,command_string);
 
 		/* en.status is set =0 (UNDEFINED) here and it is tested if it is !=0 before the registry update: the update is done only if en.status is !=0*/
 		en.status=UNDEFINED;
@@ -660,12 +571,7 @@ Job: 13.cream-12.pd.infn.it
 					perror("");
 				}
 			} else {
-				if(debug>1){
-					dgbtimestamp=iepoch2str(time(0));
-					fprintf(debuglogfile, "%s %s: registry update in FinalStateQuery for: jobid=%s exitcode=%d status=%d\n",dgbtimestamp,argv0,en.batch_id,en.exitcode,en.status);
-					fflush(debuglogfile);
-					free(dgbtimestamp);
-				}
+				do_log(debuglogfile, debug, 2, "%s: registry update in FinalStateQuery for: jobid=%s exitcode=%d status=%d\n",argv0,en.batch_id,en.exitcode,en.status);
 				if (en.status == REMOVED || en.status == COMPLETED)
 					job_registry_unlink_proxy(rha, &en);
 			}
@@ -679,12 +585,7 @@ Job: 13.cream-12.pd.infn.it
 	now=time(0);
 	time_to_add=pow(failed_count,1.5);
 	next_finalstatequery=now+time_to_add;
-	if(debug>2){
-		dgbtimestamp=iepoch2str(time(0));
-		fprintf(debuglogfile, "%s %s: next FinalStatequery will be in %d seconds\n",dgbtimestamp,argv0,time_to_add);
-		fflush(debuglogfile);
-		free(dgbtimestamp);
-	}
+	do_log(debuglogfile, debug, 3, "%s: next FinalStatequery will be in %d seconds\n",argv0,time_to_add);
 	
 	freetoken(&jobid,maxtok_j);
 	return 0;
@@ -695,7 +596,6 @@ int AssignFinalState(char *batchid){
 	job_registry_entry en;
 	int ret,i;
 	time_t now;
-	char *dgbtimestamp;
 
 	now=time(0);
 	
@@ -712,12 +612,7 @@ int AssignFinalState(char *batchid){
 			perror("");
 		}
 	} else {
-		if(debug>1){
-			dgbtimestamp=iepoch2str(time(0));
-			fprintf(debuglogfile, "%s %s: registry update in AssignStateQuery for: jobid=%s creamjobid=%s status=%d\n",dgbtimestamp,argv0,en.batch_id,en.user_prefix,en.status);
-			fflush(debuglogfile);
-			free(dgbtimestamp);
-		}
+		do_log(debuglogfile, debug, 2, "%s: registry update in AssignStateQuery for: jobid=%s creamjobid=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.status);
 		job_registry_unlink_proxy(rha, &en);
 	}
 
@@ -733,4 +628,3 @@ void sighup()
                 }
         }
 }
-
