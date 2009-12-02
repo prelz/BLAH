@@ -1372,9 +1372,13 @@ GetLogList(char *logdate)
 	}
 	 
 	tmthr.tm_sec=tmthr.tm_min=tmthr.tm_hour=tmthr.tm_isdst=0;
-	p=strptime(logdate,"%Y%m%d",&tmthr);
-	if( (p-logdate) != 8) {
-		syserror("Timestring \"%s\" is invalid (YYYYmmdd): %r", logdate);
+	p=strptime(logdate,"%Y%m%d%H%M.%S",&tmthr);
+	if( (p-logdate) != 15) {
+		if(debug){
+			fprintf(debuglogfile, "Timestring \"%s\" is invalid (YYYYmmddhhmm.ss)\n",logdate);
+			fflush(debuglogfile);
+		}
+		syserror("Timestring \"%s\" is invalid (YYYYmmddhhmm.ss): %r", logdate);
 		return NULL;
 	}
 	tage=mktime(&tmthr);
@@ -1561,10 +1565,11 @@ NotifyFromDate(char *in_buf)
 	int   reqjobidnum=0;;
 	int   jfound=0;;
 
-	int  maxtok,j,maxtok_s,maxtok_l,maxtok_c; 
+	int  maxtok,j,maxtok_s,maxtok_l,maxtok_b,maxtok_c; 
 	char **tbuf;
 	char **sbuf;
 	char **lbuf;
+	char **bbuf;
 	char **cbuf;
 	char *cp;
 	char *nowtm;
@@ -1776,6 +1781,9 @@ NotifyFromDate(char *in_buf)
 					if((lbuf=calloc(10 * sizeof *lbuf,1)) == 0){
 						sysfatal("can't malloc lbuf: %r");
 					}
+					if((bbuf=calloc(10 * sizeof *bbuf,1)) == 0){
+						sysfatal("can't malloc bbuf: %r");
+					}
 					if((fullbljobid=calloc(300,1)) == 0){
 						sysfatal("can't malloc fullbljobid: %r");
 					}
@@ -1783,7 +1791,8 @@ NotifyFromDate(char *in_buf)
 						sysfatal("can't malloc tbljobid: %r");
 					}
 					maxtok_l=strtoken(ntf[ii],';',lbuf);
-					tbljobid=strdel(lbuf[0],"BlahJobName=\"");
+					maxtok_b=strtoken(lbuf[2],'=',bbuf);
+					tbljobid=strdel(bbuf[1],"\"");
 					sprintf(fullbljobid,",%s,",tbljobid);
 					
 					free(tbljobid);
@@ -1822,6 +1831,9 @@ NotifyFromDate(char *in_buf)
 				if((lbuf=calloc(10 * sizeof *lbuf,1)) == 0){
 					sysfatal("can't malloc lbuf: %r");
 				}
+				if((bbuf=calloc(10 * sizeof *bbuf,1)) == 0){
+					sysfatal("can't malloc bbuf: %r");
+				}
 				if((fullbljobid=calloc(300,1)) == 0){
 					sysfatal("can't malloc fullbljobid: %r");
 				}
@@ -1829,11 +1841,17 @@ NotifyFromDate(char *in_buf)
 					sysfatal("can't malloc tbljobid: %r");
 				}
 				maxtok_l=strtoken(ntf[ii],';',lbuf);
-				tbljobid=strdel(lbuf[0],"BlahJobName=\"");
+				maxtok_b=strtoken(lbuf[2],'=',bbuf);
+				
+				tbljobid=strdel(bbuf[1],"\"");
 				sprintf(fullbljobid,",%s,",tbljobid);
 					
 				free(tbljobid);
 				
+				for(j=0;j<maxtok_b;j++){
+					free(bbuf[j]);
+				}
+				free(bbuf);
 				for(j=0;j<maxtok_l;j++){
 					free(lbuf[j]);
 				}
