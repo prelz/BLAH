@@ -219,17 +219,15 @@ PollDB()
 	job_registry_handle *rhc;
 	char *buffer=NULL;
 	char *finalbuffer=NULL;
-	char *new_finalbuffer;
         char *cdate=NULL;
 	time_t now;
         int  maxtok,i;
         char **tbuf;
-	int size;
-	int len;
+	int len=0,flen=0;
 	
 	rha=job_registry_init(registry_file, BY_BATCH_ID);
 	if (rha == NULL){
-		do_log(debuglogfile, debug, 1, "%s: Error initialising job registry %s",argv0,registry_file);
+		do_log(debuglogfile, debug, 1, "%s: Error initialising job registry %s\n",argv0,registry_file);
 		fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
 		perror("");
 	}
@@ -247,7 +245,7 @@ PollDB()
 			fd = job_registry_open(rha, "r");
 			if (fd == NULL)
 			{
-				do_log(debuglogfile, debug, 1, "%s: Error opening job registry %s",argv0,registry_file);
+				do_log(debuglogfile, debug, 1, "%s: Error opening job registry %s\n",argv0,registry_file);
 				fprintf(stderr,"%s: Error opening job registry %s :",argv0,registry_file);
 				perror("");
 				sleep(loop_interval);
@@ -255,7 +253,7 @@ PollDB()
 			}
 			if (job_registry_rdlock(rha, fd) < 0)
 			{
-				do_log(debuglogfile, debug, 1, "%s: Error read locking registry %s",argv0,registry_file);
+				do_log(debuglogfile, debug, 1, "%s: Error read locking registry %s\n",argv0,registry_file);
 				fprintf(stderr,"%s: Error read locking registry %s :",argv0,registry_file);
 				perror("");
 				sleep(loop_interval);
@@ -268,15 +266,18 @@ PollDB()
 				{
 					buffer=ComposeClassad(en);
 					len=strlen(buffer);
-					size+=len+2;
-					new_finalbuffer = realloc(finalbuffer,size);
-					if (new_finalbuffer == NULL)
-					{
-						fprintf(stderr,"%s: Out of memory.",argv0);
-						continue;
+					if(finalbuffer != NULL){
+						flen=strlen(finalbuffer);
+					}else{
+						flen=0;
 					}
-					if (finalbuffer == NULL) new_finalbuffer[0] = '\000';
-					finalbuffer = new_finalbuffer;
+					finalbuffer = realloc(finalbuffer,flen+len+2);
+					if (finalbuffer == NULL){
+                                                sysfatal("can't realloc finalbuffer in PollDB: %r");
+					}
+					if(flen==0){
+						finalbuffer[0]='\000';
+					}
 					strcat(finalbuffer,buffer);
 					free(buffer);
 				}
@@ -297,7 +298,7 @@ PollDB()
 		}else if(startnotifyjob){
 			rhc=job_registry_init(registry_file, BY_USER_PREFIX);
 			if (rhc == NULL){
-				do_log(debuglogfile, debug, 1, "%s: Error initialising job registry %s",argv0,registry_file);
+				do_log(debuglogfile, debug, 1, "%s: Error initialising job registry %s\n",argv0,registry_file);
 				fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
 				perror("");
 			}
@@ -572,7 +573,7 @@ GetVersion()
 
 	out_buf=make_message("%s__1\n",VERSION);
 	Writeline(conn_c, out_buf, strlen(out_buf));
-	do_log(debuglogfile, debug, 1, "Sent Reply for PARSERVERSION command:%s",out_buf);
+	do_log(debuglogfile, debug, 1, "Sent Reply for PARSERVERSION command:%s\n",out_buf);
 	free(out_buf);
 	
 	return 0;
@@ -613,7 +614,7 @@ GetFilter(char *buffer)
 		
 	Writeline(conn_c, out_buf, strlen(out_buf));
 
-	do_log(debuglogfile, debug, 1, "Sent Reply for CREAMFILTER command:%s",out_buf);
+	do_log(debuglogfile, debug, 1, "Sent Reply for CREAMFILTER command:%s\n",out_buf);
 
 	freetoken(&tbuf,maxtok);
         free(out_buf);
@@ -705,7 +706,6 @@ NotifyCream(char *buffer)
 	pfds = fds;    
     
 	if(!creamisconn){
-		free(buffer);
 		return -1;
 	}
     
@@ -737,7 +737,7 @@ NotifyCream(char *buffer)
 		} else {
 			
 			Writeline(conn_c, buffer, strlen(buffer));
-			do_log(debuglogfile, debug, 1, "Sent for Cream:%s",buffer);
+			do_log(debuglogfile, debug, 1, "Sent for Cream:%s\n",buffer);
 		} 
 	}       
 
