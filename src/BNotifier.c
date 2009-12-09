@@ -310,7 +310,7 @@ PollDB()
 					NotifyCream(buffer);
 				}else{
 					cdate=iepoch2str(now);
-					buffer=make_message("[BlahJobName=\"%s\"; JobStatus=4; ExitCode=999; ExitReason=\"job not found\"; ChangeTime=\"%s\"; ]\n",tbuf[i],cdate);
+					buffer=make_message("[BlahJobName=\"%s\"; JobStatus=4; JwExitCode=999; ExitReason=\"job not found\"; ChangeTime=\"%s\"; ]\n",tbuf[i],cdate);
 					free(cdate);
 					NotifyCream(buffer);
 				}
@@ -368,7 +368,7 @@ ComposeClassad(job_registry_entry *en)
 		free(wn);
 		}
 	if (en->status == 3 || en->status == 4){
-		excode=make_message(" ExitCode=%d; Reason=\"reason=%d\";", en->exitcode, en->exitcode);
+		excode=make_message(" JwExitCode=%d; Reason=\"reason=%d\";", en->exitcode, en->exitcode);
 		strcat(buffer,excode);
 		free(excode);
 	}

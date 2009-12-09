@@ -1119,7 +1119,7 @@ LookupAndSend(int m_sock)
 			sprintf(jstat," JobStatus=%s;",j2js[id]);
 	 
 			if(j2js[id] && strcmp(j2js[id],"4")==0){
-				sprintf(out_buf,"[BatchJobId=\"%s\";%s LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\"; ExitCode=%s;/%s\n",jobid, jstat, j2st[id], j2rt[id], j2ct[id], j2ec[id], pr_removal);
+				sprintf(out_buf,"[BatchJobId=\"%s\";%s LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\"; JwExitCode=%s;/%s\n",jobid, jstat, j2st[id], j2rt[id], j2ct[id], j2ec[id], pr_removal);
 			}else if(j2rt[id] && strcmp(j2rt[id],"\0")!=0){
 				sprintf(out_buf,"[BatchJobId=\"%s\";%s LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";/%s\n",jobid, jstat, j2st[id], j2rt[id], pr_removal);
 			}else{
@@ -1150,7 +1150,7 @@ LookupAndSend(int m_sock)
 				sprintf(jstat," JobStatus=%s;",j2js[id]);
 	  
 				if(j2js[id] && strcmp(j2js[id],"4")==0){
-					sprintf(out_buf,"[BatchJobId=\"%s\";%s LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\"; ExitCode=%s;/%s\n",jobid, jstat, j2st[id], j2rt[id], j2ct[id], j2ec[id], pr_removal);
+					sprintf(out_buf,"[BatchJobId=\"%s\";%s LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\"; JwExitCode=%s;/%s\n",jobid, jstat, j2st[id], j2rt[id], j2ct[id], j2ec[id], pr_removal);
 				}else if(j2rt[id] && strcmp(j2rt[id],"\0")!=0){
 					sprintf(out_buf,"[BatchJobId=\"%s\";%s LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";/%s\n",jobid, jstat, j2st[id], j2rt[id], pr_removal);
 				}else{
