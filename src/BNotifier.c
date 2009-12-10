@@ -310,7 +310,7 @@ PollDB()
 					NotifyCream(buffer);
 				}else{
 					cdate=iepoch2str(now);
-					buffer=make_message("[BlahJobName=\"%s\"; JobStatus=4; JwExitCode=999; ExitReason=\"job not found\"; ChangeTime=\"%s\"; ]\n",tbuf[i],cdate);
+					buffer=make_message("[BlahJobName=\"%s\"; JobStatus=4; JwExitCode=999; ExitReason=\"job not found\"; Reason=\"reason=999\"; ChangeTime=\"%s\"; ]\n",tbuf[i],cdate);
 					free(cdate);
 					NotifyCream(buffer);
 				}
