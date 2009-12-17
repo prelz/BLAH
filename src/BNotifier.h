@@ -38,7 +38,6 @@
 #include "config.h"
 
 #define LISTENQ            1024
-#define NOTIF_FILE         "/opt/glite/var/blah/.notiftime.txt" 
 
 #define DEFAULT_LOOP_INTERVAL 5
 
@@ -49,13 +48,11 @@
 /*  Function declarations  */
 
 int PollDB();
-int UpdateFileTime(time_t sec);
 char *ComposeClassad(job_registry_entry *en);
 int NotifyStart(char *buffer);
 int GetVersion();
 int GetFilter(char *buffer);
 int GetJobList(char *buffer);
-int GetModTime(char *filename);
 void CreamConnection(int c_sock);
 int NotifyCream(char *buffer);
 void sighup();
@@ -63,8 +60,6 @@ void sighup();
 /* Variables initialization */
 
 char *progname="BNotifier";
-
-char *notiffile=NOTIF_FILE;
 
 char *registry_file;
 
@@ -90,3 +85,5 @@ int sentendonce=TRUE;
 char *joblist_string="";
 
 int loop_interval=DEFAULT_LOOP_INTERVAL;
+
+time_t lastnotiftime;

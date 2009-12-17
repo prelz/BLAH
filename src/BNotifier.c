@@ -262,7 +262,7 @@ PollDB()
 			while ((en = job_registry_get_next(rha, fd)) != NULL)
 			{
 		
-				if(en->mdate >= GetModTime(notiffile) && en->mdate < now && en->user_prefix && strstr(en->user_prefix,creamfilter)!=NULL)
+				if(en->mdate >= lastnotiftime && en->mdate < now && en->user_prefix && strstr(en->user_prefix,creamfilter)!=NULL)
 				{
 					buffer=ComposeClassad(en);
 					len=strlen(buffer);
@@ -292,8 +292,8 @@ PollDB()
 			
 			fclose(fd);
 			
-	        	/* change date of notification file */
-			UpdateFileTime(now);
+	        	/* change last notification time */
+			lastnotiftime=now;;
 			
 		}else if(startnotifyjob){
 			rhc=job_registry_init(registry_file, BY_USER_PREFIX);
@@ -319,8 +319,8 @@ PollDB()
 			}
 			freetoken(&tbuf,maxtok);
 			
-	        	/* change date of notification file */
-			UpdateFileTime(now);
+	        	/* change last notification time */
+			lastnotiftime=now;
 			startnotifyjob=FALSE;
 			startnotify=TRUE;
 			job_registry_destroy(rhc);
@@ -401,52 +401,6 @@ ComposeClassad(job_registry_entry *en)
 		
 	return buffer;
 		
-}
-
-int
-UpdateFileTime(time_t sec)
-{
-	
-	int fd;
-	struct utimbuf utb;
-	struct stat buf;
-		
-	fd = open(notiffile, O_RDWR | O_CREAT,S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
-	if (fd < 0) {
-		do_log(debuglogfile, debug, 1, "Error opening notif file in UpdateFileTime\n");
-		fprintf(stderr,"Error opening notif file in UpdateFileTime: ");
-		perror("");
-		return 1;
-	}
-	close(fd);
-	stat(notiffile,&buf);
-	
-	utb.actime = buf.st_atime;
-	utb.modtime = sec;
-
-	if (utime(notiffile, &utb)) {
-		do_log(debuglogfile, debug, 1, "Error in utime in UpdateFileTime\n");
-		fprintf(stderr,"Error in utime in UpdateFileTime: ");
-		perror("");
-		return 1;
-	}
-	
-	return 0;
-
-}
-
-int
-GetModTime(char *filename)
-{
-	struct stat buf;
-	int ret;
-	ret=stat(filename,&buf);
-	if (ret < 0) {
-		do_log(debuglogfile, debug, 1, "Error opening notif file in GetModTime\n");
-		fprintf(stderr,"Error opening notif file in GetModTime: ");
-		perror("");
-	}
-	return buf.st_mtime;
 }
 
 void 
@@ -659,7 +613,7 @@ NotifyStart(char *buffer)
 	notifepoch=str2epoch(notifdate,"S");
 	free(notifdate);
 
-	UpdateFileTime(notifepoch);
+	lastnotiftime=notifepoch;
 	
 	return 0;
 
