@@ -293,7 +293,7 @@ PollDB()
 			fclose(fd);
 			
 	        	/* change last notification time */
-			lastnotiftime=now;;
+			lastnotiftime=now;
 			
 		}else if(startnotifyjob){
 			rhc=job_registry_init(registry_file, BY_USER_PREFIX);
@@ -438,6 +438,7 @@ STARTNOTIFYJOBEND
 	struct   pollfd *pfds;
 	int      nfds = 1;
 	int      timeout= 5000;
+	time_t now;
     
 	fds[0].fd = c_sock;
 	fds[0].events = 0;
@@ -513,6 +514,8 @@ write_c:
                                 } else if(buffer && strstr(buffer,"STARTNOTIFYJOBEND/")!=NULL){
                                         startnotify=TRUE;
 					firstnotify=TRUE;
+					now=time(NULL);
+					lastnotiftime=now;
 				} else if(buffer && strstr(buffer,"CREAMFILTER/")!=NULL){
                                         GetFilter(buffer);
 					creamisconn=TRUE;
