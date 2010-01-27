@@ -103,6 +103,10 @@ main(int argc, char *argv[])
 		sprintf(ldir,"%s/server_logs",spooldir);
 	}
 
+	if (opendir(ldir)==NULL){
+		sysfatal("dir %s does not exist or is not readable: %r",ldir);
+	}
+
 	now=time(NULL);
 	tptr=localtime(&now);
 	strftime(cnow,sizeof(cnow),"%Y%m%d",tptr);

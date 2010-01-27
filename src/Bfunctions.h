@@ -39,6 +39,7 @@
 #include <math.h>
 #include <signal.h>
 #include <pthread.h>
+#include <dirent.h>
 #include "blahpd.h"
 #include "blah_utils.h"
 

@@ -35,6 +35,7 @@ int main(int argc, char *argv[]){
 	char *pidfile=NULL;
 	char *final_string=NULL;
 	char *cp=NULL;
+	char *tpath;
 	
 	poptContext poptcon;
 	int rc=0;			     
@@ -127,6 +128,13 @@ int main(int argc, char *argv[]){
                 if(pbs_spoolpath == NULL){
                         sysfatal("strdup failed for pbs_spoolpath in main: %r");
                 }
+
+		tpath=make_message("%s/server_logs",pbs_spoolpath);
+		if (opendir(tpath)==NULL){
+			do_log(debuglogfile, debug, 1, "%s: dir %s does not exist or is not readable\n",argv0,tpath);
+			sysfatal("dir %s does not exist or is not readable: %r",tpath);
+		}
+		free(tpath);
         }
 	
 	ret = config_get("job_registry",cha);
@@ -527,6 +535,7 @@ Job: 13.cream-12.pd.infn.it
 				if ((cp = strrchr (line, '\n')) != NULL){
 					*cp = '\0';
 				}
+                        	do_log(debuglogfile, debug, 3, "%s: line in FinalStateQuery is:%s\n",argv0,line);
 				if(line && (strstr(line,"Job deleted") || (strstr(line,"dequeuing from") && strstr(line,"state RUNNING")))){	
 					maxtok_t = strtoken(line, ' ', &token);
 					timestamp=make_message("%s %s",token[0],token[1]);
