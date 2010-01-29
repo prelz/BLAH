@@ -288,12 +288,12 @@ PollDB()
 				NotifyCream(finalbuffer);
 				free(finalbuffer);
 				finalbuffer=NULL;
+	        		/* change last notification time */
+				lastnotiftime=now;
 			}
 			
 			fclose(fd);
 			
-	        	/* change last notification time */
-			lastnotiftime=now;
 			
 		}else if(startnotifyjob){
 			rhc=job_registry_init(registry_file, BY_USER_PREFIX);
@@ -700,7 +700,7 @@ NotifyCream(char *buffer)
 		} else {
 			
 			Writeline(conn_c, buffer, strlen(buffer));
-			do_log(debuglogfile, debug, 1, "Sent for Cream:%s\n",buffer);
+			do_log(debuglogfile, debug, 1, "Sent for Cream:%s",buffer);
 		} 
 	}       
 
