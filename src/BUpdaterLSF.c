@@ -69,6 +69,9 @@ int main(int argc, char *argv[]){
 		exit(EXIT_SUCCESS);
 	}   
 
+        /* Checking configuration */
+        check_config_file();
+
 	cha = config_read(NULL);
 	if (cha == NULL)
 	{

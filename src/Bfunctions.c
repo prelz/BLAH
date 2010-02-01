@@ -579,6 +579,10 @@ int do_log(FILE *debuglogfile, int debuglevel, int dbgthresh, const char *fmt, .
         va_list ap;
 	char *dbgtimestamp;
 	
+	if(debuglevel == 0){
+		return 0;
+	}
+	
         if(debuglevel>=dbgthresh){
 		dbgtimestamp=iepoch2str(time(0));
 		fprintf(debuglogfile,"%s ",dbgtimestamp);
@@ -591,3 +595,220 @@ int do_log(FILE *debuglogfile, int debuglevel, int dbgthresh, const char *fmt, .
 	
 	return 0;	
 } 
+
+int check_config_file(){
+	
+	char *s;
+        struct stat sbuf;
+        int rc;
+	config_handle *lcha;
+	config_entry *lret;
+	char *supplrms;
+	char *reg_file;
+	char *pbs_path;
+	char *lsf_path;
+	char *condor_path;
+	char *pbs_spool;
+	char *ldebuglogname;
+	FILE *ldebuglogfile;
+	int  ldebug;
+	int async_port;
+        lcha = config_read(NULL);
+	
+        if (lcha == NULL) {
+		sysfatal("Error reading config: %r");
+        }
+
+/* Get debug level and debug log file info to log possible problems */
+	
+	lret = config_get("bupdater_debug_level",lcha);
+	if (lret != NULL){
+		ldebug=atoi(lret->value);
+	}
+	
+	lret = config_get("bupdater_debug_logfile",lcha);
+	if (lret != NULL){
+		ldebuglogname=strdup(lret->value);
+                if(ldebuglogname == NULL){
+                        sysfatal("strdup failed for ldebuglogname in check_config_file: %r");
+                }
+	}
+	if(ldebug <=0){
+		ldebug=0;
+	}
+    
+	if(ldebuglogname){
+		if((ldebuglogfile = fopen(ldebuglogname, "a+"))==0){
+			ldebug = 0;
+		}
+	}else{
+		ldebug = 0;
+	}
+	
+/* Get supported_lrms key */
+
+        lret = config_get("supported_lrms",lcha);
+	if (lret == NULL){
+		do_log(ldebuglogfile, ldebug, 1, "%s: key supported_lrms not found\n",argv0);
+		sysfatal("supported_lrms not defined. Exiting");
+        }else{
+                supplrms=strdup(lret->value);
+                if(supplrms == NULL){
+                        sysfatal("strdup failed for supplrms in check_config_file: %r");
+                }
+        }
+	
+/* Check if job_registry is defined */
+      
+	lret = config_get("job_registry",lcha);
+	if (lret == NULL){
+		do_log(ldebuglogfile, ldebug, 1, "%s: key job_registry not found\n",argv0);
+		sysfatal("job_registry not defined. Exiting");
+        }else{
+                reg_file=strdup(lret->value);
+                if(reg_file == NULL){
+                        sysfatal("strdup failed for reg_file in check_config_file: %r");
+                }
+        }
+	free(reg_file);
+	
+/* Check if async_notification_port is defined */
+      
+        lret = config_get("async_notification_port",lcha);
+	if (lret == NULL){
+		do_log(ldebuglogfile, ldebug, 1, "%s: key async_notification_port not found\n",argv0);
+		sysfatal("async_notification_port not defined. Exiting");
+	} else {
+                async_port=atoi(lret->value);
+        }
+
+	if(strstr(supplrms,"pbs")){
+	
+/* Check if pbs_binpath exists and that the programs that use it are executables */
+
+        	lret = config_get("pbs_binpath",lcha);
+		if (lret == NULL){
+			do_log(ldebuglogfile, ldebug, 1, "%s: key pbs_binpath not found\n",argv0);
+			sysfatal("pbs_binpath not defined. Exiting");
+		} else {
+			pbs_path=strdup(lret->value);
+                	if(pbs_path == NULL){
+                        	sysfatal("strdup failed for pbs_path in check_config_file: %r");
+                	}
+        	}
+		
+		s=make_message("%s/qstat",pbs_path);	
+		if(access(s,X_OK)){
+			do_log(ldebuglogfile, ldebug, 1, "%s: %s is not accessible or %s is not executable\n",argv0,pbs_path,s);
+			sysfatal("%s is not accessible or %s is not executable: %r",pbs_path,s);
+		}
+		free(s);
+		s=make_message("%s/tracejob",pbs_path);	
+		if(access(s,X_OK)){
+			do_log(ldebuglogfile, ldebug, 1, "%s: %s is not accessible or %s is not executable\n",argv0,pbs_path,s);
+			sysfatal("%s is not accessible or %s is not executable: %r",pbs_path,s);
+		}
+		free(s);
+	
+		free(pbs_path);
+		
+/* Check if pbs_spoolpath/server_logs exists and is accessible */
+
+		lret = config_get("pbs_spoolpath",lcha);
+		if (lret == NULL){
+			do_log(ldebuglogfile, ldebug, 1, "%s: key pbs_spoolpath not found\n",argv0);
+			sysfatal("pbs_spoolpath not defined. Exiting");
+		} else {
+			pbs_spool=strdup(lret->value);
+                	if(pbs_spool == NULL){
+                        	sysfatal("strdup failed for pbs_spool in check_config_file: %r");
+                	}
+		}
+		
+		s=make_message("%s/server_logs",pbs_spool);
+		rc=stat(s,&sbuf);
+		if(rc) {
+			do_log(ldebuglogfile, ldebug, 1, "%s: dir %s does not exist\n",argv0,s);
+			sysfatal("dir %s does not exist: %r",s);
+		}
+		if(! S_ISDIR(sbuf.st_mode)){
+			do_log(ldebuglogfile, ldebug, 1, "%s: %s is not a dir\n",argv0,s);
+			sysfatal("%s is not a dir: %r",s);
+		}	
+		if(access(s,X_OK)){
+			do_log(ldebuglogfile, ldebug, 1, "%s: dir %s is not accessible\n",argv0,s);
+			sysfatal("dir %s is not accessible: %r",s);
+		}	
+		free(s);	
+		
+		free(pbs_spool);		
+		
+	}
+	if(strstr(supplrms,"lsf")){
+	
+/* Check if lsf_binpath exists  and that the programs that use it are executables */
+
+        	lret = config_get("lsf_binpath",lcha);
+		if (lret == NULL){
+			do_log(ldebuglogfile, ldebug, 1, "%s: key lsf_binpath not found\n",argv0);
+			sysfatal("lsf_binpath not defined. Exiting");
+		} else {
+			lsf_path=strdup(lret->value);
+                	if(lsf_path == NULL){
+                        	sysfatal("strdup failed for lsf_path in check_config_file: %r");
+                	}
+		}
+		
+		s=make_message("%s/bjobs",lsf_path);	
+		if(access(s,X_OK)){
+			do_log(ldebuglogfile, ldebug, 1, "%s: %s is not accessible or %s is not executable\n",argv0,lsf_path,s);
+			sysfatal("%s is not accessible or %s is not executable: %r",lsf_path,s);
+		}
+		free(s);
+		s=make_message("%s/bhist",lsf_path);	
+		if(access(s,X_OK)){
+			do_log(ldebuglogfile, ldebug, 1, "%s: %s is not accessible or %s is not executable\n",argv0,lsf_path,s);
+			sysfatal("%s is not accessible or %s is not executable: %r",lsf_path,s);
+		}
+		free(s);
+		
+		free(lsf_path);		
+		
+	}
+	if(strstr(supplrms,"condor")){
+	
+/* Check if condor_binpath exists  and that the programs that use it are executables */
+
+		lret = config_get("condor_binpath",lcha);
+		if (lret == NULL){
+			do_log(ldebuglogfile, ldebug, 1, "%s: key condor_binpath not found\n",argv0);
+			sysfatal("condor_binpath not defined. Exiting");
+		} else {
+			condor_path=strdup(lret->value);
+                	if(condor_path == NULL){
+                        	sysfatal("strdup failed for condor_path in check_config_file: %r");
+                	}
+		}
+		
+		s=make_message("%s/condor_q",condor_path);	
+		if(access(s,X_OK)){
+			do_log(ldebuglogfile, ldebug, 1, "%s: %s is not accessible or %s is not executable\n",argv0,condor_path,s);
+			sysfatal("%s is not accessible or %s is not executable: %r",condor_path,s);
+		}
+		free(s);
+		s=make_message("%s/condor_history",condor_path);	
+		if(access(s,X_OK)){
+			do_log(ldebuglogfile, ldebug, 1, "%s: %s is not accessible or %s is not executable\n",argv0,condor_path,s);
+			sysfatal("%s is not accessible or %s is not executable: %r",condor_path,s);
+		}
+		free(s);
+		
+		free(condor_path);
+	
+	}
+	free(supplrms);
+	free(ldebuglogname);
+	fclose(ldebuglogfile);
+
+	return 0;
+}

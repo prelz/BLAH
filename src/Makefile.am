@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.41 2009/12/01 10:14:18 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.42 2010/02/01 15:41:53 mezzadri Exp $ 
 #
 # File:           Makefile.am
 #
@@ -108,7 +108,7 @@ BUpdaterLSF_LDADD = -lpopt -lpthread
 BUpdaterPBS_SOURCES = BUpdaterPBS.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c
 BUpdaterPBS_LDADD = -lpopt -lpthread -lm
 
-BUpdaterSGE_SOURCES = BUpdaterSGE.c Bfunctions.c job_registry.c md5.c config.c
+BUpdaterSGE_SOURCES = BUpdaterSGE.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c
 BUpdaterSGE_LDADD = -lpopt -lpthread
 
 blparser_master_SOURCES = blparser_master.c config.c blah_utils.c
