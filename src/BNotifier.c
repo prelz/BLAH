@@ -74,7 +74,7 @@ main(int argc, char *argv[])
 	}   
 
 	/* Checking configuration */
-	check_config_file();
+	check_config_file("NOTIFIER");
 
 	/* Reading configuration */
 	cha = config_read(NULL);

@@ -70,7 +70,7 @@ int main(int argc, char *argv[]){
 	}   
 
         /* Checking configuration */
-        check_config_file();
+        check_config_file("UPDATER");
 
 	cha = config_read(NULL);
 	if (cha == NULL)

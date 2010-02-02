@@ -596,43 +596,61 @@ int do_log(FILE *debuglogfile, int debuglevel, int dbgthresh, const char *fmt, .
 	return 0;	
 } 
 
-int check_config_file(){
+int check_config_file(char *logdev){
 	
-	char *s;
+	char *s=NULL;
         struct stat sbuf;
         int rc;
 	config_handle *lcha;
 	config_entry *lret;
-	char *supplrms;
-	char *reg_file;
-	char *pbs_path;
-	char *lsf_path;
-	char *condor_path;
-	char *pbs_spool;
-	char *ldebuglogname;
+	char *supplrms=NULL;
+	char *reg_file=NULL;
+	char *pbs_path=NULL;
+	char *lsf_path=NULL;
+	char *condor_path=NULL;
+	char *pbs_spool=NULL;
+	char *ldebuglogname=NULL;
 	FILE *ldebuglogfile;
 	int  ldebug;
 	int async_port;
+		
         lcha = config_read(NULL);
-	
         if (lcha == NULL) {
 		sysfatal("Error reading config: %r");
         }
 
 /* Get debug level and debug log file info to log possible problems */
+
+	if(strcmp(logdev,"STDOUT")==0){
+		ldebug==0;
+	}else if(strcmp(logdev,"UPDATER")==0){
+		lret = config_get("bupdater_debug_level",lcha);
+		if (lret != NULL){
+			ldebug=atoi(lret->value);
+		}
 	
-	lret = config_get("bupdater_debug_level",lcha);
-	if (lret != NULL){
-		ldebug=atoi(lret->value);
+		lret = config_get("bupdater_debug_logfile",lcha);
+		if (lret != NULL){
+			ldebuglogname=strdup(lret->value);
+			if(ldebuglogname == NULL){
+                        	sysfatal("strdup failed for ldebuglogname in check_config_file: %r");
+			}
+		}
+	}else if(strcmp(logdev,"NOTIFIER")==0){
+		lret = config_get("bnotifier_debug_level",lcha);
+		if (lret != NULL){
+			ldebug=atoi(lret->value);
+		}
+	
+		lret = config_get("bnotifier_debug_logfile",lcha);
+		if (lret != NULL){
+			ldebuglogname=strdup(lret->value);
+			if(ldebuglogname == NULL){
+                        	sysfatal("strdup failed for ldebuglogname in check_config_file: %r");
+			}
+		}
 	}
 	
-	lret = config_get("bupdater_debug_logfile",lcha);
-	if (lret != NULL){
-		ldebuglogname=strdup(lret->value);
-                if(ldebuglogname == NULL){
-                        sysfatal("strdup failed for ldebuglogname in check_config_file: %r");
-                }
-	}
 	if(ldebug <=0){
 		ldebug=0;
 	}
@@ -808,7 +826,9 @@ int check_config_file(){
 	}
 	free(supplrms);
 	free(ldebuglogname);
-	fclose(ldebuglogfile);
+	if(ldebug!=0){
+		fclose(ldebuglogfile);
+	}
 
 	return 0;
 }
