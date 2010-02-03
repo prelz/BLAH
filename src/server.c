@@ -1682,7 +1682,9 @@ get_status_and_old_proxy(int use_glexec, char *jobDescr,
 		{
 			if (error_string != NULL)
 			{
-				*error_string = escape_spaces(strerror_r(errno, error_buffer, sizeof(error_buffer)));
+				error_buffer[0] = '\000';
+				strerror_r(errno, error_buffer, sizeof(error_buffer));
+				*error_string = escape_spaces(error_buffer);
 			}
 			/* Proxy link for renewal is not accessible */
 			/* Try with .norenew */
