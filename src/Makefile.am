@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.43 2010/02/02 09:15:10 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.44 2010/02/04 11:55:26 mezzadri Exp $ 
 #
 # File:           Makefile.am
 #
@@ -51,25 +51,15 @@ $(GLOBUS_GSS_NOTHR_LIBS) $(GLOBUS_SSL_NOTHR_LIBS)
 
 BLClient_SOURCES = BLClient.c BLhelper.c
 
-BLClient_LDADD = -lpopt
+BLClient_LDADD =
 
 BLParserLSF_SOURCES = BLParserLSF.c
 
-BLParserLSF_LDADD = -lpopt
+BLParserLSF_LDADD = 
 
 BLParserPBS_SOURCES = BLParserPBS.c
 
-BLParserPBS_LDADD = -lpopt
-
-#BAParser_SOURCES = BAParser.c BPRcomm.c tokens.c
-
-#BAParser_LDADD = -lpopt \
-#$(GLOBUS_GSS_NOTHR_LIBS) $(GLOBUS_SSL_NOTHR_LIBS)
-
-#BAClient_SOURCES = BAClient.c BPRcomm.c tokens.c BLhelper.c
-
-#BAClient_LDADD = -lpopt \
-#$(GLOBUS_GSS_NOTHR_LIBS) $(GLOBUS_SSL_NOTHR_LIBS)
+BLParserPBS_LDADD =
 
 test_condor_logger_SOURCES = test_condor_create_log.c condor_create_log.c config.c blah_utils.c
 test_condor_logger_CFLAGS = $(AM_CFLAGS)
@@ -97,19 +87,19 @@ test_job_registry_access_SOURCES = test_job_registry_access.c job_registry.c md5
 test_job_registry_access_CFLAGS = $(AM_CFLAGS)
 
 BUpdaterCondor_SOURCES = BUpdaterCondor.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c
-BUpdaterCondor_LDADD = -lpopt -lpthread
+BUpdaterCondor_LDADD = -lpthread
 
 BNotifier_SOURCES = BNotifier.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c
-BNotifier_LDADD = -lpopt -lpthread
+BNotifier_LDADD = -lpthread
 
 BUpdaterLSF_SOURCES = BUpdaterLSF.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c
-BUpdaterLSF_LDADD = -lpopt -lpthread
+BUpdaterLSF_LDADD = -lpthread
 
 BUpdaterPBS_SOURCES = BUpdaterPBS.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c
-BUpdaterPBS_LDADD = -lpopt -lpthread -lm
+BUpdaterPBS_LDADD = -lpthread -lm
 
 BUpdaterSGE_SOURCES = BUpdaterSGE.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c
-BUpdaterSGE_LDADD = -lpopt -lpthread
+BUpdaterSGE_LDADD = -lpthread
 
 blparser_master_SOURCES = blparser_master.c config.c blah_utils.c
 blparser_master_LDADD = 

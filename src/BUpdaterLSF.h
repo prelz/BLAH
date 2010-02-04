@@ -40,6 +40,8 @@ time_t get_susp_timestamp(char *jobid);
 time_t get_resume_timestamp(char *jobid);
 time_t get_pend_timestamp(char *jobid);
 void sighup();
+int usage();
+int short_usage();
 
 int runfinal=FALSE;
 char *lsf_binpath;

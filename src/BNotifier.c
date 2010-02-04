@@ -42,16 +42,62 @@ main(int argc, char *argv[])
 	config_entry *ret;
 	char *pidfile=NULL;
 	
-	poptContext poptcon;
-	int rc=0;			     
+	int c;				
 
-	struct poptOption poptopt[] = {     
-		{ "nodaemon",      'o', POPT_ARG_NONE,   &nodmn, 	    0, "do not run as daemon",    NULL },
-		{ "version",       'v', POPT_ARG_NONE,   &version,	    0, "print version and exit",  NULL },
-		POPT_AUTOHELP
-		POPT_TABLEEND
-	};
-		int loop_interval=DEFAULT_LOOP_INTERVAL;
+        static int help;
+        static int short_help;
+	
+	int loop_interval=DEFAULT_LOOP_INTERVAL;
+
+	while (1) {
+		static struct option long_options[] =
+		{
+		{"help",      no_argument,     &help,       1},
+		{"usage",     no_argument,     &short_help, 1},
+		{"nodaemon",  no_argument,       0, 'o'},
+		{"version",   no_argument,       0, 'v'},
+		{0, 0, 0, 0}
+		};
+
+		int option_index = 0;
+     
+		c = getopt_long (argc, argv, "vo",long_options, &option_index);
+     
+		if (c == -1){
+			break;
+		}
+     
+		switch (c)
+		{
+
+		case 0:
+		if (long_options[option_index].flag != 0){
+			break;
+		}
+     
+		case 'v':
+			version=1;
+			break;
+	       
+		case 'o':
+			nodmn=1;
+			break;
+
+		case '?':
+			break;
+     
+		default:
+			abort ();
+		}
+	}
+	
+	if(help){
+		usage();
+	}
+	 
+	if(short_help){
+		short_usage();
+	}
 
 	argv0 = argv[0];
 	
@@ -59,14 +105,6 @@ main(int argc, char *argv[])
     
 	signal(SIGPIPE, SIG_IGN);             
         signal(SIGHUP,sighup);
-    
-	poptcon = poptGetContext(NULL, argc, (const char **) argv, poptopt, 0);
- 
-	if((rc = poptGetNextOpt(poptcon)) != -1){
-		sysfatal("Invalid flag supplied: %r");
-	}
-	
-	poptFreeContext(poptcon);
  
 	if(version) {
 		printf("%s Version: %s\n",progname,VERSION);
@@ -719,4 +757,24 @@ void sighup()
                         debug = 0;
                 }
         }
+}
+
+int 
+usage()
+{
+	printf("Usage: BNotifier [OPTION...]\n");
+	printf("  -o, --nodaemon     do not run as daemon\n");
+	printf("  -v, --version      print version and exit\n");
+	printf("\n");
+	printf("Help options:\n");
+	printf("  -?, --help         Show this help message\n");
+	printf("  --usage            Display brief usage message\n");
+	exit(EXIT_SUCCESS);
+}
+
+int 
+short_usage()
+{
+	printf("Usage: BNotifier [-ov?] [-o|--nodaemon] [-v|--version] [-?|--help] [--usage]\n");
+	exit(EXIT_SUCCESS);
 }

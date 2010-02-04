@@ -35,7 +35,7 @@
 #include <sys/types.h> 
 #include <sys/stat.h>
 #include <sys/poll.h>
-#include <popt.h>
+#include <getopt.h>
 #include <math.h>
 #include <signal.h>
 #include <pthread.h>

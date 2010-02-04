@@ -18,7 +18,7 @@
 #include <assert.h>
 #include <sys/select.h>
 #include <sys/poll.h>
-#include <popt.h>
+#include <getopt.h>
 #include <dirent.h>
 
 
@@ -66,6 +66,8 @@ char *iepoch2str(int epoch);
 int str2epoch(char *str, char *f);
 void daemonize();
 void sighup();
+int usage();
+int short_usage();
 void eprint(int err, char *fmt, va_list args);
 char *chopfmt(char *fmt);
 void syserror(char *fmt, ...);

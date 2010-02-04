@@ -9,37 +9,25 @@ main(int argc, char *argv[])
 	int       status;
 	int       list_s;
 	int       list_c;
-	char ainfo_port_string[16];
-	struct addrinfo ai_req, *ai_ans, *cur_ans;
-	int address_found;
-
+	char 	  ainfo_port_string[16];
+	struct    addrinfo ai_req, *ai_ans, *cur_ans;
+	int       address_found;
+	int       c;
+	
+	static int help;
+	static int short_help;
     
 	char      *eventsfile;
     
-	time_t now;
+	time_t  now;
 	struct tm *tptr;
    
 	int version=0;
-	const char *nport;
 
 	pthread_t ReadThd[NUMTHRDS];
 	pthread_t UpdateThd;
 	pthread_t CreamThd;
-
-	poptContext poptcon;
-	int rc;			     
-	struct poptOption poptopt[] = { 	
-		{ "port",      'p', POPT_ARG_INT,    &port,         0, "port",            "<port number>"  },
-		{ "creamport", 'm', POPT_ARG_INT,    &creamport,    0, "creamport",   "<creamport number>" },
-		{ "spooldir",  's', POPT_ARG_STRING, &spooldir,     0, "PBS spooldir",     "<PBSspooldir>" },
-		{ "logfile ",  'l', POPT_ARG_STRING, &debuglogname, 0, "DebugLogFile",    "<DebugLogFile>" },
-		{ "debug",     'd', POPT_ARG_INT,    &debug,        0, "enable debugging",            NULL },
-		{ "daemon",    'D', POPT_ARG_NONE,   &dmn,          0, "run as daemon",               NULL },
-		{ "version",   'v', POPT_ARG_NONE,   &version,      0, "print version and exit",      NULL },
-		POPT_AUTOHELP
-	POPT_TABLEEND
-	};
-    
+   
 	char *espooldir;
 
 	argv0 = argv[0];
@@ -49,12 +37,80 @@ main(int argc, char *argv[])
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGHUP,sighup);
         
-	poptcon = poptGetContext(NULL, argc, (const char **) argv, poptopt, 0);
- 
-	if((rc = poptGetNextOpt(poptcon)) != -1){
-		sysfatal("Invalid flag supplied: %r");
+	while (1) {
+		static struct option long_options[] =
+		{
+		{"help",      no_argument,     &help,       1},
+		{"usage",     no_argument,     &short_help, 1},
+		{"daemon",    no_argument,             0, 'D'},
+		{"version",   no_argument,             0, 'v'},
+		{"port",      required_argument,       0, 'p'},
+		{"creamport", required_argument,       0, 'm'},
+		{"spooldir",  required_argument,       0, 's'},
+		{"logfile",   required_argument,       0, 'l'},
+		{"debug",     required_argument,       0, 'd'},
+		{0, 0, 0, 0}
+		};
+
+		int option_index = 0;
+     
+		c = getopt_long (argc, argv, "Dvp:m:s:l:d:",long_options, &option_index);
+     
+		if (c == -1){
+			break;
+		}
+     
+		switch (c)
+		{
+
+		case 0:
+		if (long_options[option_index].flag != 0){
+			break;
+		}
+     
+		case 'D':
+			dmn=1;
+			break;
+     
+		case 'v':
+			version=1;
+			break;
+	       
+		case 'p':
+			port=atoi(optarg);
+			break;
+	       
+		case 'm':
+			creamport=atoi(optarg);
+			break;
+	       
+		case 's':
+			spooldir=strdup(optarg);
+			break;
+	       
+		case 'l':
+			debuglogname=strdup(optarg);
+			break;
+    	       
+		case 'd':
+			debug=atoi(optarg);
+			break;
+    	       
+		case '?':
+			break;
+     
+		default:
+			abort ();
+		}
 	}
-	nport=poptGetArg(poptcon);
+	
+	if(help){
+		usage();
+	}
+	 
+	if(short_help){
+		short_usage();
+	}
 	
 	if(version) {
 		printf("%s Version: %s\n",progname,VERSION);
@@ -75,12 +131,7 @@ main(int argc, char *argv[])
 		if ( port < 1 || port > 65535) {
 			sysfatal("Invalid port supplied: %r");
 		}
-	}else if(nport){
-		port=atoi(nport);
-		if ( port < 1 || port > 65535) {
-			sysfatal("Invalid port supplied: %r");
-		}
-    	}else{
+	}else{
 		port=DEFAULT_PORT;
     	}	
 
@@ -2189,7 +2240,8 @@ daemonize()
 
 }
 
-void sighup()
+void
+sighup()
 {
 	if(debug){
 		fclose(debuglogfile);
@@ -2197,6 +2249,34 @@ void sighup()
 			debuglogfile =  fopen("/dev/null", "a+");
 		}
 	}	
+}
+
+int
+usage()
+{
+	printf("Usage: BLParserPBS [OPTION...]\n");
+	printf("  -p, --port=<port number>               port\n");
+	printf("  -m, --creamport=<creamport number>     creamport\n");
+	printf("  -s, --spooldir=<PBSspooldir>           PBS spooldir\n");
+	printf("  -l, --logfile =<DebugLogFile>          DebugLogFile\n");
+	printf("  -d, --debug=INT                        enable debugging\n");
+	printf("  -D, --daemon                           run as daemon\n");
+	printf("  -v, --version                          print version and exit\n");
+	printf("\n");
+	printf("Help options:\n");
+	printf("  -?, --help                             Show this help message\n");
+	printf("  --usage                                Display brief usage message\n");
+	exit(EXIT_SUCCESS);
+}
+
+int
+short_usage()
+{
+	printf("Usage: BLParserPBS [-Dv?] [-p|--port <port number>]\n");
+	printf("        [-m|--creamport <creamport number>] [-s|--spooldir <PBSspooldir>]\n");
+	printf("        [-l|--logfile  <DebugLogFile>] [-d|--debug INT] [-D|--daemon]\n");
+	printf("        [-v|--version] [-?|--help] [--usage]\n");
+	exit(EXIT_SUCCESS);
 }
 
 void

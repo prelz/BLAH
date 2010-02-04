@@ -37,8 +37,6 @@ int main(int argc, char *argv[]){
 	char *cp=NULL;
 	char *tpath;
 	
-	poptContext poptcon;
-	int rc=0;			     
 	int version=0;
 	int first=TRUE;
 	int tmptim;
@@ -48,25 +46,65 @@ int main(int argc, char *argv[]){
 	bact.njobs = 0;
 	bact.jobs = NULL;
 	
-	struct poptOption poptopt[] = {     
-		{ "nodaemon",      'o', POPT_ARG_NONE,   &nodmn, 	    0, "do not run as daemon",    NULL },
-		{ "version",       'v', POPT_ARG_NONE,   &version,	    0, "print version and exit",  NULL },
-		POPT_AUTOHELP
-		POPT_TABLEEND
-	};
+	int c;				
+
+        static int help;
+        static int short_help;
+	
+	while (1) {
+		static struct option long_options[] =
+		{
+		{"help",      no_argument,     &help,       1},
+		{"usage",     no_argument,     &short_help, 1},
+		{"nodaemon",  no_argument,       0, 'o'},
+		{"version",   no_argument,       0, 'v'},
+		{0, 0, 0, 0}
+		};
+
+		int option_index = 0;
+     
+		c = getopt_long (argc, argv, "vo",long_options, &option_index);
+     
+		if (c == -1){
+			break;
+		}
+     
+		switch (c)
+		{
+
+		case 0:
+		if (long_options[option_index].flag != 0){
+			break;
+		}
+     
+		case 'v':
+			version=1;
+			break;
+	       
+		case 'o':
+			nodmn=1;
+			break;
+
+		case '?':
+			break;
+     
+		default:
+			abort ();
+		}
+	}
+	
+	if(help){
+		usage();
+	}
+	 
+	if(short_help){
+		short_usage();
+	}
 	
 	argv0 = argv[0];
 
         signal(SIGHUP,sighup);
 
-	poptcon = poptGetContext(NULL, argc, (const char **) argv, poptopt, 0);
- 
-	if((rc = poptGetNextOpt(poptcon)) != -1){
-		sysfatal("Invalid flag supplied: %r");
-	}
-	
-	poptFreeContext(poptcon);
-	
 	if(version) {
 		printf("%s Version: %s\n",progname,VERSION);
 		exit(EXIT_SUCCESS);
@@ -639,4 +677,24 @@ void sighup()
                         debug = 0;
                 }
         }
+}
+
+int 
+usage()
+{
+	printf("Usage: BUpdaterPBS [OPTION...]\n");
+	printf("  -o, --nodaemon     do not run as daemon\n");
+	printf("  -v, --version      print version and exit\n");
+	printf("\n");
+	printf("Help options:\n");
+	printf("  -?, --help         Show this help message\n");
+	printf("  --usage            Display brief usage message\n");
+	exit(EXIT_SUCCESS);
+}
+
+int 
+short_usage()
+{
+	printf("Usage: BUpdaterPBS [-ov?] [-o|--nodaemon] [-v|--version] [-?|--help] [--usage]\n");
+	exit(EXIT_SUCCESS);
 }

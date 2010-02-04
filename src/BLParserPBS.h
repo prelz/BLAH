@@ -18,8 +18,8 @@
 #include <assert.h>
 #include <sys/select.h>
 #include <sys/poll.h>
-#include <popt.h>
 #include <dirent.h>
+#include <getopt.h>
 
 #define LISTENQ            1024
 #define DEFAULT_PORT       33332
@@ -65,6 +65,8 @@ char *iepoch2str(int epoch, char *f);
 int str2epoch(char *str, char *f);
 void daemonize();
 void sighup();
+int usage();
+int short_usage();
 void eprint(int err, char *fmt, va_list args);
 char *chopfmt(char *fmt);
 void syserror(char *fmt, ...);

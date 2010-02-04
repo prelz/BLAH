@@ -30,6 +30,8 @@
 int IntStateQuery();
 int FinalStateQuery(char *query);
 int AssignFinalState(char *batchid);
+int usage();
+int short_usage();
 
 int runfinal=FALSE;
 char *command_string;

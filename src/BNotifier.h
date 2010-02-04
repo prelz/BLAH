@@ -56,6 +56,8 @@ int GetJobList(char *buffer);
 void CreamConnection(int c_sock);
 int NotifyCream(char *buffer);
 void sighup();
+int usage();
+int short_usage();
 
 /* Variables initialization */
 

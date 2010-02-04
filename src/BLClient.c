@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <popt.h>
+#include <getopt.h>
 #include <netdb.h>
 
 #define MAX_LINE            100000
@@ -19,6 +19,9 @@
 #ifndef VERSION
 #define VERSION            "1.8.0"
 #endif
+
+int usage();
+int short_usage();
 
 char     *progname = "BLClient";
 
@@ -34,7 +37,10 @@ main(int argc, char *argv[])
 	int       version=0;
 	char      ainfo_port_string[16];
 	struct    addrinfo ai_req, *ai_ans, *cur_ans;
+	int c;				
 
+        static int help;
+        static int short_help;
 
 	fd_set   wset;
 	struct   timeval to;
@@ -46,28 +52,63 @@ main(int argc, char *argv[])
 	char *ipaddr;
 
 	char      *cp;
+
+	while (1) {
+		static struct option long_options[] =
+		{
+		{"help",      no_argument,     &help,       1},
+		{"usage",     no_argument,     &short_help, 1},
+		{"version",   no_argument,             0, 'v'},
+		{"port",      required_argument,       0, 'p'},
+		{"server",    required_argument,       0, 'a'},
+		{0, 0, 0, 0}
+		};
+
+		int option_index = 0;
      
-	/*  Get command line arguments  */
+		c = getopt_long (argc, argv, "vp:a:",long_options, &option_index);
+     
+		if (c == -1){
+			break;
+		}
+     
+		switch (c)
+		{
 
-	poptContext poptcon;	
-	int rc;				
-	struct poptOption poptopt[] = {
-		{ "server",    'a', POPT_ARG_STRING, &address,  0, "server address", "<dotted-quad ip address>" },
-		{ "port",      'p', POPT_ARG_INT,    &port,    0, "port",               "<port number>" },
-		{ "version",   'v', POPT_ARG_NONE,   &version, 0, "print version and exit",            NULL },
-		POPT_AUTOHELP
-		POPT_TABLEEND
-	};
-    
-	poptcon = poptGetContext(NULL, argc, (const char **) argv, poptopt, 0);
-       
-	if((rc = poptGetNextOpt(poptcon)) != -1){
-		fprintf(stderr,"%s: Invalid flag supplied.\n",progname);
-		exit(EXIT_FAILURE);
+		case 0:
+		if (long_options[option_index].flag != 0){
+			break;
+		}
+     
+		case 'v':
+			version=1;
+			break;
+	       
+		case 'p':
+			port=atoi(optarg);
+			break;
+	       
+		case 'm':
+			address=strdup(optarg);
+			break;
+    	       
+		case '?':
+			break;
+     
+		default:
+			abort ();
+		}
 	}
-
+	
+	if(help){
+		usage();
+	}
+	 
+	if(short_help){
+		short_usage();
+	}
 	if ( !port && !address && !version ) {
-		poptPrintHelp(poptcon, stdout, 0);
+		usage();
 		exit(EXIT_SUCCESS);
 	}
 
@@ -190,5 +231,27 @@ main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	exit(EXIT_SUCCESS);
+}
+
+int 
+usage()
+{
+	printf("Usage: BLClient [OPTION...]\n");
+	printf("  -a, --server=<dotted-quad ip address>     server address\n");
+	printf("  -p, --port=<port number>                  port\n");
+	printf("  -v, --version                             print version and exit\n");
+	printf("\n");
+	printf("Help options:\n");
+	printf("  -?, --help                                Show this help message\n");
+	printf("  --usage                                   Display brief usage message\n");
+	exit(EXIT_SUCCESS);
+}
+
+int 
+short_usage()
+{
+	printf("Usage: BLClient [-v?] [-a|--server <dotted-quad ip address>]\n");
+	printf("        [-p|--port <port number>] [-v|--version] [-?|--help] [--usage]\n");
 	exit(EXIT_SUCCESS);
 }

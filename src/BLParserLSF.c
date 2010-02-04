@@ -1133,8 +1133,13 @@ GetLogDir(int largc, char *largv[])
 	char *command_string;
 	int len;
 	int version=0;
+	int rc;
+	int c;
  
-	struct stat     sbuf;
+	struct stat  sbuf;
+	
+	static int help;
+	static int short_help;    
  
 	char *ebinpath;
 	char *econfpath;
@@ -1147,22 +1152,6 @@ GetLogDir(int largc, char *largv[])
 	FILE *fp;
 	FILE *file_output;
     
-	const char *nport;
-
-	poptContext poptcon;
-	int rc;			     
-	struct poptOption poptopt[] = {     
-		{ "port",      'p', POPT_ARG_INT,    &port,	 0, "port",	       "<port number>"  },
-		{ "creamport", 'm', POPT_ARG_INT,    &creamport,	 0, "creamport",  "<creamport number>"  },
-		{ "binpath",   'b', POPT_ARG_STRING, &binpath,	 0, "LSF binpath",     "<LSFbinpath>"	},
-		{ "confpath",  'c', POPT_ARG_STRING, &confpath,	 0, "LSF confpath",    "<LSFconfpath>"  },
-		{ "logfile ",  'l', POPT_ARG_STRING, &debuglogname, 0, "DebugLogFile",    "<DebugLogFile>" },
-		{ "debug",     'd', POPT_ARG_INT,    &debug,	 0, "enable debugging", 	   NULL },
-		{ "daemon",    'D', POPT_ARG_NONE,   &dmn, 	 0, "run as daemon",		   NULL },
-		{ "version",   'v', POPT_ARG_NONE,   &version,	 0, "print version and exit",	   NULL },
-		POPT_AUTOHELP
-		POPT_TABLEEND
-	};
 
 	if((line=calloc(STR_CHARS,1)) == 0){
 		sysfatal("can't malloc line: %r");
@@ -1183,24 +1172,92 @@ GetLogDir(int largc, char *largv[])
 	if((tbuf=calloc(10 * sizeof *tbuf,1)) == 0){
 		sysfatal("can't malloc tbuf: %r");
 	}
-	
-	poptcon = poptGetContext(NULL, largc, (const char **) largv, poptopt, 0);
- 
-	if((rc = poptGetNextOpt(poptcon)) != -1){
-		sysfatal("Invalid flag supplied: %r");
+	 
+	while (1) {
+		static struct option long_options[] =
+		{
+		{"help",      no_argument,     &help,       1},
+		{"usage",     no_argument,     &short_help, 1},
+		{"daemon",    no_argument,             0, 'D'},
+		{"version",   no_argument,             0, 'v'},
+		{"port",      required_argument,       0, 'p'},
+		{"creamport", required_argument,       0, 'm'},
+		{"binpath",   required_argument,       0, 'b'},
+		{"confpath",  required_argument,       0, 'c'},
+		{"logfile",   required_argument,       0, 'l'},
+		{"debug",     required_argument,       0, 'd'},
+		{0, 0, 0, 0}
+		};
+
+		int option_index = 0;
+     
+		c = getopt_long (largc, largv, "Dvp:m:s:b:c:d:",long_options, &option_index);
+     
+		if (c == -1){
+			break;
+		}
+     
+		switch (c)
+		{
+
+		case 0:
+		if (long_options[option_index].flag != 0){
+			break;
+		}
+     
+		case 'D':
+			dmn=1;
+			break;
+     
+		case 'v':
+			version=1;
+			break;
+	       
+		case 'p':
+			port=atoi(optarg);
+			break;
+	       
+		case 'm':
+			creamport=atoi(optarg);
+			break;
+	       
+		case 'b':
+			binpath=strdup(optarg);
+			break;
+	       
+		case 'c':
+			confpath=strdup(optarg);
+			break;
+	       
+		case 'l':
+			debuglogname=strdup(optarg);
+			break;
+    	       
+		case 'd':
+			debug=atoi(optarg);
+			break;
+    	       
+		case '?':
+			break;
+     
+		default:
+			abort ();
+		}
 	}
-	nport=poptGetArg(poptcon);
- 
+	
+	if(help){
+		usage();
+	}
+	 
+	if(short_help){
+		short_usage();
+	}
+	
 	if(version) {
 		printf("%s Version: %s\n",progname,VERSION);
 		exit(EXIT_SUCCESS);
 	}   
 	if(port) {
-		if ( port < 1 || port > 65535) {
-			sysfatal("Invalid port supplied: %r");
-		}
-	}else if(nport){
-		port=atoi(nport);
 		if ( port < 1 || port > 65535) {
 			sysfatal("Invalid port supplied: %r");
 		}
@@ -2326,7 +2383,8 @@ daemonize()
 
 }
 
-void sighup()
+void 
+sighup()
 {
 	if(debug){
 		fclose(debuglogfile);
@@ -2334,6 +2392,35 @@ void sighup()
 			debuglogfile =  fopen("/dev/null", "a+");
 		}
 	}	
+}
+
+int 
+usage()
+{
+	printf("Usage: BLParserLSF [OPTION...]\n");
+	printf("  -p, --port=<port number>               port\n");
+	printf("  -m, --creamport=<creamport number>     creamport\n");
+	printf("  -b, --binpath=<LSFbinpath>             LSF binpath\n");
+	printf("  -c, --confpath=<LSFconfpath>           LSF confpath\n");
+	printf("  -l, --logfile =<DebugLogFile>          DebugLogFile\n");
+	printf("  -d, --debug=INT                        enable debugging\n");
+	printf("  -D, --daemon                           run as daemon\n");
+	printf("  -v, --version                          print version and exit\n");
+	printf("\n");
+	printf("Help options:\n");
+	printf("  -?, --help                             Show this help message\n");
+	printf("  --usage                                Display brief usage message\n");
+	exit(EXIT_SUCCESS);
+}
+
+int 
+short_usage()
+{
+	printf("Usage: BLParserLSF [-Dv?] [-p|--port <port number>]\n");
+	printf("        [-m|--creamport <creamport number>] [-b|--binpath <LSFbinpath>]\n");
+	printf("        [-c|--confpath <LSFconfpath>] [-l|--logfile  <DebugLogFile>]\n");
+	printf("        [-d|--debug INT] [-D|--daemon] [-v|--version] [-?|--help] [--usage]\n");
+	exit(EXIT_SUCCESS);
 }
 
 void
