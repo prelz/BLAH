@@ -17,14 +17,29 @@
  * 23-Oct-2009  Avoid unnecessary registry sort when the disk registry is unchanged.
  *              Make sure 'firstrec' is recomputed for record sanity checks.
  * 19-Nov-2009  Added BY_USER_PREFIX as an indexing mode.
+ *  4-Feb-2010  Added updater_info field to store updater state.
  *
  *  Description:
  *    File-based container to cache job IDs and statuses to implement
  *    bulk status commands in BLAH.
  *
- *  Copyright (c) 2007 Istituto Nazionale di Fisica Nucleare (INFN).
- *   All rights reserved.
- *   See http://grid.infn.it/grid/license.html for license details.
+ *  Copyright: (c) Members of the EGEE Collaboration. 2007-2010. 
+ *
+ *    See http://www.eu-egee.org/partners/ for details on the copyright
+ *    holders.  
+ *  
+ *    Licensed under the Apache License, Version 2.0 (the "License"); 
+ *    you may not use this file except in compliance with the License. 
+ *    You may obtain a copy of the License at 
+ *  
+ *        http://www.apache.org/licenses/LICENSE-2.0 
+ *  
+ *    Unless required by applicable law or agreed to in writing, software 
+ *    distributed under the License is distributed on an "AS IS" BASIS, 
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+ *    See the License for the specific language governing permissions and 
+ *    limitations under the License.
+ *
  */
 
 #include <stdio.h>
@@ -1449,8 +1464,8 @@ job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
  * @param rha Pointer to a job registry handle returned by job_registry_init.
  * @param entry pointer to a registry entry with values to be
  *        updated into the registry.
- *        The values of udate, status, exitcode, exitreason and wn_addr
- *        will be used for the update.
+ *        The values of udate, status, exitcode, exitreason, wn_addr
+ *        and updater_info will be used for the update.
  *        The entry is updated with the actual registry contents upon
  *        successful return.
  * @param recn Cause an update of the specified record number.
@@ -1465,6 +1480,7 @@ job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
  *         - JOB_REGISTRY_UPDATE_EXITCODE 
  *         - JOB_REGISTRY_UPDATE_UDATE 
  *         - JOB_REGISTRY_UPDATE_EXITREASON 
+ *         - JOB_REGISTRY_UPDATE_UPDATER_INFO
  *         or JOB_REGISTRY_UPDATE_ALL for all of the above fields.
  *
  * @return Less than zero on error. See job_registry.h for error codes.
@@ -1612,6 +1628,13 @@ job_registry_update_op(job_registry_handle *rha,
                 sizeof(old_entry.exitreason)) != 0))
    {
     JOB_REGISTRY_ASSIGN_ENTRY(old_entry.exitreason, entry->exitreason);
+    need_to_update = TRUE;
+   }
+  if (((upbits & JOB_REGISTRY_UPDATE_UPDATER_INFO) != 0) &&
+       (strncmp(old_entry.updater_info, entry->updater_info, 
+                sizeof(old_entry.updater_info)) != 0))
+   {
+    JOB_REGISTRY_ASSIGN_ENTRY(old_entry.updater_info, entry->updater_info);
     need_to_update = TRUE;
    }
 

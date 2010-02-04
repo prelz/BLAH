@@ -12,14 +12,29 @@
  *   3-Mar-2008 Added non-privileged updates to fit CREAM's file and process
  *              ownership model.
  *   8-Jan-2009 Added job_registry_update_select call.
- *  19-Nov-2009  Added BY_USER_PREFIX as an indexing mode.
+ *  19-Nov-2009 Added BY_USER_PREFIX as an indexing mode.
+ *   4-Feb-2010 Added updater_info field to store updater state.
  *
  *  Description:
  *    Prototypes of functions defined in job_registry.c
  *
- *  Copyright (c) 2007 Istituto Nazionale di Fisica Nucleare (INFN).
- *   All rights reserved.
- *   See http://grid.infn.it/grid/license.html for license details.
+ *  Copyright: (c) Members of the EGEE Collaboration. 2007-2010. 
+ *
+ *    See http://www.eu-egee.org/partners/ for details on the copyright
+ *    holders.  
+ *  
+ *    Licensed under the Apache License, Version 2.0 (the "License"); 
+ *    you may not use this file except in compliance with the License. 
+ *    You may obtain a copy of the License at 
+ *  
+ *        http://www.apache.org/licenses/LICENSE-2.0 
+ *  
+ *    Unless required by applicable law or agreed to in writing, software 
+ *    distributed under the License is distributed on an "AS IS" BASIS, 
+ *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+ *    See the License for the specific language governing permissions and 
+ *    limitations under the License.
+ *
  */
 
 #ifndef __JOB_REGISTRY_H__
@@ -72,6 +87,8 @@ typedef struct job_registry_entry_s
    int32_t      renew_proxy; 
 #define                 JOB_REGISTRY_ENTRY_UPDATE_2 40
    char         subject_hash[JOB_REGISTRY_ENTRY_UPDATE_2]; 
+#define                 JOB_REGISTRY_ENTRY_UPDATE_3 16
+   char         updater_info[JOB_REGISTRY_ENTRY_UPDATE_3]; 
    job_registry_entry_magic_t magic_end; 
  } job_registry_entry;
 
@@ -81,14 +98,16 @@ typedef struct job_registry_entry_s
 
 #define JOB_REGISTRY_ENTRY_UPDATE_1 60
 
-#define N_JOB_REGISTRY_ALLOWED_ENTRY_SIZE_INCS 4
+#define N_JOB_REGISTRY_ALLOWED_ENTRY_SIZE_INCS 5
 #define JOB_REGISTRY_ALLOWED_ENTRY_SIZE_INCS  \
       { sizeof(job_registry_entry) - \
         2*sizeof(job_registry_entry_magic_t) - \
         JOB_REGISTRY_ENTRY_UPDATE_1 - \
-        JOB_REGISTRY_ENTRY_UPDATE_2, \
+        JOB_REGISTRY_ENTRY_UPDATE_2 - \
+        JOB_REGISTRY_ENTRY_UPDATE_3, \
         JOB_REGISTRY_ENTRY_UPDATE_1, \
-        JOB_REGISTRY_ENTRY_UPDATE_2, 0 };
+        JOB_REGISTRY_ENTRY_UPDATE_2, \
+        JOB_REGISTRY_ENTRY_UPDATE_3, 0 };
 
 #define JOB_REGISTRY_ASSIGN_ENTRY(dest,src) \
   (dest)[sizeof(dest)-1]='\000'; \
@@ -201,11 +220,12 @@ int job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
 
 /* Bitmask field definition for job_registry_update_select */
 #define JOB_REGISTRY_UPDATE_ALL  0xffffffff
-#define JOB_REGISTRY_UPDATE_WN_ADDR    0x01
-#define JOB_REGISTRY_UPDATE_STATUS     0x02
-#define JOB_REGISTRY_UPDATE_EXITCODE   0x04
-#define JOB_REGISTRY_UPDATE_UDATE      0x08
-#define JOB_REGISTRY_UPDATE_EXITREASON 0x10
+#define JOB_REGISTRY_UPDATE_WN_ADDR      0x01
+#define JOB_REGISTRY_UPDATE_STATUS       0x02
+#define JOB_REGISTRY_UPDATE_EXITCODE     0x04
+#define JOB_REGISTRY_UPDATE_UDATE        0x08
+#define JOB_REGISTRY_UPDATE_EXITREASON   0x10
+#define JOB_REGISTRY_UPDATE_UPDATER_INFO 0x20
 
 int job_registry_update_select(job_registry_handle *rhandle, 
                         job_registry_entry *entry,
