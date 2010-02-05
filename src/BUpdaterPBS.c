@@ -393,8 +393,8 @@ Job Id: 11.cream-12.pd.infn.it
 			}
 			do_log(debuglogfile, debug, 4, "%s: line in IntStateQuery is:%s\n",argv0,line);
 			if(line && strstr(line,"Job Id: ")){
-				if(!first && en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD)) && ren && (en.status!=ren->status)){
-                        		if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum, JOB_REGISTRY_UPDATE_WN_ADDR|JOB_REGISTRY_UPDATE_STATUS|JOB_REGISTRY_UPDATE_UDATE)) < 0){
+				if(!first && en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD) || (en.status==IDLE && en.updater_info && strcmp(en.updater_info,"found")==0)) && ren && (en.status!=ren->status)){
+                        		if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum, JOB_REGISTRY_UPDATE_WN_ADDR|JOB_REGISTRY_UPDATE_STATUS|JOB_REGISTRY_UPDATE_UDATE|JOB_REGISTRY_UPDATE_UPDATER_INFO)) < 0){
 						if(ret != JOB_REGISTRY_NOT_FOUND){
                 	                		fprintf(stderr,"Update of record returns %d: ",ret);
 							perror("");
@@ -425,9 +425,10 @@ Job Id: 11.cream-12.pd.infn.it
 				if(status_str && strcmp(status_str,"Q")==0){ 
 					en.status=IDLE;
 					JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
+					JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,"found");
 				}else if(status_str && strcmp(status_str,"W")==0){ 
 					en.status=IDLE;
-					JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
+					JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,"found");
 				}else if(status_str && strcmp(status_str,"R")==0){ 
 					en.status=RUNNING;
 				}else if(status_str && strcmp(status_str,"H")==0){ 
@@ -438,6 +439,7 @@ Job Id: 11.cream-12.pd.infn.it
 				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line,"unable to run job")){
 				en.status=IDLE;	
+				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,"found");
 			}else if(line && strstr(line,"exec_host = ")){	
 				maxtok_t = strtoken(line, '=', &token);
 				twn_str=strdup(token[1]);
@@ -464,8 +466,8 @@ Job Id: 11.cream-12.pd.infn.it
 		pclose(fp);
 	}
 	
-	if(en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD)) && ren && (en.status!=ren->status)){
-		if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum, JOB_REGISTRY_UPDATE_WN_ADDR|JOB_REGISTRY_UPDATE_STATUS|JOB_REGISTRY_UPDATE_UDATE)) < 0){
+	if(en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD) || (en.status==IDLE && en.updater_info && strcmp(en.updater_info,"found")==0)) && ren && (en.status!=ren->status)){
+		if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum, JOB_REGISTRY_UPDATE_WN_ADDR|JOB_REGISTRY_UPDATE_STATUS|JOB_REGISTRY_UPDATE_UDATE|JOB_REGISTRY_UPDATE_UPDATER_INFO)) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
 				fprintf(stderr,"Update of record returns %d: ",ret);
 				perror("");

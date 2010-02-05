@@ -370,6 +370,7 @@ IntStateQuery()
 			}
 		
 			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,token[0]);
+			JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,"found");
 			en.status=atoi(token[2]);
 			en.exitcode=atoi(token[4]);
 			en.udate=atoi(token[5]);
@@ -381,7 +382,7 @@ IntStateQuery()
 					perror("");
 			}
 				
-			if(en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD)) && ren && (en.status!=ren->status)){	
+			if(en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD) || (en.status==IDLE && en.updater_info && strcmp(en.updater_info,"found")==0)) && ren && (en.status!=ren->status)){	
 				if ((ret=job_registry_update_recn(rha, &en, ren->recnum)) < 0){
 					if(ret != JOB_REGISTRY_NOT_FOUND){
 						fprintf(stderr,"Update of record returns %d: ",ret);
