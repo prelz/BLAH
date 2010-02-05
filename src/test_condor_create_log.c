@@ -12,6 +12,8 @@
   See http://grid.infn.it/grid/license.html for license details.
 */
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "condor_create_log.h"
 
