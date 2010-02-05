@@ -280,11 +280,11 @@ main(int argc, char *argv[])
 	}
     
 	for(i=0;i<NUMTHRDS;i++){
-		pthread_create(&ReadThd[i], NULL, (void *)LookupAndSend, (void *)list_s);
+		pthread_create(&ReadThd[i], NULL, (void *(*)(void *))LookupAndSend, (void *)list_s);
 	}
 
 	if(usecream>0){
-		pthread_create(&CreamThd, NULL, (void *)CreamConnection, (void *)list_c);
+		pthread_create(&CreamThd, NULL, (void *(*)(void *))CreamConnection, (void *)list_c);
 	}
     
 	pthread_create(&UpdateThd, NULL, mytail, (void *)eventsfile);

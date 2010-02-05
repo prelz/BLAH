@@ -46,7 +46,7 @@ main(int argc, char *argv[])
 	struct   timeval to;
 	int      r,i;
 	int opt;
-	size_t optlen = sizeof(opt);
+	socklen_t optlen = sizeof(opt);
 
 	struct hostent *hp;
 	char *ipaddr;

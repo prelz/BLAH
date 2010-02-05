@@ -241,8 +241,8 @@ main(int argc, char *argv[])
        
 	config_free(cha);
 
-	pthread_create(&CreamThd, NULL, (void *)CreamConnection, (void *)list_c);
-	pthread_create(&PollThd, NULL, (void *)PollDB, (void *)NULL);
+	pthread_create(&CreamThd, NULL, (void *(*)(void *))CreamConnection, (void *)list_c);
+	pthread_create(&PollThd, NULL, (void *(*)(void *))PollDB, (void *)NULL);
 
 	pthread_join(PollThd, (void **)&status);
 	pthread_exit(NULL);
