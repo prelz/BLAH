@@ -21,8 +21,8 @@ function bls_fl_add_value ()
   local last_argument
 
   eval "last_argument=\${bls_${container_name}_counter:=0}"
-  eval "bls_${container_name}_local_${last_argument}=$local_file_name"
-  eval "bls_${container_name}_remote_${last_argument}=$remote_file_name"
+  eval "bls_${container_name}_local_${last_argument}=\"$local_file_name\""
+  eval "bls_${container_name}_remote_${last_argument}=\"$remote_file_name\""
   eval "let bls_${container_name}_counter++"
 }
 
@@ -46,8 +46,8 @@ function bls_fl_subst ()
   local f_remote
   local temp_result
   
-  eval "f_local=\${bls_${container_name}_local_${container_index}}"
-  eval "f_remote=\${bls_${container_name}_remote_${container_index}}"
+  eval "f_local=\"\${bls_${container_name}_local_${container_index}}\""
+  eval "f_remote=\"\${bls_${container_name}_remote_${container_index}}\""
 
   bls_fl_subst_result=""
 
@@ -316,7 +316,7 @@ function bls_setup_all_files ()
   bls_proxy_remote_file=
   if [ "x$bls_opt_stgproxy" == "xyes" ] ; then
       bls_proxy_local_file=${bls_opt_workdir}"/"`basename "$bls_opt_proxy_string"`;
-      [ -r "$bls_proxy_local_file" -a -f "$bls_proxy_local_file" ] || bls_proxy_local_file=$bls_opt_proxy_string
+      [ -r "$bls_proxy_local_file" -a -f "$bls_proxy_local_file" ] || bls_proxy_local_file="$bls_opt_proxy_string"
       [ -r "$bls_proxy_local_file" -a -f "$bls_proxy_local_file" ] || bls_proxy_local_file=/tmp/x509up_u`id -u`
       if [ -r "$bls_proxy_local_file" -a -f "$bls_proxy_local_file" ] ; then
           bls_proxy_remote_file=${bls_tmp_name}.proxy
