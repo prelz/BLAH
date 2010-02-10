@@ -383,6 +383,7 @@ Job Id: 11.cream-12.pd.infn.it
 	en.status=UNDEFINED;
 	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 	JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+	JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,"\0");
 	en.exitcode=-1;
 	bupdater_free_active_jobs(&bact);
 
@@ -417,6 +418,9 @@ Job Id: 11.cream-12.pd.infn.it
 					}
 					en.status = UNDEFINED;
 					JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
+					JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+					JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,"\0");
+					en.exitcode=-1;
 				}				
                         	maxtok_t = strtoken(line, ':', &token);
 				batch_str=strdel(token[1]," ");

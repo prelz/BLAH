@@ -370,6 +370,7 @@ IntStateQueryShort()
 	en.status=UNDEFINED;
 	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 	JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+	JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,"\0");
 	en.exitcode=-1;
 	bupdater_free_active_jobs(&bact);
 	
@@ -415,6 +416,9 @@ IntStateQueryShort()
 				}
 				en.status = UNDEFINED;
 				JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
+				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,"\0");
+				en.exitcode=-1;
 			}
 				
 			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,tmp);
