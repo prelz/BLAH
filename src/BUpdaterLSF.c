@@ -369,6 +369,8 @@ IntStateQueryShort()
 
 	en.status=UNDEFINED;
 	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
+	JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+	en.exitcode=-1;
 	bupdater_free_active_jobs(&bact);
 	
 	if(fp!=NULL){
@@ -394,7 +396,13 @@ IntStateQueryShort()
 				continue;
 			}
 			if(!first && en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD) || (en.status==IDLE && en.updater_info && strcmp(en.updater_info,"found")==0)) && ren && (en.status!=ren->status)){	
-				if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum, JOB_REGISTRY_UPDATE_WN_ADDR|JOB_REGISTRY_UPDATE_STATUS|JOB_REGISTRY_UPDATE_UDATE|JOB_REGISTRY_UPDATE_UPDATER_INFO)) < 0){
+				if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum,
+				JOB_REGISTRY_UPDATE_WN_ADDR|
+				JOB_REGISTRY_UPDATE_STATUS|
+				JOB_REGISTRY_UPDATE_UDATE|
+				JOB_REGISTRY_UPDATE_UPDATER_INFO|
+				JOB_REGISTRY_UPDATE_EXITCODE|
+				JOB_REGISTRY_UPDATE_EXITREASON)) < 0){
 					if(ret != JOB_REGISTRY_NOT_FOUND){
 						fprintf(stderr,"Update of record returns %d: ",ret);
 						perror("");
@@ -402,6 +410,7 @@ IntStateQueryShort()
 				} else {
 					do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQueryShort for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
 					if (en.status == REMOVED || en.status == COMPLETED)
+						do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQueryShort for: jobid=%s creamjobid=%s wn=%s status=%d exitcode=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status,en.exitcode);
 						job_registry_unlink_proxy(rha, &en);
 				}
 				en.status = UNDEFINED;
@@ -429,6 +438,10 @@ IntStateQueryShort()
 				en.status=HELD;
 			}else if(token[2] && strcmp(token[2],"RUN")==0){ 
 				en.status=RUNNING;
+			}else if(token[2] && strcmp(token[2],"DONE")==0){ 
+				en.status=COMPLETED;
+				en.exitcode=0;
+				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 			}
 			
 			timestamp=make_message("%s %s %s",token[7],token[8],token[9]);
@@ -444,7 +457,13 @@ IntStateQueryShort()
 	}
 	
 	if(en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD) || (en.status==IDLE && en.updater_info && strcmp(en.updater_info,"found")==0)) && ren && (en.status!=ren->status)){	
-		if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum, JOB_REGISTRY_UPDATE_WN_ADDR|JOB_REGISTRY_UPDATE_STATUS|JOB_REGISTRY_UPDATE_UDATE|JOB_REGISTRY_UPDATE_UPDATER_INFO)) < 0){
+		if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum,
+		JOB_REGISTRY_UPDATE_WN_ADDR|
+		JOB_REGISTRY_UPDATE_STATUS|
+		JOB_REGISTRY_UPDATE_UDATE|
+		JOB_REGISTRY_UPDATE_UPDATER_INFO|
+		JOB_REGISTRY_UPDATE_EXITCODE|
+		JOB_REGISTRY_UPDATE_EXITREASON)) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
 				fprintf(stderr,"Update of record returns %d: ",ret);
 				perror("");
@@ -452,6 +471,7 @@ IntStateQueryShort()
 		} else {
 			do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQueryShort for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
 			if (en.status == REMOVED || en.status == COMPLETED)
+				do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQueryShort for: jobid=%s creamjobid=%s wn=%s status=%d exitcode=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status,en.exitcode);
 				job_registry_unlink_proxy(rha, &en);
 		}
 	}				
@@ -502,6 +522,8 @@ IntStateQuery()
 
 	en.status=UNDEFINED;
 	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
+	JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+	en.exitcode=-1;
 	bupdater_free_active_jobs(&bact);
 
 	if(fp!=NULL){
@@ -517,7 +539,13 @@ IntStateQuery()
 			if(line && strstr(line,"Job <")){
 				isresumed=FALSE;
 				if(!first && en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD) || (en.status==IDLE && en.updater_info && strcmp(en.updater_info,"found")==0)) && ren && (en.status!=ren->status)){	
-					if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum, JOB_REGISTRY_UPDATE_WN_ADDR|JOB_REGISTRY_UPDATE_STATUS|JOB_REGISTRY_UPDATE_UDATE|JOB_REGISTRY_UPDATE_UPDATER_INFO)) < 0){
+					if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum,
+					JOB_REGISTRY_UPDATE_WN_ADDR|
+					JOB_REGISTRY_UPDATE_STATUS|
+					JOB_REGISTRY_UPDATE_UDATE|
+					JOB_REGISTRY_UPDATE_UPDATER_INFO|
+					JOB_REGISTRY_UPDATE_EXITCODE|
+					JOB_REGISTRY_UPDATE_EXITREASON)) < 0){
 						if(ret != JOB_REGISTRY_NOT_FOUND){
 							fprintf(stderr,"Update of record returns %d: ",ret);
 							perror("");
@@ -525,6 +553,7 @@ IntStateQuery()
 					} else {
 						do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
 						if (en.status == REMOVED || en.status == COMPLETED)
+							do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d exitcode=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status,en.exitcode);
 							job_registry_unlink_proxy(rha, &en);
 					}
 					en.status = UNDEFINED;
@@ -587,6 +616,17 @@ IntStateQuery()
 				JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
 				free(wn_str);
 				freetoken(&token,maxtok_t);
+			}else if(line && strstr(line," Done successfully")){	
+				maxtok_t = strtoken(line, ' ', &token);
+				timestamp=make_message("%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp[strlen(timestamp)-1]='\0';
+				tmstampepoch=str2epoch(timestamp,"W");
+				en.udate=tmstampepoch;
+				en.status=COMPLETED;
+				free(timestamp);
+				en.exitcode=0;
+				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+				freetoken(&token,maxtok_t);
 			}
 			free(line);
 		}
@@ -594,7 +634,13 @@ IntStateQuery()
 	}
 		
 	if(en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD) || (en.status==IDLE && en.updater_info && strcmp(en.updater_info,"found")==0)) && ren && (en.status!=ren->status)){	
-		if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum, JOB_REGISTRY_UPDATE_WN_ADDR|JOB_REGISTRY_UPDATE_STATUS|JOB_REGISTRY_UPDATE_UDATE|JOB_REGISTRY_UPDATE_UPDATER_INFO)) < 0){
+		if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum,
+		JOB_REGISTRY_UPDATE_WN_ADDR|
+		JOB_REGISTRY_UPDATE_STATUS|
+		JOB_REGISTRY_UPDATE_UDATE|
+		JOB_REGISTRY_UPDATE_UPDATER_INFO|
+		JOB_REGISTRY_UPDATE_EXITCODE|
+		JOB_REGISTRY_UPDATE_EXITREASON)) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){
 				fprintf(stderr,"Update of record returns %d: ",ret);
 				perror("");
@@ -602,6 +648,7 @@ IntStateQuery()
 		} else {
 			do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
 			if (en.status == REMOVED || en.status == COMPLETED)
+				do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d exitcode=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status,en.exitcode);
 				job_registry_unlink_proxy(rha, &en);
 		}
 	}				
