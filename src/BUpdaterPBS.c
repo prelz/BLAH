@@ -377,7 +377,7 @@ Job Id: 11.cream-12.pd.infn.it
 	job_registry_entry *ren=NULL;
 	int first=TRUE;
 
-	command_string=make_message("%s/qstat -1 -f",pbs_binpath);
+	command_string=make_message("%s/qstat -f -1",pbs_binpath);
 	fp = popen(command_string,"r");
 
 	en.status=UNDEFINED;
