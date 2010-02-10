@@ -1,0 +1,1 @@
+/usr/bin/killall ${RPM_INSTALL_PREFIX}/bin/BNotifier ${RPM_INSTALL_PREFIX}/bin/BUpdaterPBS ${RPM_INSTALL_PREFIX}/bin/BUpdaterLSF ${RPM_INSTALL_PREFIX}/bin/BUpdaterCondor ${RPM_INSTALL_PREFIX}/bin/BUpdaterSGE ${RPM_INSTALL_PREFIX}/bin/blahpd ${RPM_INSTALL_PREFIX}/bin/BLParserPBS ${RPM_INSTALL_PREFIX}/bin/BLParserLSF >&/dev/null

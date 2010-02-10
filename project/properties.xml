@@ -15,11 +15,14 @@
 	Common build properties file for the GLite ce blahp component
 	
 	Authors: Joachim Flammer <Joachim.Flammer@cern.ch>
-	Version info: $Id: properties.xml,v 1.6 2007/01/26 14:48:13 mezzadri Exp $
+	Version info: $Id: properties.xml,v 1.7 2010/02/10 16:33:42 mezzadri Exp $
 	Release: $Name:  $	
 	
 	Revision history:
 	$Log: properties.xml,v $
+	Revision 1.7  2010/02/10 16:33:42  mezzadri
+	when the rpm is reinstalled the old daemons are killed
+
 	Revision 1.6  2007/01/26 14:48:13  mezzadri
 	fix for bug #23263: only .template files are installed by the rpm and BDlogger executable
 	has the setuid flag
@@ -97,6 +100,8 @@
         <property name="build.package.description" value="CE Blahp" />
 
         <property name="build.rpm.spec.post.file" value="project/org.glite.ce.blahp.post" />
+
+        <property name="build.rpm.spec.preun.file" value="project/org.glite.ce.blahp.preun" />
 
         <property name="m4files.list" value="glite.m4 classads.m4 globus.m4"/>
 		
