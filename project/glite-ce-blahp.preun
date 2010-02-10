@@ -1,1 +1,9 @@
-/usr/bin/killall ${RPM_INSTALL_PREFIX}/bin/BNotifier ${RPM_INSTALL_PREFIX}/bin/BUpdaterPBS ${RPM_INSTALL_PREFIX}/bin/BUpdaterLSF ${RPM_INSTALL_PREFIX}/bin/BUpdaterCondor ${RPM_INSTALL_PREFIX}/bin/BUpdaterSGE ${RPM_INSTALL_PREFIX}/bin/blahpd ${RPM_INSTALL_PREFIX}/bin/BLParserPBS ${RPM_INSTALL_PREFIX}/bin/BLParserLSF >&/dev/null
+#!/bin/sh
+escaped_prefix=$(echo "$RPM_INSTALL_PREFIX"|sed 's/\//\\\//g')
+pids=$(ps ax | sed -n "/${escaped_prefix}\/bin\/\(BNotifier\|BUpdater\|blahpd\|BLParser\)/s/^[ ]*\([0-9]*\).*/\1/p")
+
+for pid in $pids; do
+   kill $pid > /dev/null 2>&1
+done
+
+exit 0
