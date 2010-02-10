@@ -341,16 +341,18 @@ function bls_setup_all_files ()
   fi
   if [ ! -z "$bls_opt_stdout" ] ; then
       if [ "${bls_opt_stdout:0:1}" != "/" ] ; then bls_opt_stdout=${bls_opt_workdir}/${bls_opt_stdout} ; fi
-      bls_arguments="$bls_arguments >`basename $bls_opt_stdout`"
-      bls_fl_add_value outputsand "$bls_opt_stdout" "${blahpd_outputsandbox}home_${bls_tmp_name}/`basename $bls_opt_stdout`"
+      bls_unique_stdout_name="${blahpd_outputsandbox}out_${bls_tmp_name}_`basename $bls_opt_stdout`"
+      bls_arguments="$bls_arguments > ../`basename ${bls_unique_stdout_name}`"
+      bls_fl_add_value outputsand "$bls_opt_stdout" "$bls_unique_stdout_name"
   fi
   if [ ! -z "$bls_opt_stderr" ] ; then
       if [ "${bls_opt_stderr:0:1}" != "/" ] ; then bls_opt_stderr=${bls_opt_workdir}/${bls_opt_stderr} ; fi
       if [ "$bls_opt_stderr" == "$bls_opt_stdout" ]; then
           bls_arguments="$bls_arguments 2>&1"
       else
-          bls_arguments="$bls_arguments 2>`basename $bls_opt_stderr`"
-          bls_fl_add_value outputsand "$bls_opt_stderr" "${blahpd_outputsandbox}home_${bls_tmp_name}/`basename $bls_opt_stderr`"
+          bls_unique_stderr_name="${blahpd_outputsandbox}err_${bls_tmp_name}_`basename $bls_opt_stdout`"
+          bls_arguments="$bls_arguments 2> ../`basename ${bls_unique_stderr_name}`"
+          bls_fl_add_value outputsand "$bls_opt_stderr" "$bls_unique_stderr_name"
       fi
   fi
 
@@ -484,9 +486,8 @@ function bls_add_job_wrapper ()
       echo "rm $bls_to_be_moved" >> $bls_tmp_file
   fi
   
-  # We cannot remove the output files, as they have to be transferred back to the CE
-  # echo "cd .." >> $bls_tmp_file
-  # echo "rm -rf \$HOME" >> $bls_tmp_file
+  echo "cd .." >> $bls_tmp_file
+  echo "rm -rf \$HOME" >> $bls_tmp_file
   
   echo "" >> $bls_tmp_file
   
