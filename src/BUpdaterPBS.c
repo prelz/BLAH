@@ -412,9 +412,10 @@ Job Id: 11.cream-12.pd.infn.it
 						}
 					} else {
 						do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.wn_addr,en.status);
-						if (en.status == REMOVED || en.status == COMPLETED)
+						if (en.status == REMOVED || en.status == COMPLETED) {
 							do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d exitcode=%d\n",argv0,en.batch_id,en.wn_addr,en.status,en.exitcode);
 							job_registry_unlink_proxy(rha, &en);
+						}
 					}
 					en.status = UNDEFINED;
 					JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
@@ -512,9 +513,10 @@ Job Id: 11.cream-12.pd.infn.it
 			}
 		} else {
 			do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.wn_addr,en.status);
-			if (en.status == REMOVED || en.status == COMPLETED)
+			if (en.status == REMOVED || en.status == COMPLETED) {
 				do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQuery for: jobid=%s wn=%s status=%d exitcode=%d\n",argv0,en.batch_id,en.wn_addr,en.status,en.exitcode);
 				job_registry_unlink_proxy(rha, &en);
+			}
 		}
 	}				
 

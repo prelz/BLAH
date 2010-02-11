@@ -410,9 +410,10 @@ IntStateQueryShort()
 					}
 				} else {
 					do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQueryShort for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
-					if (en.status == REMOVED || en.status == COMPLETED)
+					if (en.status == REMOVED || en.status == COMPLETED) {
 						do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQueryShort for: jobid=%s creamjobid=%s wn=%s status=%d exitcode=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status,en.exitcode);
 						job_registry_unlink_proxy(rha, &en);
+					}
 				}
 				en.status = UNDEFINED;
 				JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
@@ -474,9 +475,10 @@ IntStateQueryShort()
 			}
 		} else {
 			do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQueryShort for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
-			if (en.status == REMOVED || en.status == COMPLETED)
+			if (en.status == REMOVED || en.status == COMPLETED) {
 				do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQueryShort for: jobid=%s creamjobid=%s wn=%s status=%d exitcode=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status,en.exitcode);
 				job_registry_unlink_proxy(rha, &en);
+			}
 		}
 	}				
 
@@ -556,9 +558,10 @@ IntStateQuery()
 						}
 					} else {
 						do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
-						if (en.status == REMOVED || en.status == COMPLETED)
+						if (en.status == REMOVED || en.status == COMPLETED) {
 							do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d exitcode=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status,en.exitcode);
 							job_registry_unlink_proxy(rha, &en);
+						}
 					}
 					en.status = UNDEFINED;
 					JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
@@ -651,9 +654,10 @@ IntStateQuery()
 			}
 		} else {
 			do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
-			if (en.status == REMOVED || en.status == COMPLETED)
+			if (en.status == REMOVED || en.status == COMPLETED) {
 				do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d exitcode=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status,en.exitcode);
 				job_registry_unlink_proxy(rha, &en);
+			}
 		}
 	}				
 
