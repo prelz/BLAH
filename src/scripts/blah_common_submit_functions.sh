@@ -472,7 +472,18 @@ function bls_add_job_wrapper ()
   echo "# Wait for the user job to finish" >> $bls_tmp_file
   echo "wait \$job_pid" >> $bls_tmp_file
   echo "user_retcode=\$?" >> $bls_tmp_file
-  
+
+  if [ "x$blah_debug_save_wn_files" != "x" ]; then
+      echo "if [ -d $blah_debug_save_wn_files ]; then" >> $bls_tmp_file
+      echo "  blw_save_dir=\"$blah_debug_save_wn_files/\`basename \$new_home\`.debug\"" >> $bls_tmp_file
+      echo "  mkdir \$blw_save_dir" >> $bls_tmp_file
+      echo "  # Saving files for debug"  >> $bls_tmp_file
+      echo "  cp \$X509_USER_PROXY \$blw_save_dir" >> $bls_tmp_file
+      [ -z ${bls_unique_stdout_name} ] || echo "  cp ../`basename ${bls_unique_stdout_name}` \$blw_save_dir" >> $bls_tmp_file
+      [ -z ${bls_unique_stderr_name} ] || echo "  cp ../`basename ${bls_unique_stderr_name}` \$blw_save_dir" >> $bls_tmp_file
+      echo "fi" >> $bls_tmp_file
+  fi
+
   if [ "x$bls_opt_proxyrenew" == "xyes" ]
   then
       echo "# Kill the watchdog when done" >> $bls_tmp_file
@@ -516,9 +527,9 @@ function bls_add_job_wrapper ()
 function bls_wrap_up_submit ()
 {
 
-  if [ -d "$blah_submit_store_info" -a -n "$bls_tmp_name" ]; then
+  if [ -d "$blah_debug_save_submit_info" -a -n "$bls_tmp_name" ]; then
     # Store files used for this job in a directory
-    bls_info_dir="$blah_submit_store_info/$bls_tmp_name.info"     
+    bls_info_dir="$blah_submit_store_info/$bls_tmp_name.debug"     
     mkdir "$bls_info_dir"
     if [ $? -eq 0 ]; then
       # Best effort.
