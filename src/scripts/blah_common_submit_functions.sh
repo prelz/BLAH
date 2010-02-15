@@ -515,6 +515,36 @@ function bls_add_job_wrapper ()
 
 function bls_wrap_up_submit ()
 {
+
+  if [ -d "$blah_submit_store_info" -a -n "$bls_tmp_name" ]; then
+    # Store files used for this job in a directory
+    bls_info_dir="$blah_submit_store_info/$bls_tmp_name.info"     
+    mkdir "$bls_info_dir"
+    if [ $? -eq 0 ]; then
+      # Best effort.
+      if [ -r "$bls_proxy_local_file" ]; then
+        cp "$bls_proxy_local_file" "$bls_info_dir/submit.proxy"
+      fi
+      if [ -r "$bls_opt_stdout" ]; then
+        ln "$bls_opt_stdout" "$bls_info_dir/job.stdout"
+        if [ $? -ne 0 ]; then
+          # If we cannot hardlink, try a soft link.
+          ln -s "$bls_opt_stdout" "$bls_info_dir/job.stdout"
+        fi
+      fi
+      if [ -r "$bls_opt_stderr" ]; then
+        ln "$bls_opt_stderr" "$bls_info_dir/job.stderr"
+        if [ $? -ne 0 ]; then
+          # If we cannot hardlink, try a soft link.
+          ln -s "$bls_opt_stderr" "$bls_info_dir/job.stderr"
+        fi
+      fi
+      if [ -r "$bls_tmp_file" ]; then
+        cp "$bls_tmp_file" "$bls_info_dir/submit.script"
+      fi
+    fi
+  fi
+
   bls_fl_clear inputsand
   bls_fl_clear outputsand
 
