@@ -88,7 +88,7 @@ main(int argc, char *argv[])
 			port=atoi(optarg);
 			break;
 	       
-		case 'm':
+		case 'a':
 			address=strdup(optarg);
 			break;
     	       
