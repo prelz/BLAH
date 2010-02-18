@@ -1191,7 +1191,7 @@ GetLogDir(int largc, char *largv[])
 
 		int option_index = 0;
      
-		c = getopt_long (largc, largv, "Dvp:m:s:b:c:d:",long_options, &option_index);
+		c = getopt_long (largc, largv, "Dvp:m:b:c:l:d:",long_options, &option_index);
      
 		if (c == -1){
 			break;
