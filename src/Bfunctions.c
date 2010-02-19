@@ -32,27 +32,61 @@ Readline(int sockd, void *vptr, size_t maxlen)
 {
 	ssize_t n, rc;
 	char    c, *buffer;
+	struct   pollfd fds[2];
+	struct   pollfd *pfds;
+	int      nfds = 1;
+	int      timeout= 5000;
+	int       retcod;
+    
+	fds[0].fd = sockd;
+	fds[0].events = 0;
+	fds[0].events = ( POLLIN | POLLOUT | POLLPRI | POLLERR | POLLHUP | POLLNVAL ) ;
+	pfds = fds;
 
 	buffer = vptr;
 
 	for ( n = 1; n < maxlen; n++ ) {
 	
-		if ( (rc = read(sockd, &c, 1)) == 1 ) {
-			*buffer++ = c;
-			if ( c == '\n' ){
-				break;
-			}
-		} else if ( rc == 0 ) {
-			if ( n == 1 ) {
-				return 0;
+		retcod = poll(pfds, nfds, timeout);
+		if( retcod < 0 ){
+			syserror("Poll error in Readline: %r");
+			break;
+		} else if( retcod == 0 ){
+			syserror("Poll timeout in Readline: %r");
+			break;
+		} else if ( retcod > 0 ){		
+			if ( ( fds[0].revents & ( POLLERR | POLLNVAL | POLLHUP) )){
+				switch (fds[0].revents){
+				case POLLNVAL:
+					syserror("poll() file descriptor error in Readline: %r");
+					break;
+				case POLLHUP:
+					syserror("Connection closed in Readline: %r");
+					break;
+				case POLLERR:
+					syserror("poll() POLLERR in Readline: %r");
+					break;
+				}
 			} else {
-				break;
+
+				if ( (rc = read(sockd, &c, 1)) == 1 ) {
+					*buffer++ = c;
+					if ( c == '\n' ){
+						break;
+					}
+				} else if ( rc == 0 ) {
+					if ( n == 1 ) {
+						return 0;
+					} else {
+						break;
+					}
+				} else {
+					if ( errno == EINTR ){
+						continue;
+					}
+					return -1;
+				}
 			}
-		} else {
-			if ( errno == EINTR ){
-				continue;
-			}
-			return -1;
 		}
 	}
 

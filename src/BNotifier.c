@@ -500,9 +500,11 @@ STARTNOTIFYJOBEND
 				close(conn_c);
 				do_log(debuglogfile, debug, 1, "Fatal Error:Poll error in CreamConnection\n");
 				sysfatal("Poll error in CreamConnection: %r");
-			}
-    
-			if ( retcod > 0 ){		
+			} else if ( retcod == 0 ){
+				do_log(debuglogfile, debug, 1, "Error:poll() timeout in CreamConnection\n");
+				syserror("poll() timeout in CreamConnection: %r");
+				break;
+			} else if ( retcod > 0 ){		
 ret_c:		
 				if ( ( fds[0].revents & ( POLLERR | POLLNVAL | POLLHUP) )){
 					switch (fds[0].revents){
@@ -529,16 +531,6 @@ ret_c:
 				} 
 			} 
 		}else{
-			retcod = poll(pfds, nfds, timeout);
-			if( retcod < 0 ){
-				close(conn_c);
-				do_log(debuglogfile, debug, 1, "Fatal Error:Poll error in CreamConnection\n");
-				sysfatal("Poll error in CreamConnection: %r");
-			}
-			if(retcod > 0 ){
-				close(conn_c);
-				goto ret_c;
-			}
 write_c:      
 			buffer[0]='\0';
 			Readline(conn_c, buffer, STR_CHARS-1);
