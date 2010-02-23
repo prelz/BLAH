@@ -82,7 +82,7 @@ int creamisconn=FALSE;
 int startnotify=FALSE;
 int startnotifyjob=FALSE;
 int firstnotify=FALSE;
-int sentendonce=TRUE;
+int sentendonce=FALSE;
 
 char *joblist_string="";
 

@@ -277,7 +277,7 @@ PollDB()
 	
 		now=time(NULL);
 	
-		if(!startnotify && !startnotifyjob){
+		if(!startnotify && !startnotifyjob && !(firstnotify && sentendonce)){
 			sleep(2);
 			continue;
 		}
@@ -314,7 +314,7 @@ PollDB()
 					}
 					finalbuffer = realloc(finalbuffer,flen+len+2);
 					if (finalbuffer == NULL){
-                                                sysfatal("can't realloc finalbuffer in PollDB: %r");
+						sysfatal("can't realloc finalbuffer in PollDB: %r");
 					}
 					if(flen==0){
 						finalbuffer[0]='\000';
@@ -326,11 +326,12 @@ PollDB()
 			}
 
 			if(finalbuffer != NULL){
-				NotifyCream(finalbuffer);
+				if(NotifyCream(finalbuffer)!=-1){
+	        			/* change last notification time */
+					lastnotiftime=now;
+				}
 				free(finalbuffer);
 				finalbuffer=NULL;
-	        		/* change last notification time */
-				lastnotiftime=now;
 			}
 			
 			fclose(fd);
@@ -348,29 +349,48 @@ PollDB()
    			for(i=0;i<maxtok;i++){
         			if ((en=job_registry_get(rhc, tbuf[i])) != NULL){
 					buffer=ComposeClassad(en);
-					NotifyCream(buffer);
 				}else{
 					cdate=iepoch2str(now);
 					buffer=make_message("[BlahJobName=\"%s\"; JobStatus=4; JwExitCode=999; ExitReason=\"job not found\"; Reason=\"reason=999\"; ChangeTime=\"%s\"; ]\n",tbuf[i],cdate);
 					free(cdate);
-					NotifyCream(buffer);
 				}
 				free(en);
+				len=strlen(buffer);
+				if(finalbuffer != NULL){
+					flen=strlen(finalbuffer);
+				}else{
+					flen=0;
+				}
+				finalbuffer = realloc(finalbuffer,flen+len+2);
+				if (finalbuffer == NULL){
+					sysfatal("can't realloc finalbuffer in PollDB: %r");
+				}
+				if(flen==0){
+					finalbuffer[0]='\000';
+				}
+				strcat(finalbuffer,buffer);
 				free(buffer);
 			}
 			freetoken(&tbuf,maxtok);
 			
-	        	/* change last notification time */
-			lastnotiftime=now;
-			startnotifyjob=FALSE;
-			startnotify=TRUE;
+			if(finalbuffer != NULL){
+				if(NotifyCream(finalbuffer)!=-1){
+	        			/* change last notification time */
+					lastnotiftime=now;
+					startnotifyjob=FALSE;
+				}
+				free(finalbuffer);
+				finalbuffer=NULL;
+			}
 			job_registry_destroy(rhc);
 		}
 
 		if(firstnotify && sentendonce){
-			NotifyCream("NTFDATE/END\n");
-			sentendonce=FALSE;
-			firstnotify=FALSE;
+			if(NotifyCream("NTFDATE/END\n")!=-1){
+				startnotify=TRUE;
+				sentendonce=FALSE;
+				firstnotify=FALSE;
+			}
 		}		
 		sleep(loop_interval);
 	}
@@ -491,6 +511,7 @@ STARTNOTIFYJOBEND
 			*buffer = 0;
 			if(Readline(conn_c, buffer, STR_CHARS-1)<=0){
 				close(conn_c);
+				creamisconn=FALSE;
 				break;
 			}
 
@@ -505,10 +526,7 @@ STARTNOTIFYJOBEND
 					startnotifyjob=TRUE;
 					startnotify=FALSE;
                                	} else if(buffer && strstr(buffer,"STARTNOTIFYJOBEND/")!=NULL){
-					startnotify=TRUE;
 					firstnotify=TRUE;
-					now=time(NULL);
-					lastnotiftime=now;
 				} else if(buffer && strstr(buffer,"CREAMFILTER/")!=NULL){
                                         GetFilter(buffer);
 					creamisconn=TRUE;
@@ -673,21 +691,22 @@ NotifyCream(char *buffer)
 	}else if ( retcod == 0 ){
 		do_log(debuglogfile, debug, 1, "Error:poll() timeout in NotifyCream\n");
 		syserror("poll() timeout in NotifyCream: %r");
+		return -1;
 	}else if ( retcod > 0 ){
 		if ( ( fds[0].revents & ( POLLERR | POLLNVAL | POLLHUP) )){
 			switch (fds[0].revents){
 			case POLLNVAL:
 				do_log(debuglogfile, debug, 1, "Error:poll() file descriptor error in NotifyCream\n");
 				syserror("poll() file descriptor error in NotifyCream: %r");
-				break;
+				return -1;
 			case POLLHUP:
 				do_log(debuglogfile, debug, 1, "Connection closed in NotifyCream\n");
 				syserror("Connection closed in NotifyCream: %r");
-				break;
+				return -1;
 			case POLLERR:
 				do_log(debuglogfile, debug, 1, "Error:poll() POLLERR in NotifyCream\n");
 				syserror("poll() POLLERR in NotifyCream: %r");
-				break;
+				return -1;
 			}
 		} else {
 			
