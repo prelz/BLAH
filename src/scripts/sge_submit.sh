@@ -62,8 +62,6 @@ if [ -r $local_submit_attributes_file ] ; then
     echo "source $local_submit_attributes_file" >> $bls_opt_tmp_req_file
     chmod +x $bls_opt_tmp_req_file
     $bls_opt_tmp_req_file >> $bls_tmp_file 2> /dev/null
-fi
-if [ -e $bls_opt_tmp_req_file ] ; then
     rm -f $bls_opt_tmp_req_file
 fi
 
@@ -100,7 +98,7 @@ fi
 
 # Compose the blahp jobID ("sge/" + datenow + sge jobid)
 # 11/11/09 Mario David fix 
-blahp_jobID=sge/`date +%Y%m%d%H%M%S`.${SGE_CELL:-default}/$jobID
+blahp_jobID=sge/`date +%Y%m%d%H%M%S`/$jobID
 
 if [ "x$job_registry" != "x" ]; then
   now=`date +%s`
@@ -109,7 +107,6 @@ if [ "x$job_registry" != "x" ]; then
 fi
 
 echo "BLAHP_JOBID_PREFIX$blahp_jobID"
-  
 bls_wrap_up_submit
 
 exit $retcode

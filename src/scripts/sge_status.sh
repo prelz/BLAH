@@ -39,6 +39,14 @@ then
   . $sge_root/${sge_cell:-default}/common/settings.sh
 fi
 
-exec $sge_helper_path --status $getwn "$@"
+tmpid=`echo "$@"|sed 's/.*\/.*\///g'`
 
-exit 1
+# ASG Keith way
+jobid=${tmpid}.default
+
+
+blahp_status=`exec ${sge_helper_path:-/opt/glite/bin}/sge_helper --status $getwn $jobid`
+retcode=$?
+
+echo ${retcode}${blahp_status}
+#exit $retcode

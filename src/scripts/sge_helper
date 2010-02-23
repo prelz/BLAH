@@ -100,9 +100,9 @@ if ( $QSTAT ) {
 		my $jl = $joblist{$cell}->{$jobid};
 
 		my $status = ( $job_info->{'state'}->[1] || '' );
-	 	# 11/11/09 Mario David fix (remove CELL)
+		
 		$jobinfo{'BatchJobId'} = $jobid;
-		$jobinfo{'JobStatus'} = ( $status =~ /hr/    ) ? BLAH_HELD
+		$jobinfo{'JobStatus'} = ( $status =~ /h/    ) ? BLAH_HELD
 		    :        ( $status =~ /d/    ) ? BLAH_DELETED
 		    :        ( $status =~ /[rt]/ ) ? BLAH_RUNNING
 		    :        ( $status =~ /E/    ) ? BLAH_FINISHED
@@ -114,13 +114,14 @@ if ( $QSTAT ) {
 		my $starttime = $job_info->{'JAT_start_time'};
 
 		if ( $CLASSAD ) {
-		    $jobinfo{'LRMSSubmissionTime'} = &convert_date( $submittime ) if $submittime;
-		    $jobinfo{'LRMSStartRunningTime'} = ( $starttime ? &convert_date( $starttime ) : '' );
+		    #ASG
+		    $jobinfo{'LRMSSubmissionTime'} = '"'.&convert_date( $submittime ).'"' if $submittime;
+		    $jobinfo{'LRMSStartRunningTime'} = '"'.( $starttime ? &convert_date( $starttime ) : '' ).'"';
 		} else {
 		    $jobinfo{'statechange'} = &convert_date( $starttime || $submittime );
 		}
 
-		$jobinfo{'WorkerNode'} = $1 if $GETWORKERNODE && defined( $job_info->{'queue_name'} ) && $job_info->{'queue_name'} =~ /\@(.+)$/;
+		$jobinfo{'WorkerNode'} = '"'.$1.'"' if $GETWORKERNODE && defined( $job_info->{'queue_name'} ) && $job_info->{'queue_name'} =~ /\@(.+)$/;
 		
 		$results[ ( defined( $jl ) ? $jl->[0] : $index++ ) ] = \%jobinfo;
 	    }
@@ -129,67 +130,7 @@ if ( $QSTAT ) {
 }
 
 if ( $QACCT ) {
-=begin GHOSTCODE
-
-# For --qacct,   we are only concerned with requested jobs
-
-# ASG: Create SGE accounting cache file
-
-
-my $offset;
-my $mydate=time;
-my $tlimit=600;
-
-# Change this by a configurable path
-my $cachefile="/tmp/acct_cache";
-my $offsetfile="/tmp/acct_offset";
-
-my ($dev, $ino, $mode, $nlink, $uid, $gid, $rdev, $size, $atime, $mtime, $ctime, $blksize, $blocks) = stat($cachefile);
-
-
-# Checks cache file date
-my $diff = ( $mydate - $mtime );
-
-
-
-if ( $diff > $tlimit ) {
-
-	open (ACCTOFFST, "< /tmp/acct_offset");
-
-	my @lines = <ACCTOFFST>;	
-	close(ACCTOFFST);
-
-        $offset=$lines[0];
-
-# Checks if offset is a valid number
-if ($offset =~ /^[+-]?\d+$/ ) {
-    #print "$offset\n";
-} else {
-    $offset = 0;
-}
-
-
-	open (ACCOUNTING, "< /usr/local/sge/pro/default/common/accounting") or die "cannot open file for reading: $!";
-	open (ACCTCACHE, "> $cachefile") or die "cannot open file for writing: $!";
-	open (ACCTOFFST, "> /tmp/acct_offset") or die "cannot open file for writing: $!";
-
-	seek ACCOUNTING, $offset, 0;
-	while(<ACCOUNTING>)
-	{
-   	print ACCTCACHE;
-	}
-
-	$offset=tell ACCOUNTING;
-	print ACCTOFFST $offset;
-
-	close(ACCOUNTING);
-	close(ACCTCACHE);
-	close(ACCTOFFST);
-
-}
-
-# ASG: End of cache script
-
+    # For --qacct,   we are only concerned with requested jobs
 
     foreach my $cell ( keys %joblist ) {
 	foreach my $jobid ( keys %{$joblist{$cell}} ) {
@@ -200,27 +141,27 @@ if ($offset =~ /^[+-]?\d+$/ ) {
 	    
 	    my %jobinfo;
 
-	    my $qacct = &run_sge_command( $cell, '2>&1', 'qacct', '-f /tmp/acct_cache -j', $jobid )
+	    my $qacct = &run_sge_command( $cell, '2>&1', 'qacct', '-j', $jobid )
 		or die;
 
 	    while ( defined( $_ = $qacct->getline ) ) {
 		if ( /^exit_status\s+(\d+)/ ) {
-		    # 11/11/09 Mario David fix (remove CELL)
 		    $jobinfo{'BatchJobId'} = $jobid;
 		    $jobinfo{'ExitCode'} = $1;
 		    $jobinfo{'JobStatus'} = BLAH_FINISHED;
 		} elsif ( $CLASSAD && /^qsub_time\s+(.+)$/ ) {
-		    $jobinfo{'LRMSSubmissionTime'} = &convert_date( $1 );
+		    #ASG
+		    $jobinfo{'LRMSSubmissionTime'} = '"'.&convert_date( $1 ).'"';
 		} elsif ( $CLASSAD && /^start_time\s+(.+)$/ ) {
-		    $jobinfo{'LRMSStartRunningTime'} = &convert_date( $1 );
+		    $jobinfo{'LRMSStartRunningTime'} = '"'.&convert_date( $1 ).'"';
 		} elsif ( /^end_time\s+(.+)$/ ) {
 		    if ( $CLASSAD ) { 
-			$jobinfo{'LRMSCompletedTime'} = &convert_date( $1 );
+			$jobinfo{'LRMSCompletedTime'} = '"'.&convert_date( $1 ).'"';
 		    } else {
 			$jobinfo{'statechange'} = &convert_date( $1 );
 		    }
 		} elsif ( $GETWORKERNODE && /^hostname\s+(\S+)$/ ) {
-		    $jobinfo{'WorkerNode'} = $1;
+		    $jobinfo{'WorkerNode'} = '"'.$1.'"';
 		}
 	    }
 	    
@@ -229,21 +170,14 @@ if ($offset =~ /^[+-]?\d+$/ ) {
 	    $results[$jl->[0]] = \%jobinfo;
 	}
     }
-
-=end GHOSTCODE
-
-=cut
 }
-
-
-
 
 foreach my $i ( 0 .. $#results ) {
     my $jobstatus = $results[$i]->{'JobStatus'};
 
     if ( $CLASSAD ) {
 	if ( $jobstatus ) {
-	    print "[ ", map( "$_ = \"$results[$i]->{$_}\"; ", keys %{$results[$i]} ), "]\n";
+	    print "[ ", map( "$_ = $results[$i]->{$_}; ", keys %{$results[$i]} ), "]\n";
 	} else {
 	    print "Error\n";
 	}
