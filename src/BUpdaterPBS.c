@@ -24,8 +24,6 @@
 
 #include "BUpdaterPBS.h"
 
-extern int bfunctions_poll_timeout;
-
 int main(int argc, char *argv[]){
 
 	FILE *fd;

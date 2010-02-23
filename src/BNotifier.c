@@ -473,18 +473,8 @@ STARTNOTIFYJOBEND
 
 
 	char      *buffer;
-	int       retcod;
-    
-	struct   pollfd fds[2];
-	struct   pollfd *pfds;
-	int      nfds = 1;
-	int      timeout= 5000;
 	time_t now;
     
-	fds[0].fd = c_sock;
-	fds[0].events = 0;
-	fds[0].events = ( POLLIN | POLLOUT | POLLPRI | POLLERR | POLLHUP | POLLNVAL ) ;
-	pfds = fds;
 
 	if((buffer=calloc(STR_CHARS,1)) == 0){
 		sysfatal("can't malloc buffer in CreamConnection: %r");
@@ -492,48 +482,18 @@ STARTNOTIFYJOBEND
 
 	while ( 1 ) {
 	
-		if(conn_c < 0){
-	  
-			retcod = poll(pfds, nfds, timeout);
-		
-			if(retcod <0){
+		do_log(debuglogfile, debug, 1, "Listening for new connection in CreamConnection\n");
+		if ( (conn_c = accept(c_sock, NULL, NULL) ) < 0 ) {
+			do_log(debuglogfile, debug, 1, "Fatal Error:Error calling accept() on c_sock in CreamConnection\n");
+			sysfatal("Error calling accept() in CreamConnection: %r");
+		}
+		while ( 1 ) {
+			*buffer = 0;
+			if(Readline(conn_c, buffer, STR_CHARS-1)<=0){
 				close(conn_c);
-				do_log(debuglogfile, debug, 1, "Fatal Error:Poll error in CreamConnection\n");
-				sysfatal("Poll error in CreamConnection: %r");
-			} else if ( retcod == 0 ){
-				do_log(debuglogfile, debug, 1, "Error:poll() timeout in CreamConnection\n");
-				syserror("poll() timeout in CreamConnection: %r");
 				break;
-			} else if ( retcod > 0 ){		
-ret_c:		
-				if ( ( fds[0].revents & ( POLLERR | POLLNVAL | POLLHUP) )){
-					switch (fds[0].revents){
-					case POLLNVAL:
-						do_log(debuglogfile, debug, 1, "Error:poll() file descriptor error in CreamConnection\n");
-						syserror("poll() file descriptor error in CreamConnection: %r");
-						break;
-					case POLLHUP:
-						do_log(debuglogfile, debug, 1, "Error:Connection closed in CreamConnection\n");
-						syserror("Connection closed in CreamConnection: %r");
-						break;
-					case POLLERR:
-						do_log(debuglogfile, debug, 1, "Error:poll() POLLERR in CreamConnection\n");
-						syserror("poll() POLLERR in CreamConnection: %r");
-						break;
-					}
-				} else {
-            
-					if ( (conn_c = accept(c_sock, NULL, NULL) ) < 0 ) {
-						do_log(debuglogfile, debug, 1, "Fatal Error:Error calling accept() in CreamConnection\n");
-						sysfatal("Error calling accept() in CreamConnection: %r");
-					}
-					goto write_c;
-				} 
-			} 
-		}else{
-write_c:      
-			buffer[0]='\0';
-			Readline(conn_c, buffer, STR_CHARS-1);
+			}
+
 			if(strlen(buffer)>0){
 				do_log(debuglogfile, debug, 1, "Received for Cream:%s\n",buffer);
 				if(buffer && strstr(buffer,"STARTNOTIFY/")!=NULL){
@@ -543,9 +503,9 @@ write_c:
 				} else if(buffer && strstr(buffer,"STARTNOTIFYJOBLIST/")!=NULL){
 					GetJobList(buffer);
 					startnotifyjob=TRUE;
-                                        startnotify=FALSE;
-                                } else if(buffer && strstr(buffer,"STARTNOTIFYJOBEND/")!=NULL){
-                                        startnotify=TRUE;
+					startnotify=FALSE;
+                               	} else if(buffer && strstr(buffer,"STARTNOTIFYJOBEND/")!=NULL){
+					startnotify=TRUE;
 					firstnotify=TRUE;
 					now=time(NULL);
 					lastnotiftime=now;
@@ -694,27 +654,26 @@ NotifyCream(char *buffer)
 	struct   pollfd fds[2];
 	struct   pollfd *pfds;
 	int      nfds = 1;
-	int      timeout= 1000000;
     
 	fds[0].fd = conn_c;
 	fds[0].events = 0;
-	fds[0].events = ( POLLIN | POLLOUT | POLLPRI | POLLERR | POLLHUP | POLLNVAL ) ;
+	fds[0].events = ( POLLOUT | POLLPRI | POLLERR | POLLHUP | POLLNVAL ) ;
 	pfds = fds;    
     
 	if(!creamisconn){
 		return -1;
 	}
     
-    
-	retcod = poll(pfds, nfds, timeout); 
+	retcod = poll(pfds, nfds, bfunctions_poll_timeout); 
         
 	if(retcod <0){
 		close(conn_c);
 		do_log(debuglogfile, debug, 1, "Fatal Error:Poll error in NotifyCream errno:%d\n",errno);
 		sysfatal("Poll error in NotifyCream: %r");
-	}
-    
-	if ( retcod > 0 ){
+	}else if ( retcod == 0 ){
+		do_log(debuglogfile, debug, 1, "Error:poll() timeout in NotifyCream\n");
+		syserror("poll() timeout in NotifyCream: %r");
+	}else if ( retcod > 0 ){
 		if ( ( fds[0].revents & ( POLLERR | POLLNVAL | POLLHUP) )){
 			switch (fds[0].revents){
 			case POLLNVAL:

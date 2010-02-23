@@ -24,8 +24,8 @@
 
 #include "Bfunctions.h"
 
-int bfunctions_poll_timeout = 600000; /* Default 10 minutes */
 pthread_mutex_t writeline_mutex = PTHREAD_MUTEX_INITIALIZER;
+int bfunctions_poll_timeout = 600000; /* Default 10 minutes */
 
 ssize_t
 Readline(int sockd, void *vptr, size_t maxlen)
@@ -35,19 +35,18 @@ Readline(int sockd, void *vptr, size_t maxlen)
 	struct   pollfd fds[2];
 	struct   pollfd *pfds;
 	int      nfds = 1;
-	int      timeout= 5000;
-	int       retcod;
+	int      retcod;
     
 	fds[0].fd = sockd;
 	fds[0].events = 0;
-	fds[0].events = ( POLLIN | POLLOUT | POLLPRI | POLLERR | POLLHUP | POLLNVAL ) ;
+	fds[0].events = ( POLLIN | POLLPRI | POLLERR | POLLHUP | POLLNVAL ) ;
 	pfds = fds;
 
 	buffer = vptr;
-
+	
 	for ( n = 1; n < maxlen; n++ ) {
 	
-		retcod = poll(pfds, nfds, timeout);
+		retcod = poll(pfds, nfds, -1);
 		if( retcod < 0 ){
 			syserror("Poll error in Readline: %r");
 			break;
@@ -75,11 +74,7 @@ Readline(int sockd, void *vptr, size_t maxlen)
 						break;
 					}
 				} else if ( rc == 0 ) {
-					if ( n == 1 ) {
-						return 0;
-					} else {
-						break;
-					}
+					return 0;
 				} else {
 					if ( errno == EINTR ){
 						continue;
