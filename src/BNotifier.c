@@ -265,6 +265,9 @@ PollDB()
         int  maxtok,i;
         char **tbuf;
 	int len=0,flen=0;
+        struct stat sbuf;
+        int rc;
+	char *regfile;
 	
 	rha=job_registry_init(registry_file, BY_BATCH_ID);
 	if (rha == NULL){
@@ -278,11 +281,22 @@ PollDB()
 		now=time(NULL);
 	
 		if(!startnotify && !startnotifyjob && !(firstnotify && sentendonce)){
-			sleep(2);
+			sleep(loop_interval);
 			continue;
 		}
 
 		if(startnotify){
+
+                	regfile=make_message("%s/registry",registry_file);
+        		rc=stat(regfile,&sbuf);
+			free(regfile);
+			if(sbuf.st_mtime<lastnotiftime){
+				do_log(debuglogfile, debug, 3, "Skip registry opening: mtime:%d lastn:%d\n",sbuf.st_mtime,lastnotiftime);
+				sleep(loop_interval);
+				continue;
+			}
+			do_log(debuglogfile, debug, 3, "Normal registry opening: mtime:%d lastn:%d\n",sbuf.st_mtime,lastnotiftime);
+
 			fd = job_registry_open(rha, "r");
 			if (fd == NULL)
 			{
