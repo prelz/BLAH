@@ -524,6 +524,29 @@ function bls_add_job_wrapper ()
   fi
 }
 
+function bls_set_up_local_and_extra_args ()
+{
+  if [ -r $bls_local_submit_attributes_file ] ; then
+      echo \#\!/bin/sh > $bls_opt_tmp_req_file
+      if [ ! -z $bls_opt_req_file ] ; then
+          cat $bls_opt_req_file >> $bls_opt_tmp_req_file
+      fi
+      if [ -n "$bls_opt_mpinodes" ]; then
+          echo "blah_opt_mpinodes=$bls_opt_mpinodes" >> $bls_opt_tmp_req_file
+      fi
+      echo "source $bls_local_submit_attributes_file" >> $bls_opt_tmp_req_file
+      chmod +x $bls_opt_tmp_req_file
+      $bls_opt_tmp_req_file >> $bls_tmp_file 2> /dev/null
+  fi
+  if [ -e $bls_opt_tmp_req_file ] ; then
+      rm -f $bls_opt_tmp_req_file
+  fi
+  
+  if [ ! -z "$bls_opt_xtra_args" ] ; then
+      echo -e $bls_opt_xtra_args >> $bls_tmp_file 2> /dev/null
+  fi
+}
+
 function bls_wrap_up_submit ()
 {
 

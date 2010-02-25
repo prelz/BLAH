@@ -97,23 +97,9 @@ end_of_preamble
 [ -z "$bls_opt_mpinodes" ]       || echo "#BSUB -n $bls_opt_mpinodes" >> $bls_tmp_file
 
 #local batch system-specific file output must be added to the submit file
-local_submit_attributes_file=${GLITE_LOCATION:-/opt/glite}/bin/lsf_local_submit_attributes.sh
-if [ -r $local_submit_attributes_file ] ; then
-    echo \#\!/bin/sh > $bls_opt_tmp_req_file
-    if [ ! -z $bls_opt_req_file ] ; then
-        cat $bls_opt_req_file >> $bls_opt_tmp_req_file
-    fi
-    echo "source $local_submit_attributes_file" >> $bls_opt_tmp_req_file
-    chmod +x $bls_opt_tmp_req_file
-    $bls_opt_tmp_req_file >> $bls_tmp_file 2> /dev/null
-fi
-if [ -e $bls_opt_tmp_req_file ] ; then
-    rm -f $bls_opt_tmp_req_file
-fi
+bls_local_submit_attributes_file=${GLITE_LOCATION:-/opt/glite}/bin/lsf_local_submit_attributes.sh
 
-if [ ! -z "$bls_opt_xtra_args" ] ; then
-    echo -e $bls_opt_xtra_args >> $bls_tmp_file 2> /dev/null
-fi
+bls_set_up_local_and_extra_args
 
 # Write LSF directives according to command line options
 
