@@ -52,8 +52,8 @@ function bls_fl_subst ()
   bls_fl_subst_result=""
 
   if [ \( ! -z "$f_local" \) -a \( ! -z "$f_remote" \) ] ; then
-      temp_result=${subst_template/@@F_LOCAL/$f_local}
-      bls_fl_subst_result=${temp_result/@@F_REMOTE/$f_remote}
+      temp_result=${subst_template//@@F_LOCAL/$f_local}
+      bls_fl_subst_result=${temp_result//@@F_REMOTE/$f_remote}
   fi
 }
 
@@ -72,7 +72,7 @@ function bls_fl_subst_and_accumulate ()
 
   container_name=${1:?"Missing container name argument to bls_fl_subst_and_accumulate"}
   subst_template=${2:?"Missing template argument to bls_fl_subst_and_accumulate"}
-  separator=${3:?"Missing separator argument to bls_add_value"}
+  separator=${3:?"Missing separator argument to bls_fl_subst_and_accumulate"}
 
   bls_fl_subst_and_accumulate_result=""
 
@@ -107,14 +107,15 @@ function bls_fl_subst_and_dump ()
   local filename
 
   container_name=${1:?"Missing container name argument to bls_fl_subst_and_dump"}
-  subst_template=${2:?"Missing template argument to bls_fl_subst_and_accumulate"}
-  filename=${3:?"Missing filename argument to bls_add_value"}
+  subst_template=${2:?"Missing template argument to bls_fl_subst_and_dump"}
+  filename=${3:?"Missing filename argument to bls_fl_subst_and_dump"}
 
   local last_argument
 
   eval "last_argument=\${bls_${container_name}_counter:=0}"
 
   local ind
+  local f_remote
   
   for (( ind=0 ; ind < $last_argument ; ind++ )) ; do
       bls_fl_subst $container_name $ind "$subst_template"
@@ -124,11 +125,45 @@ function bls_fl_subst_and_dump ()
   done
 }
 
+function bls_fl_subst_relative_paths_and_dump ()
+{
+#
+# Usage: bls_fl_subst_relative_paths_and_dump container_name template_string filename
+# substitutes only the value pairs in container_name where the remote file path 
+# doesn't begin with '/' (relative paths).
+# to the @@F_LOCAL and @@F_REMOTE strings in template_string, and
+# appends the results as single lines to $filename 
+#
+  local container_name
+  local subst_template
+  local filename
+
+  container_name=${1:?"Missing container name argument to bls_fl_subst_relative_paths_and_dump"}
+  subst_template=${2:?"Missing template argument to bls_fl_subst_relative_paths_and_dump"}
+  filename=${3:?"Missing filename argument to bls_fl_subst_relative_paths_and_dump"}
+
+  local last_argument
+
+  eval "last_argument=\${bls_${container_name}_counter:=0}"
+
+  local ind
+  
+  for (( ind=0 ; ind < $last_argument ; ind++ )) ; do
+      eval "f_remote=\"\${bls_${container_name}_remote_${container_index}}\""
+      if [ "${f_remote:0:1}" != "/" ]; then
+          bls_fl_subst $container_name $ind "$subst_template"
+          if [ ! -z "$bls_fl_subst_result" ] ; then
+              echo $bls_fl_subst_result >> $filename
+          fi
+      fi
+  done
+}
+
 function bls_fl_clear ()
 {
 #
 # Usage: bls_fl_clear container_name 
-# Deletes all the values in contenier container_name.
+# Deletes all the values in container container_name.
 #
   local container_name
 
@@ -297,7 +332,6 @@ function bls_setup_all_files ()
   
   if [ "x$bls_opt_stgcmd" == "xyes" ] ; then
       bls_fl_add_value inputsand "$bls_opt_the_command" "`basename $bls_opt_the_command`"
-      bls_to_be_moved="$bls_to_be_moved `basename $bls_opt_the_command`"
   fi
   
   # Put BPRserver into sandbox
@@ -305,7 +339,6 @@ function bls_setup_all_files ()
       if [ -r "$bls_proxyrenewald" ] ; then
           remote_BPRserver=`basename $bls_proxyrenewald`.$uni_ext
           bls_fl_add_value inputsand "$bls_proxyrenewald" "${blahpd_inputsandbox}${remote_BPRserver}"
-          bls_to_be_moved="$bls_to_be_moved $remote_BPRserver"
       else
           bls_opt_proxyrenew="no"
       fi
@@ -321,7 +354,6 @@ function bls_setup_all_files ()
       if [ -r "$bls_proxy_local_file" -a -f "$bls_proxy_local_file" ] ; then
           bls_proxy_remote_file=${bls_tmp_name}.proxy
           bls_fl_add_value inputsand "$bls_proxy_local_file" "${blahpd_inputsandbox}${bls_proxy_remote_file}"
-          bls_to_be_moved="$bls_to_be_moved ${bls_proxy_remote_file}"
           bls_need_to_reset_proxy=yes
       fi
   fi
@@ -333,7 +365,6 @@ function bls_setup_all_files ()
       if [ -f "$bls_opt_stdin" ] ; then
           stdin_unique=`basename $bls_opt_stdin`.$uni_ext
           bls_fl_add_value inputsand "$bls_opt_stdin" "${blahpd_inputsandbox}${stdin_unique}"
-          bls_to_be_moved="$bls_to_be_moved $bls_opt_stdin_unique"
           bls_arguments="$bls_arguments <\"$bls_opt_stdin_unique\""
       else
           bls_arguments="$bls_arguments <$bls_opt_stdin"
@@ -342,7 +373,7 @@ function bls_setup_all_files ()
   if [ ! -z "$bls_opt_stdout" ] ; then
       if [ "${bls_opt_stdout:0:1}" != "/" ] ; then bls_opt_stdout=${bls_opt_workdir}/${bls_opt_stdout} ; fi
       bls_unique_stdout_name="${blahpd_outputsandbox}out_${bls_tmp_name}_`basename $bls_opt_stdout`"
-      bls_arguments="$bls_arguments > ../`basename ${bls_unique_stdout_name}`"
+      bls_arguments="$bls_arguments > $bls_unique_stdout_name"
       bls_fl_add_value outputsand "$bls_opt_stdout" "$bls_unique_stdout_name"
   fi
   if [ ! -z "$bls_opt_stderr" ] ; then
@@ -350,8 +381,8 @@ function bls_setup_all_files ()
       if [ "$bls_opt_stderr" == "$bls_opt_stdout" ]; then
           bls_arguments="$bls_arguments 2>&1"
       else
-          bls_unique_stderr_name="${blahpd_outputsandbox}err_${bls_tmp_name}_`basename $bls_opt_stdout`"
-          bls_arguments="$bls_arguments 2> ../`basename ${bls_unique_stderr_name}`"
+          bls_unique_stderr_name="${blahpd_outputsandbox}err_${bls_tmp_name}_`basename $bls_opt_stderr`"
+          bls_arguments="$bls_arguments 2> $bls_unique_stderr_name"
           bls_fl_add_value outputsand "$bls_opt_stderr" "$bls_unique_stderr_name"
       fi
   fi
@@ -427,7 +458,10 @@ function bls_add_job_wrapper ()
   # Set the temporary home (including cd'ing into it)
   echo "new_home=\`pwd\`/home_$bls_tmp_name">>$bls_tmp_file
   echo "mkdir \$new_home">>$bls_tmp_file
-  [ -z "$bls_to_be_moved" ] || echo "mv $bls_to_be_moved \$new_home &>/dev/null">>$bls_tmp_file
+
+  echo "# Move into new home any relative input sandbox file" >> $bls_tmp_file
+  bls_fl_subst_relative_paths_and_dump inputsand "mv @@F_REMOTE \$new_home &> /dev/null" $bls_tmp_file
+
   echo "export HOME=\$new_home">>$bls_tmp_file
   echo "cd \$new_home">>$bls_tmp_file
   
@@ -479,8 +513,8 @@ function bls_add_job_wrapper ()
       echo "  mkdir \$blw_save_dir" >> $bls_tmp_file
       echo "  # Saving files for debug"  >> $bls_tmp_file
       echo "  cp \$X509_USER_PROXY \$blw_save_dir" >> $bls_tmp_file
-      [ -z ${bls_unique_stdout_name} ] || echo "  cp ../`basename ${bls_unique_stdout_name}` \$blw_save_dir" >> $bls_tmp_file
-      [ -z ${bls_unique_stderr_name} ] || echo "  cp ../`basename ${bls_unique_stderr_name}` \$blw_save_dir" >> $bls_tmp_file
+      [ -z ${bls_unique_stdout_name} ] || echo "  cp $bls_unique_stdout_name \$blw_save_dir" >> $bls_tmp_file
+      [ -z ${bls_unique_stderr_name} ] || echo "  cp $bls_unique_stderr_name \$blw_save_dir" >> $bls_tmp_file
       echo "fi" >> $bls_tmp_file
   fi
 
@@ -491,14 +525,17 @@ function bls_add_job_wrapper ()
       echo "kill \$server_pid 2> /dev/null" >> $bls_tmp_file
   fi
   
-  if [ ! -z "$bls_to_be_moved" ] ; then
-      echo ""  >> $bls_tmp_file
-      echo "# Remove the staged files" >> $bls_tmp_file
-      echo "rm $bls_to_be_moved" >> $bls_tmp_file
-  fi
+  echo ""  >> $bls_tmp_file
+  echo "# Move all relative outputsand paths out of temp home" >> $bls_tmp_file
+  echo "cd \$new_home" >> $bls_tmp_file
+  bls_fl_subst_relative_paths_and_dump outputsand "mv @@F_REMOTE .. 2> /dev/null" $bls_tmp_file
   
+  echo ""  >> $bls_tmp_file
+  echo "# Remove the staged files, if any" >> $bls_tmp_file
+  bls_fl_subst_relative_paths_and_dump inputsand "rm @@F_REMOTE .. 2> /dev/null" $bls_tmp_file
+
   echo "cd .." >> $bls_tmp_file
-  echo "rm -rf \$HOME" >> $bls_tmp_file
+  echo "rm -rf \$new_home" >> $bls_tmp_file
   
   echo "" >> $bls_tmp_file
   
