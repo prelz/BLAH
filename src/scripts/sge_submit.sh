@@ -60,7 +60,7 @@ bls_set_up_local_and_extra_args
 # Write SGE directives according to command line options
 # handle queue overriding
 [ -z "$bls_opt_queue" ] || grep -q "^#\$ -q" $bls_tmp_file || echo "#\$ -q $bls_opt_queue" >> $bls_tmp_file
-[ -z "$bls_opt_mpinodes" ]             || echo "#\$ -pe * $bls_opt_mpinodes" >> $bls_tmp_file
+[ -z "$bls_opt_mpinodes" ] || grep -q "^#\$ -pe *\\*" $bls_tmp_file || echo "#\$ -pe * $bls_opt_mpinodes" >> $bls_tmp_file
 
 # Input and output sandbox setup.
 bls_fl_subst_and_accumulate inputsand "@@F_REMOTE@`hostname -f`:@@F_LOCAL" "@@@"

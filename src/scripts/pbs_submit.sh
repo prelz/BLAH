@@ -101,7 +101,7 @@ bls_set_up_local_and_extra_args
 # Write PBS directives according to command line options
 # handle queue overriding
 [ -z "$bls_opt_queue" ] || grep -q "^#PBS -q" $bls_tmp_file || echo "#PBS -q $bls_opt_queue" >> $bls_tmp_file
-[ -z "$bls_opt_mpinodes" ]             || echo "#PBS -l nodes=$bls_opt_mpinodes" >> $bls_tmp_file
+[ -z "$bls_opt_mpinodes" ] || grep -q "^#PBS *-l *nodes" $bls_tmp_file || echo "#PBS -l nodes=$bls_opt_mpinodes" >> $bls_tmp_file
 
 # Input and output sandbox setup.
 bls_fl_subst_and_accumulate inputsand "@@F_REMOTE@`hostname -f`:@@F_LOCAL" ","
