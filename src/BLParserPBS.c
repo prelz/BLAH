@@ -1286,7 +1286,7 @@ GetLogList(char *logdate)
 			fprintf(debuglogfile, "Timestring \"%s\" is invalid (YYYYmmddhhmm.ss)\n",logdate);
 			fflush(debuglogfile);
 		}
-		syserror("Timestring \"%s\" is invalid (YYYYmmdd): %r", logdate);
+		syserror("Timestring \"%s\" is invalid (YYYYmmddhhmm.ss): %r", logdate);
 		return NULL;
 	}
 	tage=mktime(&tmthr);
@@ -1544,7 +1544,7 @@ NotifyFromDate(char *in_buf)
 		creamisconn=1;
       
 		notepoch=str2epoch(notdate,"S");
-		notstrshort=iepoch2str(notepoch,"S");      
+		notstrshort=iepoch2str(notepoch,"L");      
       
 		if(cream_recycled){
 			logepoch=nti[jcount];
@@ -1636,7 +1636,7 @@ NotifyFromDate(char *in_buf)
 		maxtok_s=strtoken(notdate,';',sbuf);
 		
 		notepoch=str2epoch(sbuf[0],"S");
-		notstrshort=iepoch2str(notepoch,"S");      
+		notstrshort=iepoch2str(notepoch,"L");      
 		tjoblist_string=strdup(sbuf[1]);
 		
 		/* count number of requested jobid to know when we have finished*/
