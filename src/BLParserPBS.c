@@ -1474,10 +1474,10 @@ NotifyFromDate(char *in_buf)
 
 	int  maxtok,j,maxtok_s,maxtok_l,maxtok_b,maxtok_c; 
 	char **tbuf;
+	char *ccount_s, *ccomma;
 	char **sbuf;
 	char **lbuf;
 	char **bbuf;
-	char **cbuf;
 	char *cp;
 	char *nowtm;
 	char *fullblahstring;
@@ -1632,9 +1632,6 @@ NotifyFromDate(char *in_buf)
 		if((sbuf=calloc(10 * sizeof *sbuf,1)) == 0){
 			sysfatal("can't malloc sbuf: %r");
 		}
-		if((cbuf=calloc(10 * sizeof *cbuf,1)) == 0){
-			sysfatal("can't malloc cbuf: %r");
-		}
       
 		maxtok_s=strtoken(notdate,';',sbuf);
 		
@@ -1643,12 +1640,13 @@ NotifyFromDate(char *in_buf)
 		tjoblist_string=strdup(sbuf[1]);
 		
 		/* count number of requested jobid to know when we have finished*/
-		maxtok_c=strtoken(tjoblist_string,',',cbuf);
-		reqjobidnum=maxtok_c;
-		for(j=0;j<maxtok_c;j++){
-			free(cbuf[j]);
+		ccount_s = tjoblist_string;
+		if (strlen(tjoblist_string) <= 0) reqjobidnum = 0;
+		else                              reqjobidnum = 1;
+		while ((ccomma = strchr(ccount_s, ',')) != NULL){
+			ccount_s = ccomma+1;
+			if (*ccount_s != 0) reqjobidnum++;
 		}
-		free(cbuf);
 		
 		if((joblist_string=calloc(strlen(tjoblist_string)+10,1)) == 0){
 			sysfatal("can't malloc joblist_string: %r");
