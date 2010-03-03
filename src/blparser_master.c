@@ -13,6 +13,7 @@
 #include <pthread.h>
 #include <wordexp.h>
 #include <signal.h>
+#include <unistd.h>
 
 #include "blahpd.h"
 #include "config.h"
@@ -270,29 +271,31 @@ int
 main(int argc, char *argv[])
 {
 
-	char *blah_location="";
+	char *blah_location=NULL;
         char *parser_names[3] = {"BLParserPBS", "BLParserLSF", NULL};
 	
-	char *debuglevelpbs="";
-	char *debuglogfilepbstmp="";
-	char *debuglogfilepbs="";
-	char *spooldirpbs="";
+	char *debuglevelpbs=NULL;
+	char *debuglogfilepbstmp=NULL;
+	char *debuglogfilepbs=NULL;
+	char *spooldirpbs=NULL;
 	
-	char *debuglevellsf="";
-	char *debuglogfilelsftmp="";
-	char *debuglogfilelsf="";
-	char *binpathlsf="";
-	char *confpathlsf="";
+	char *debuglevellsf=NULL;
+	char *debuglogfilelsftmp=NULL;
+	char *debuglogfilelsf=NULL;
+	char *binpathlsf=NULL;
+	char *confpathlsf=NULL;
 	
-	char *portpbskey="";
-	char *creamportpbskey="";
-	char *portpbs="";
-	char *creamportpbs="";
+	char *portpbskey=NULL;
+	char *creamportpbskey=NULL;
+	char *portpbs=NULL;
+	char *creamportpbs=NULL;
 	
-	char *portlsfkey="";
-	char *creamportlsfkey="";
-	char *portlsf="";
-	char *creamportlsf="";
+	char *portlsfkey=NULL;
+	char *creamportlsfkey=NULL;
+	char *portlsf=NULL;
+	char *creamportlsf=NULL;
+	
+	char *s=NULL;
 	
 	int i,j;
 	
@@ -311,6 +314,11 @@ main(int argc, char *argv[])
 		exit(MALLOC_ERROR);
 	}
 	sprintf(config_file,"%s/etc/%s",blah_location,CONFIG_FILE_PARSER);
+	
+	if(access(config_file,R_OK)){
+		fprintf(stderr, "%s does not exist or is not readable\n",config_file);
+		exit(EXIT_FAILURE);
+	}
 
         blah_config_handle = config_read(config_file);
         if (blah_config_handle == NULL)
@@ -327,7 +335,12 @@ main(int argc, char *argv[])
 	if (config_test_boolean(config_get("GLITE_CE_USE_BLPARSERLSF",blah_config_handle))){
 		uselsf=1;
 	}
-		
+	
+	if(!usepbs && !uselsf){
+		fprintf(stderr, "No parser selected (both GLITE_CE_USE_BLPARSERPBS and GLITE_CE_USE_BLPARSERLSF are not set)\n");
+		exit(EXIT_FAILURE);
+	}
+	
 	parser_pbs=malloc(MAXPARSERNUM*sizeof(struct blah_managed_child));
 	parser_lsf=malloc(MAXPARSERNUM*sizeof(struct blah_managed_child));
 	
@@ -404,12 +417,20 @@ main(int argc, char *argv[])
 					exit(MALLOC_ERROR);
 				}
 			}else{
-				debuglogfilepbs=strdup(debuglogfilepbstmp);
+				debuglogfilepbs=make_message("%s",debuglogfilepbstmp);
 				if(debuglogfilepbs == NULL){
 					fprintf(stderr, "Out of memory\n");
 					exit(MALLOC_ERROR);
 				}
 			}
+			
+			s=make_message("%s/bin/%s",blah_location,parser_names[0]);                
+			if(access(s,X_OK)){
+				fprintf(stderr, "%s does not exist or it is not executable\n",s);
+				exit(EXIT_FAILURE);
+			}
+			free(s);
+			
 			parser_pbs[i].exefile = make_message("%s/bin/%s %s %s %s %s %s",blah_location,parser_names[0],debuglevelpbs,debuglogfilepbs,spooldirpbs,portpbs,creamportpbs);
 			parser_pbs[i].pidfile = make_message("%s/%s%d.pid",PID_DIR,parser_names[0],i+1);
 
@@ -506,12 +527,20 @@ main(int argc, char *argv[])
 					exit(MALLOC_ERROR);
 				}
 			}else{
-				debuglogfilelsf=strdup(debuglogfilelsftmp);
+				debuglogfilelsf=make_message("%s",debuglogfilelsftmp);
 				if(debuglogfilelsf == NULL){
 					fprintf(stderr, "Out of memory\n");
 					exit(MALLOC_ERROR);
 				}
 			}
+			
+			s=make_message("%s/bin/%s",blah_location,parser_names[1]);                
+			if(access(s,X_OK)){
+				fprintf(stderr, "%s does not exist or it is not executable\n",s);
+				exit(EXIT_FAILURE);
+			}
+			
+			free(s);
 			parser_lsf[i].exefile = make_message("%s/bin/%s %s %s %s %s %s %s",blah_location,parser_names[1],debuglevellsf,debuglogfilelsf,binpathlsf,confpathlsf,portlsf,creamportlsf);
 			parser_lsf[i].pidfile = make_message("%s/%s%d.pid",PID_DIR,parser_names[1],i+1);
 			
