@@ -380,7 +380,7 @@ IntStateQuery()
 					perror("");
 			}
 				
-			if(en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD) || (en.status==IDLE && en.updater_info && strcmp(en.updater_info,"found")==0)) && ren && (en.status!=ren->status)){	
+			if(en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD) || (en.status==IDLE && en.updater_info && strcmp(en.updater_info,"found")==0)) && ren && (en.status!=ren->status && ren->status!=REMOVED && ren->status!=COMPLETED)){
 				if ((ret=job_registry_update_recn(rha, &en, ren->recnum)) < 0){
 					if(ret != JOB_REGISTRY_NOT_FOUND){
 						fprintf(stderr,"Update of record returns %d: ",ret);
