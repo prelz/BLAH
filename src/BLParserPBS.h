@@ -94,7 +94,7 @@ char *argv0;
 
 char *blahjob_string="blahjob_";
 char *bl_string="bl_";
-char *cream_string="cream_";
+char *cream_string="unset_";
 
 int jcount=0;
 int ptrcnt=1;
