@@ -1619,8 +1619,6 @@ NotifyFromDate(char *in_buf)
 	char *lnotdate;
 	int   notepoch;
 	int   logepoch;
-	int   reqjobidnum=0;;
-	int   jfound=0;;
 
 	int  maxtok,j,maxtok_s,maxtok_l,maxtok_b,maxtok_c; 
 	char **tbuf;
@@ -1786,15 +1784,6 @@ NotifyFromDate(char *in_buf)
 		notepoch=str2epoch(sbuf[0],"S");
 		tjoblist_string=strdup(sbuf[1]);
 		
-		/* count number of requested jobid to know when we have finished*/
-		ccount_s = tjoblist_string;
-		if (strlen(tjoblist_string) <= 0) reqjobidnum = 0;
-		else                              reqjobidnum = 1;
-		while ((ccomma = strchr(ccount_s, ',')) != NULL){
-			ccount_s = ccomma+1;
-			if (*ccount_s != 0) reqjobidnum++;
-		}
-
 		if((joblist_string=calloc(strlen(tjoblist_string)+10,1)) == 0){
 			sysfatal("can't malloc joblist_string: %r");
 		}
@@ -1823,9 +1812,6 @@ NotifyFromDate(char *in_buf)
 		if(cream_recycled){
 
 			for(ii=jcount;ii<CRMHASHSIZE;ii++){
-				if(jfound>=reqjobidnum){
-					break;
-				}
 				if(notepoch<=nti[ii]){
 					now=time(NULL);
 					nowtm=ctime(&now);
@@ -1859,7 +1845,6 @@ NotifyFromDate(char *in_buf)
 					
 					
 					if(ntf[ii] && strstr(joblist_string,fullbljobid)!=NULL){
-						jfound++;
 						sprintf(out_buf,"NTFDATE/%s",ntf[ii]);
 						Writeline(conn_c, out_buf, strlen(out_buf));
 						if(debug){
@@ -1874,9 +1859,6 @@ NotifyFromDate(char *in_buf)
 		}
             
 		for(ii=0;ii<=jcount;ii++){
-			if(jfound>=reqjobidnum){
-				break;
-			}
 			if(notepoch<=nti[ii]){
 				now=time(NULL);
 				nowtm=ctime(&now);
@@ -1913,7 +1895,6 @@ NotifyFromDate(char *in_buf)
 				free(lbuf);
 				
 				if(ntf[ii] && strstr(joblist_string,fullbljobid)!=NULL){
-					jfound++;
 					sprintf(out_buf,"NTFDATE/%s",ntf[ii]);  
 					Writeline(conn_c, out_buf, strlen(out_buf));
 					if(debug){
