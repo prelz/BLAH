@@ -453,9 +453,6 @@ ComposeClassad(job_registry_entry *en)
 		free(exreas);
 	}
 	if (strlen(en->user_prefix) > 0){
-		if((clientid=calloc(STR_CHARS,1)) == 0){
-			sysfatal("can't malloc clientid in ComposeClassad: %r");
-		}
 		maxtok=strtoken(en->user_prefix,'_',&tbuf);
 		if(tbuf[1]){
 			if ((cp = strrchr (tbuf[1], '\n')) != NULL){
@@ -464,7 +461,7 @@ ComposeClassad(job_registry_entry *en)
 			if ((cp = strrchr (tbuf[1], '\r')) != NULL){
 				*cp = '\0';
 			}
-			 sprintf(clientid," ClientJobId=\"%s\";",tbuf[1]);
+			 clientid=make_message(" ClientJobId=\"%s\";",tbuf[1]);
 		}
 		blahid=make_message("%s BlahJobName=\"%s\";",clientid, en->user_prefix);
 		strcat(buffer,blahid);
@@ -577,14 +574,10 @@ GetFilter(char *buffer)
         char *cp=NULL;
         char * out_buf;
 
-        if((out_buf=calloc(STR_CHARS,1)) == 0){
-                sysfatal("can't malloc out_buf: %r");
-        }
-	
         maxtok=strtoken(buffer,'/',&tbuf);
 
         if(tbuf[1]){
-                creamfilter=strdup(tbuf[1]);
+		creamfilter=make_message("%s",tbuf[1]);
         	if(creamfilter == NULL){
                 	sysfatal("strdup failed for creamfilter in GetFilter: %r");
         	}
@@ -594,10 +587,10 @@ GetFilter(char *buffer)
                 if ((cp = strrchr (creamfilter, '\r')) != NULL){
                 	*cp = '\0';
                 }
-		sprintf(out_buf,"CREAMFILTER set to %s\n",creamfilter);
+		out_buf=make_message("CREAMFILTER set to %s\n",creamfilter);
 
         }else{
-		sprintf(out_buf,"CREAMFILTER ERROR\n");
+		out_buf=make_message("CREAMFILTER ERROR\n");
 	}
 		
 	Writeline(conn_c, out_buf, strlen(out_buf));

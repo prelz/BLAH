@@ -282,11 +282,7 @@ iepoch2str(time_t epoch)
 
 	struct tm tm;
 	
-	if((lepoch=calloc(STR_CHARS,1)) == 0){
-		sysfatal("can't malloc lepoch in iepoch2str: %r");
-	}
- 
-	sprintf(lepoch,"%d",epoch);
+	lepoch=make_message("%d",epoch);
  
 	strptime(lepoch,"%s",&tm);
  
@@ -324,11 +320,7 @@ str2epoch(char *str, char * f)
 		
 	/* If do not have the year in the date we compare day and month and set the year */
 		
-		if((strtmp=malloc(strlen(str) + 6)) == 0){
-			sysfatal("can't malloc strtmp in str2epoch: %r");
-		}
-	
-		sprintf(strtmp,"%s 2000",str);
+		strtmp=make_message("%s 2000",str);
                 strptime(strtmp,"%a %b %d %T %Y",&tm);
 		
 		now=time(0);
@@ -347,11 +339,7 @@ str2epoch(char *str, char * f)
 
         /* If do not have the year in the date we compare day and month and set the year */
 
-                if((strtmp=malloc(strlen(str) + 6)) == 0){
-                        sysfatal("can't malloc strtmp in str2epoch: %r");
-                }
-
-                sprintf(strtmp,"%s 2000",str);
+		strtmp=make_message("%s 2000",str);
                 strptime(strtmp,"%b %d %H:%M %Y",&tm);
                 
                 now=time(0);
