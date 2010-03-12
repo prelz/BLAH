@@ -1,3 +1,27 @@
+/*
+#  File:     BLParserLSF.c
+#
+#  Author:   Massimo Mezzadri
+#  e-mail:   Massimo.Mezzadri@mi.infn.it
+# 
+# Copyright (c) Members of the EGEE Collaboration. 2004. 
+# See http://www.eu-egee.org/partners/ for details on the copyright
+# holders.  
+# 
+# Licensed under the Apache License, Version 2.0 (the "License"); 
+# you may not use this file except in compliance with the License. 
+# You may obtain a copy of the License at 
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0 
+# 
+# Unless required by applicable law or agreed to in writing, software 
+# distributed under the License is distributed on an "AS IS" BASIS, 
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+# See the License for the specific language governing permissions and 
+# limitations under the License.
+# 
+*/
+
 #include "BLParserLSF.h"
 
 int
@@ -35,11 +59,7 @@ main(int argc, char *argv[])
 		}
 	}
     
-	if((eventsfile=calloc(strlen(ldir)+strlen(lsbevents)+2,1)) == 0){
-		sysfatal("can't malloc eventsfile: %r");
-	}
-    
-	sprintf(eventsfile,"%s/%s",ldir,lsbevents);
+	eventsfile=make_message("%s/%s",ldir,lsbevents);
     
 	/* Set to zero all the cache */
     
@@ -171,71 +191,6 @@ main(int argc, char *argv[])
 
 /*---Functions---*/
 
-ssize_t
-Readline(int sockd, void *vptr, size_t maxlen)
-{
-	ssize_t n, rc;
-	char    c, *buffer;
-
-	buffer = vptr;
-
-	for ( n = 1; n < maxlen; n++ ) {
-	
-		if ( (rc = read(sockd, &c, 1)) == 1 ) {
-			*buffer++ = c;
-			if ( c == '\n' ){
-				break;
-			}
-		} else if ( rc == 0 ) {
-			if ( n == 1 ) {
-				return 0;
-			} else {
-				break;
-			}
-		} else {
-			if ( errno == EINTR ){
-				continue;
-			}
-			return -1;
-		}
-	}
-
-	*buffer = 0;
-	return n;
-}
-
-ssize_t
-Writeline(int sockd, const void *vptr, size_t n)
-{
-	size_t      nleft;
-	ssize_t     nwritten;
-	const char *buffer;
-
-	buffer = vptr;
-	nleft  = n;
-
-	/* set write lock */
-	pthread_mutex_lock( &writeline_mutex );
-
-	while ( nleft > 0 ) {
-
-		if ( (nwritten = write(sockd, (char *)vptr, nleft)) <= 0 ) {
-			if ( errno == EINTR ) {
-				nwritten = 0;
-			}else{
-				return -1;
-			}
-		}
-		nleft  -= nwritten;
-		buffer += nwritten;
-	}
-
-	/* release write lock */
-	pthread_mutex_unlock( &writeline_mutex );
-
-	return n;
-}
-
 void *
 mytail (void *infile)
 {    
@@ -270,23 +225,6 @@ follow(char *infile, char *line)
 			sysfatal("couldn't seek: %r");
 		}
 		real_off=ftell(fp);
-/*
-		if(real_off < off){
-			if(fseek(fp, 0L, SEEK_SET) < 0){
-				sysfatal("couldn't seek: %r");
-			}
-			if((s=calloc(STR_CHARS,1)) == 0){
-				sysfatal("can't malloc s: %r");
-			}
-			if(fgets(s, STR_CHARS, fp)!=NULL){
-				ts=strdel(s,"#");
-				off=strtol(ts,NULL,10);
-			}
-			free(s);
-			free(ts);
-
-		}
-*/
 		if(real_off < off){
 			off=0;
 		}
@@ -312,10 +250,7 @@ tail(FILE *fp, char *line, long old_off)
 			return act_off;
 		}
 		if(line && ((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_status)!=NULL) || (strstr(line,rex_signal)!=NULL))){        
-			if(debug >= 2){
-				fprintf(debuglogfile, "Tail line:%s",line);
-				fflush(debuglogfile);
-			}
+			do_log(debuglogfile, debug, 2, "Tail line:%s",line);
 			AddToStruct(line,1);
 		}
 		if((act_off=ftell(fp)) < 0){
@@ -336,10 +271,7 @@ InfoAdd(int id, char *value, const char * flag)
 		return -1;
 	}
 
-	if(debug){
-		fprintf(debuglogfile, "Adding: ID:%d Type:%s Value:%s\n",rptr[id],flag,value);
-		fflush(debuglogfile);
-	} 
+	do_log(debuglogfile, debug, 1, "Adding: ID:%d Type:%s Value:%s\n",rptr[id],flag,value);
 	/* set write lock */
 	pthread_mutex_lock( &write_mutex );
  
@@ -432,35 +364,31 @@ int AddToStruct(char *line, int flag){
 	if flag ==1 AddToStruct is called elsewhere*/
 
 	int has_blah=0;
-	char *	rex;
+	char *rex;
  
 	int id,realid;
 	int belongs_to_current_cycle;
  
-	int  maxtok,ii; 
+	int  maxtok; 
 	char **tbuf;
  
-	char *	jobid=NULL;
+	char *jobid=NULL;
 	
-	char *	tj_time=NULL;
-	char *	j_time=NULL;
-	char *	tmptime=NULL;
+	char *tj_time=NULL;
+	char *j_time=NULL;
+	char *tmptime=NULL;
 	
-	char *	j_status=NULL;
-	char *	j_reason=NULL;
+	char *j_status=NULL;
+	char *j_reason=NULL;
  
-	char *	ex_status=NULL;
-	char *	failex_status=NULL;
+	char *ex_status=NULL;
+	char *failex_status=NULL;
  
-	char *	sig_status=NULL;
-	char *	j_blahjob=NULL;
-	char *	wnode=NULL;
+	char *sig_status=NULL;
+	char *j_blahjob=NULL;
+	char *wnode=NULL;
  
-	if((tbuf=calloc(TBUFSIZE * sizeof *tbuf,1)) == 0){
-		sysfatal("can't malloc tbuf: %r");
-	}
-
-	maxtok=strtoken(line,' ',tbuf);
+	maxtok=strtoken(line,' ',&tbuf);
  
 	if(maxtok>0){
 		rex=strdup(tbuf[0]);
@@ -499,10 +427,7 @@ int AddToStruct(char *line, int flag){
 		}
 	}
 	
-	for(ii=0;ii<maxtok;ii++){
-		free(tbuf[ii]);
-	}
-	free(tbuf);
+	freetoken(&tbuf,maxtok);
 
 	id=UpdatePtr(realid,rex,has_blah);
 	
@@ -628,18 +553,18 @@ int AddToStruct(char *line, int flag){
 		} /* closes if-else if on rex_ */
 	} /* closes if-else if on jobid lookup */
  
-	if(rex) free(rex);
-	if(j_time) free(j_time);
-	if(tj_time) free(tj_time);
-	if(tmptime) free(tmptime);
-	if(jobid) free(jobid);
-	if(j_status) free(j_status);
-	if(sig_status) free(sig_status);
-	if(wnode) free(wnode);
-	if(ex_status) free(ex_status);
-	if(failex_status) free(failex_status);
-	if(j_blahjob) free(j_blahjob);
-	if(j_reason) free(j_reason);
+	free(rex);
+	free(j_time);
+	free(tj_time);
+	free(tmptime);
+	free(jobid);
+	free(j_status);
+	free(sig_status);
+	free(wnode);
+	free(ex_status);
+	free(failex_status);
+	free(j_blahjob);
+	free(j_reason);
 
 	return 0;
 }
@@ -652,12 +577,8 @@ GetAllEvents(char *file)
 	char *line;
 	char **opfile;
 	int maxtok,i;
-
-	if((opfile=calloc(STR_CHARS * sizeof *opfile,1)) == 0){
-		sysfatal("can't malloc opfile: %r");
-	}
  
-	maxtok = strtoken(file, ' ', opfile);
+	maxtok = strtoken(file, ' ', &opfile);
 
 	if((line=calloc(STR_CHARS,1)) == 0){
 		sysfatal("can't malloc line: %r");
@@ -676,12 +597,11 @@ GetAllEvents(char *file)
 			syserror("Cannot open %s file: %r",opfile[i]);
 		}
   
-		free(opfile[i]);
-
 	} /* close for*/
+	
+	freetoken(&opfile,maxtok);
 	free(file);
 	free(line);
-	free(opfile);
     
 	return NULL;
 
@@ -691,14 +611,14 @@ void *
 LookupAndSend(int m_sock)
 { 
     
-	char      *buffer;
-	char      *out_buf;
-	char      *logdate;
-	char      *jobid;
-	char      *t_wnode;
-	char      *exitreason;
+	char      *buffer=NULL;
+	char      *out_buf=NULL;
+	char      *logdate=NULL;
+	char      *jobid=NULL;
+	char      *t_wnode=NULL;
+	char      *exitreason=NULL;
 	char      *pr_removal="Not";
-	int       i,maxtok,ii;
+	int       i,maxtok;
 	int       id;
 	int       bid;
 	int       conn_s;
@@ -707,7 +627,7 @@ LookupAndSend(int m_sock)
 	char      *irptr;
 	int       listcnt=0;
 	int       listbeg=0;
-	char      *buftmp;
+	char      *buftmp=NULL;
     
 	while ( 1 ) {
 	
@@ -722,28 +642,14 @@ LookupAndSend(int m_sock)
 		}
 	
 		Readline(conn_s, buffer, STR_CHARS-1);	
-		if(debug){
-			buftmp=strdel(buffer,"\n");
-			fprintf(debuglogfile, "Received:%s",buftmp);
-			fflush(debuglogfile);
-			free(buftmp);
-		}
+		buftmp=strdel(buffer,"\n");
+		do_log(debuglogfile, debug, 1, "Received:%s",buftmp);
+		free(buftmp);
 	
 		/* printf("thread/0x%08lx\n",pthread_self()); */
 	
 		if((strlen(buffer)==0) || (strcmp(buffer,"\n")==0) || (strstr(buffer,"/")==0) || (strcmp(buffer,"/")==0)){
-         
-			if((logdate=calloc(STR_CHARS,1)) == 0){
-				sysfatal("can't malloc logdate in LookupAndSend: %r");
-			}
-			if((jobid=calloc(STR_CHARS,1)) == 0){
-				sysfatal("can't malloc jobid in LookupAndSend: %r");
-			}
-			if((out_buf=calloc(STR_CHARS,1)) == 0){
-				sysfatal("can't malloc out_buf in LookupAndSend: %r");
-			}
-			sprintf(out_buf,"\n");
-
+			out_buf=make_message("\n");
 			goto close;
 		}
 	        
@@ -751,71 +657,43 @@ LookupAndSend(int m_sock)
 			*cp = '\0';
 		}
 
-		if((tbuf=calloc(10 * sizeof *tbuf,1)) == 0){
-			sysfatal("can't malloc tbuf: %r");
-		}
-	
-		maxtok=strtoken(buffer,'/',tbuf);
+		maxtok=strtoken(buffer,'/',&tbuf);
 		if(tbuf[0]){
 			logdate=strdup(tbuf[0]);
-		}else{
-			if((logdate=calloc(STR_CHARS,1)) == 0){
-				sysfatal("can't malloc logdate in LookupAndSend: %r");
-			}
 		}
 		if(tbuf[1]){
 			jobid=strdup(tbuf[1]);
-		}else{
-			if((jobid=calloc(STR_CHARS,1)) == 0){
-				sysfatal("can't malloc jobid in LookupAndSend: %r");
-			}
 		}
-
-		for(ii=0;ii<maxtok;ii++){
-			free(tbuf[ii]);
-		}
-		free(tbuf);		
+		freetoken(&tbuf,maxtok);
 
 /* HELP reply */
        
 		if(strcmp(logdate,"HELP")==0){
-			if((out_buf=calloc(MAX_CHARS,1)) == 0){
-				sysfatal("can't malloc out_buf in LookupAndSend: %r");
-			}
-			sprintf(out_buf,"Commands: BLAHJOB/<blahjob-id> <date-YYYYmmdd>/<jobid> HELP TEST VERSION CREAMPORT TOTAL LISTALL LISTF[/<first-n-jobid>] LISTL[/<last-n-jobid>]\n");
+			out_buf=make_message("Commands: BLAHJOB/<blahjob-id> <date-YYYYmmdd>/<jobid> HELP TEST VERSION CREAMPORT TOTAL LISTALL LISTF[/<first-n-jobid>] LISTL[/<last-n-jobid>]\n");
 			goto close;
 		}
 
 /* TEST reply */
        
 		if(strcmp(logdate,"TEST")==0){
-			if((out_buf=calloc(STR_CHARS,1)) == 0){
-				sysfatal("can't malloc out_buf in LookupAndSend: %r");
-			}
-			sprintf(out_buf,"YLSF\n");
+			out_buf=make_message("YLSF\n");
 			goto close;
 		}
 
 /* VERSION reply */
        
 		if(strcmp(logdate,"VERSION")==0){
-			if((out_buf=calloc(STR_CHARS,1)) == 0){
-				sysfatal("can't malloc out_buf in LookupAndSend: %r");
-			}
-			sprintf(out_buf,"%s\n",VERSION);
+			out_buf=make_message("%s\n",VERSION);
 			goto close;
 		}
 	
 /* TOTAL reply */
        
 		if(strcmp(logdate,"TOTAL")==0){
-			if((out_buf=calloc(MAX_CHARS,1)) == 0){
-				sysfatal("can't malloc out_buf in LookupAndSend: %r");
-			}
 			if(recycled){
-				sprintf(out_buf,"Total number of jobs:%d\n",RDXHASHSIZE);
+				out_buf=make_message("Total number of jobs:%d\n",RDXHASHSIZE);
 			}else{
-				sprintf(out_buf,"Total number of jobs:%d\n",ptrcnt-1);
+				out_buf=make_message("Total number of jobs:%d\n",ptrcnt-1);
 			}
 			goto close;
 		}
@@ -923,10 +801,7 @@ LookupAndSend(int m_sock)
 /* get port where the parser is waiting for a connection from cream and send it to cream */
        
 		if(strcmp(logdate,"CREAMPORT")==0){
-			if((out_buf=calloc(STR_CHARS,1)) == 0){
-				sysfatal("can't malloc out_buf in LookupAndSend: %r");
-			}
-			sprintf(out_buf,"%d\n",creamport);
+			out_buf=make_message("%d\n",creamport);
 			goto close;
 		}
 
@@ -941,32 +816,19 @@ LookupAndSend(int m_sock)
 					sleep(1);
 					continue;
 				}
-				if((out_buf=calloc(STR_CHARS,1)) == 0){
-					sysfatal("can't malloc out_buf in LookupAndSend: %r");
-				}
-				sprintf(out_buf,"%d\n",rptr[bid]);
-				pthread_mutex_unlock(&write_mutex);
+				out_buf=make_message("%d\n",rptr[bid]);
+ 				pthread_mutex_unlock(&write_mutex);
 				goto close;
 			}
 			if(i==WRETRIES){
-
-				if((out_buf=calloc(STR_CHARS,1)) == 0){
-					sysfatal("can't malloc out_buf in LookupAndSend: %r");
-				}
-				sprintf(out_buf,"\n");
-
+				out_buf=make_message("\n");
 				goto close;
 			}
 		}
 
 		if((strlen(logdate)==0) || (strcmp(logdate,"\n")==0)){
-			if((out_buf=calloc(STR_CHARS,1)) == 0){
-				sysfatal("can't malloc out_buf in LookupAndSend: %r");
-			}
-			sprintf(out_buf,"\n");
-
+			out_buf=make_message("\n");
 			goto close;
-
 		}
 	
 /* get all info from jobid */
@@ -977,20 +839,10 @@ LookupAndSend(int m_sock)
 	
 		if(id>0 && j2js[id]!=NULL){
          
-			if((out_buf=calloc(STR_CHARS,1)) == 0){
-				sysfatal("can't malloc out_buf in LookupAndSend: %r");
-			}
-			if((t_wnode=calloc(STR_CHARS,1)) == 0){
-				sysfatal("can't malloc t_wnode in LookupAndSend: %r");
-			}
-			if((exitreason=calloc(STR_CHARS,1)) == 0){
-				sysfatal("can't malloc exitreason in LookupAndSend: %r");
-			}
-        	 
 			if(j2wn[id] && strcmp(j2wn[id],"\0")==0){
 				t_wnode[0]='\0';
 			}else{
-				sprintf(t_wnode,"WorkerNode=%s;",j2wn[id]);
+				t_wnode=make_message("WorkerNode=%s;",j2wn[id]);
 			}
 			if(j2js[id] && ((strcmp(j2js[id],"3")==0) || (strcmp(j2js[id],"4")==0))){
 				pr_removal="Yes";
@@ -999,21 +851,21 @@ LookupAndSend(int m_sock)
 			}
 			if(j2js[id] && strcmp(j2js[id],"4")==0){
 				if(j2ec[id] && ((strcmp(j2ec[id],"130")==0) || (strcmp(j2ec[id],"137")==0) || (strcmp(j2ec[id],"143")==0))){
-					sprintf(exitreason," ExitReason=\"Memory limit reached\";");
+					exitreason=make_message(" ExitReason=\"Memory limit reached\";");
 				}else if(j2ec[id] && strcmp(j2ec[id],"140")==0){
-					sprintf(exitreason," ExitReason=\"RUNtime limit reached\";");
+					exitreason=make_message(" ExitReason=\"RUNtime limit reached\";");
 				}else if(j2ec[id] && strcmp(j2ec[id],"152")==0){
-					sprintf(exitreason," ExitReason=\"CPUtime limit reached\";");
+					exitreason=make_message(" ExitReason=\"CPUtime limit reached\";");
 				}else if(j2ec[id] && strcmp(j2ec[id],"153")==0){
-					sprintf(exitreason," ExitReason=\"FILEsize limit reached\";");
+					exitreason=make_message(" ExitReason=\"FILEsize limit reached\";");
 				}else if(j2ec[id] && strcmp(j2ec[id],"157")==0){
-					sprintf(exitreason," ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
+					exitreason=make_message(" ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
 				}
-				sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\";%s JwExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], j2ct[id], exitreason, j2ec[id], pr_removal);
+				out_buf=make_message("[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\";%s JwExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], j2ct[id], exitreason, j2ec[id], pr_removal);
 			}else if(j2rt[id] && strcmp(j2rt[id],"\0")!=0){
-				sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], pr_removal);
+				out_buf=make_message("[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], pr_removal);
 			}else{
-				sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], pr_removal);
+				out_buf=make_message("[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], pr_removal);
 			}
 			pthread_mutex_unlock(&write_mutex);
 
@@ -1029,20 +881,10 @@ LookupAndSend(int m_sock)
 			pthread_mutex_lock(&write_mutex);
 			if(id>0 && j2js[id]!=NULL){
 
-				if((out_buf=calloc(STR_CHARS,1)) == 0){
-					sysfatal("can't malloc out_buf in LookupAndSend: %r");
-				}
-				if((t_wnode=calloc(STR_CHARS,1)) == 0){
-					sysfatal("can't malloc t_wnode in LookupAndSend: %r");
-				}
-				if((exitreason=calloc(STR_CHARS,1)) == 0){
-					sysfatal("can't malloc exitreason in LookupAndSend: %r");
-				}
-        	 
 				if(j2wn[id] && strcmp(j2wn[id],"\0")==0){
 					t_wnode[0]='\0';
 				}else{
-					sprintf(t_wnode,"WorkerNode=%s;",j2wn[id]);
+					t_wnode=make_message("WorkerNode=%s;",j2wn[id]);
 				}
 				if(j2js[id] && ((strcmp(j2js[id],"3")==0) || (strcmp(j2js[id],"4")==0))){
 					pr_removal="Yes";
@@ -1051,21 +893,21 @@ LookupAndSend(int m_sock)
 				}
 				if(j2js[id] && strcmp(j2js[id],"4")==0){
 					if(j2ec[id] && ((strcmp(j2ec[id],"130")==0) || (strcmp(j2ec[id],"137")==0) || (strcmp(j2ec[id],"143")==0))){
-						sprintf(exitreason," ExitReason=\"Memory limit reached\";");
+						exitreason=make_message(" ExitReason=\"Memory limit reached\";");
 					}else if(j2ec[id] && strcmp(j2ec[id],"140")==0){
-						sprintf(exitreason," ExitReason=\"RUNtime limit reached\";");
+						exitreason=make_message(" ExitReason=\"RUNtime limit reached\";");
 					}else if(j2ec[id] && strcmp(j2ec[id],"152")==0){
-						sprintf(exitreason," ExitReason=\"CPUtime limit reached\";");
+						exitreason=make_message(" ExitReason=\"CPUtime limit reached\";");
 					}else if(j2ec[id] && strcmp(j2ec[id],"153")==0){
-						sprintf(exitreason," ExitReason=\"FILEsize limit reached\";");
+						exitreason=make_message(" ExitReason=\"FILEsize limit reached\";");
 					}else if(j2ec[id] && strcmp(j2ec[id],"157")==0){
-						sprintf(exitreason," ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
+						exitreason=make_message(" ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
 					}
-					sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\";%s JwExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], j2ct[id], exitreason, j2ec[id], pr_removal);
+					out_buf=make_message("[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\";%s JwExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], j2ct[id], exitreason, j2ec[id], pr_removal);
 				}else if(j2rt[id] && strcmp(j2rt[id],"\0")!=0){
-					sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], pr_removal);
+					out_buf=make_message("[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], pr_removal);
 				}else{
-					sprintf(out_buf,"[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], pr_removal);
+					out_buf=make_message("[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\";]/%s\n",jobid, t_wnode, j2js[id], j2st[id], pr_removal);
 				}
 				free(t_wnode);
 				free(exitreason);
@@ -1073,20 +915,13 @@ LookupAndSend(int m_sock)
            
 			} else {
 				pthread_mutex_unlock(&write_mutex);
-				if((out_buf=calloc(STR_CHARS,1)) == 0){
-					sysfatal("can't malloc out_buf in LookupAndSend: %r");
-				}
-				sprintf(out_buf,"JobId %s not found/Not\n",jobid);
+				out_buf=make_message("JobId %s not found/Not\n",jobid);
 			}
-         
 		}
 	
 close:	
 		Writeline(conn_s, out_buf, strlen(out_buf));
-		if(debug){
-			fprintf(debuglogfile, "Sent:%s",out_buf);
-			fflush(debuglogfile);
-		}
+		do_log(debuglogfile, debug, 1, "Sent:%s",out_buf);
 	
 		free(out_buf);
 		free(buffer);
@@ -1127,7 +962,6 @@ GetLogDir(int largc, char *largv[])
 	char *lsf_base_path;
 	char *conffile;
 	char *lsf_clustername;
-	char *ls_out;
 	char *logpath;
 	char *line;
 	char *command_string;
@@ -1144,7 +978,7 @@ GetLogDir(int largc, char *largv[])
 	char *ebinpath;
 	char *econfpath;
 
-	int  maxtok,ii; 
+	int  maxtok; 
 	char **tbuf;
 	char *cp;
 	char *s;
@@ -1156,23 +990,10 @@ GetLogDir(int largc, char *largv[])
 	if((line=calloc(STR_CHARS,1)) == 0){
 		sysfatal("can't malloc line: %r");
 	}
-	if((logpath=calloc(STR_CHARS,1)) == 0){
-		sysfatal("can't malloc logpath: %r");
-	}
 	if((lsf_clustername=calloc(STR_CHARS,1)) == 0){
 		sysfatal("can't malloc lsf_clustername: %r");
 	}
-	if((command_string=calloc(STR_CHARS,1)) == 0){
-		sysfatal("can't malloc command_string: %r");
-	}
-	if((ls_out=calloc(STR_CHARS,1)) == 0){
-		sysfatal("can't malloc ls_out: %r");
-	}
 
-	if((tbuf=calloc(10 * sizeof *tbuf,1)) == 0){
-		sysfatal("can't malloc tbuf: %r");
-	}
-	 
 	while (1) {
 		static struct option long_options[] =
 		{
@@ -1274,10 +1095,7 @@ GetLogDir(int largc, char *largv[])
 	}
   
 	if((econfpath=getenv("LSF_ENVDIR"))!=NULL){
-		if((conffile=calloc(strlen(econfpath)+strlen("lsf.conf")+2,1)) == 0){
-			sysfatal("can't malloc conffile: %r");
-		}
-		sprintf(conffile,"%s/lsf.conf",econfpath);
+		conffile=make_message("%s/lsf.conf",econfpath);
 		if((fp=fopen(conffile, "r")) != 0){
 			while(fgets(line, STR_CHARS, fp)){
 				if(line && strstr(line,"LSB_SHAREDIR")!=0){
@@ -1287,10 +1105,7 @@ GetLogDir(int largc, char *largv[])
 		}
 	}
 	
-	if((conffile=calloc(strlen(confpath)+strlen("lsf.conf")+2,1)) == 0){
-		sysfatal("can't malloc conffile: %r");
-	}
-	sprintf(conffile,"%s/lsf.conf",confpath);
+	conffile=make_message("%s/lsf.conf",confpath);
 	
 	if((fp=fopen(conffile, "r")) != 0){
 		while(fgets(line, STR_CHARS, fp)){
@@ -1301,10 +1116,7 @@ GetLogDir(int largc, char *largv[])
 	}
 	
 	if((econfpath=getenv("LSF_CONF_PATH"))!=NULL){
-		if((conffile=calloc(strlen(econfpath)+strlen("lsf.conf")+2,1)) == 0){
-			sysfatal("can't malloc conffile: %r");
-		}
-		sprintf(conffile,"%s/lsf.conf",econfpath);
+		conffile=make_message("%s/lsf.conf",econfpath);
 		if((fp=fopen(conffile, "r")) != 0){
 			while(fgets(line, STR_CHARS, fp)){
 				if(line && strstr(line,"LSB_SHAREDIR")!=0){
@@ -1315,7 +1127,7 @@ GetLogDir(int largc, char *largv[])
 	}
 
 creamdone:
-	maxtok=strtoken(line,'=',tbuf);
+	maxtok=strtoken(line,'=',&tbuf);
 	if(tbuf[1]){
 		lsf_base_pathtmp=strdup(tbuf[1]);
 	} else {
@@ -1331,10 +1143,7 @@ creamdone:
  
 	if((ebinpath=getenv("LSF_BINDIR"))!=NULL){
  
-		if((s=calloc(strlen(ebinpath)+strlen("lsid")+2,1)) == 0){
-			sysfatal("can't malloc s: %r");
-		}
-		sprintf(s,"%s/lsid",ebinpath);
+		s=make_message("%s/lsid",ebinpath);
 		rc=stat(s,&sbuf);
 		if(rc) {
 			sysfatal("%s not found: %r",s);
@@ -1343,14 +1152,11 @@ creamdone:
 			sysfatal("%s is not executable, but mode %05o: %r",s,(int)sbuf.st_mode);
 		}
 		free(s);
-		sprintf(command_string,"%s/lsid | grep 'My cluster name is'|awk -F\" \" '{ print $5 }'",ebinpath);  
+		command_string=make_message("%s/lsid | grep 'My cluster name is'|awk -F\" \" '{ print $5 }'",ebinpath); 
 		goto bdone;
 	}
  
-	if((s=calloc(strlen(binpath)+strlen("lsid")+2,1)) == 0){
-		sysfatal("can't malloc s: %r");
-	}
-	sprintf(s,"%s/lsid",binpath);
+	s=make_message("%s/lsid",binpath);
 	rc=stat(s,&sbuf);
 	if(rc) {
 		sysfatal("%s not found: %r",s);
@@ -1359,15 +1165,12 @@ creamdone:
 		sysfatal("%s is not executable, but mode %05o: %r",s,(int)sbuf.st_mode);
 	}
 	free(s);
-	sprintf(command_string,"%s/lsid | grep 'My cluster name is'|awk -F\" \" '{ print $5 }'",binpath);  
+	command_string=make_message("%s/lsid | grep 'My cluster name is'|awk -F\" \" '{ print $5 }'",binpath);
 	goto bdone;
  
 	if((ebinpath=getenv("LSF_BIN_PATH"))!=NULL){
 
-		if((s=calloc(strlen(ebinpath)+strlen("lsid")+2,1)) == 0){
-			sysfatal("can't malloc s: %r");
-		}
-		sprintf(s,"%s/lsid",ebinpath);
+		s=make_message("%s/lsid",ebinpath);
 		rc=stat(s,&sbuf);
 		if(rc) {
 			sysfatal("%s not found: %r",s);
@@ -1376,7 +1179,7 @@ creamdone:
 			sysfatal("%s is not executable, but mode %05o: %r",s,(int)sbuf.st_mode);
 		}
 		free(s);
-		sprintf(command_string,"%s/lsid | grep 'My cluster name is'|awk -F\" \" '{ print $5 }'",ebinpath);  
+		command_string=make_message("%s/lsid | grep 'My cluster name is'|awk -F\" \" '{ print $5 }'",ebinpath);  
 		goto bdone;
 	}
  
@@ -1395,16 +1198,13 @@ bdone:
 	}
 	pclose(file_output);
  
-	sprintf(logpath,"%s/%s/logdir",lsf_base_path,lsf_clustername);
+	logpath=make_message("%s/%s/logdir",lsf_base_path,lsf_clustername);
  
-	for(ii=0;ii<maxtok;ii++){
-		free(tbuf[ii]);
-	}
+        freetoken(&tbuf,maxtok);
+	
 	free(line);
-	free(tbuf);
 	free(lsf_base_path);
 	free(lsf_clustername);
-	free(ls_out);
 	free(conffile);
 	free(command_string);
  
@@ -1431,10 +1231,7 @@ GetLogList(char *logdate)
 	tmthr.tm_sec=tmthr.tm_min=tmthr.tm_hour=tmthr.tm_isdst=0;
 	p=strptime(logdate,"%Y%m%d%H%M.%S",&tmthr);
 	if( (p-logdate) != 15) {
-		if(debug){
-			fprintf(debuglogfile, "Timestring \"%s\" is invalid (YYYYmmddhhmm.ss)\n",logdate);
-			fflush(debuglogfile);
-		}
+		do_log(debuglogfile, debug, 1, "Timestring \"%s\" is invalid (YYYYmmddhhmm.ss)\n",logdate);
 		syserror("Timestring \"%s\" is invalid (YYYYmmddhhmm.ss): %r", logdate);
 		return NULL;
 	}
@@ -1447,10 +1244,7 @@ GetLogList(char *logdate)
 	} else {
 		while(n--) {
 			if( *(direntry[n]->d_name) == '.' ) continue;
-			if((s=calloc(strlen(direntry[n]->d_name)+strlen(ldir)+2,1)) == 0){
-				sysfatal("can't malloc s: %r");
-			}
-			sprintf(s,"%s/%s",ldir,direntry[n]->d_name);
+			s=make_message("%s/%s",ldir,direntry[n]->d_name);
 			rc=stat(s,&sbuf);
 			if(rc) {
 				syserror("Cannot stat file %s: %r", s);
@@ -1468,10 +1262,7 @@ GetLogList(char *logdate)
 		free(direntry);
 	}
 
-	if(debug){
-		fprintf(debuglogfile, "Log list:%s\n",slogs);
-		fflush(debuglogfile);
-	}
+	do_log(debuglogfile, debug, 1, "Log list:%s\n",slogs);
 	 
 	return(slogs);
 }
@@ -1506,10 +1297,7 @@ CreamConnection(int c_sock)
 		
 			if(retcod <0){
 				close(conn_c);
-				if(debug){
-					fprintf(debuglogfile, "Fatal Error:Poll error in CreamConnection\n");
-					fflush(debuglogfile);
-				}
+				do_log(debuglogfile, debug, 1, "Fatal Error:Poll error in CreamConnection\n");
 				sysfatal("Poll error in CreamConnection: %r");
 			}
     
@@ -1518,34 +1306,22 @@ ret_c:
 				if ( ( fds[0].revents & ( POLLERR | POLLNVAL | POLLHUP) )){
 					switch (fds[0].revents){
 					case POLLNVAL:
-						if(debug){
-							fprintf(debuglogfile, "Error:poll() file descriptor error in CreamConnection\n");
-							fflush(debuglogfile);
-						}
+						do_log(debuglogfile, debug, 1, "Error:poll() file descriptor error in CreamConnection\n");
 						syserror("poll() file descriptor error in CreamConnection: %r");
 						break;
 					case POLLHUP:
-						if(debug){
-							fprintf(debuglogfile, "Error:Connection closed in CreamConnection\n");
-							fflush(debuglogfile);
-						}
+						do_log(debuglogfile, debug, 1, "Error:Connection closed in CreamConnection\n");
 						syserror("Connection closed in CreamConnection: %r");
 						break;
 					case POLLERR:
-						if(debug){
-							fprintf(debuglogfile, "Error:poll() POLLERR in CreamConnection\n");
-							fflush(debuglogfile);
-						}
+						do_log(debuglogfile, debug, 1, "Error:poll() POLLERR in CreamConnection\n");
 						syserror("poll() POLLERR in CreamConnection: %r");
 						break;
 					}
 				} else {
             
 					if ( (conn_c = accept(c_sock, NULL, NULL) ) < 0 ) {
-						if(debug){
-							fprintf(debuglogfile, "Fatal Error:Error calling accept() in CreamConnection\n");
-							fflush(debuglogfile);
-						}
+						do_log(debuglogfile, debug, 1, "Fatal Error:Error calling accept() in CreamConnection\n");
 						sysfatal("Error calling accept() in CreamConnection: %r");
 					}
 					goto write_c;
@@ -1555,10 +1331,7 @@ ret_c:
 			retcod = poll(pfds, nfds, timeout);
 			if( retcod < 0 ){
 				close(conn_c);
-				if(debug){
-					fprintf(debuglogfile, "Fatal Error:Poll error in CreamConnection\n");
-					fflush(debuglogfile);
-				}
+				do_log(debuglogfile, debug, 1, "Fatal Error:Poll error in CreamConnection\n");
 				sysfatal("Poll error in CreamConnection: %r");
 			}
 			if(retcod > 0 ){
@@ -1569,12 +1342,9 @@ write_c:
 			buffer[0]='\0';
 			Readline(conn_c, buffer, STR_CHARS-1);
 			if(strlen(buffer)>0){
-				if(debug){
-					buftmp=strdel(buffer,"\n");
-					fprintf(debuglogfile, "Received for Cream:%s\n",buftmp);
-					fflush(debuglogfile);
-					free(buftmp);
-				}
+				buftmp=strdel(buffer,"\n");
+				do_log(debuglogfile, debug, 1, "Received for Cream:%s\n",buftmp);
+				free(buftmp);
 				if(buffer && ((strstr(buffer,"STARTNOTIFY/")!=NULL) || (strstr(buffer,"STARTNOTIFYJOBLIST/")!=NULL) || (strstr(buffer,"STARTNOTIFYJOBEND/")!=NULL) || (strstr(buffer,"CREAMFILTER/")!=NULL))){
 					NotifyFromDate(buffer);
 				}else if(buffer && (strstr(buffer,"PARSERVERSION/")!=NULL)){
@@ -1591,21 +1361,12 @@ GetVersion()
 
 	char *out_buf;
 	
-	if((out_buf=calloc(STR_CHARS,1)) == 0){
-		sysfatal("can't malloc out_buf: %r");
-	}
-	
-	sprintf(out_buf,"%s__0\n",VERSION);
+	out_buf=make_message("%s__0\n",VERSION);
 	Writeline(conn_c, out_buf, strlen(out_buf));
-	if(debug){
-		fprintf(debuglogfile, "Sent Reply for PARSERVERSION command:%s",out_buf);
-		fflush(debuglogfile);
-	}
-
+	do_log(debuglogfile, debug, 1, "Sent Reply for PARSERVERSION command:%s",out_buf);
 	free(out_buf);
 	
-	return 0;
-	
+	return 0;	
 }
 
 int
@@ -1620,36 +1381,19 @@ NotifyFromDate(char *in_buf)
 	int   notepoch;
 	int   logepoch;
 
-	int  maxtok,j,maxtok_s,maxtok_l,maxtok_b,maxtok_c; 
+	int  maxtok,maxtok_s,maxtok_l,maxtok_b; 
 	char **tbuf;
 	char **sbuf;
 	char **lbuf;
 	char **bbuf;
-	char *ccount_s, *ccomma;
 	char *cp;
-	char *nowtm;
 	char *fullblahstring;
 	char *joblist_string="";
 	char *tjoblist_string="";
 	char *fullbljobid;
 	char *tbljobid;
-	time_t now;
 
-	/* printf("thread/0x%08lx\n",pthread_self()); */
-
-	if((out_buf=calloc(STR_CHARS,1)) == 0){
-		sysfatal("can't malloc out_buf: %r");
-	}
-    
-	if((tbuf=calloc(10 * sizeof *tbuf,1)) == 0){
-		sysfatal("can't malloc tbuf: %r");
-	}
-
-	if((fullblahstring=calloc(20+strlen(cream_string),1)) == 0){
-		sysfatal("can't malloc fullblahstring: %r");
-	}
-       
-	maxtok=strtoken(in_buf,'/',tbuf);
+	maxtok=strtoken(in_buf,'/',&tbuf);
     
 	if(tbuf[0]){
 		notstr=strdup(tbuf[0]);
@@ -1660,11 +1404,8 @@ NotifyFromDate(char *in_buf)
 			*cp = '\0';
 		}
 	}
-    
-	for(j=0;j<maxtok;j++){
-		free(tbuf[j]);
-	}
-	free(tbuf);
+
+        freetoken(&tbuf,maxtok);
             
 /*if CREAMFILTER is sent this string is used instead of default cream_string */
 
@@ -1677,16 +1418,13 @@ NotifyFromDate(char *in_buf)
                         *cp = '\0';
                 }
 		if(cream_string!=NULL){
-			sprintf(out_buf,"CREAMFILTER set to %s\n",cream_string);
+			out_buf=make_message("CREAMFILTER set to %s\n",cream_string);
 		}else{
-			sprintf(out_buf,"CREAMFILTER ERROR\n");
+			out_buf=make_message("CREAMFILTER ERROR\n");
 		}
 		
 		Writeline(conn_c, out_buf, strlen(out_buf));
-		if(debug){
-			fprintf(debuglogfile, "Sent Reply for CREAMFILTER command:%s",out_buf);
-			fflush(debuglogfile); 
-		}
+		do_log(debuglogfile, debug, 1, "Sent Reply for CREAMFILTER command:%s",out_buf);
 	}else if(notstr && strcmp(notstr,"STARTNOTIFY")==0){
     
 		creamisconn=1;
@@ -1702,7 +1440,7 @@ NotifyFromDate(char *in_buf)
 			logepoch=time(NULL);
 		}     
 		if(notepoch<=logepoch){
-			lnotdate=iepoch2str(notepoch);
+			lnotdate=iepoch2str(notepoch,"L");
 			GetEventsInOldLogs(lnotdate);
 			free(lnotdate);
 		}
@@ -1711,19 +1449,11 @@ NotifyFromDate(char *in_buf)
 
 			for(ii=jcount;ii<CRMHASHSIZE;ii++){
 				if(notepoch<=nti[ii]){
-					now=time(NULL);
-					nowtm=ctime(&now);
-					if ((cp = strrchr (nowtm, '\n')) != NULL){
-						*cp = '\0';
-					}
-					sprintf(fullblahstring,"BlahJobName=\"%s",cream_string);
+					fullblahstring=make_message("BlahJobName=\"%s",cream_string);
 					if(ntf[ii] && strstr(ntf[ii],fullblahstring)!=NULL){
-						sprintf(out_buf,"NTFDATE/%s",ntf[ii]);
+						out_buf=make_message("NTFDATE/%s",ntf[ii]);
 						Writeline(conn_c, out_buf, strlen(out_buf));
-						if(debug){
-							fprintf(debuglogfile, "%s Sent for Cream_nftdate:%s",nowtm,out_buf);
-							fflush(debuglogfile); 
-						}
+						do_log(debuglogfile, debug, 1, "Sent for Cream_nftdate:%s",out_buf);
 					}
 				}
 			}
@@ -1732,27 +1462,16 @@ NotifyFromDate(char *in_buf)
             
 		for(ii=0;ii<=jcount;ii++){
 			if(notepoch<=nti[ii]){
-				now=time(NULL);
-				nowtm=ctime(&now);
-				if ((cp = strrchr (nowtm, '\n')) != NULL){
-					*cp = '\0';
-				}
-				sprintf(fullblahstring,"BlahJobName=\"%s",cream_string);
+				fullblahstring=make_message("BlahJobName=\"%s",cream_string);
 				if(ntf[ii] && strstr(ntf[ii],fullblahstring)!=NULL){
-					sprintf(out_buf,"NTFDATE/%s",ntf[ii]);  
+					out_buf=make_message("NTFDATE/%s",ntf[ii]); 
 					Writeline(conn_c, out_buf, strlen(out_buf));
-					if(debug){
-						fprintf(debuglogfile, "%s Sent for Cream_nftdate:%s",nowtm,out_buf);
-						fflush(debuglogfile);
-					}
+					do_log(debuglogfile, debug, 1, "Sent for Cream_nftdate:%s",out_buf);
 				}
 			}
 		}
 		Writeline(conn_c, "NTFDATE/END\n", strlen("NTFDATE/END\n"));
-		if(debug){
-			fprintf(debuglogfile, "Sent for Cream_nftdate:NTFDATE/END\n");
-			fflush(debuglogfile);
-		}
+		do_log(debuglogfile, debug, 1, "Sent for Cream_nftdate:NTFDATE/END\n");
       
 		free(out_buf);
 		free(notstr);
@@ -1766,34 +1485,20 @@ NotifyFromDate(char *in_buf)
 		creamisconn=1;
 		
 		Writeline(conn_c, "NTFDATE/END\n", strlen("NTFDATE/END\n"));
-		if(debug){
-			fprintf(debuglogfile, "Sent for Cream_nftdate:NTFDATE/END\n");
-			fflush(debuglogfile);
-		}
+		do_log(debuglogfile, debug, 1, "Sent for Cream_nftdate:NTFDATE/END\n");
 		
 	}else if(notstr && strcmp(notstr,"STARTNOTIFYJOBLIST")==0){
     
 		creamisconn=1;
 		
-		if((sbuf=calloc(10 * sizeof *sbuf,1)) == 0){
-			sysfatal("can't malloc sbuf: %r");
-		}
-      
-		maxtok_s=strtoken(notdate,';',sbuf);
+		maxtok_s=strtoken(notdate,';',&sbuf);
 		
 		notepoch=str2epoch(sbuf[0],"S");
 		tjoblist_string=strdup(sbuf[1]);
 		
-		if((joblist_string=calloc(strlen(tjoblist_string)+10,1)) == 0){
-			sysfatal("can't malloc joblist_string: %r");
-		}
+		joblist_string=make_message(",%s,",tjoblist_string);
 		
-		sprintf(joblist_string,",%s,",tjoblist_string);
-		
-		for(j=0;j<maxtok_s;j++){
-			free(sbuf[j]);
-		}
-		free(sbuf);
+		freetoken(&sbuf,maxtok_s);
 		
 		if(cream_recycled){
 			logepoch=nti[jcount];
@@ -1804,7 +1509,7 @@ NotifyFromDate(char *in_buf)
 			logepoch=time(NULL);
 		}     
 		if(notepoch<=logepoch){
-			lnotdate=iepoch2str(notepoch);
+			lnotdate=iepoch2str(notepoch,"L");
 			GetEventsInOldLogs(lnotdate);
 			free(lnotdate);
 		}
@@ -1813,44 +1518,20 @@ NotifyFromDate(char *in_buf)
 
 			for(ii=jcount;ii<CRMHASHSIZE;ii++){
 				if(notepoch<=nti[ii]){
-					now=time(NULL);
-					nowtm=ctime(&now);
-					if ((cp = strrchr (nowtm, '\n')) != NULL){
-						*cp = '\0';
-					}
-					
-					if((lbuf=calloc(10 * sizeof *lbuf,1)) == 0){
-						sysfatal("can't malloc lbuf: %r");
-					}
-					if((bbuf=calloc(10 * sizeof *bbuf,1)) == 0){
-						sysfatal("can't malloc bbuf: %r");
-					}
-					if((fullbljobid=calloc(300,1)) == 0){
-						sysfatal("can't malloc fullbljobid: %r");
-					}
-					if((tbljobid=calloc(300,1)) == 0){
-						sysfatal("can't malloc tbljobid: %r");
-					}
-					maxtok_l=strtoken(ntf[ii],';',lbuf);
-					maxtok_b=strtoken(lbuf[2],'=',bbuf);
+					maxtok_l=strtoken(ntf[ii],';',&lbuf);
+					maxtok_b=strtoken(lbuf[2],'=',&bbuf);
 					tbljobid=strdel(bbuf[1],"\"");
-					sprintf(fullbljobid,",%s,",tbljobid);
+					fullbljobid=make_message(",%s,",tbljobid);
 					
 					free(tbljobid);
 					
-					for(j=0;j<maxtok_l;j++){
-						free(lbuf[j]);
-					}
-					free(lbuf);
-					
+                                        freetoken(&lbuf,maxtok_l);
+                                        freetoken(&bbuf,maxtok_b);
 					
 					if(ntf[ii] && strstr(joblist_string,fullbljobid)!=NULL){
-						sprintf(out_buf,"NTFDATE/%s",ntf[ii]);
+						out_buf=make_message("NTFDATE/%s",ntf[ii]);
 						Writeline(conn_c, out_buf, strlen(out_buf));
-						if(debug){
-							fprintf(debuglogfile, "%s Sent for Cream_nftdate:%s",nowtm,out_buf);
-							fflush(debuglogfile); 
-						}
+						do_log(debuglogfile, debug, 1, "Sent for Cream_nftdate:%s",out_buf);
 					}
 					free(fullbljobid);
 				}
@@ -1860,47 +1541,21 @@ NotifyFromDate(char *in_buf)
             
 		for(ii=0;ii<=jcount;ii++){
 			if(notepoch<=nti[ii]){
-				now=time(NULL);
-				nowtm=ctime(&now);
-				if ((cp = strrchr (nowtm, '\n')) != NULL){
-					*cp = '\0';
-				}
-				if((lbuf=calloc(10 * sizeof *lbuf,1)) == 0){
-					sysfatal("can't malloc lbuf: %r");
-				}
-				if((bbuf=calloc(10 * sizeof *bbuf,1)) == 0){
-					sysfatal("can't malloc bbuf: %r");
-				}
-				if((fullbljobid=calloc(300,1)) == 0){
-					sysfatal("can't malloc fullbljobid: %r");
-				}
-				if((tbljobid=calloc(300,1)) == 0){
-					sysfatal("can't malloc tbljobid: %r");
-				}
-				maxtok_l=strtoken(ntf[ii],';',lbuf);
-				maxtok_b=strtoken(lbuf[2],'=',bbuf);
+				maxtok_l=strtoken(ntf[ii],';',&lbuf);
+				maxtok_b=strtoken(lbuf[2],'=',&bbuf);
 				
 				tbljobid=strdel(bbuf[1],"\"");
-				sprintf(fullbljobid,",%s,",tbljobid);
+				fullbljobid=make_message(",%s,",tbljobid);
 					
 				free(tbljobid);
 				
-				for(j=0;j<maxtok_b;j++){
-					free(bbuf[j]);
-				}
-				free(bbuf);
-				for(j=0;j<maxtok_l;j++){
-					free(lbuf[j]);
-				}
-				free(lbuf);
-				
+				freetoken(&lbuf,maxtok_l);
+				freetoken(&bbuf,maxtok_b);
+					
 				if(ntf[ii] && strstr(joblist_string,fullbljobid)!=NULL){
-					sprintf(out_buf,"NTFDATE/%s",ntf[ii]);  
+					out_buf=make_message("NTFDATE/%s",ntf[ii]);  
 					Writeline(conn_c, out_buf, strlen(out_buf));
-					if(debug){
-						fprintf(debuglogfile, "%s Sent for Cream_nftdate:%s",nowtm,out_buf);
-						fflush(debuglogfile);
-					}
+					do_log(debuglogfile, debug, 1, "Sent for Cream_nftdate:%s",out_buf);
 				}
 				free(fullbljobid);
 			}
@@ -1943,62 +1598,39 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
 	int      timeout= 5000;
     
 	char    **clientjobid;
-	int      maxtok,i;
-
-	time_t   now;
-	char     *nowtm;
-	char     *cp;
+	int      maxtok;
     
 	fds[0].fd = conn_c;
 	fds[0].events = 0;
 	fds[0].events = ( POLLIN | POLLOUT | POLLPRI | POLLERR | POLLHUP | POLLNVAL ) ;
 	pfds = fds;    
     
-	if((buffer=calloc(STR_CHARS,1)) == 0){
-		sysfatal("can't malloc buffer: %r");
-	}
-	if((outreason=calloc(STR_CHARS,1)) == 0){
-		sysfatal("can't malloc outreason: %r");
-	}
-	if((exitreason=calloc(STR_CHARS,1)) == 0){
-		sysfatal("can't malloc exitreason: %r");
-	}
-	if((clientjobid=calloc(10 * sizeof *clientjobid,1)) == 0){
-		sysfatal("can't malloc clientjobid %r");
-	}
-	if((sjobid=calloc(10 * sizeof *sjobid,1)) == 0){
-		sysfatal("can't malloc sjobid %r");
-	}
-    
-	sprintf(sjobid, "%d",rptr[jobid]);
+	sjobid=make_message("%d",rptr[jobid]);
     
 	if(reason && strcmp(reason,"NA")!=0){
-		sprintf(outreason," Reason=\"lsf_reason=%s\";" ,reason);
+		outreason=make_message(" Reason=\"lsf_reason=%s\";" ,reason);
 		if((strcmp(reason,"130")==0) || (strcmp(reason,"137")==0) || (strcmp(reason,"143")==0)){
-			sprintf(exitreason," ExitReason=\"Memory limit reached\";");
+			exitreason=make_message(" ExitReason=\"Memory limit reached\";");
 		}else if(strcmp(reason,"140")==0){
-			sprintf(exitreason," ExitReason=\"RUNtime limit reached\";");
+			exitreason=make_message(" ExitReason=\"RUNtime limit reached\";");
 		}else if(strcmp(reason,"152")==0){
-			sprintf(exitreason," ExitReason=\"CPUtime limit reached\";");
+			exitreason=make_message(" ExitReason=\"CPUtime limit reached\";");
 		}else if(strcmp(reason,"153")==0){
-			sprintf(exitreason," ExitReason=\"FILEsize limit reached\";");
+			exitreason=make_message(" ExitReason=\"FILEsize limit reached\";");
 		}else if(strcmp(reason,"157")==0){
-			sprintf(exitreason," ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
+			exitreason=make_message(" ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
 		}
 	}
     
-	maxtok = strtoken(blahjobid, '_', clientjobid);    
+	maxtok = strtoken(blahjobid, '_', &clientjobid);    
     
 	if(wn && strcmp(wn,"NA")!=0){
-		sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\"; WorkerNode=%s;%s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], wn, outreason, exitreason, timestamp);
+		buffer=make_message("[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\"; WorkerNode=%s;%s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], wn, outreason, exitreason, timestamp);
 	}else{
-		sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\";%s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], outreason, exitreason, timestamp);
+		buffer=make_message("[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\";%s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], outreason, exitreason, timestamp);
 	}
     
-	for(i=0;i<maxtok;i++){
-		free(clientjobid[i]);
-	}
-	free(clientjobid);
+	freetoken(&clientjobid,maxtok);
 
 	free(sjobid);
     
@@ -2008,10 +1640,7 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
 	if(jcount>=CRMHASHSIZE){
 		jcount=0;
 		cream_recycled=1;
-		if(debug>=3){
-			fprintf(debuglogfile, "Cream Counter Recycled\n");
-			fflush(debuglogfile);
-		}  
+		do_log(debuglogfile, debug, 3, "Cream Counter Recycled\n");
 	} 
 	
 	nti[jcount]=str2epoch(timestamp,"S");
@@ -2032,10 +1661,7 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
         
 	if(retcod <0){
 		close(conn_c);
-		if(debug){
-			fprintf(debuglogfile, "Fatal Error:Poll error in NotifyCream\n");
-			fflush(debuglogfile);
-		}
+		do_log(debuglogfile, debug, 1, "Fatal Error:Poll error in NotifyCream\n");
 		sysfatal("Poll error in NotifyCream: %r");
 	}
     
@@ -2043,38 +1669,21 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
 		if ( ( fds[0].revents & ( POLLERR | POLLNVAL | POLLHUP) )){
 			switch (fds[0].revents){
 			case POLLNVAL:
-				if(debug){
-					fprintf(debuglogfile, "Error:poll() file descriptor error in NotifyCream\n");
-					fflush(debuglogfile);
-				}
+				do_log(debuglogfile, debug, 1, "Error:poll() file descriptor error in NotifyCream\n");
 				syserror("poll() file descriptor error in NotifyCream: %r");
 				break;
 			case POLLHUP:
-				if(debug){
-					fprintf(debuglogfile, "Connection closed in NotifyCream\n");
-					fflush(debuglogfile);
-				}
+				do_log(debuglogfile, debug, 1, "Connection closed in NotifyCream\n");
 				syserror("Connection closed in NotifyCream: %r");
 				break;
 			case POLLERR:
-				if(debug){
-					fprintf(debuglogfile, "Error:poll() POLLERR in NotifyCream\n");
-					fflush(debuglogfile);
-				}
+				do_log(debuglogfile, debug, 1, "Error:poll() POLLERR in NotifyCream\n");
 				syserror("poll() POLLERR in NotifyCream: %r");
 				break;
 			}
 		} else {
-			now=time(NULL);
-			nowtm=ctime(&now);
-			if ((cp = strrchr (nowtm, '\n')) != NULL){
-				*cp = '\0';
-			}
 			Writeline(conn_c, buffer, strlen(buffer));
-			if(debug){
-				fprintf(debuglogfile, "%s Sent for Cream:%s",nowtm,buffer);
-				fflush(debuglogfile);
-			}
+			do_log(debuglogfile, debug, 1, "Sent for Cream:%s",buffer);
 		} 
 	}       
 			
@@ -2100,17 +1709,11 @@ UpdatePtr(int jid, char *rx, int has_bl)
 	if(ptrcnt>=RDXHASHSIZE){
 		ptrcnt=1;
 		recycled++;  
-		if(debug>=3){
-			fprintf(debuglogfile, "Counter Recycled\n");
-			fflush(debuglogfile);
-		}  
+		do_log(debuglogfile, debug, 3, "Counter Recycled\n");
 	}
  
 	if((rid=GetRdxId(jid))==-1){
-		if(debug>=3){
-			fprintf(debuglogfile, "JobidNew Counter:%d jobid:%d\n",ptrcnt,jid);
-			fflush(debuglogfile);
-		}
+		do_log(debuglogfile, debug, 3, "JobidNew Counter:%d jobid:%d\n",ptrcnt,jid);
 		if(rx && (strcmp(rx,rex_queued)==0) && (has_bl)){
 			rptr[ptrcnt++]=jid;
 			return(ptrcnt-1);
@@ -2118,127 +1721,10 @@ UpdatePtr(int jid, char *rx, int has_bl)
 			return -1;
 		}
 	}else{
-		if(debug>=3){
-			fprintf(debuglogfile, "JobidOld Counter:%d jobid:%d\n",rid,jid);
-			fflush(debuglogfile);
-		}
+		do_log(debuglogfile, debug, 3, "JobidOld Counter:%d jobid:%d\n",rid,jid);
 		return rid;
 	}
   
-}
-
-int
-GetRdxId(int cnt)
-{
-	int i;
-
-	if(cnt == 0){
-		return -1;
-	}
-
-	for(i=0;i<RDXHASHSIZE;i++){
-		if(rptr[i] == cnt){
-			return i;
-		}
-	}
-	return -1;
-}
-
-int
-GetBlahNameId(char *blahstr){
-	
-	int i;
-	
-	if(blahstr == NULL){
-		return -1;
-	}
-	
-	for(i=0;i<RDXHASHSIZE;i++){
-		if(j2bl[i]!=NULL && strcmp(j2bl[i],blahstr)==0){
-			return i;
-		}
-	}
-	return -1;
-
-}
-
-int
-strtoken(const char *s, char delim, char **token)
-{
-	char *tmp;
-	char *ptr, *dptr;
-	int i = 0;
-   
-	if(!s){
-		if((token[0] = calloc(1,1)) == 0){
-			sysfatal("can't malloc token[0] in strtoken: %r");
-		}
-		token[0] = NULL;
-		return 1;
-	}
-	if((tmp = calloc(1 + strlen(s),1)) == 0){
-		sysfatal("can't malloc tmp: %r");
-	}
-	assert(tmp);
-	strcpy(tmp, s);
-	ptr = tmp;
-	while(1) {
-		if((dptr = strchr(ptr, delim)) != NULL) {
-			*dptr = '\0';
-			if((token[i] = calloc(1 + strlen(ptr),1)) == 0){
-				sysfatal("can't malloc token[i]: %r");
-			}
-			assert(token[i]);
-			strcpy(token[i], ptr);
-			ptr = dptr + 1;
-			if (strlen(token[i]) != 0){
-				i++;
-			}else{
-                                free(token[i]);
-                        }
-		} else {
-			if(strlen(ptr)) {
-				if((token[i] = calloc(1 + strlen(ptr),1)) == 0){
-					sysfatal("can't malloc token[i]: %r");
-				}
-				assert(token[i]);
-				strcpy(token[i], ptr);
-				i++;
-				break;
-			} else{
-				break;
-			}
-		}
-	}
-    
-	token[i] = NULL;
-	free(tmp);
-	return i;
-}
-
-char *
-strdel(char *s, const char *delete)
-{
-	char *tmp, *cptr, *sptr;
-    
-	if(!delete || !strlen(delete)){
-		return s;
-	}
-        
-	if(!s || !strlen(s)){
-		return s;
-	}
-        
-	tmp = strndup(s, STR_CHARS);
-       
-	assert(tmp);
-    
-	for(sptr = tmp; (cptr = strpbrk(sptr, delete)); sptr = tmp) {
-		*cptr = '\0';
-		strcat(tmp, ++cptr);
-	}
-    
-	return tmp;
 }
 
 char *
@@ -2247,119 +1733,17 @@ epoch2str(char *epoch)
   
 	char *dateout;
 
-	struct tm *tm;
-	if((tm=calloc(NUM_CHARS,1)) == 0){
-		sysfatal("can't malloc tm in epoch2str: %r");
-	}
-
-	strptime(epoch,"%s",tm);
+	struct tm tm;
+	strptime(epoch,"%s",&tm);
  
 	if((dateout=calloc(NUM_CHARS,1)) == 0){
 		sysfatal("can't malloc dateout in epoch2str: %r");
 	}
  
-	strftime(dateout,NUM_CHARS,"%Y-%m-%d %T",tm);
-	free(tm);
+	strftime(dateout,NUM_CHARS,"%Y-%m-%d %H:%M:%S",&tm);
  
 	return dateout;
  
-}
-
-char *
-iepoch2str(int epoch)
-{
-  
-	char *dateout;
-	char *lepoch;
-
-	struct tm *tm;
-	
-	if((tm=calloc(NUM_CHARS,1)) == 0){
-	sysfatal("can't malloc tm in iepoch2str: %r");
-	}
-	if((lepoch=calloc(STR_CHARS,1)) == 0){
-	sysfatal("can't malloc lepoch in iepoch2str: %r");
-	}
- 
-	sprintf(lepoch,"%d",epoch);
- 
-	strptime(lepoch,"%s",tm);
- 
-	if((dateout=calloc(NUM_CHARS,1)) == 0){
-		sysfatal("can't malloc dateout in iepoch2str: %r");
-	}
- 
-	strftime(dateout,NUM_CHARS,"%Y%m%d%H%M.%S",tm);
-	free(tm);
-	free(lepoch);
- 
-	return dateout;
- 
-}
-
-int
-str2epoch(char *str, char * f)
-{
-  
-	char *dateout;
-	int idate;
-
-	struct tm *tm;
-	
-	if((tm=calloc(NUM_CHARS,1)) == 0){
-		sysfatal("can't malloc tm in str2epoch: %r");
-	}
-	if(strcmp(f,"S")==0){
-		strptime(str,"%Y-%m-%d %T",tm);
-	}else if(strcmp(f,"L")==0){
-		strptime(str,"%a %b %d %T %Y",tm);
-	}
- 
-	if((dateout=calloc(NUM_CHARS,1)) == 0){
-		sysfatal("can't malloc dateout in str2epoch: %r");
-	}
- 
-	strftime(dateout,NUM_CHARS,"%s",tm);
- 
-	free(tm);
- 
-	idate=atoi(dateout);
-	free(dateout);
- 
-	return idate;
- 
-}
-
-void
-daemonize()
-{
-
-	int pid;
-    
-	pid = fork();
-	
-	if (pid < 0){
-		sysfatal("Cannot fork in daemonize: %r");
-	}else if (pid >0){
-		exit(EXIT_SUCCESS);
-	}
-    
-	setsid();
-    
-	pid = fork();
-	
-	if (pid < 0){
-		sysfatal("Cannot fork in daemonize: %r");
-	}else if (pid >0){
-		exit(EXIT_SUCCESS);
-	}
-	chdir("/");
-	umask(0);
-    
-	freopen ("/dev/null", "r", stdin);  
-	freopen ("/dev/null", "w", stdout);
-	freopen ("/dev/null", "w", stderr); 
-
 }
 
 void 
@@ -2400,60 +1784,4 @@ short_usage()
 	printf("        [-c|--confpath <LSFconfpath>] [-l|--logfile  <DebugLogFile>]\n");
 	printf("        [-d|--debug INT] [-D|--daemon] [-v|--version] [-?|--help] [--usage]\n");
 	exit(EXIT_SUCCESS);
-}
-
-void
-eprint(int err, char *fmt, va_list args)
-{
-	extern int errno;
-
-	fprintf(stderr, "%s: ", argv0);
-	if(fmt){
-		vfprintf(stderr, fmt, args);
-	}
-	if(err){
-		fprintf(stderr, "%s", strerror(errno));
-	}
-	fputs("\n", stderr);
-	errno = 0;
-}
-
-char *
-chopfmt(char *fmt)
-{
-	static char errstr[ERRMAX];
-	char *p;
-
-	errstr[0] = '\0';
-	if((p=strstr(fmt, "%r")) != 0){
-		fmt = strncat(errstr, fmt, p-fmt);
-	}
-	return fmt;
-}
-
-/* syserror: print error and continue */
-void
-syserror(char *fmt, ...)
-{
-	va_list args;
-	char *xfmt;
-
-	va_start(args, fmt);
-	xfmt = chopfmt(fmt);
-	eprint(xfmt!=fmt, xfmt, args);
-	va_end(args);
-}
-
-/* sysfatal: print error and die */
-void
-sysfatal(char *fmt, ...)
-{
-	va_list args;
-	char *xfmt;
-
-	va_start(args, fmt);
-	xfmt = chopfmt(fmt);
-	eprint(xfmt!=fmt, xfmt, args);
-	va_end(args);
-	exit(EXIT_FAILURE);
 }

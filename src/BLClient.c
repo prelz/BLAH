@@ -1,29 +1,16 @@
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <getopt.h>
-#include <netdb.h>
+#include <BLfunctions.h>
 
 #define MAX_LINE            100000
-#define STR_CHARS           1000
 #define CONN_TIMEOUT_SEC    0
 #define CONN_TIMEOUT_MSEC   100000
 
-#ifndef VERSION
-#define VERSION            "1.8.0"
-#endif
 
 int usage();
 int short_usage();
 
 char     *progname = "BLClient";
+
+pthread_mutex_t writeline_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int
 main(int argc, char *argv[])
@@ -44,12 +31,9 @@ main(int argc, char *argv[])
 
 	fd_set   wset;
 	struct   timeval to;
-	int      r,i;
+	int      r;
 	int opt;
 	socklen_t optlen = sizeof(opt);
-
-	struct hostent *hp;
-	char *ipaddr;
 
 	char      *cp;
 

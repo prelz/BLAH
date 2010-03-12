@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.44 2010/02/04 11:55:26 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.45 2010/03/12 09:23:34 mezzadri Exp $ 
 #
 # File:           Makefile.am
 #
@@ -27,7 +27,7 @@ endif
 bin_PROGRAMS = blahpd blahpd_daemon BLClient BLParserLSF BLParserPBS test_condor_logger blah_job_registry_add blah_job_registry_lkup blah_job_registry_scan_by_subject BUpdaterCondor BNotifier BUpdaterLSF BUpdaterPBS BUpdaterSGE $(GLOBUS_EXECS)  blparser_master blah_check_config
 noinst_PROGRAMS = test_job_registry_create test_job_registry_purge test_job_registry_update test_job_registry_access
 
-common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C proxy_hashcontainer.c config.c job_registry.c Bfunctions.c blah_utils.c env_helper.c mapped_exec.c md5.c
+common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C proxy_hashcontainer.c config.c job_registry.c Bfunctions.c blah_utils.c env_helper.c mapped_exec.c md5.c 
 
 blahpd_SOURCES = main.c $(common_sources)
 
@@ -49,15 +49,15 @@ BPRserver_LDFLAGS = -static
 BPRserver_LDADD = \
 $(GLOBUS_GSS_NOTHR_LIBS) $(GLOBUS_SSL_NOTHR_LIBS)
 
-BLClient_SOURCES = BLClient.c BLhelper.c
+BLClient_SOURCES = BLClient.c blah_utils.c BLfunctions.c
 
 BLClient_LDADD =
 
-BLParserLSF_SOURCES = BLParserLSF.c
+BLParserLSF_SOURCES = BLParserLSF.c blah_utils.c BLfunctions.c
 
 BLParserLSF_LDADD = 
 
-BLParserPBS_SOURCES = BLParserPBS.c
+BLParserPBS_SOURCES = BLParserPBS.c blah_utils.c BLfunctions.c
 
 BLParserPBS_LDADD =
 
@@ -107,7 +107,7 @@ blparser_master_LDADD =
 blah_check_config_SOURCES = blah_check_config.c Bfunctions.c config.c blah_utils.c
 blah_check_config_LDADD =
 
-noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h BLhelper.h condor_create_log.h proxy_hashcontainer.h job_registry.h md5.h config.h BUpdaterCondor.h Bfunctions.h BNotifier.h BUpdaterLSF.h BUpdaterPBS.h BUpdaterSGE.h blah_utils.h env_helper.h mapped_exec.h blah_check_config.h
+noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h condor_create_log.h proxy_hashcontainer.h job_registry.h md5.h config.h BUpdaterCondor.h Bfunctions.h BNotifier.h BUpdaterLSF.h BUpdaterPBS.h BUpdaterSGE.h blah_utils.h env_helper.h mapped_exec.h blah_check_config.h
 
 #bin_SCRIPTS = pbs_cancel.sh pbs_status.sh pbs_submit.sh lsf_cancel.sh lsf_status.sh lsf_submit.sh
 

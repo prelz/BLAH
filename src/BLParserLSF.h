@@ -1,47 +1,33 @@
-#define _GNU_SOURCE
-#define _XOPEN_SOURCE
-#include <unistd.h>    
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <string.h>
-#include <time.h>
-#include <sys/types.h> 
-#include <sys/socket.h>
-#include <netdb.h>
-#include <arpa/inet.h> 
-#include <errno.h>
-#include <pthread.h>
-#include <signal.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <assert.h>
-#include <sys/select.h>
-#include <sys/poll.h>
-#include <getopt.h>
-#include <dirent.h>
+/*
+#  File:     BLParserLSF.h
+#
+#  Author:   Massimo Mezzadri
+#  e-mail:   Massimo.Mezzadri@mi.infn.it
+# 
+# Copyright (c) Members of the EGEE Collaboration. 2004. 
+# See http://www.eu-egee.org/partners/ for details on the copyright
+# holders.  
+# 
+# Licensed under the Apache License, Version 2.0 (the "License"); 
+# you may not use this file except in compliance with the License. 
+# You may obtain a copy of the License at 
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0 
+# 
+# Unless required by applicable law or agreed to in writing, software 
+# distributed under the License is distributed on an "AS IS" BASIS, 
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+# See the License for the specific language governing permissions and 
+# limitations under the License.
+# 
+*/
 
+#include "BLfunctions.h"
 
-#define LISTENQ            1024
 #define DEFAULT_PORT       33333 
-#define MAX_CHARS          200000
-#define STR_CHARS          3000
-#define NUM_CHARS          300
-#define RDXHASHSIZE        300000
-#define CRMHASHSIZE        1000000
-#define NUMTHRDS           3
-#define ERRMAX             80
-#define TBUFSIZE           100000
-#define WRETRIES           10
-
-#ifndef VERSION
-#define VERSION            "1.8.0"
-#endif
 
 /*  Function declarations  */
 
-ssize_t Readline(int fd, void *vptr, size_t maxlen);
-ssize_t Writeline(int fc, const void *vptr, size_t maxlen);
 void *mytail (void *infile);    
 void follow(char *infile, char *line);
 long tail(FILE *fp, char *line, long old_off);
@@ -59,39 +45,12 @@ int NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *rea
 int UpdatePtr(int jid, char *rx, int has_bl);
 int GetRdxId(int cnt);
 int GetBlahNameId(char *blahstr);
-int strtoken(const char *s, char delim, char **token);
-char *strdel(char *s, const char *delete);
 char *epoch2str(char *epoch);
-char *iepoch2str(int epoch);
-int str2epoch(char *str, char *f);
-void daemonize();
 void sighup();
 int usage();
 int short_usage();
-void eprint(int err, char *fmt, va_list args);
-char *chopfmt(char *fmt);
-void syserror(char *fmt, ...);
-void sysfatal(char *fmt, ...);
 
 /* Variables initialization */
-
-int rptr[RDXHASHSIZE];
-
-int reccnt[RDXHASHSIZE];
-
-char *j2js[RDXHASHSIZE];
-char *j2wn[RDXHASHSIZE];
-char *j2ec[RDXHASHSIZE];
-char *j2st[RDXHASHSIZE];
-char *j2rt[RDXHASHSIZE];
-char *j2ct[RDXHASHSIZE];
-
-char *j2bl[RDXHASHSIZE];
-
-int   nti[CRMHASHSIZE];
-char *ntf[CRMHASHSIZE];
-
-char *argv0;
 
 char *blahjob_string="blahjob_";
 char *bl_string="bl_";
@@ -112,9 +71,6 @@ char *progname="BLParserLSF";
 int port;
 int creamport;
 int usecream=0;
-
-int debug=0;
-int dmn=0;
 
 FILE *debuglogfile;
 char *debuglogname="/opt/glite/var/log/BLParserLSF.log";
