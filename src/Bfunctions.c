@@ -267,7 +267,7 @@ epoch2str(char *epoch)
 		sysfatal("can't malloc dateout in epoch2str: %r");
 	}
  
-	strftime(dateout,NUM_CHARS,"%Y-%m-%d %T",&tm);
+	strftime(dateout,NUM_CHARS,"%Y-%m-%d %H:%M:%S",&tm);
  
 	return dateout;
  
@@ -290,7 +290,7 @@ iepoch2str(time_t epoch)
 		sysfatal("can't malloc dateout in iepoch2str: %r");
 	}
  
-        strftime(dateout,NUM_CHARS,"%Y-%m-%d %T",&tm);
+        strftime(dateout,NUM_CHARS,"%Y-%m-%d %H:%M:%S",&tm);
 	free(lepoch);
  
 	return dateout;
@@ -405,6 +405,7 @@ writepid(char * pidfile)
 	if ( !fpid ) { perror(pidfile); return 1; }
 	if (fprintf(fpid, "%d", getpid()) <= 0) { perror(pidfile); return 1; }
 	if (fclose(fpid) != 0) { perror(pidfile); return 1; }
+	return 0;
 }
 
 void
@@ -523,7 +524,7 @@ bupdater_sort_active_jobs(bupdater_active_jobs *bact, int left, int right)
       while (strcmp(bact->jobs[k], median) > 0) k--;
 
       /* Now stop if indexes crossed. This way we are sure that k is the
-      /* last element of the left partition. */
+         last element of the left partition. */
       if (i>=k) break;
 
       /* We found a pair that's out of order. Let's swap them. */
@@ -639,7 +640,7 @@ int check_config_file(char *logdev){
 /* Get debug level and debug log file info to log possible problems */
 
 	if(strcmp(logdev,"STDOUT")==0){
-		ldebug==0;
+		ldebug=0;
 	}else if(strcmp(logdev,"UPDATER")==0){
 		lret = config_get("bupdater_debug_level",lcha);
 		if (lret != NULL){

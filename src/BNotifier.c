@@ -502,10 +502,7 @@ STARTNOTIFYJOBEND
 
 */
 
-
 	char      *buffer;
-	time_t now;
-    
 
 	if((buffer=calloc(STR_CHARS,1)) == 0){
 		sysfatal("can't malloc buffer in CreamConnection: %r");

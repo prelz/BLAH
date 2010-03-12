@@ -38,14 +38,14 @@ int main(int argc, char *argv[]){
 	time_t finalquery_start_date;
 	int loop_interval=DEFAULT_LOOP_INTERVAL;
 	
-	bact.njobs = 0;
-	bact.jobs = NULL;
-	
 	int rc;				
 	int c;				
 
         static int help;
         static int short_help;
+	
+	bact.njobs = 0;
+	bact.jobs = NULL;
 	
 	while (1) {
 		static struct option long_options[] =

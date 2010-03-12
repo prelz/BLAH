@@ -40,6 +40,14 @@
 #include <signal.h>
 #include <pthread.h>
 #include <dirent.h>
+#include <utime.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <arpa/inet.h> 
+#include <fcntl.h>
+#include <sys/select.h>
+
 #include "blahpd.h"
 #include "blah_utils.h"
 

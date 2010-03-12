@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/select.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <syslog.h>
 #include <mcheck.h>
@@ -45,11 +46,17 @@ config_entry *ret;
 
 char *config_file=NULL;
 
+void check_on_children_args(const struct blah_managed_child *children, const int count);
+void sigterm();
+void daemonize();
+int merciful_kill_noglexec(pid_t pid);
+
 /* Functions */
 
-/* Check on good health of our managed children
- **/
-void check_on_children_args(const struct blah_managed_child *children, const int count)
+/* Check on good health of our managed children */
+
+void 
+check_on_children_args(const struct blah_managed_child *children, const int count)
 {
 	FILE *pid;
         FILE *fpid;
@@ -106,13 +113,13 @@ void check_on_children_args(const struct blah_managed_child *children, const int
 				fprintf(stderr,"Restarting %s too frequently.\n",
 					children[i].exefile);
 				fprintf(stderr,"Last restart %d seconds ago (<%d).\n",
-					(int)(now-lastfork), calldiff);
+					(int)(now-lastfork), (int)calldiff);
 				continue;
 			}
 			fret = fork();
 			if (fret == 0)
 			{
-				if(j = wordexp(children[i].exefile, &args, 0))
+				if((j = wordexp(children[i].exefile, &args, 0)))
 				{
 					fprintf(stderr,"wordexp: unable to parse the command line \"%s\" (error %d)\n", children[i].exefile, j);
                 			return;
@@ -155,7 +162,9 @@ void check_on_children_args(const struct blah_managed_child *children, const int
 	pthread_mutex_unlock(&bfork_lock);
 }
 
-void sigterm(){
+void 
+sigterm()
+{
 			
 	int i;
 	FILE *pid;
@@ -297,7 +306,7 @@ main(int argc, char *argv[])
 	
 	char *s=NULL;
 	
-	int i,j;
+	int i;
 	
 		
 /* Read config common part */

@@ -22,17 +22,6 @@
 # 
 */
 
-#include <utime.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <arpa/inet.h> 
-#include <pthread.h>
-#include <signal.h>
-#include <fcntl.h>
-#include <sys/select.h>
-#include <sys/poll.h>
-#include <dirent.h>
 #include "job_registry.h"
 #include "Bfunctions.h"
 #include "config.h"
