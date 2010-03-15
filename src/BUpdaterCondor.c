@@ -347,7 +347,7 @@ IntStateQuery()
 	job_registry_entry *ren=NULL;
 
 	command_string=make_message("%s/condor_q -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus|grep -v condorc-",condor_binpath);
-	do_log(debuglogfile, debug, 1, "%s: command_string in IntStateQuery:%s\n",argv0,command_string);
+	do_log(debuglogfile, debug, 2, "%s: command_string in IntStateQuery:%s\n",argv0,command_string);
 	fp = popen(command_string,"r");
 
 	if(fp!=NULL){
@@ -435,7 +435,7 @@ FinalStateQuery(char *query)
 	char *command_string=NULL;
 
 	command_string=make_message("%s/condor_history -constraint \"%s\" -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus",condor_binpath,query);
-	do_log(debuglogfile, debug, 1, "%s: command_string in FinalStateQuery:%s\n",argv0,command_string);
+	do_log(debuglogfile, debug, 2, "%s: command_string in FinalStateQuery:%s\n",argv0,command_string);
 	fp = popen(command_string,"r");
 
 	if(fp!=NULL){
