@@ -352,6 +352,7 @@ IntStateQuery()
 
 	if(fp!=NULL){
 		while(!feof(fp) && (line=get_line(fp))){
+			do_log(debuglogfile, debug, 3, "%s: Line in ISQ:%s\n",argv0,line);
 			if(line && (strlen(line)==0 || strncmp(line,"JOBID",5)==0)){
 				free(line);
 				continue;
@@ -440,6 +441,7 @@ FinalStateQuery(char *query)
 
 	if(fp!=NULL){
 		while(!feof(fp) && (line=get_line(fp))){
+			do_log(debuglogfile, debug, 3, "%s: Line in FSQ:%s\n",argv0,line);
 			if(line && (strlen(line)==0 || strncmp(line,"JOBID",5)==0)){
 				free(line);
 				continue;
