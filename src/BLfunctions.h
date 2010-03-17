@@ -1,5 +1,5 @@
 /*
-#  File:     BLfunctions.c
+#  File:     BLfunctions.h
 #
 #  Author:   Massimo Mezzadri
 #  e-mail:   Massimo.Mezzadri@mi.infn.it
