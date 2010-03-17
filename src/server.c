@@ -40,7 +40,7 @@
 #   job operations according to client requests.
 #
 #
-#  Copyright: (c) Members of the EGEE Collaboration. 2007-2010. 
+#  Copyright (c) Members of the EGEE Collaboration. 2007-2010. 
 #
 #    See http://www.eu-egee.org/partners/ for details on the copyright
 #    holders.  

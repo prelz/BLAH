@@ -13,7 +13,7 @@
  *   Update test for job registries created by test_job_registry_create.
  *   This is meant to run at the same time as test_job_registry_access.
  *
- *  Copyright: (c) Members of the EGEE Collaboration. 2007-2010. 
+ *  Copyright (c) Members of the EGEE Collaboration. 2007-2010. 
  *
  *    See http://www.eu-egee.org/partners/ for details on the copyright
  *    holders.  

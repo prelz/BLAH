@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.47 2010/03/17 11:22:58 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.48 2010/03/17 13:19:34 mezzadri Exp $ 
 #
 # File:           Makefile.am
 #
@@ -13,7 +13,7 @@
 #
 # 16-Apr-2004  Created 
 #
-#  Copyright: (c) Members of the EGEE Collaboration. 2007-2010. 
+#  Copyright (c) Members of the EGEE Collaboration. 2007-2010. 
 #
 #    See http://www.eu-egee.org/partners/ for details on the copyright
 #    holders.  

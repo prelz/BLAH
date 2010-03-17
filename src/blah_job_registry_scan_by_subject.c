@@ -12,7 +12,7 @@
  *   that match a given proxy subject, and print them in variable
  *   formats.
  *
- *  Copyright: (c) Members of the EGEE Collaboration. 2007-2010. 
+ *  Copyright (c) Members of the EGEE Collaboration. 2007-2010. 
  *
  *    See http://www.eu-egee.org/partners/ for details on the copyright
  *    holders.  

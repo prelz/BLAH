@@ -2,7 +2,7 @@
  *  File :     blah_job_registry_add.c
  *
  *
- *  Author :   Francesco Prelz ($Author: fprelz $)
+ *  Author :   Francesco Prelz ($Author: mezzadri $)
  *  e-mail :   "francesco.prelz@mi.infn.it"
  *
  *  Revision history :
@@ -14,7 +14,7 @@
  *  Description:
  *   Executable to add (append or update) an entry to the job registry.
  *
- *  Copyright: (c) Members of the EGEE Collaboration. 2007-2010. 
+ *  Copyright (c) Members of the EGEE Collaboration. 2007-2010. 
  *
  *    See http://www.eu-egee.org/partners/ for details on the copyright
  *    holders.  

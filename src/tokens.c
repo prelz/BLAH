@@ -1,6 +1,6 @@
-// $Id: tokens.c,v 1.4 2010/03/17 11:22:58 mezzadri Exp $
+// $Id: tokens.c,v 1.5 2010/03/17 13:19:34 mezzadri Exp $
 /*
-#  Copyright: (c) Members of the EGEE Collaboration. 2007-2010. 
+#  Copyright (c) Members of the EGEE Collaboration. 2007-2010. 
 #
 #    See http://www.eu-egee.org/partners/ for details on the copyright
 #    holders.  
