@@ -141,7 +141,7 @@ int getProxyInfo(char* proxname, char** subject, char** fqan);
 int logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char* userDN, char** environment);
 int CEReq_parse(classad_context cad, char* filename);
 char* outputfileRemaps(char *sb,char *sbrmp);
-int check_TransferINOUT(classad_context cad, char **command, char *reqId);
+int check_TransferINOUT(classad_context cad, char **command, char *reqId, char **resultLine);
 char *ConvertArgs(char* args, char sep);
 
 /* Global variables */
@@ -1147,8 +1147,10 @@ cmd_submit_job(void *args)
 	/* Swap new command in */
 	free(command);
 	command = command_ext;
-	if(check_TransferINOUT(cad,&command,reqId))
+	if(check_TransferINOUT(cad,&command,reqId,&resultLine))
+	{
 		goto cleanup_command;
+	}
 
 	/* Set the CE requirements */
 	gettimeofday(&ts, NULL);
@@ -3037,9 +3039,8 @@ free_reqstr:
 	return n_written;
 }
 
-int check_TransferINOUT(classad_context cad, char **command, char *reqId)
+int check_TransferINOUT(classad_context cad, char **command, char *reqId, char **resultLine)
 {
-        char *resultLine=NULL;
         int result;
         char *tmpIOfilestring = NULL;
         FILE *tmpIOfile = NULL;
@@ -3048,6 +3049,7 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId)
         char *superbufferRemaps = NULL;
         char *superbufferTMP = NULL;
         char *iwd = NULL;
+	int  iwd_alloc = 256;
         char  filebuffer[MAX_FILE_LIST_BUFFER_SIZE];
         char  singlefbuffer[MAX_FILE_LIST_BUFFER_SIZE];
         struct timeval ts;
@@ -3067,10 +3069,28 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId)
                 result = classad_get_dstring_attribute(cad, "Iwd", &iwd);
                 if(iwd == NULL)
                 {
+			/* Try to set iwd to the current directory */
+			iwd = (char *)malloc(iwd_alloc);
+			while (iwd != NULL)
+			{
+				if (getcwd(iwd, iwd_alloc) < 0)
+				{
+					if (errno == ERANGE)
+					{
+						iwd_alloc += 256;
+						iwd = (char *)realloc(iwd, iwd_alloc);
+					} else {
+						iwd = NULL;
+					}
+				}
+			}
+		}
+
+                if(iwd == NULL)
+		{
                         /* PUSH A FAILURE */
-                        resultLine = make_message("%s 1 Iwd\\ not\\ found\\ N/A", reqId);
-                        enqueue_result(resultLine);
-	                free(resultLine);
+                        if (resultLine != NULL) *resultLine = make_message("%s 1 Iwd\\ not\\ specified\\ and\\ failed\\ to\\ determine\\ current\\ dir. N/A", reqId);
+			free(superbuffer);
 			return 1;
                 }
 		iwdlen=strlen(iwd);
@@ -3079,10 +3099,10 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId)
                 if(tmpIOfile == NULL)
                 {
                         /* PUSH A FAILURE */
-                        resultLine = make_message("%s 1 Error\\ opening\\ %s\\ N/A", reqId,tmpIOfilestring);
+                        if (resultLine != NULL) *resultLine = make_message("%s 1 Error\\ opening\\ %s N/A", reqId,tmpIOfilestring);
                         free(tmpIOfilestring);
-                        enqueue_result(resultLine);
-                        free(resultLine);
+                        free(superbuffer);
+                        free(iwd);
 			return 1;
                 }
 
@@ -3112,16 +3132,7 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId)
                                 /* if the path of the file is not absolute must be added the Iwd directory before it*/
                                 if(superbuffer[oc] != '/')
                                 {
-                                        if(iwd==NULL)
-                                        {
-                                                /* PUSH A FAILURE */
-                                                resultLine = make_message("%s 1 No\\ Iwd\\  avalaible\\ for\\ InputFile\\ N/A", reqId);
-                                                free(tmpIOfilestring);
-						enqueue_result(resultLine);
-                        			free(resultLine);
-                                                return 1;
-                                        }
-                                       memcpy(singlefbuffer,iwd,iwdlen);
+                                        memcpy(singlefbuffer,iwd,iwdlen);
                                         singlefbuffer[iwdlen] ='/';
                                         memcpy(&singlefbuffer[iwdlen+1],&superbuffer[oc],i - oc);
                                         singlefbuffer[iwdlen + i - oc + 1] ='\n';
@@ -3148,6 +3159,7 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId)
                 fclose(tmpIOfile);
                 free(tmpIOfilestring);
                 free(superbuffer);
+                free(iwd);
         }
 
         if(newptr==NULL) newptr = *command;
@@ -3167,10 +3179,10 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId)
                 if(tmpIOfile == NULL)
                 {
                         /* PUSH A FAILURE */
-                        resultLine = make_message("%s 1 Error\\ opening\\  %s\\ N/A", reqId,tmpIOfilestring);
+                        if (resultLine != NULL) *resultLine = make_message("%s 1 Error\\ opening\\ %s N/A", reqId,tmpIOfilestring);
                         free(tmpIOfilestring);
-			enqueue_result(resultLine);
-                        free(resultLine);
+                        if (superbufferRemaps != NULL) free(superbufferRemaps);
+                        if (superbufferTMP != NULL) free(superbufferTMP);
                         return 1;
                 }
 
@@ -3191,12 +3203,10 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId)
                 if(strlen(superbuffer) != cs)
                 {
                         /* PUSH A FAILURE */
-                        resultLine = make_message("%s 1 Error\\ writing\\ in\\ %s\\ N/A", reqId,tmpIOfilestring);
+                        if (resultLine != NULL) *resultLine = make_message("%s 1 Error\\ writing\\ in\\ %s N/A", reqId,tmpIOfilestring);
                         free(tmpIOfilestring);
                         free(superbuffer);
                         fclose(tmpIOfile);
-                        enqueue_result(resultLine);
-                        free(resultLine);
 			return 1;
                 }
                 fwrite("\n",1,1,tmpIOfile);
@@ -3213,10 +3223,10 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId)
                 if(tmpIOfile == NULL)
                 {
                         /* PUSH A FAILURE */
-                        resultLine = make_message("%s 1 Error\\ opening\\  %s\\ N/A", reqId,tmpIOfilestring);
+                        if (resultLine != NULL) *resultLine = make_message("%s 1 Error\\ opening\\  %s\\ N/A", reqId,tmpIOfilestring);
                         free(tmpIOfilestring);
-			enqueue_result(resultLine);
-                        free(resultLine);
+                        free(superbufferRemaps);
+                        free(superbufferTMP);
                         return 1;
                 }
 
@@ -3237,12 +3247,12 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId)
                 if(strlen(superbuffer) != cs)
                 {
                         /* PUSH A FAILURE */
-                        resultLine = make_message("%s 1 Error\\ writing\\ in\\ %s\\ N/A", reqId,tmpIOfilestring);
+                        if (resultLine != NULL) *resultLine = make_message("%s 1 Error\\ writing\\ in\\ %s\\ N/A", reqId,tmpIOfilestring);
                         free(tmpIOfilestring);
                         free(superbuffer);
+                        free(superbufferTMP);
+                        free(superbufferRemaps);
                         fclose(tmpIOfile);
-			enqueue_result(resultLine);
-                        free(resultLine);
                         return 1;
                 }
                 fwrite("\n",1,1,tmpIOfile);
@@ -3290,8 +3300,6 @@ char*  outputfileRemaps(char *sb,char *sbrmp)
         char *tstr2 = NULL;
         int sblen = strlen(sb);
         int sbrmplen = strlen(sbrmp);
-        char *sbtemp = malloc(sblen);
-        char *sbrmptemp = malloc(sbrmplen);
         int i = 0, j = 0, endstridx = 0, begstridx = 0, endstridx1 = 0, begstridx1 = 0, strmpd = 0, blen = 0, last = 0;
         for( i = 0; i <= sblen ; i++)
         {
