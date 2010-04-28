@@ -3095,6 +3095,7 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId, char *
 						iwd_alloc += 256;
 						iwd = (char *)realloc(iwd, iwd_alloc);
 					} else {
+						free(iwd);
 						iwd = NULL;
 					}
 				}
@@ -3233,9 +3234,9 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId, char *
                         /* PUSH A FAILURE */
                         if (resultLine != NULL) *resultLine = make_message("%s 1 Error\\ opening\\ %s N/A", reqId,tmpIOfilestring);
                         free(tmpIOfilestring);
-                        free(superbufferRemaps);
-                        free(superbufferTMP);
                         free(superbuffer);
+                        free(superbufferTMP);
+                        free(superbufferRemaps);
                         return 1;
                 }
 
