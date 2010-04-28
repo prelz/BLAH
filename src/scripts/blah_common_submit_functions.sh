@@ -415,14 +415,13 @@ function bls_setup_all_files ()
   local xfile
 
   if [ ! -z "$bls_opt_inputflstring" ] ; then
-      exec 4<> "$bls_opt_inputflstring"
+      exec 4< "$bls_opt_inputflstring"
       while read xfile <&4 ; do
           if [ ! -z $xfile  ] ; then
                bls_fl_add_value inputsand "$xfile" "./`basename ${xfile}`"
           fi
       done
       exec 4<&-
-      rm -f $bls_opt_inputflstring
   fi
 
   xfile=
@@ -430,9 +429,9 @@ function bls_setup_all_files ()
 
 #Add files to transfer from execution node
   if [ ! -z "$bls_opt_outputflstring" ] ; then
-      exec 5<> "$bls_opt_outputflstring"
+      exec 5< "$bls_opt_outputflstring"
       if [ ! -z "$bls_opt_outputflstringremap" ] ; then
-          exec 6<> "$bls_opt_outputflstringremap"
+          exec 6< "$bls_opt_outputflstringremap"
       fi
       while read xfile <&5 ; do
           if [ ! -z $xfile  ] ; then
@@ -442,21 +441,17 @@ function bls_setup_all_files ()
 
               if [ ! -z $xfileremap ] ; then
                   if [ "${xfileremap:0:1}" != "/" ] ; then
-                      bls_fl_add_value outputsand "$xfile" "${bls_opt_workdir}/${xfileremap}"
+                      bls_fl_add_value outputsand "${bls_opt_workdir}/${xfileremap}" "$xfile"
                   else
-                      bls_fl_add_value outputsand "$xfile" "${xfileremap}"
+                      bls_fl_add_value outputsand "${xfileremap}" "$xfile"
                   fi
               else
-                  bls_fl_add_value outputsand "$xfile" "${bls_opt_workdir}/${xfile}"
+                  bls_fl_add_value outputsand "${bls_opt_workdir}/${xfile}" "$xfile"
               fi
           fi
       done
       exec 5<&-
       exec 6<&-
-      rm -f $bls_opt_outputflstring
-      if [ ! -z "$bls_opt_outputflstringremap" ] ; then
-          rm -f $bls_opt_outputflstringremap
-      fi
   fi
 } 
 
@@ -555,7 +550,7 @@ function bls_add_job_wrapper ()
   
   echo ""  >> $bls_tmp_file
   echo "# Remove the staged files, if any" >> $bls_tmp_file
-  bls_fl_subst_relative_paths_and_dump inputsand "rm @@F_REMOTE .. 2> /dev/null" $bls_tmp_file
+  bls_fl_subst_relative_paths_and_dump inputsand "rm @@F_REMOTE 2> /dev/null" $bls_tmp_file
 
   echo "cd .." >> $bls_tmp_file
   echo "rm -rf \$new_home" >> $bls_tmp_file
