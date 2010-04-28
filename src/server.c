@@ -97,9 +97,7 @@
 #define RESUME_JOB              0
 #define MAX_LRMS_NUMBER 	10
 #define MAX_LRMS_NAME_SIZE	8
-#define MAX_CERT_SIZE		100000
 #define MAX_TEMP_ARRAY_SIZE              1000
-#define MAX_FILE_LIST_BUFFER_SIZE        10000
 #define MAX_PENDING_COMMANDS             500
 #define DEFAULT_TEMP_DIR                 "/tmp"
  
@@ -141,7 +139,7 @@ int getProxyInfo(char* proxname, char** subject, char** fqan);
 int logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char* userDN, char** environment);
 int CEReq_parse(classad_context cad, char* filename);
 char* outputfileRemaps(char *sb,char *sbrmp);
-int check_TransferINOUT(classad_context cad, char **command, char *reqId, char **resultLine);
+int check_TransferINOUT(classad_context cad, char **command, char *reqId, char **resultLine, char ***files_to_clean_up);
 char *ConvertArgs(char* args, char sep);
 
 /* Global variables */
@@ -172,7 +170,6 @@ static char lrmslist[MAX_LRMS_NUMBER][MAX_LRMS_NAME_SIZE];
 static int  lrms_counter = 0;
 static mapping_t current_mapping_mode = MEXEC_NO_MAPPING;
 char *tmp_dir;
-struct stat tmp_stat;
 char *bssp = NULL;
 int enable_condor_glexec = FALSE;
 int require_proxy_on_submit = FALSE;
@@ -311,6 +308,7 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	config_entry *max_threaded_conf;
 	int n_threads_value;
 	char *final_results;
+	struct stat tmp_stat;
 
 	blah_config_handle = config_read(NULL);
 	if (blah_config_handle == NULL)
@@ -954,6 +952,7 @@ cmd_submit_job(void *args)
 	struct timeval ts;
 	char *ce_req=NULL;
 	char *req_file=NULL;
+	char **cur_file;
 	regex_t regbuf;
 	size_t nmatch;
 	regmatch_t pmatch[3];
@@ -964,6 +963,7 @@ cmd_submit_job(void *args)
 	struct stat buf;
 	exec_cmd_t submit_command = EXEC_CMD_DEFAULT;
 	char *saved_proxyname=NULL;
+	char **inout_files = NULL;
 
         if (blah_children_count>0) check_on_children(blah_children, blah_children_count);
 
@@ -1147,9 +1147,9 @@ cmd_submit_job(void *args)
 	/* Swap new command in */
 	free(command);
 	command = command_ext;
-	if(check_TransferINOUT(cad,&command,reqId,&resultLine))
+	if(check_TransferINOUT(cad,&command,reqId,&resultLine,&inout_files))
 	{
-		goto cleanup_command;
+		goto cleanup_inoutfiles;
 	}
 
 	/* Set the CE requirements */
@@ -1324,6 +1324,16 @@ cleanup_req:
 	{
 		unlink(req_file);
 		free(req_file);
+	}
+cleanup_inoutfiles:
+	if (inout_files != NULL)
+	{
+		for(cur_file = inout_files; *cur_file != NULL; cur_file++)
+		{
+			unlink(*cur_file);
+			free(*cur_file);
+		}
+		free(inout_files);
 	}
 cleanup_command:
 	free(command);
@@ -3039,7 +3049,7 @@ free_reqstr:
 	return n_written;
 }
 
-int check_TransferINOUT(classad_context cad, char **command, char *reqId, char **resultLine)
+int check_TransferINOUT(classad_context cad, char **command, char *reqId, char **resultLine, char ***files_to_clean_up)
 {
         int result;
         char *tmpIOfilestring = NULL;
@@ -3050,25 +3060,30 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId, char *
         char *superbufferTMP = NULL;
         char *iwd = NULL;
 	int  iwd_alloc = 256;
-        char  filebuffer[MAX_FILE_LIST_BUFFER_SIZE];
-        char  singlefbuffer[MAX_FILE_LIST_BUFFER_SIZE];
         struct timeval ts;
-        int i,cs,fc,oc,iwdlen,fbc,slen;
-        i=cs=fc=oc=iwdlen=fbc=slen=0;
+        int i=0,cs=0,fc=0,iwdlen=0;
+        char *cur, *next_comma;
+        int cur_len;
         char *newptr=NULL;
         char *newptr1=NULL;
         char *newptr2=NULL;
-        struct stat tmp_stat;
+        int cleanup_file_index = 0;
         /* timetag to have unique Input and Output file lists */
         gettimeofday(&ts, NULL);
 
-        /* write files in InputFileList */
-        result = classad_get_dstring_attribute(cad, "TransferInput", &superbuffer);
-        if (result == C_CLASSAD_NO_ERROR)
-        {
-                result = classad_get_dstring_attribute(cad, "Iwd", &iwd);
-                if(iwd == NULL)
-                {
+	/* Set up a NULL-terminated string array for temp file cleanup */
+	if (files_to_clean_up != NULL)
+	{
+		*files_to_clean_up = (char **)calloc(4,sizeof(char *));
+	}
+
+	/* write files in InputFileList */
+	result = classad_get_dstring_attribute(cad, "TransferInput", &superbuffer);
+	if (result == C_CLASSAD_NO_ERROR)
+	{
+		result = classad_get_dstring_attribute(cad, "Iwd", &iwd);
+		if(iwd == NULL)
+		{
 			/* Try to set iwd to the current directory */
 			iwd = (char *)malloc(iwd_alloc);
 			while (iwd != NULL)
@@ -3086,81 +3101,74 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId, char *
 			}
 		}
 
-                if(iwd == NULL)
+		if(iwd == NULL)
 		{
-                        /* PUSH A FAILURE */
-                        if (resultLine != NULL) *resultLine = make_message("%s 1 Iwd\\ not\\ specified\\ and\\ failed\\ to\\ determine\\ current\\ dir. N/A", reqId);
+			/* PUSH A FAILURE */
+			if (resultLine != NULL) *resultLine = make_message("%s 1 Iwd\\ not\\ specified\\ and\\ failed\\ to\\ determine\\ current\\ dir. N/A", reqId);
 			free(superbuffer);
 			return 1;
-                }
+		}
 		iwdlen=strlen(iwd);
-                tmpIOfilestring = make_message("%s/%s_%s_%d%d", tmp_dir, "InputFileList",reqId, ts.tv_sec, ts.tv_usec);
-                tmpIOfile = fopen(tmpIOfilestring, "w");
-                if(tmpIOfile == NULL)
-                {
-                        /* PUSH A FAILURE */
-                        if (resultLine != NULL) *resultLine = make_message("%s 1 Error\\ opening\\ %s N/A", reqId,tmpIOfilestring);
-                        free(tmpIOfilestring);
-                        free(superbuffer);
-                        free(iwd);
-			return 1;
-                }
-
-		if (enable_condor_glexec && fstat(fileno(tmpIOfile), &tmp_stat) >= 0)
+		tmpIOfilestring = make_message("%s/%s_%s_%d%d", tmp_dir, "InputFileList",reqId, ts.tv_sec, ts.tv_usec);
+		tmpIOfile = fopen(tmpIOfilestring, "w");
+		if(tmpIOfile == NULL)
 		{
-			if ((tmp_stat.st_mode & S_IWGRP) == 0)
-			{
-				if (fchmod(fileno(tmpIOfile),tmp_stat.st_mode|S_IWGRP|S_IRGRP|S_IXGRP)<0)
-				{
-					fprintf(stderr,"WARNING: cannot make %s group writable: %s\n",
-					        tmpIOfilestring, strerror(errno));
-				}
-			}	
+			/* PUSH A FAILURE */
+			if (resultLine != NULL) *resultLine = make_message("%s 1 Error\\ opening\\ %s N/A", reqId,tmpIOfilestring);
+			free(tmpIOfilestring);
+			free(superbuffer);
+			free(iwd);
+			return 1;
 		}
 
-                memset(singlefbuffer,10000,0);
-                memset(filebuffer,10000,0);
-                slen=strlen(superbuffer);
-                for ( i = 0 ; i < slen; )
-                {
-                        if ((superbuffer[i] == ',')||(i == (slen - 1)))
-                        {
-                                if (i == (slen - 1))
-                                {
-                                        superbuffer[++i] ='\n';
-                                }
-                                /* if the path of the file is not absolute must be added the Iwd directory before it*/
-                                if(superbuffer[oc] != '/')
-                                {
-                                        memcpy(singlefbuffer,iwd,iwdlen);
-                                        singlefbuffer[iwdlen] ='/';
-                                        memcpy(&singlefbuffer[iwdlen+1],&superbuffer[oc],i - oc);
-                                        singlefbuffer[iwdlen + i - oc + 1] ='\n';
-                                }else
-                                {
-                                        memcpy(&singlefbuffer[iwdlen+1],&superbuffer[oc],i - oc);
-                                        singlefbuffer[i - oc + 1] ='\n';
-                                }
-                                memcpy(&filebuffer[fbc],singlefbuffer,strlen(singlefbuffer));
-                                fbc+=strlen(singlefbuffer);
-                                fc++;
-                                if (i == (slen))
-                                {
-                                        filebuffer[fbc]=0;
-                                        break;
-                                }
-                                oc=++i;
-                        }
-                                else i++;
-                }
-                cs = fwrite(filebuffer,1, strlen(filebuffer), tmpIOfile);
-                newptr = make_message("%s -I %s", *command, tmpIOfilestring);
+		cs = 0;
+		cur = superbuffer; 
+		while ((next_comma = strchr(cur, ',')) != NULL)
+		{
+			if (next_comma > (cur+1))
+			{
+				if (*cur != '/')
+				{
+					fc = fprintf(tmpIOfile, "%s/", iwd);
+					if (fc < 0) cs = fc;
+				}
+				cur_len = next_comma - cur;
+				fc = fprintf(tmpIOfile, "%*.*s\n", cur_len, cur_len, cur);
+				if (fc < 0) cs = fc;
+			}
+			cur = next_comma + 1;
+		}
+		if (strlen(cur) > 0)
+		{
+			if (*cur != '/')
+			{
+				fc = fprintf(tmpIOfile, "%s/%s\n", iwd, cur);
+				if (fc < 0) cs = fc;
+			} else {
+				fc = fprintf(tmpIOfile, "%s\n", cur);
+				if (fc < 0) cs = fc;
+			}
+		}
 
-                fclose(tmpIOfile);
-                free(tmpIOfilestring);
-                free(superbuffer);
-                free(iwd);
-        }
+		if (cs < 0)
+		{
+			/* PUSH A FAILURE */
+			if (resultLine != NULL) *resultLine = make_message("%s 1 Error\\ writing\\ to\\ %s N/A", reqId,tmpIOfilestring);
+			fclose(tmpIOfile);
+			unlink(tmpIOfilestring);
+			free(tmpIOfilestring);
+			free(superbuffer);
+			free(iwd);
+			return 1;
+		}
+
+		newptr = make_message("%s -I %s", *command, tmpIOfilestring);
+		fclose(tmpIOfile);
+		if (*files_to_clean_up != NULL)
+			(*files_to_clean_up)[cleanup_file_index++] = tmpIOfilestring;
+		free(superbuffer);
+		free(iwd);
+	}
 
         if(newptr==NULL) newptr = *command;
         cs = 0;
@@ -3170,9 +3178,7 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId, char *
 
                 if(classad_get_dstring_attribute(cad, "TransferOutputRemaps", &superbufferRemaps) == C_CLASSAD_NO_ERROR)
                 {
-                        superbufferTMP = (char*)malloc(strlen(superbuffer)+1);
-                        strcpy(superbufferTMP,superbuffer);
-                        superbufferTMP[strlen(superbuffer)]=0;
+                        superbufferTMP = strdup(superbuffer);
                 }
                 tmpIOfilestring = make_message("%s/%s_%s_%d%d", tmp_dir, "OutputFileList",reqId,ts.tv_sec, ts.tv_usec);
                 tmpIOfile = fopen(tmpIOfilestring, "w");
@@ -3183,20 +3189,9 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId, char *
                         free(tmpIOfilestring);
                         if (superbufferRemaps != NULL) free(superbufferRemaps);
                         if (superbufferTMP != NULL) free(superbufferTMP);
+                        free(superbuffer);
                         return 1;
                 }
-
-		if (enable_condor_glexec && fstat(fileno(tmpIOfile), &tmp_stat) >= 0)
-		{
-			if ((tmp_stat.st_mode & S_IWGRP) == 0)
-			{
-				if (fchmod(fileno(tmpIOfile),tmp_stat.st_mode|S_IWGRP|S_IRGRP|S_IXGRP)<0)
-				{
-					fprintf(stderr,"WARNING: cannot make %s group writable: %s\n",
-					        tmpIOfilestring, strerror(errno));
-				}
-			}	
-		}
 
                 for(i =0; i < strlen(superbuffer); i++){if (superbuffer[i] == ',')superbuffer[i] ='\n'; }
                 cs = fwrite(superbuffer,1 , strlen(superbuffer), tmpIOfile);
@@ -3204,66 +3199,70 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId, char *
                 {
                         /* PUSH A FAILURE */
                         if (resultLine != NULL) *resultLine = make_message("%s 1 Error\\ writing\\ in\\ %s N/A", reqId,tmpIOfilestring);
-                        free(tmpIOfilestring);
-                        free(superbuffer);
                         fclose(tmpIOfile);
+                        unlink(tmpIOfilestring);
+                        free(tmpIOfilestring);
+                        if (superbufferRemaps != NULL) free(superbufferRemaps);
+                        if (superbufferTMP != NULL) free(superbufferTMP);
+                        free(superbuffer);
 			return 1;
                 }
                 fwrite("\n",1,1,tmpIOfile);
                 newptr1 = make_message("%s -O %s", newptr, tmpIOfilestring);
                 fclose(tmpIOfile);
-                free(tmpIOfilestring);
+		if (*files_to_clean_up != NULL)
+			(*files_to_clean_up)[cleanup_file_index++] = tmpIOfilestring;
                 free(superbuffer);
         }
         if(superbufferTMP != NULL)
         {
                 superbuffer = outputfileRemaps(superbufferTMP,superbufferRemaps);
-                tmpIOfilestring = make_message("%s/%s_%s_%d%d", tmp_dir, "OutputFileListRemaps",reqId,ts.tv_sec, ts.tv_usec);
-                tmpIOfile = fopen(tmpIOfilestring, "w");
-                if(tmpIOfile == NULL)
+                if(superbuffer == NULL)
                 {
                         /* PUSH A FAILURE */
-                        if (resultLine != NULL) *resultLine = make_message("%s 1 Error\\ opening\\  %s\\ N/A", reqId,tmpIOfilestring);
-                        free(tmpIOfilestring);
+                        if (resultLine != NULL) *resultLine = make_message("%s 1 Out\\ of\\ memory\\ computing\\ file\\ remaps N/A", reqId);
                         free(superbufferRemaps);
                         free(superbufferTMP);
                         return 1;
                 }
 
-		if (enable_condor_glexec && fstat(fileno(tmpIOfile), &tmp_stat) >= 0)
-		{
-			if ((tmp_stat.st_mode & S_IWGRP) == 0)
-			{
-				if (fchmod(fileno(tmpIOfile),tmp_stat.st_mode|S_IWGRP|S_IRGRP|S_IXGRP)<0)
-				{
-					fprintf(stderr,"WARNING: cannot make %s group writable: %s\n",
-					        tmpIOfilestring, strerror(errno));
-				}
-			}	
-		}
+                tmpIOfilestring = make_message("%s/%s_%s_%d%d", tmp_dir, "OutputFileListRemaps",reqId,ts.tv_sec, ts.tv_usec);
+                tmpIOfile = fopen(tmpIOfilestring, "w");
+                if(tmpIOfile == NULL)
+                {
+                        /* PUSH A FAILURE */
+                        if (resultLine != NULL) *resultLine = make_message("%s 1 Error\\ opening\\ %s N/A", reqId,tmpIOfilestring);
+                        free(tmpIOfilestring);
+                        free(superbufferRemaps);
+                        free(superbufferTMP);
+                        free(superbuffer);
+                        return 1;
+                }
 
                 for(i =0; i < strlen(superbuffer); i++){if (superbuffer[i] == ',')superbuffer[i] ='\n'; }
                 cs = fwrite(superbuffer,1 , strlen(superbuffer), tmpIOfile);
                 if(strlen(superbuffer) != cs)
                 {
                         /* PUSH A FAILURE */
-                        if (resultLine != NULL) *resultLine = make_message("%s 1 Error\\ writing\\ in\\ %s\\ N/A", reqId,tmpIOfilestring);
+                        if (resultLine != NULL) *resultLine = make_message("%s 1 Error\\ writing\\ in\\ %s N/A", reqId,tmpIOfilestring);
+                        fclose(tmpIOfile);
+                        unlink(tmpIOfilestring);
                         free(tmpIOfilestring);
                         free(superbuffer);
                         free(superbufferTMP);
                         free(superbufferRemaps);
-                        fclose(tmpIOfile);
                         return 1;
                 }
                 fwrite("\n",1,1,tmpIOfile);
                 newptr2 = make_message("%s -R %s", newptr1, tmpIOfilestring);
                 fclose(tmpIOfile);
-                free(tmpIOfilestring);
+		if (*files_to_clean_up != NULL)
+			(*files_to_clean_up)[cleanup_file_index++] = tmpIOfilestring;
                 free(superbuffer);
                 free(superbufferTMP);
                 free(superbufferRemaps);
-
 	}
+
         if(newptr2)
         {
                  free(newptr1);
