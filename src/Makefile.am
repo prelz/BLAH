@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.48 2010/03/17 13:19:34 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.49 2010/05/10 15:26:21 mezzadri Exp $ 
 #
 # File:           Makefile.am
 #
@@ -110,7 +110,7 @@ BNotifier_SOURCES = BNotifier.c Bfunctions.c job_registry.c md5.c config.c blah_
 BNotifier_LDADD = -lpthread
 
 BUpdaterLSF_SOURCES = BUpdaterLSF.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c
-BUpdaterLSF_LDADD = -lpthread
+BUpdaterLSF_LDADD = -lpthread -lm
 
 BUpdaterPBS_SOURCES = BUpdaterPBS.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c
 BUpdaterPBS_LDADD = -lpthread -lm

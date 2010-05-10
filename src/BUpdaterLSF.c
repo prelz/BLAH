@@ -295,11 +295,11 @@ int main(int argc, char *argv[]){
 
 			if((bupdater_lookup_active_jobs(&bact,en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && en->status!=REMOVED && en->status!=COMPLETED){
 
-				if(now-en->mdate>finalstate_query_interval){
-					if (en->mdate < finalquery_start_date) finalquery_start_date=en->mdate;
+				if((now-en->mdate>finalstate_query_interval) && (now > next_finalstatequery)){
+					if (en->mdate < finalquery_start_date){
+						finalquery_start_date=en->mdate;
+					}
 					runfinal=TRUE;
-					free(en);
-					continue;
 				}
 				
 				/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
@@ -710,6 +710,9 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	struct tm start_date_tm;
 	char start_date_str[80];
 	char *command_string=NULL;
+	int failed_count=0;
+	int time_to_add=0;
+	time_t now;
 
 	localtime_r(&start_date, &start_date_tm);
 	strftime(start_date_str, sizeof(start_date_str), "%Y/%m/%d/%H:%M,", &start_date_tm);
@@ -811,7 +814,14 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			if (en.status == REMOVED || en.status == COMPLETED)
 				job_registry_unlink_proxy(rha, &en);
 		}
-	}				
+	}else{
+		failed_count++;
+	}
+					
+	now=time(0);
+	time_to_add=pow(failed_count,1.5);
+	next_finalstatequery=now+time_to_add;
+	do_log(debuglogfile, debug, 3, "%s: next FinalStatequery will be in %d seconds\n",argv0,time_to_add);
 
 	free(command_string);
 	return 0;
