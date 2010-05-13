@@ -1462,10 +1462,10 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
 	/*if flag ==0 AddToStruct is called within GetOldLogs 
 	  if flag ==1 AddToStruct is called elsewhere*/
    
-	char     *buffer;
-	char     *outreason;
-	char     *exitreason;
-	char     *sjobid;
+	char     *buffer=NULL;
+	char     *outreason=NULL;
+	char     *exitreason=NULL;
+	char     *sjobid=NULL;
   
 	int      retcod;
         
@@ -1488,6 +1488,8 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
 		outreason=make_message(" Reason=\"pbs_reason=%s\";" ,reason);
 		if(strcmp(reason,"271")==0){
 			exitreason=make_message(" ExitReason=\"Killed by Resource Management System\";");
+		}else{
+			exitreason=make_message("");	
 		}
 	}
     
@@ -1496,7 +1498,7 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
 	if(wn && strcmp(wn,"NA")!=0){
 		buffer=make_message("[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\"; WorkerNode=%s;%s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], wn, outreason, exitreason, timestamp);
 	}else{
-		buffer=make_message("[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\";%s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], outreason, exitreason, timestamp);
+		buffer=make_message("[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\"; ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], timestamp);
 	}
     
 	freetoken(&clientjobid,maxtok);

@@ -1373,11 +1373,11 @@ int
 NotifyFromDate(char *in_buf)
 {
 
-	char * out_buf;
-	int    ii;
-	char *notstr;
-	char *notdate;
-	char *lnotdate;
+	char *out_buf=NULL;
+	int   ii;
+	char *notstr=NULL;
+	char *notdate=NULL;
+	char *lnotdate=NULL;
 	int   notepoch;
 	int   logepoch;
 
@@ -1387,11 +1387,11 @@ NotifyFromDate(char *in_buf)
 	char **lbuf;
 	char **bbuf;
 	char *cp;
-	char *fullblahstring;
-	char *joblist_string="";
-	char *tjoblist_string="";
-	char *fullbljobid;
-	char *tbljobid;
+	char *fullblahstring=NULL;
+	char *joblist_string=NULL;
+	char *tjoblist_string=NULL;
+	char *fullbljobid=NULL;
+	char *tbljobid=NULL;
 
 	maxtok=strtoken(in_buf,'/',&tbuf);
     
@@ -1585,10 +1585,10 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
 	/*if flag ==0 AddToStruct is called within GetOldLogs 
 	  if flag ==1 AddToStruct is called elsewhere*/
    
-	char     *buffer;
-	char     *outreason;
-	char     *exitreason;
-	char     *sjobid;
+	char     *buffer=NULL;
+	char     *outreason=NULL;
+	char     *exitreason=NULL;
+	char     *sjobid=NULL;
   
 	int      retcod;
         
@@ -1619,6 +1619,8 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
 			exitreason=make_message(" ExitReason=\"FILEsize limit reached\";");
 		}else if(strcmp(reason,"157")==0){
 			exitreason=make_message(" ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
+		}else{
+			exitreason=make_message("");;
 		}
 	}
     
@@ -1627,7 +1629,7 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
 	if(wn && strcmp(wn,"NA")!=0){
 		buffer=make_message("[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\"; WorkerNode=%s;%s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], wn, outreason, exitreason, timestamp);
 	}else{
-		buffer=make_message("[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\";%s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], outreason, exitreason, timestamp);
+		buffer=make_message("[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\"; ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], timestamp);
 	}
     
 	freetoken(&clientjobid,maxtok);
