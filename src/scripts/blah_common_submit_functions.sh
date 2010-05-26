@@ -296,6 +296,34 @@ function bls_parse_submit_options ()
   bls_arguments=$*
 }
 
+function bls_test_shared_dir ()
+{
+  local file_name
+  local test_dir 
+  local shared_dir_list
+
+  file_name=${1:?"Missing file name argument to bls_test_shared_dir"}
+
+  bls_is_in_shared_dir="no"
+
+# Test only absolute paths
+  if [ "${file_name:0:1}" != "/" ] ; then
+      return
+  fi
+
+  shared_dir_list="$blah_shared_directories"
+  test_dir=""
+
+  until [ "$shared_dir_list" == "$test_dir" ]; do
+    test_dir=${shared_dir_list%%:*}
+    shared_dir_list=${shared_dir_list#*:}
+    if [ "${file_name:0:${#test_dir}}" == "$test_dir" ]; then
+      bls_is_in_shared_dir="yes"
+      break
+    fi
+  done 
+}
+
 function bls_setup_all_files ()
 {
 
@@ -351,8 +379,12 @@ function bls_setup_all_files ()
   uni_time=`date +%s`
   uni_ext=$uni_uid.$uni_pid.$uni_time
   
-  # Put executable into inputsandbox
-  
+  # Put executable into inputsandbox (unless in a shared dir)
+  bls_test_shared_dir "$bls_opt_the_command"
+  if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
+      bls_opt_stgcmd="no"
+  fi  
+
   if [ "x$bls_opt_stgcmd" == "xyes" ] ; then
       bls_fl_add_value inputsand "$bls_opt_the_command" "`basename $bls_opt_the_command`"
   fi
@@ -360,8 +392,14 @@ function bls_setup_all_files ()
   # Put BPRserver into sandbox
   if [ "x$bls_opt_proxyrenew" == "xyes" ] ; then
       if [ -r "$bls_proxyrenewald" ] ; then
-          remote_BPRserver=`basename $bls_proxyrenewald`.$uni_ext
-          bls_fl_add_value inputsand "$bls_proxyrenewald" "${blahpd_inputsandbox}${remote_BPRserver}"
+          bls_test_shared_dir "$bls_proxyrenewald"
+          if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
+              remote_BPRserver="$bls_proxyrenewald"
+          else
+              remote_BPRserver=`basename $bls_proxyrenewald`.$uni_ext
+              bls_fl_add_value inputsand "$bls_proxyrenewald" "${blahpd_inputsandbox}${remote_BPRserver}"
+              remote_BPRserver="./$remote_BPRserver"
+          fi
       else
           bls_opt_proxyrenew="no"
       fi
@@ -376,37 +414,57 @@ function bls_setup_all_files ()
       [ -r "$bls_proxy_local_file" -a -f "$bls_proxy_local_file" ] || bls_proxy_local_file=/tmp/x509up_u`id -u`
       if [ -r "$bls_proxy_local_file" -a -f "$bls_proxy_local_file" ] ; then
           bls_proxy_remote_file=${bls_tmp_name}.proxy
-          bls_fl_add_value inputsand "$bls_proxy_local_file" "${blahpd_inputsandbox}${bls_proxy_remote_file}"
+          bls_test_shared_dir "$bls_proxy_local_file"
+          if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
+            bls_fl_add_value inputcopy "$bls_proxy_local_file" "${bls_proxy_remote_file}"
+          else
+            bls_fl_add_value inputsand "$bls_proxy_local_file" "${blahpd_inputsandbox}${bls_proxy_remote_file}"
+          fi
           bls_need_to_reset_proxy=yes
       fi
   fi
   
   local stdin_unique
 
-  # Setup stdout & stderr
+  # Setup stdin, stdout & stderr
   if [ ! -z "$bls_opt_stdin" ] ; then
       if [ -f "$bls_opt_stdin" ] ; then
-          stdin_unique=`basename $bls_opt_stdin`.$uni_ext
-          bls_fl_add_value inputsand "$bls_opt_stdin" "${blahpd_inputsandbox}${stdin_unique}"
-          bls_arguments="$bls_arguments <\"$bls_opt_stdin_unique\""
+          bls_test_shared_dir "$bls_opt_stdin"
+          if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
+              bls_arguments="$bls_arguments < \"$bls_opt_stdin\""
+          else
+              stdin_unique=`basename $bls_opt_stdin`.$uni_ext
+              bls_fl_add_value inputsand "$bls_opt_stdin" "${blahpd_inputsandbox}${stdin_unique}"
+              bls_arguments="$bls_arguments < \"$bls_opt_stdin_unique\""
+          fi
       else
-          bls_arguments="$bls_arguments <$bls_opt_stdin"
+          bls_arguments="$bls_arguments < \"$bls_opt_stdin\""
       fi
   fi
   if [ ! -z "$bls_opt_stdout" ] ; then
-      if [ "${bls_opt_stdout:0:1}" != "/" ] ; then bls_opt_stdout=${bls_opt_workdir}/${bls_opt_stdout} ; fi
-      bls_unique_stdout_name="${blahpd_outputsandbox}out_${bls_tmp_name}_`basename $bls_opt_stdout`"
-      bls_arguments="$bls_arguments > $bls_unique_stdout_name"
-      bls_fl_add_value outputsand "$bls_opt_stdout" "$bls_unique_stdout_name"
+      bls_test_shared_dir "$bls_opt_stdout"
+      if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
+          bls_arguments="$bls_arguments > \"$bls_opt_stdout\""
+      else
+          if [ "${bls_opt_stdout:0:1}" != "/" ] ; then bls_opt_stdout=${bls_opt_workdir}/${bls_opt_stdout} ; fi
+          bls_unique_stdout_name="${blahpd_outputsandbox}out_${bls_tmp_name}_`basename $bls_opt_stdout`"
+          bls_arguments="$bls_arguments > \"$bls_unique_stdout_name\""
+          bls_fl_add_value outputsand "$bls_opt_stdout" "$bls_unique_stdout_name"
+      fi
   fi
   if [ ! -z "$bls_opt_stderr" ] ; then
-      if [ "${bls_opt_stderr:0:1}" != "/" ] ; then bls_opt_stderr=${bls_opt_workdir}/${bls_opt_stderr} ; fi
-      if [ "$bls_opt_stderr" == "$bls_opt_stdout" ]; then
-          bls_arguments="$bls_arguments 2>&1"
+      bls_test_shared_dir "$bls_opt_stderr"
+      if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
+          bls_arguments="$bls_arguments 2> \"$bls_opt_stderr\""
       else
-          bls_unique_stderr_name="${blahpd_outputsandbox}err_${bls_tmp_name}_`basename $bls_opt_stderr`"
-          bls_arguments="$bls_arguments 2> $bls_unique_stderr_name"
-          bls_fl_add_value outputsand "$bls_opt_stderr" "$bls_unique_stderr_name"
+          if [ "${bls_opt_stderr:0:1}" != "/" ] ; then bls_opt_stderr=${bls_opt_workdir}/${bls_opt_stderr} ; fi
+          if [ "$bls_opt_stderr" == "$bls_opt_stdout" ]; then
+              bls_arguments="$bls_arguments 2>&1"
+          else
+              bls_unique_stderr_name="${blahpd_outputsandbox}err_${bls_tmp_name}_`basename $bls_opt_stderr`"
+              bls_arguments="$bls_arguments 2> \"$bls_unique_stderr_name\""
+              bls_fl_add_value outputsand "$bls_opt_stderr" "$bls_unique_stderr_name"
+          fi
       fi
   fi
 
@@ -418,7 +476,12 @@ function bls_setup_all_files ()
       exec 4< "$bls_opt_inputflstring"
       while read xfile <&4 ; do
           if [ ! -z $xfile  ] ; then
-               bls_fl_add_value inputsand "$xfile" "./`basename ${xfile}`"
+               bls_test_shared_dir "$xfile"
+               if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
+                   bls_fl_add_value inputcopy "$xfile" "./`basename ${xfile}`"
+               else
+                   bls_fl_add_value inputsand "$xfile" "./`basename ${xfile}`"
+               fi
           fi
       done
       exec 4<&-
@@ -439,14 +502,22 @@ function bls_setup_all_files ()
                   read xfileremap <&6
               fi
 
-              if [ ! -z $xfileremap ] ; then
-                  if [ "${xfileremap:0:1}" != "/" ] ; then
-                      bls_fl_add_value outputsand "${bls_opt_workdir}/${xfileremap}" "$xfile"
+              bls_test_shared_dir "$xfile"
+              if [ "x$bls_is_in_shared_dir" != "xyes" ] ; then
+                  if [ ! -z $xfileremap ] ; then
+                      if [ "${xfileremap:0:1}" != "/" ] ; then
+                          bls_fl_add_value outputsand "${bls_opt_workdir}/${xfileremap}" "$xfile"
+                      else
+                          bls_test_shared_dir "$xfileremap"
+                          if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
+                              bls_fl_add_value outputmove "${xfileremap}" "$xfile"
+                          else
+                              bls_fl_add_value outputsand "${xfileremap}" "$xfile"
+                          fi
+                      fi
                   else
-                      bls_fl_add_value outputsand "${xfileremap}" "$xfile"
+                      bls_fl_add_value outputsand "${bls_opt_workdir}/${xfile}" "$xfile"
                   fi
-              else
-                  bls_fl_add_value outputsand "${bls_opt_workdir}/${xfile}" "$xfile"
               fi
           fi
       done
@@ -477,8 +548,10 @@ function bls_add_job_wrapper ()
   echo "new_home=\`pwd\`/home_$bls_tmp_name">>$bls_tmp_file
   echo "mkdir \$new_home">>$bls_tmp_file
 
+  echo "# Copy into new home any shared input sandbox file" >> $bls_tmp_file
+  bls_fl_subst_and_dump inputcopy "cp \"@@F_LOCAL\" \"\$new_home/@@F_REMOTE\" &> /dev/null" $bls_tmp_file
   echo "# Move into new home any relative input sandbox file" >> $bls_tmp_file
-  bls_fl_subst_relative_paths_and_dump inputsand "mv @@F_REMOTE \$new_home &> /dev/null" $bls_tmp_file
+  bls_fl_subst_relative_paths_and_dump inputsand "mv \"@@F_REMOTE\" \$new_home &> /dev/null" $bls_tmp_file
 
   echo "export HOME=\$new_home">>$bls_tmp_file
   echo "cd \$new_home">>$bls_tmp_file
@@ -515,8 +588,8 @@ function bls_add_job_wrapper ()
   then
       echo "" >> $bls_tmp_file
       echo "# Start the proxy renewal server" >> $bls_tmp_file
-      echo "if [ ! -x $remote_BPRserver ]; then chmod u+x $remote_BPRserver; fi" >> $bls_tmp_file
-      echo "\$new_home/$remote_BPRserver \$job_pid $bls_opt_prnpoll $bls_opt_prnlifetime \${$bls_job_id_for_renewal} &" >> $bls_tmp_file
+      echo "if [ ! -x \"$remote_BPRserver\" ]; then chmod u+x \"$remote_BPRserver\"; fi" >> $bls_tmp_file
+      echo "\"$remote_BPRserver\" \$job_pid $bls_opt_prnpoll $bls_opt_prnlifetime \${$bls_job_id_for_renewal} &" >> $bls_tmp_file
       echo "server_pid=\$!" >> $bls_tmp_file
   fi
   
@@ -546,11 +619,14 @@ function bls_add_job_wrapper ()
   echo ""  >> $bls_tmp_file
   echo "# Move all relative outputsand paths out of temp home" >> $bls_tmp_file
   echo "cd \$new_home" >> $bls_tmp_file
-  bls_fl_subst_relative_paths_and_dump outputsand "mv @@F_REMOTE .. 2> /dev/null" $bls_tmp_file
+  bls_fl_subst_relative_paths_and_dump outputsand "mv \"@@F_REMOTE\" .. 2> /dev/null" $bls_tmp_file
+  echo "# Move any remapped outputsand file to shared directories" >> $bls_tmp_file
+  bls_fl_subst_relative_paths_and_dump outputmove "mv \"@@F_REMOTE\" \"@@F_LOCAL\" 2> /dev/null" $bls_tmp_file
   
   echo ""  >> $bls_tmp_file
   echo "# Remove the staged files, if any" >> $bls_tmp_file
-  bls_fl_subst_relative_paths_and_dump inputsand "rm @@F_REMOTE 2> /dev/null" $bls_tmp_file
+  bls_fl_subst_and_dump inputcopy "rm \"@@F_REMOTE\" 2> /dev/null" $bls_tmp_file
+  bls_fl_subst_relative_paths_and_dump inputsand "rm \"@@F_REMOTE\" 2> /dev/null" $bls_tmp_file
 
   echo "cd .." >> $bls_tmp_file
   echo "rm -rf \$new_home" >> $bls_tmp_file
@@ -636,6 +712,8 @@ function bls_wrap_up_submit ()
 
   bls_fl_clear inputsand
   bls_fl_clear outputsand
+  bls_fl_clear inputcopy
+  bls_fl_clear outputmove
 
   # Clean temporary files
   cd $bls_opt_temp_dir

@@ -155,3 +155,8 @@ bupdater_bjobs_long_format=yes
 #use bhist to calculate suspended jobs timestamp 
 bupdater_use_bhist_for_susp=no
 
+#Colon-separated list of paths that are shared among batch system
+#head and worker nodes.
+#blah_shared_directories=/home:/users
+
+
