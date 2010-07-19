@@ -409,7 +409,7 @@ IntStateQueryShort()
 				free(tmp);
 				continue;
 			}
-			if(!first && en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD) || (en.status==IDLE && en.updater_info && strcmp(en.updater_info,"found")==0)) && ren && (en.status!=ren->status) && ren->status!=REMOVED && ren->status!=COMPLETED){	
+			if(!first && en.status!=UNDEFINED && ((en.status!=IDLE && ren && (en.status!=ren->status)) || (en.status==IDLE && ren && ren->status==HELD) || (en.status==IDLE && en.updater_info && strcmp(en.updater_info,"found")==0)) && ren && ren->status!=REMOVED && ren->status!=COMPLETED){
 				if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum,
 				JOB_REGISTRY_UPDATE_WN_ADDR|
 				JOB_REGISTRY_UPDATE_STATUS|
@@ -474,7 +474,7 @@ IntStateQueryShort()
 		pclose(fp);
 	}
 	
-	if(en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD) || (en.status==IDLE && en.updater_info && strcmp(en.updater_info,"found")==0)) && ren && (en.status!=ren->status) && ren->status!=REMOVED && ren->status!=COMPLETED){	
+	if(en.status!=UNDEFINED && ((en.status!=IDLE && ren && (en.status!=ren->status)) || (en.status==IDLE && ren && ren->status==HELD) || (en.status==IDLE && en.updater_info && strcmp(en.updater_info,"found")==0)) && ren && ren->status!=REMOVED && ren->status!=COMPLETED){
 		if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum,
 		JOB_REGISTRY_UPDATE_WN_ADDR|
 		JOB_REGISTRY_UPDATE_STATUS|

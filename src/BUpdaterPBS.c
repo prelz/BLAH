@@ -409,7 +409,7 @@ Job Id: 11.cream-12.pd.infn.it
 			}
 			do_log(debuglogfile, debug, 4, "%s: line in IntStateQuery is:%s\n",argv0,line);
 			if(line && strstr(line,"Job Id: ")){
-				if(!first && en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD) || (en.status==IDLE && en.updater_info && strcmp(en.updater_info,"found")==0)) && ren && (en.status!=ren->status) && ren->status!=REMOVED && ren->status!=COMPLETED){
+				if(!first && en.status!=UNDEFINED && ((en.status!=IDLE && ren && (en.status!=ren->status)) || (en.status==IDLE && ren && ren->status==HELD) || (en.status==IDLE && en.updater_info && strcmp(en.updater_info,"found")==0)) && ren && ren->status!=REMOVED && ren->status!=COMPLETED){
                         		if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum,
 					JOB_REGISTRY_UPDATE_WN_ADDR|
 					JOB_REGISTRY_UPDATE_STATUS|
@@ -510,7 +510,7 @@ Job Id: 11.cream-12.pd.infn.it
 		pclose(fp);
 	}
 	
-	if(en.status!=UNDEFINED && (en.status!=IDLE || (en.status==IDLE && ren && ren->status==HELD) || (en.status==IDLE && en.updater_info && strcmp(en.updater_info,"found")==0)) && ren && (en.status!=ren->status) && ren->status!=REMOVED && ren->status!=COMPLETED){
+	if(en.status!=UNDEFINED && ((en.status!=IDLE && ren && (en.status!=ren->status)) || (en.status==IDLE && ren && ren->status==HELD) || (en.status==IDLE && en.updater_info && strcmp(en.updater_info,"found")==0)) && ren && ren->status!=REMOVED && ren->status!=COMPLETED){
 		if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum,
 		JOB_REGISTRY_UPDATE_WN_ADDR|
 		JOB_REGISTRY_UPDATE_STATUS|
