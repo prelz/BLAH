@@ -1620,7 +1620,7 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
 		}else if(strcmp(reason,"157")==0){
 			exitreason=make_message(" ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
 		}else{
-			exitreason=make_message("");;
+			exitreason=make_message("");
 		}
 	}
     
