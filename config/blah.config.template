@@ -134,7 +134,10 @@ bnotifier_debug_logfile=/var/tmp/bnotifier.log
 # purge interval
 purge_interval=7200
 
-#final state query interval(default:30)
+#after that interval a bhist with -n bhist_logs_to_read is tried (default:120)
+bhist_finalstate_interval=120
+
+#Minimum interval of time between the last update of a jobid entry and the first finalstate query try (default:30)
 finalstate_query_interval=30
 
 #after that interval an unseen job is set as done (status == 4) and exitstatus == -1 (default:3600)

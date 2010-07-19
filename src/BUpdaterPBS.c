@@ -41,6 +41,8 @@ int main(int argc, char *argv[]){
 	int finstr_len=0;
 	int loop_interval=DEFAULT_LOOP_INTERVAL;
 	
+	int fsq_ret=0;
+	
 	int c;				
 
         static int help;
@@ -208,6 +210,13 @@ int main(int argc, char *argv[]){
 		alldone_interval=atoi(ret->value);
 	}
 
+	ret = config_get("tracejob_logs_to_read",cha);
+	if (ret == NULL){
+		do_log(debuglogfile, debug, 1, "%s: key tracejob_logs_to_read not found using the default:%d\n",argv0,tracejob_logs_to_read);
+	} else {
+		tracejob_logs_to_read=atoi(ret->value);
+	}
+	
 	ret = config_get("bupdater_loop_interval",cha);
 	if (ret == NULL){
 		do_log(debuglogfile, debug, 1, "%s: key bupdater_loop_interval not found using the default:%d\n",argv0,loop_interval);
@@ -282,6 +291,13 @@ int main(int argc, char *argv[]){
 		while ((en = job_registry_get_next(rha, fd)) != NULL){
 			if((bupdater_lookup_active_jobs(&bact, en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && en->status!=REMOVED && en->status!=COMPLETED){
 				
+				/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
+				if(now-en->mdate>alldone_interval){
+					AssignFinalState(en->batch_id);	
+					free(en);
+					continue;
+				}
+			
 				if((now-en->mdate>finalstate_query_interval) && (now > next_finalstatequery)){
 					if((final_string=realloc(final_string,finstr_len + strlen(en->batch_id) + 2)) == 0){
                        	        		sysfatal("can't malloc final_string: %r");
@@ -294,13 +310,6 @@ int main(int argc, char *argv[]){
 					runfinal=TRUE;
 				}
 				
-				/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
-				if(now-en->mdate>alldone_interval && !runfinal){
-					AssignFinalState(en->batch_id);	
-					free(en);
-					continue;
-				}
-			
 			}
 			free(en);
 		}
@@ -309,7 +318,11 @@ int main(int argc, char *argv[]){
 			if (final_string[finstr_len-1] == ':' && (cp = strrchr (final_string, ':')) != NULL){
 				*cp = '\0';
 			}
-			FinalStateQuery(final_string);
+			if(fsq_ret != 0){
+				fsq_ret=FinalStateQuery(final_string,tracejob_logs_to_read);
+			}else{
+				fsq_ret=FinalStateQuery(final_string,1);
+			}
 			runfinal=FALSE;
 		}
 		if (final_string != NULL){
@@ -524,7 +537,7 @@ Job Id: 11.cream-12.pd.infn.it
 }
 
 int
-FinalStateQuery(char *input_string)
+FinalStateQuery(char *input_string, int logs_to_read)
 {
 /*
 tracejob -m -l -a <jobid>
@@ -594,9 +607,9 @@ Job: 13.cream-12.pd.infn.it
 
 		if(pbs_spoolpath){
 			pbs_spool=make_message("-p %s",pbs_spoolpath);
-			command_string=make_message("%s/tracejob %s -m -l -a %s",pbs_binpath,pbs_spool,jobid[k]);
+			command_string=make_message("%s/tracejob %s -m -l -a -n %s %s",pbs_binpath,pbs_spool,logs_to_read,jobid[k]);
 		}else{
-			command_string=make_message("%s/tracejob -m -l -a %s",pbs_binpath,jobid[k]);
+			command_string=make_message("%s/tracejob -m -l -a -n %s %s",pbs_binpath,logs_to_read,jobid[k]);
 		}
 		
 		fp = popen(command_string,"r");
@@ -679,7 +692,7 @@ Job: 13.cream-12.pd.infn.it
 	do_log(debuglogfile, debug, 3, "%s: next FinalStatequery will be in %d seconds\n",argv0,time_to_add);
 	
 	freetoken(&jobid,maxtok_j);
-	return 0;
+	return failed_count;
 }
 
 int AssignFinalState(char *batchid){

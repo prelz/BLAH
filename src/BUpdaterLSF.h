@@ -34,7 +34,7 @@
 
 int IntStateQueryShort();
 int IntStateQuery();
-int FinalStateQuery(time_t start_date);
+int FinalStateQuery(time_t start_date, int logs_to_read);
 int AssignFinalState(char *batchid);
 time_t get_susp_timestamp(char *jobid);
 time_t get_resume_timestamp(char *jobid);
@@ -47,10 +47,11 @@ int runfinal=FALSE;
 char *lsf_binpath;
 char *registry_file;
 int purge_interval=864000;
+int bhist_finalstate_interval=120;
 int finalstate_query_interval=30;
 int alldone_interval=3600;
 int next_finalstatequery=0;
-int bhist_logs_to_read=1;
+int bhist_logs_to_read=10;
 char *bjobs_long_format="yes";
 char *use_bhist_for_susp="no";
 int debug=FALSE;

@@ -33,7 +33,7 @@
 #endif
 
 int IntStateQuery();
-int FinalStateQuery(char *input_string);
+int FinalStateQuery(char *input_string, int logs_to_read);
 int AssignFinalState(char *batchid);
 void sighup();
 int usage();
@@ -44,6 +44,7 @@ char *pbs_binpath=NULL;
 char *pbs_spoolpath=NULL;
 char *registry_file;
 int purge_interval=864000;
+int tracejob_logs_to_read=2;
 int finalstate_query_interval=30;
 int alldone_interval=3600;
 int next_finalstatequery=0;

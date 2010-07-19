@@ -175,6 +175,13 @@ int main(int argc, char *argv[]){
 		purge_interval=atoi(ret->value);
 	}
 	
+	ret = config_get("bhist_finalstate_interval",cha);
+	if (ret == NULL){
+		do_log(debuglogfile, debug, 1, "%s: key bhist_finalstate_interval not found using the default:%d\n",argv0,bhist_finalstate_interval);
+	} else {
+		bhist_finalstate_interval=atoi(ret->value);
+	}
+	
 	ret = config_get("finalstate_query_interval",cha);
 	if (ret == NULL){
 		do_log(debuglogfile, debug, 1, "%s: key finalstate_query_interval not found using the default:%d\n",argv0,finalstate_query_interval);
@@ -295,6 +302,20 @@ int main(int argc, char *argv[]){
 
 			if((bupdater_lookup_active_jobs(&bact,en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && en->status!=REMOVED && en->status!=COMPLETED){
 
+				/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
+				if(now-en->mdate>alldone_interval){
+					AssignFinalState(en->batch_id);
+					free(en);
+					continue;
+				}
+				
+				/* Try to run FinalStateQuery reading older log files*/
+				if(now-en->mdate>bhist_finalstate_interval){
+					FinalStateQuery(0,bhist_logs_to_read);
+					free(en);
+					continue;
+				}
+				
 				if((now-en->mdate>finalstate_query_interval) && (now > next_finalstatequery)){
 					if (en->mdate < finalquery_start_date){
 						finalquery_start_date=en->mdate;
@@ -302,19 +323,13 @@ int main(int argc, char *argv[]){
 					runfinal=TRUE;
 				}
 				
-				/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
-				if(now-en->mdate>alldone_interval && !runfinal){
-					AssignFinalState(en->batch_id);
-					free(en);
-					continue;
-				}
 			
 			}
 			free(en);
 		}
 		
 		if(runfinal){
-			FinalStateQuery(finalquery_start_date);
+			FinalStateQuery(finalquery_start_date,1);
 			runfinal=FALSE;
 		}
 		fclose(fd);		
@@ -665,7 +680,7 @@ IntStateQuery()
 }
 
 int
-FinalStateQuery(time_t start_date)
+FinalStateQuery(time_t start_date, int logs_to_read)
 {
 /*
 bhist -u all -a -l
@@ -709,14 +724,21 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	char *cp=NULL; 
 	struct tm start_date_tm;
 	char start_date_str[80];
+	char *start_date_flagged=NULL;
 	char *command_string=NULL;
 	int failed_count=0;
 	int time_to_add=0;
 	time_t now;
 
-	localtime_r(&start_date, &start_date_tm);
-	strftime(start_date_str, sizeof(start_date_str), "%Y/%m/%d/%H:%M,", &start_date_tm);
-	command_string=make_message("%s/bhist -u all -d -l -n %d -C %s",lsf_binpath,bhist_logs_to_read,start_date_str);
+	
+	if(start_date != 0){
+		localtime_r(&start_date, &start_date_tm);
+		strftime(start_date_str, sizeof(start_date_str), "%Y/%m/%d/%H:%M,", &start_date_tm);
+		start_date_flagged=make_message("-C %s",start_date_str);
+	}else{
+		start_date_flagged=make_message("");
+	}
+	command_string=make_message("%s/bhist -u all -d -l -n %d %s",lsf_binpath,logs_to_read,start_date_flagged);
 
 	fp = popen(command_string,"r");
 	
