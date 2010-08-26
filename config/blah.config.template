@@ -162,4 +162,10 @@ bupdater_use_bhist_for_susp=no
 #head and worker nodes.
 #blah_shared_directories=/home:/users
 
-
+#By default the job temporary work directory is created as a subdirectory
+#of wherever the batch system is configured to land the job. 
+#This variable changes the location where the work directory is created.
+#A shell variable escaped or in single quotes will be resolved on the 
+#worker node in the job environment. Non-escaped variables will be resolved 
+#on the submit node in the submit environment.
+#blah_wn_temporary_home_dir='$GLITE_LOCATION_TMP'

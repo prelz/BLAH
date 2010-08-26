@@ -544,8 +544,14 @@ function bls_add_job_wrapper ()
           fi
   fi
   
+  echo "old_home=\`pwd\`">>$bls_tmp_file
   # Set the temporary home (including cd'ing into it)
-  echo "new_home=\`pwd\`/home_$bls_tmp_name">>$bls_tmp_file
+  if [ -n "$blah_wn_temporary_home_dir" ] ; then
+    echo "new_home=${blah_wn_temporary_home_dir}/home_$bls_tmp_name">>$bls_tmp_file
+  else
+    echo "new_home=\`pwd\`/home_$bls_tmp_name">>$bls_tmp_file
+  fi
+
   echo "mkdir \$new_home">>$bls_tmp_file
 
   echo "# Copy into new home any shared input sandbox file" >> $bls_tmp_file
@@ -619,7 +625,7 @@ function bls_add_job_wrapper ()
   echo ""  >> $bls_tmp_file
   echo "# Move all relative outputsand paths out of temp home" >> $bls_tmp_file
   echo "cd \$new_home" >> $bls_tmp_file
-  bls_fl_subst_relative_paths_and_dump outputsand "mv \"@@F_REMOTE\" .. 2> /dev/null" $bls_tmp_file
+  bls_fl_subst_relative_paths_and_dump outputsand "mv \"@@F_REMOTE\" \$old_home 2> /dev/null" $bls_tmp_file
   echo "# Move any remapped outputsand file to shared directories" >> $bls_tmp_file
   bls_fl_subst_relative_paths_and_dump outputmove "mv \"@@F_REMOTE\" \"@@F_LOCAL\" 2> /dev/null" $bls_tmp_file
   
@@ -628,7 +634,7 @@ function bls_add_job_wrapper ()
   bls_fl_subst_and_dump inputcopy "rm \"@@F_REMOTE\" 2> /dev/null" $bls_tmp_file
   bls_fl_subst_relative_paths_and_dump inputsand "rm \"@@F_REMOTE\" 2> /dev/null" $bls_tmp_file
 
-  echo "cd .." >> $bls_tmp_file
+  echo "cd \$old_home" >> $bls_tmp_file
   echo "rm -rf \$new_home" >> $bls_tmp_file
   
   echo "" >> $bls_tmp_file
