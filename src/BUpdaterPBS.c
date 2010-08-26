@@ -607,9 +607,9 @@ Job: 13.cream-12.pd.infn.it
 
 		if(pbs_spoolpath){
 			pbs_spool=make_message("-p %s",pbs_spoolpath);
-			command_string=make_message("%s/tracejob %s -m -l -a -n %s %s",pbs_binpath,pbs_spool,logs_to_read,jobid[k]);
+			command_string=make_message("%s/tracejob %s -m -l -a -n %d %s",pbs_binpath,pbs_spool,logs_to_read,jobid[k]);
 		}else{
-			command_string=make_message("%s/tracejob -m -l -a -n %s %s",pbs_binpath,logs_to_read,jobid[k]);
+			command_string=make_message("%s/tracejob -m -l -a -n %d %s",pbs_binpath,logs_to_read,jobid[k]);
 		}
 		
 		fp = popen(command_string,"r");
