@@ -115,10 +115,10 @@ bls_set_up_local_and_extra_args
 [ -z "$bls_opt_mpinodes" ] || grep -q "^#PBS *-l *nodes" $bls_tmp_file || echo "#PBS -l nodes=$bls_opt_mpinodes" >> $bls_tmp_file
 
 # Input and output sandbox setup.
-bls_fl_subst_and_accumulate inputsand "@@F_REMOTE@`hostname -f`:@@F_LOCAL" ","
-[ -z "$bls_fl_subst_and_accumulate_result" ] || echo "#PBS -W stagein=$bls_fl_subst_and_accumulate_result" >> $bls_tmp_file
-bls_fl_subst_and_accumulate outputsand "@@F_REMOTE@`hostname -f`:@@F_LOCAL" ","
-[ -z "$bls_fl_subst_and_accumulate_result" ] || echo "#PBS -W stageout=$bls_fl_subst_and_accumulate_result" >> $bls_tmp_file
+bls_fl_subst_and_accumulate inputsand "stagein=@@F_REMOTE@`hostname -f`:@@F_LOCAL" ","
+[ -z "$bls_fl_subst_and_accumulate_result" ] || echo "#PBS -W $bls_fl_subst_and_accumulate_result" >> $bls_tmp_file
+bls_fl_subst_and_accumulate outputsand "stageout=@@F_REMOTE@`hostname -f`:@@F_LOCAL" ","
+[ -z "$bls_fl_subst_and_accumulate_result" ] || echo "#PBS -W $bls_fl_subst_and_accumulate_result" >> $bls_tmp_file
 echo "#PBS -m n"  >> $bls_tmp_file
 
 bls_add_job_wrapper
