@@ -49,7 +49,7 @@ char *registry_file;
 int purge_interval=864000;
 int bhist_finalstate_interval=120;
 int finalstate_query_interval=30;
-int alldone_interval=3600;
+int alldone_interval=36000;
 int next_finalstatequery=0;
 int bhist_logs_to_read=10;
 char *bjobs_long_format="yes";

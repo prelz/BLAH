@@ -46,7 +46,7 @@ char *registry_file;
 int purge_interval=864000;
 int tracejob_logs_to_read=2;
 int finalstate_query_interval=30;
-int alldone_interval=3600;
+int alldone_interval=36000;
 int next_finalstatequery=0;
 int debug=FALSE;
 int nodmn=FALSE;
