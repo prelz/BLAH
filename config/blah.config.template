@@ -171,7 +171,7 @@ bupdater_use_bhist_for_susp=no
 #blah_wn_temporary_home_dir='$GLITE_LOCATION_TMP'
 
 #These two attributes allow to change the directory on the worker node where 
-#the batch #system is instructed to transfer input/output sandbox files to 
+#the batch system is instructed to transfer input/output sandbox files to 
 #and from.
 #These can be set in case the batch system default is not good enough
 #(e.g.: the batch systems leaves output files behind)
