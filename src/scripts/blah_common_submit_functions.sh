@@ -42,10 +42,15 @@ function bls_fl_add_value ()
   remote_file_name=${3:?"Missing remote file name argument to bls_fl_add_value"}
 
   local last_argument
+  local transfer_file
 
   eval "last_argument=\${bls_${container_name}_counter:=0}"
   eval "bls_${container_name}_local_${last_argument}=\"$local_file_name\""
   eval "bls_${container_name}_remote_${last_argument}=\"$remote_file_name\""
+  if [ -n "$4" ]; then
+    eval "bls_${container_name}_workname_${last_argument}=\"$4\""
+  fi
+
   eval "let bls_${container_name}_counter++"
 }
 
@@ -54,7 +59,7 @@ function bls_fl_subst ()
 #
 # Usage: bls_fl_subst container_name index template_string
 # substitutes the value pair at the index'th position in container_name
-# to the @@F_LOCAL and @@F_REMOTE strings in template_string 
+# to the @@F_LOCAL, @@F_REMOTE and @@F_WORKNAME strings in template_string 
 # Result is returned in $bls_fl_subst_result.
 #
   local container_name
@@ -67,16 +72,23 @@ function bls_fl_subst ()
 
   local f_local
   local f_remote
-  local temp_result
+  local temp1_result
+  local temp2_result
   
   eval "f_local=\"\${bls_${container_name}_local_${container_index}}\""
   eval "f_remote=\"\${bls_${container_name}_remote_${container_index}}\""
+  eval "f_workname=\"\${bls_${container_name}_workname_${container_index}}\""
+
+  if [ -z "$f_workname" ]; then
+    f_workname="$f_remote"
+  fi
 
   bls_fl_subst_result=""
 
   if [ \( ! -z "$f_local" \) -a \( ! -z "$f_remote" \) ] ; then
-      temp_result=${subst_template//@@F_LOCAL/$f_local}
-      bls_fl_subst_result=${temp_result//@@F_REMOTE/$f_remote}
+      temp1_result=${subst_template//@@F_LOCAL/$f_local}
+      temp2_result=${temp1_result//@@F_WORKNAME/$f_workname}
+      bls_fl_subst_result=${temp2_result//@@F_REMOTE/$f_remote}
   fi
 }
 
@@ -85,7 +97,7 @@ function bls_fl_subst_and_accumulate ()
 #
 # Usage: bls_fl_subst_and_accumulate container_name template_string separator
 # substitutes all the value pairs in container_name
-# to the @@F_LOCAL and @@F_REMOTE strings in template_string, and
+# to the @@F_LOCAL, @@F_REMOTE and @@F_WORKNAME strings in template_string, and
 # concatenates the results,separating them with the 'separator' string.
 # Result is returned in $bls_fl_subst_and_accumulate_result.
 #
@@ -122,7 +134,7 @@ function bls_fl_subst_and_dump ()
 #
 # Usage: bls_fl_subst_and_dump container_name template_string filename
 # substitutes all the value pairs in container_name
-# to the @@F_LOCAL and @@F_REMOTE strings in template_string, and
+# to the @@F_LOCAL, @@F_REMOTE and @@F_WORKNAME strings in template_string, and
 # appends the results as single lines to $filename 
 #
   local container_name
@@ -160,10 +172,12 @@ function bls_fl_subst_relative_paths_and_dump ()
   local container_name
   local subst_template
   local filename
+  local destination_root
 
   container_name=${1:?"Missing container name argument to bls_fl_subst_relative_paths_and_dump"}
   subst_template=${2:?"Missing template argument to bls_fl_subst_relative_paths_and_dump"}
   filename=${3:?"Missing filename argument to bls_fl_subst_relative_paths_and_dump"}
+  destination_root=$4
 
   local last_argument
 
@@ -172,8 +186,23 @@ function bls_fl_subst_relative_paths_and_dump ()
   local ind
   
   for (( ind=0 ; ind < $last_argument ; ind++ )) ; do
-      eval "f_remote=\"\${bls_${container_name}_remote_${container_index}}\""
-      if [ "${f_remote:0:1}" != "/" ]; then
+      eval "f_workname=\"\${bls_${container_name}_workname_${ind}}\""
+      eval "f_remote=\"\${bls_${container_name}_remote_${ind}}\""
+
+      if [ -n "$destination_root" ]; then
+        if [ "${f_remote:0:1}" != "/" ]; then
+            if [ -z "$f_workname" ]; then
+                eval "bls_${container_name}_workname_${ind}=\"$f_remote\""
+            fi
+            eval "bls_${container_name}_remote_${ind}=\"${destination_root}/$f_remote\""
+        fi
+      fi
+
+      if [ -z "$f_workname" ]; then
+          f_workname="$f_remote"
+      fi
+
+      if [ "${f_workname:0:1}" != "/" ]; then
           bls_fl_subst $container_name $ind "$subst_template"
           if [ ! -z "$bls_fl_subst_result" ] ; then
               echo $bls_fl_subst_result >> $filename
@@ -200,6 +229,7 @@ function bls_fl_clear ()
   
   for (( ind=0 ; ind < $last_argument ; ind++ )) ; do
      eval "unset bls_${container_name}_local_${ind}"
+     eval "unset bls_${container_name}_workname_${ind}"
      eval "unset bls_${container_name}_remote_${ind}"
   done
 
@@ -327,6 +357,42 @@ function bls_test_shared_dir ()
 function bls_setup_all_files ()
 {
 
+# Make sure /dev/null is always 'shared' (i.e., not copied over by the
+# batch system).
+
+  if [ -z "$blah_shared_directories" ]; then
+      blah_shared_directories="/dev/null"
+  else
+      bls_test_shared_dir "/dev/null"
+      if [ "x$bls_is_in_shared_dir" != "xyes" ] ; then
+         blah_shared_directories="$blah_shared_directories:/dev/null"
+      fi   
+  fi
+
+  if [ -z "$blah_wn_inputsandbox" ]; then
+#     Backwards compatibility with old name.
+      blah_wn_inputsandbox="$blahpd_inputsandbox"
+  fi
+  if [ -z "$blah_wn_outputsandbox" ]; then
+#     Backwards compatibility with old name.
+      blah_wn_outputsandbox="$blahpd_outputsandbox"
+  fi
+
+  local last_char_pos
+
+  if [ -n "$blah_wn_inputsandbox" ]; then
+      last_char_pos=$(( ${#blah_wn_inputsandbox} - 1 ))
+      if [ "${blah_wn_inputsandbox:$last_char_pos:1}" != "/" ]; then
+         blah_wn_inputsandbox="${blah_wn_inputsandbox}/"
+      fi
+  fi
+  if [ -n "$blah_wn_outputsandbox" ]; then
+      last_char_pos=$(( ${#blah_wn_outputsandbox} - 1 ))
+      if [ "${blah_wn_outputsandbox:$last_char_pos:1}" != "/" ]; then
+         blah_wn_outputsandbox="${blah_wn_outputsandbox}/"
+      fi
+  fi
+
   curdir=`pwd`
   if [ -z "$bls_opt_temp_dir"  ] ; then
       bls_opt_temp_dir="$curdir"
@@ -386,7 +452,8 @@ function bls_setup_all_files ()
   fi  
 
   if [ "x$bls_opt_stgcmd" == "xyes" ] ; then
-      bls_fl_add_value inputsand "$bls_opt_the_command" "`basename $bls_opt_the_command`"
+      bls_command_basename="`basename $bls_opt_the_command`"
+      bls_fl_add_value inputsand "$bls_opt_the_command" "${blah_wn_inputsandbox}${bls_command_basename}.$uni_ext" "$bls_command_basename"
   fi
   
   # Put BPRserver into sandbox
@@ -397,7 +464,7 @@ function bls_setup_all_files ()
               remote_BPRserver="$bls_proxyrenewald"
           else
               remote_BPRserver=`basename $bls_proxyrenewald`.$uni_ext
-              bls_fl_add_value inputsand "$bls_proxyrenewald" "${blahpd_inputsandbox}${remote_BPRserver}"
+              bls_fl_add_value inputsand "$bls_proxyrenewald" "${blah_wn_inputsandbox}${remote_BPRserver}" "$remote_BPRserver"
               remote_BPRserver="./$remote_BPRserver"
           fi
       else
@@ -418,14 +485,12 @@ function bls_setup_all_files ()
           if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
             bls_fl_add_value inputcopy "$bls_proxy_local_file" "${bls_proxy_remote_file}"
           else
-            bls_fl_add_value inputsand "$bls_proxy_local_file" "${blahpd_inputsandbox}${bls_proxy_remote_file}"
+            bls_fl_add_value inputsand "$bls_proxy_local_file" "${blah_wn_inputsandbox}${bls_proxy_remote_file}" "$bls_proxy_remote_file"
           fi
           bls_need_to_reset_proxy=yes
       fi
   fi
   
-  local stdin_unique
-
   # Setup stdin, stdout & stderr
   if [ ! -z "$bls_opt_stdin" ] ; then
       if [ -f "$bls_opt_stdin" ] ; then
@@ -433,9 +498,9 @@ function bls_setup_all_files ()
           if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
               bls_arguments="$bls_arguments < \"$bls_opt_stdin\""
           else
-              stdin_unique=`basename $bls_opt_stdin`.$uni_ext
-              bls_fl_add_value inputsand "$bls_opt_stdin" "${blahpd_inputsandbox}${stdin_unique}"
-              bls_arguments="$bls_arguments < \"$bls_opt_stdin_unique\""
+              bls_unique_stdin_name=`basename $bls_opt_stdin`.$uni_ext
+              bls_fl_add_value inputsand "$bls_opt_stdin" "${blah_wn_inputsandbox}${bls_unique_stdin_name}" "$bls_unique_stdin_name"
+              bls_arguments="$bls_arguments < \"$bls_unique_stdin_name\""
           fi
       else
           bls_arguments="$bls_arguments < \"$bls_opt_stdin\""
@@ -447,7 +512,7 @@ function bls_setup_all_files ()
           bls_arguments="$bls_arguments > \"$bls_opt_stdout\""
       else
           if [ "${bls_opt_stdout:0:1}" != "/" ] ; then bls_opt_stdout=${bls_opt_workdir}/${bls_opt_stdout} ; fi
-          bls_unique_stdout_name="${blahpd_outputsandbox}out_${bls_tmp_name}_`basename $bls_opt_stdout`"
+          bls_unique_stdout_name="${blah_wn_outputsandbox}out_${bls_tmp_name}_`basename $bls_opt_stdout`"
           bls_arguments="$bls_arguments > \"$bls_unique_stdout_name\""
           bls_fl_add_value outputsand "$bls_opt_stdout" "$bls_unique_stdout_name"
       fi
@@ -461,7 +526,7 @@ function bls_setup_all_files ()
           if [ "$bls_opt_stderr" == "$bls_opt_stdout" ]; then
               bls_arguments="$bls_arguments 2>&1"
           else
-              bls_unique_stderr_name="${blahpd_outputsandbox}err_${bls_tmp_name}_`basename $bls_opt_stderr`"
+              bls_unique_stderr_name="${blah_wn_outputsandbox}err_${bls_tmp_name}_`basename $bls_opt_stderr`"
               bls_arguments="$bls_arguments 2> \"$bls_unique_stderr_name\""
               bls_fl_add_value outputsand "$bls_opt_stderr" "$bls_unique_stderr_name"
           fi
@@ -471,6 +536,7 @@ function bls_setup_all_files ()
 #Add to inputsand files to transfer to execution node
 #absolute paths
   local xfile
+  local xfile_base
 
   if [ ! -z "$bls_opt_inputflstring" ] ; then
       exec 4< "$bls_opt_inputflstring"
@@ -480,7 +546,8 @@ function bls_setup_all_files ()
                if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
                    bls_fl_add_value inputcopy "$xfile" "./`basename ${xfile}`"
                else
-                   bls_fl_add_value inputsand "$xfile" "./`basename ${xfile}`"
+                   xfile_base="`basename ${xfile}`"  
+                   bls_fl_add_value inputsand "$xfile" "${blah_wn_inputsandbox}${xfile_base}.$uni_ext" "${xfile_base}"
                fi
           fi
       done
@@ -506,17 +573,17 @@ function bls_setup_all_files ()
               if [ "x$bls_is_in_shared_dir" != "xyes" ] ; then
                   if [ ! -z $xfileremap ] ; then
                       if [ "${xfileremap:0:1}" != "/" ] ; then
-                          bls_fl_add_value outputsand "${bls_opt_workdir}/${xfileremap}" "$xfile"
+                          bls_fl_add_value outputsand "${bls_opt_workdir}/${xfileremap}" "${blah_wn_outputsandbox}${xfile}.$uni_ext" "$xfile"
                       else
                           bls_test_shared_dir "$xfileremap"
                           if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
                               bls_fl_add_value outputmove "${xfileremap}" "$xfile"
                           else
-                              bls_fl_add_value outputsand "${xfileremap}" "$xfile"
+                              bls_fl_add_value outputsand "${xfileremap}" "${blah_wn_outputsandbox}${xfile}.$uni_ext" "$xfile"
                           fi
                       fi
                   else
-                      bls_fl_add_value outputsand "${bls_opt_workdir}/${xfile}" "$xfile"
+                      bls_fl_add_value outputsand "${bls_opt_workdir}/${xfile}" "${blah_wn_outputsandbox}${xfile}.$uni_ext" "$xfile"
                   fi
               fi
           fi
@@ -549,7 +616,7 @@ function bls_add_job_wrapper ()
   if [ -n "$blah_wn_temporary_home_dir" ] ; then
     echo "new_home=${blah_wn_temporary_home_dir}/home_$bls_tmp_name">>$bls_tmp_file
   else
-    echo "new_home=\`pwd\`/home_$bls_tmp_name">>$bls_tmp_file
+    echo "new_home=\${old_home}/home_$bls_tmp_name">>$bls_tmp_file
   fi
 
   echo "mkdir \$new_home">>$bls_tmp_file
@@ -557,7 +624,7 @@ function bls_add_job_wrapper ()
   echo "# Copy into new home any shared input sandbox file" >> $bls_tmp_file
   bls_fl_subst_and_dump inputcopy "cp \"@@F_LOCAL\" \"\$new_home/@@F_REMOTE\" &> /dev/null" $bls_tmp_file
   echo "# Move into new home any relative input sandbox file" >> $bls_tmp_file
-  bls_fl_subst_relative_paths_and_dump inputsand "mv \"@@F_REMOTE\" \$new_home &> /dev/null" $bls_tmp_file
+  bls_fl_subst_relative_paths_and_dump inputsand "mv \"@@F_REMOTE\" \"\$new_home/@@F_WORKNAME\" &> /dev/null" $bls_tmp_file
 
   echo "export HOME=\$new_home">>$bls_tmp_file
   echo "cd \$new_home">>$bls_tmp_file
@@ -625,14 +692,14 @@ function bls_add_job_wrapper ()
   echo ""  >> $bls_tmp_file
   echo "# Move all relative outputsand paths out of temp home" >> $bls_tmp_file
   echo "cd \$new_home" >> $bls_tmp_file
-  bls_fl_subst_relative_paths_and_dump outputsand "mv \"@@F_REMOTE\" \$old_home 2> /dev/null" $bls_tmp_file
+  bls_fl_subst_relative_paths_and_dump outputsand "mv \"@@F_WORKNAME\" \"@@F_REMOTE\" 2> /dev/null" $bls_tmp_file "\\\$old_home" 
   echo "# Move any remapped outputsand file to shared directories" >> $bls_tmp_file
   bls_fl_subst_relative_paths_and_dump outputmove "mv \"@@F_REMOTE\" \"@@F_LOCAL\" 2> /dev/null" $bls_tmp_file
   
   echo ""  >> $bls_tmp_file
   echo "# Remove the staged files, if any" >> $bls_tmp_file
   bls_fl_subst_and_dump inputcopy "rm \"@@F_REMOTE\" 2> /dev/null" $bls_tmp_file
-  bls_fl_subst_relative_paths_and_dump inputsand "rm \"@@F_REMOTE\" 2> /dev/null" $bls_tmp_file
+  bls_fl_subst_relative_paths_and_dump inputsand "rm \"@@F_WORKNAME\" 2> /dev/null" $bls_tmp_file
 
   echo "cd \$old_home" >> $bls_tmp_file
   echo "rm -rf \$new_home" >> $bls_tmp_file
