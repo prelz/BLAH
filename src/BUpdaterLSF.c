@@ -302,7 +302,7 @@ int main(int argc, char *argv[]){
 
 			if((bupdater_lookup_active_jobs(&bact,en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && en->status!=REMOVED && en->status!=COMPLETED){
 
-				/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
+				/* Assign Status=4 and ExitStatus=999 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
 				if(now-en->mdate>alldone_interval){
 					AssignFinalState(en->batch_id);
 					free(en);
@@ -311,7 +311,7 @@ int main(int argc, char *argv[]){
 				
 				/* Try to run FinalStateQuery reading older log files*/
 				if(now-en->mdate>bhist_finalstate_interval){
-					FinalStateQuery(0,bhist_logs_to_read);
+					runfinal_oldlogs=TRUE;
 					free(en);
 					continue;
 				}
@@ -328,7 +328,11 @@ int main(int argc, char *argv[]){
 			free(en);
 		}
 		
-		if(runfinal){
+		if(runfinal_oldlogs){
+			FinalStateQuery(0,bhist_logs_to_read);
+			runfinal_oldlogs=FALSE;
+			runfinal=FALSE;
+		}else if(runfinal){
 			FinalStateQuery(finalquery_start_date,1);
 			runfinal=FALSE;
 		}

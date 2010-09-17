@@ -44,6 +44,7 @@ int usage();
 int short_usage();
 
 int runfinal=FALSE;
+int runfinal_oldlogs=FALSE;
 char *lsf_binpath;
 char *registry_file;
 int purge_interval=864000;
