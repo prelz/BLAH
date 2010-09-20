@@ -2,7 +2,7 @@
  *  File :     job_registry.c
  *
  *
- *  Author :   Francesco Prelz ($Author: mezzadri $)
+ *  Author :   Francesco Prelz ($Author: fprelz $)
  *  e-mail :   "francesco.prelz@mi.infn.it"
  *
  *  Revision history :
@@ -18,6 +18,7 @@
  *              Make sure 'firstrec' is recomputed for record sanity checks.
  * 19-Nov-2009  Added BY_USER_PREFIX as an indexing mode.
  *  4-Feb-2010  Added updater_info field to store updater state.
+ *  20-Sep-2010 Added JOB_REGISTRY_UNCHANGED return code to update ops.
  *
  *  Description:
  *    File-based container to cache job IDs and statuses to implement
@@ -1484,7 +1485,8 @@ job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
  *         or JOB_REGISTRY_UPDATE_ALL for all of the above fields.
  *
  * @return Less than zero on error. See job_registry.h for error codes.
- *         errno is also set in case of error.
+ *         errno is also set in case of error. JOB_REGISTRY_UNCHANGED (>0)
+ *         is returned if the update operation caused no change. 
  */
 
 int
@@ -1530,6 +1532,7 @@ job_registry_update_op(job_registry_handle *rha,
   job_registry_entry old_entry;
   int need_to_fclose = FALSE;
   int need_to_update = FALSE;
+  int retcod;
 
   if (use_recn)
    {
@@ -1638,6 +1641,8 @@ job_registry_update_op(job_registry_handle *rha,
     need_to_update = TRUE;
    }
 
+  retcod = JOB_REGISTRY_UNCHANGED;
+
   if (need_to_update)
    {
     old_entry.mdate = time(0);
@@ -1647,6 +1652,7 @@ job_registry_update_op(job_registry_handle *rha,
       if (need_to_fclose) fclose(fd);
       return JOB_REGISTRY_FWRITE_FAIL;
      }
+    else retcod = JOB_REGISTRY_SUCCESS;
    }
 
   if (need_to_fclose) fclose(fd);
@@ -1654,7 +1660,7 @@ job_registry_update_op(job_registry_handle *rha,
   /* Update entry contents with actual registry entry */
   memcpy(entry, &old_entry, sizeof(job_registry_entry));
 
-  return JOB_REGISTRY_SUCCESS;
+  return retcod;
 }
 
 /*

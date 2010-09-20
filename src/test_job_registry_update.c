@@ -2,7 +2,7 @@
  *  File :     test_job_registry_update.c
  *
  *
- *  Author :   Francesco Prelz ($Author: mezzadri $)
+ *  Author :   Francesco Prelz ($Author: fprelz $)
  *  e-mail :   "francesco.prelz@mi.infn.it"
  *
  *  Revision history :
@@ -99,7 +99,7 @@ main(int argc, char *argv[])
                                      JOB_REGISTRY_UPDATE_UDATE |
                                      JOB_REGISTRY_UPDATE_STATUS |
                                      JOB_REGISTRY_UPDATE_EXITCODE );
-    if (ret != JOB_REGISTRY_SUCCESS)
+    if (ret < 0)
      {
       fprintf(stderr,"%s: job_registry_update of ID==%s returns %d: ",
               argv[0], rha->entries[pick].id, ret);

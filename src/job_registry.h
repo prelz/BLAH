@@ -2,7 +2,7 @@
  *  File :     job_registry.h
  *
  *
- *  Author :   Francesco Prelz ($Author: mezzadri $)
+ *  Author :   Francesco Prelz ($Author: fprelz $)
  *  e-mail :   "francesco.prelz@mi.infn.it"
  *
  *  Revision history :
@@ -14,6 +14,7 @@
  *   8-Jan-2009 Added job_registry_update_select call.
  *  19-Nov-2009 Added BY_USER_PREFIX as an indexing mode.
  *   4-Feb-2010 Added updater_info field to store updater state.
+ *  20-Sep-2010 Added JOB_REGISTRY_UNCHANGED return code.
  *
  *  Description:
  *    Prototypes of functions defined in job_registry.c
@@ -167,6 +168,7 @@ typedef struct job_registry_hash_store_s
    int n_data;
  } job_registry_hash_store;
 
+#define JOB_REGISTRY_UNCHANGED        2
 #define JOB_REGISTRY_CHANGED          1
 #define JOB_REGISTRY_SUCCESS          0
 #define JOB_REGISTRY_FAIL            -1 
