@@ -15,6 +15,7 @@
  *  19-Nov-2009 Added BY_USER_PREFIX as an indexing mode.
  *   4-Feb-2010 Added updater_info field to store updater state.
  *  20-Sep-2010 Added JOB_REGISTRY_UNCHANGED return code.
+ *  21-Sep-2010 Added JOB_REGISTRY_BINFO_ONLY return code.
  *
  *  Description:
  *    Prototypes of functions defined in job_registry.c
@@ -168,6 +169,7 @@ typedef struct job_registry_hash_store_s
    int n_data;
  } job_registry_hash_store;
 
+#define JOB_REGISTRY_BINFO_ONLY       3
 #define JOB_REGISTRY_UNCHANGED        2
 #define JOB_REGISTRY_CHANGED          1
 #define JOB_REGISTRY_SUCCESS          0

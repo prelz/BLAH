@@ -19,6 +19,8 @@
  * 19-Nov-2009  Added BY_USER_PREFIX as an indexing mode.
  *  4-Feb-2010  Added updater_info field to store updater state.
  *  20-Sep-2010 Added JOB_REGISTRY_UNCHANGED return code to update ops.
+ *  21-Sep-2010 Added JOB_REGISTRY_BINFO_ONLY return code. Updater_info
+ *              changes don't affect entry mdate.
  *
  *  Description:
  *    File-based container to cache job IDs and statuses to implement
@@ -1532,6 +1534,7 @@ job_registry_update_op(job_registry_handle *rha,
   job_registry_entry old_entry;
   int need_to_fclose = FALSE;
   int need_to_update = FALSE;
+  int update_binfo_only = TRUE;
   int retcod;
 
   if (use_recn)
@@ -1607,24 +1610,28 @@ job_registry_update_op(job_registry_handle *rha,
    {
     JOB_REGISTRY_ASSIGN_ENTRY(old_entry.wn_addr, entry->wn_addr);
     need_to_update = TRUE;
+    update_binfo_only = FALSE;
    }
   if (((upbits & JOB_REGISTRY_UPDATE_STATUS) != 0) &&
        (old_entry.status != entry->status))
    {
     old_entry.status = entry->status;
     need_to_update = TRUE;
+    update_binfo_only = FALSE;
    }
   if (((upbits & JOB_REGISTRY_UPDATE_EXITCODE) != 0) &&
        (old_entry.exitcode != entry->exitcode))
    {
     old_entry.exitcode = entry->exitcode;
     need_to_update = TRUE;
+    update_binfo_only = FALSE;
    }
   if (((upbits & JOB_REGISTRY_UPDATE_UDATE) != 0) &&
        (old_entry.udate != entry->udate))
    {
     old_entry.udate = entry->udate;
     need_to_update = TRUE;
+    update_binfo_only = FALSE;
    }
   if (((upbits & JOB_REGISTRY_UPDATE_EXITREASON) != 0) &&
        (strncmp(old_entry.exitreason, entry->exitreason, 
@@ -1632,6 +1639,7 @@ job_registry_update_op(job_registry_handle *rha,
    {
     JOB_REGISTRY_ASSIGN_ENTRY(old_entry.exitreason, entry->exitreason);
     need_to_update = TRUE;
+    update_binfo_only = FALSE;
    }
   if (((upbits & JOB_REGISTRY_UPDATE_UPDATER_INFO) != 0) &&
        (strncmp(old_entry.updater_info, entry->updater_info, 
@@ -1640,19 +1648,24 @@ job_registry_update_op(job_registry_handle *rha,
     JOB_REGISTRY_ASSIGN_ENTRY(old_entry.updater_info, entry->updater_info);
     need_to_update = TRUE;
    }
+  else update_binfo_only = FALSE;
 
   retcod = JOB_REGISTRY_UNCHANGED;
 
   if (need_to_update)
    {
-    old_entry.mdate = time(0);
+    if (! update_binfo_only) old_entry.mdate = time(0);
   
     if (fwrite(&old_entry, sizeof(job_registry_entry),1,fd) < 1)
      {
       if (need_to_fclose) fclose(fd);
       return JOB_REGISTRY_FWRITE_FAIL;
      }
-    else retcod = JOB_REGISTRY_SUCCESS;
+    else
+     {
+      if (update_binfo_only) retcod = JOB_REGISTRY_BINFO_ONLY;
+      else                   retcod = JOB_REGISTRY_SUCCESS;
+     }
    }
 
   if (need_to_fclose) fclose(fd);
