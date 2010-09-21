@@ -42,6 +42,8 @@ int main(int argc, char *argv[]){
 	int loop_interval=DEFAULT_LOOP_INTERVAL;
 	
 	int c;				
+	
+	int confirm_time=0;	
 
         static int help;
         static int short_help;
@@ -264,7 +266,9 @@ int main(int argc, char *argv[]){
 
 			if(en->status!=REMOVED && en->status!=COMPLETED){
 			
-				if(now-en->mdate>finalstate_query_interval){
+				confirm_time=atoi(en->updater_info);
+				
+				if(now-confirm_time>finalstate_query_interval){
 					/* create the constraint that will be used in condor_history command in FinalStateQuery*/
 					if(!first) strcat(query," ||");	
 					if(first) first=FALSE;
@@ -285,8 +289,8 @@ int main(int argc, char *argv[]){
 					runfinal=TRUE;
 				}
 				
-				/* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
-				if(now-en->mdate>alldone_interval && !runfinal){
+				/* Assign Status=4 and ExitStatus=999 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
+				if(now-confirm_time>alldone_interval && !runfinal){
 					AssignFinalState(en->batch_id);	
 					free(en);
 					continue;
@@ -345,6 +349,8 @@ IntStateQuery()
 	char *cp=NULL; 
 	char *command_string=NULL;
 	job_registry_entry *ren=NULL;
+	time_t now;
+	char *string_now=NULL;
 
 	command_string=make_message("%s/condor_q -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus|grep -v condorc-",condor_binpath);
 	do_log(debuglogfile, debug, 2, "%s: command_string in IntStateQuery:%s\n",argv0,command_string);
@@ -367,9 +373,11 @@ IntStateQuery()
 				free(line);
 				continue;
 			}
+			now=time(0);
+			string_now=make_message("%d",now);
 		
 			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,token[0]);
-			JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,"found");
+			JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 			en.status=atoi(token[2]);
 			en.exitcode=atoi(token[4]);
 			en.udate=atoi(token[5]);
@@ -381,21 +389,27 @@ IntStateQuery()
 					perror("");
 			}
 				
-                        if(en.status!=UNDEFINED && ((en.status!=IDLE && ren && (en.status!=ren->status)) || (en.status==IDLE && ren && ren->status==HELD) || (en.status==IDLE && en.updater_info && strcmp(en.updater_info,"found")==0)) && ren && ren->status!=REMOVED && ren->status!=COMPLETED){
+			if(en.status!=UNDEFINED && ren && ren->status!=REMOVED && ren->status!=COMPLETED){
+
 				if ((ret=job_registry_update_recn(rha, &en, ren->recnum)) < 0){
 					if(ret != JOB_REGISTRY_NOT_FOUND){
 						fprintf(stderr,"Update of record returns %d: ",ret);
 						perror("");
 					}
 				} else {
-					do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
-					if (en.status == REMOVED || en.status == COMPLETED)
-						job_registry_unlink_proxy(rha, &en);
+					if(ret==JOB_REGISTRY_SUCCESS){
+						if (en.status == REMOVED || en.status == COMPLETED){
+							job_registry_unlink_proxy(rha, &en);
+						}else{
+							do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
+						}
+					}
 				}
 			}
 		
 			freetoken(&token,maxtok_t);
 			free(line);
+			free(string_now);
 			free(ren);
 		}
 		pclose(fp);
