@@ -451,6 +451,7 @@ IntStateQueryShort()
 			}
 				
 			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,tmp);
+			JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 			bupdater_push_active_job(&bact, en.batch_id);
 			free(tmp);
 			
@@ -466,17 +467,13 @@ IntStateQueryShort()
 			first=FALSE;        
 			if(token[2] && strcmp(token[2],"PEND")==0){ 
 				en.status=IDLE;
-				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 			}else if(token[2] && ((strcmp(token[2],"USUSP")==0) || (strcmp(token[2],"PSUSP")==0) ||(strcmp(token[2],"SSUSP")==0))){ 
 				en.status=HELD;
-				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 			}else if(token[2] && strcmp(token[2],"RUN")==0){ 
 				en.status=RUNNING;
-				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 			}else if(token[2] && strcmp(token[2],"DONE")==0){ 
 				en.status=COMPLETED;
 				en.exitcode=0;
-				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 			}
 			
@@ -611,6 +608,7 @@ IntStateQuery()
 				maxtok_t = strtoken(line, ',', &token);
 				batch_str=strdel(token[0],"Job <>");
 				JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
+				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 				bupdater_push_active_job(&bact, en.batch_id);
 				free(batch_str);
 				freetoken(&token,maxtok_t);
@@ -622,7 +620,6 @@ IntStateQuery()
 				first=FALSE;
 			}else if(line && strstr(line," <PEND>, ")){	
 				en.status=IDLE;
-				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 				if(use_bhist_for_susp && strcmp(use_bhist_for_susp,"yes")==0){
 				/*If status was HELD we have to check timestamp of resume to pend with bhist (the info is not there with bjobs)*/
 					if(ren && ren->status==HELD){
@@ -635,7 +632,6 @@ IntStateQuery()
 				}
 			}else if(line && strstr(line," <RUN>, ")){	
 				en.status=RUNNING;
-				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 				if(use_bhist_for_susp && strcmp(use_bhist_for_susp,"yes")==0){
 				/*If status was HELD we have to check timestamp of resume with bhist (the info is not there with bjobs)*/
 					if(ren && ren->status==HELD){
@@ -646,7 +642,6 @@ IntStateQuery()
 				}
 			}else if(line && (strstr(line," <USUSP>,") || strstr(line," <PSUSP>,") || strstr(line," <SSUSP>,"))){	
 				en.status=HELD;
-				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 				if(ren && ren->status==IDLE){
 					JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 				}
@@ -662,7 +657,6 @@ IntStateQuery()
 				tmstampepoch=str2epoch(timestamp,"W");
 				en.udate=tmstampepoch;
 				en.status=RUNNING;
-				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 				free(timestamp);
 				wn_str=strdel(token[6],"<>,;");
 				JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
@@ -675,7 +669,6 @@ IntStateQuery()
 				tmstampepoch=str2epoch(timestamp,"W");
 				en.udate=tmstampepoch;
 				en.status=COMPLETED;
-				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 				free(timestamp);
 				en.exitcode=0;
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
