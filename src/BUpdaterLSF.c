@@ -305,6 +305,9 @@ int main(int argc, char *argv[]){
 			if((bupdater_lookup_active_jobs(&bact,en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && en->status!=REMOVED && en->status!=COMPLETED){
 
 				confirm_time=atoi(en->updater_info);
+				if(confirm_time==0){
+					confirm_time=en->mdate;
+				}
 			
 				/* Assign Status=4 and ExitStatus=999 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
 				if(now-confirm_time>alldone_interval){
