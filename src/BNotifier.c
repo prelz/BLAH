@@ -317,7 +317,7 @@ PollDB()
 			while ((en = job_registry_get_next(rha, fd)) != NULL)
 			{
 		
-				if(en->mdate >= lastnotiftime && en->mdate < now && en->user_prefix && strstr(en->user_prefix,creamfilter)!=NULL)
+				if(en->mdate >= lastnotiftime && en->mdate < now && en->user_prefix && strstr(en->user_prefix,creamfilter)!=NULL && strlen(en->updater_info)>0)
 				{
 					buffer=ComposeClassad(en);
 					len=strlen(buffer);
@@ -503,6 +503,7 @@ STARTNOTIFYJOBEND
 */
 
 	char      *buffer;
+	time_t    now;
 
 	if((buffer=calloc(STR_CHARS,1)) == 0){
 		sysfatal("can't malloc buffer in CreamConnection: %r");
@@ -535,6 +536,8 @@ STARTNOTIFYJOBEND
 					startnotify=FALSE;
                                	} else if(buffer && strstr(buffer,"STARTNOTIFYJOBEND/")!=NULL){
 					firstnotify=TRUE;
+					now=time(NULL);
+					lastnotiftime=now;
 				} else if(buffer && strstr(buffer,"CREAMFILTER/")!=NULL){
                                         GetFilter(buffer);
 					creamisconn=TRUE;
