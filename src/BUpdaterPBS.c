@@ -471,6 +471,7 @@ Job Id: 11.cream-12.pd.infn.it
 					en.status=IDLE;
 				}else if(status_str && strcmp(status_str,"R")==0){ 
 					en.status=RUNNING;
+					en.exitcode=-1;
 				}else if(status_str && strcmp(status_str,"C")==0){ 
 					en.status=COMPLETED;
 					JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");

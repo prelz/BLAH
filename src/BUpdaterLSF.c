@@ -474,6 +474,7 @@ IntStateQueryShort()
 				en.status=HELD;
 			}else if(token[2] && strcmp(token[2],"RUN")==0){ 
 				en.status=RUNNING;
+				en.exitcode=-1;
 			}else if(token[2] && strcmp(token[2],"DONE")==0){ 
 				en.status=COMPLETED;
 				en.exitcode=0;
@@ -635,6 +636,7 @@ IntStateQuery()
 				}
 			}else if(line && strstr(line," <RUN>, ")){	
 				en.status=RUNNING;
+				en.exitcode=-1;
 				if(use_bhist_for_susp && strcmp(use_bhist_for_susp,"yes")==0){
 				/*If status was HELD we have to check timestamp of resume with bhist (the info is not there with bjobs)*/
 					if(ren && ren->status==HELD){
@@ -660,6 +662,7 @@ IntStateQuery()
 				tmstampepoch=str2epoch(timestamp,"W");
 				en.udate=tmstampepoch;
 				en.status=RUNNING;
+				en.exitcode=-1;
 				free(timestamp);
 				wn_str=strdel(token[6],"<>,;");
 				JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
