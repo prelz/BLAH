@@ -2,12 +2,13 @@
  *  File :     test_job_registry_access.c
  *
  *
- *  Author :   Francesco Prelz ($Author: mezzadri $)
+ *  Author :   Francesco Prelz ($Author: fprelz $)
  *  e-mail :   "francesco.prelz@mi.infn.it"
  *
  *  Revision history :
  *  14-Nov-2007 Original release
  *  27-Feb-2008 Added test of job_registry_split_blah_id.
+ *   8-Oct-2010 Added test for mmap index mode.
  *
  *  Description:
  *   Access test for job registries created by test_job_registry_create.
@@ -55,12 +56,15 @@ main(int argc, char *argv[])
   struct stat pstat;
   float elapsed_secs;
   int i;
+  job_registry_index_mode test_mode = BY_BLAH_ID;
+
+  if (argc > 1 && (strncmp(argv[1],"-m",2) == 0)) test_mode = BY_BLAH_ID_MMAP;
 
   srand(time(0));
 
   job_registry_handle *rha;
 
-  rha=job_registry_init(test_registry_file, BY_BLAH_ID);
+  rha=job_registry_init(test_registry_file, test_mode);
 
   if (rha == NULL)
    {

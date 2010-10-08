@@ -12,11 +12,15 @@
 #       Council for the Central Laboratory of the Research Councils (CCLRC), United Kingdom
 #
 #       Authors: Francesco Prelz <francesco.prelz@mi.infn.it>
-#       Version info: $Id: configure.ac,v 1.47 2010/05/26 09:30:44 fprelz Exp $
+#       Version info: $Id: configure.ac,v 1.48 2010/10/08 14:55:48 fprelz Exp $
 #       Release: $Name:  $
 #
 #       Revision history:
 #       $Log: configure.ac,v $
+#       Revision 1.48  2010/10/08 14:55:48  fprelz
+#       Added an option to access the job registry index in a shared fashion
+#       by multiple blahpd processes via mmap.
+#
 #       Revision 1.47  2010/05/26 09:30:44  fprelz
 #       Bumped version up to 1.17.0
 #
@@ -172,7 +176,7 @@ AC_TYPE_PID_T
 AC_HEADER_TIME
 
 dnl Checks for library functions.
-AC_CHECK_FUNCS(select socket strdup strerror bsearch vsnprintf)
+AC_CHECK_FUNCS(select socket strdup strerror bsearch vsnprintf mmap munmap)
 
 AC_GLITE
 

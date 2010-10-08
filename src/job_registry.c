@@ -21,6 +21,8 @@
  *  20-Sep-2010 Added JOB_REGISTRY_UNCHANGED return code to update ops.
  *  21-Sep-2010 Added JOB_REGISTRY_BINFO_ONLY return code. Updater_info
  *              changes don't affect entry mdate.
+ *   7-Oct-2010 Added support for optional mmap sharing 
+ *              of entry index.
  *
  *  Description:
  *    File-based container to cache job IDs and statuses to implement
@@ -51,6 +53,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <fcntl.h>
@@ -660,6 +663,34 @@ job_registry_init(const char *path,
     errno = ENOMEM;
     return NULL;
    }
+  /* Create path for mmap-pable shared entry index */
+  rha->index_mmap_length = 0;
+  rha->mmap_fd = -1;
+  rha->mmappableindex = NULL;
+  if (mode == BY_BLAH_ID_MMAP || mode == BY_BATCH_ID_MMAP ||
+      mode == BY_USER_PREFIX_MMAP)
+   {
+    switch (mode)
+     {
+      case BY_BLAH_ID_MMAP:
+        rha->mmappableindex = jobregistry_construct_path("%s/%s.by_blah_index",rha->path,0);
+        break;
+      case BY_BATCH_ID_MMAP:
+        rha->mmappableindex = jobregistry_construct_path("%s/%s.by_batch_index",rha->path,0);
+        break;
+      case BY_USER_PREFIX_MMAP:
+        rha->mmappableindex = jobregistry_construct_path("%s/%s.by_user_index",rha->path,0);
+        break;
+      default:
+        break;
+     }
+    if (rha->mmappableindex == NULL)
+     {
+      job_registry_destroy(rha);
+      errno = ENOMEM;
+      return NULL;
+     }
+   }
 
   if (mode != NAMES_ONLY)
    {
@@ -859,8 +890,16 @@ job_registry_destroy(job_registry_handle *rha)
    if (rha->proxydir != NULL) free(rha->proxydir);
    if (rha->subjectlist != NULL) free(rha->subjectlist);
    if (rha->npusubjectlist != NULL) free(rha->npusubjectlist);
+   if (rha->mmappableindex != NULL) free(rha->mmappableindex);
    rha->n_entries = rha->n_alloc = 0;
-   if (rha->entries != NULL) free(rha->entries);
+   if (rha->index_mmap_length > 0)
+    {
+     munmap(rha->entries, rha->index_mmap_length);
+     close(rha->mmap_fd);
+     rha->index_mmap_length = 0;
+     rha->mmap_fd = -1;
+    }
+   else if (rha->entries != NULL) free(rha->entries);
    free(rha);
 }
 
@@ -910,6 +949,263 @@ job_registry_firstrec(job_registry_handle *rha, FILE *fd)
 }
 
 /*
+ * job_registry_resync_mmap
+ *
+ * Update an index cache on file that can be shared among different
+ * processes.
+ * 
+ * @param fd Stream descriptor of an open registry file.
+ *        fd *must* be at least read locked before calling this function. 
+ * @param rha Pointer to a job registry handle returned by job_registry_init
+ *
+ * @return Less than zero on error. Zero on unchanged registry. Greater than 0
+ *         if registry changed, See job_registry.h for error codes.
+ *         errno is also set in case of error.
+ */
+
+int
+job_registry_resync_mmap(job_registry_handle *rha, FILE *fd)
+{
+  struct stat rst, mst;
+  job_registry_recnum_t firstrec;
+  job_registry_recnum_t old_firstrec, old_lastrec;
+  char *chosen_id;
+  int mst_ret;
+  job_registry_entry *ren;
+  job_registry_index newin; 
+  int need_to_update = TRUE;
+  int update_exponential_backoff = 1;
+  char *new_index;
+  int newindex_fd=-1;
+  int i;
+
+  if (fstat(fileno(fd), &rst) < 0) return JOB_REGISTRY_STAT_FAIL;
+  mst_ret = stat(rha->mmappableindex, &mst);
+  if (mst_ret >= 0)
+   {
+    if ((mst.st_size/sizeof(job_registry_index)) ==
+        (rst.st_size/sizeof(job_registry_entry))) need_to_update = FALSE;
+   }
+
+  firstrec = job_registry_firstrec(rha,fd);
+  if (fseek(fd,0L,SEEK_SET) < 0) return JOB_REGISTRY_FSEEK_FAIL;
+
+  if ((rha->lastrec != 0 || rha->firstrec != 0) && firstrec != rha->firstrec)
+   {
+    /* The registry may have been purged. */
+    need_to_update = TRUE;
+   }
+
+  old_lastrec = rha->lastrec;
+  old_firstrec = rha->firstrec;
+
+  while (need_to_update)
+   {
+    new_index = (char *)malloc(strlen(rha->mmappableindex)+5);
+    if (new_index == NULL) 
+     {
+      errno = ENOMEM;
+      return JOB_REGISTRY_MALLOC_FAIL;
+     }
+    sprintf(new_index,"%s.tmp",rha->mmappableindex);
+
+    newindex_fd = open(new_index, O_RDWR|O_CREAT|O_EXCL, 0666);
+    if (newindex_fd < 0 && errno != EEXIST)
+     {
+      free(new_index);
+      return JOB_REGISTRY_FOPEN_FAIL;
+     }
+    else if (newindex_fd < 0 && errno == EACCES)
+     {
+      /* If we cannot update the mmap file we are non-privileged and
+         we'd better use the one that's there. */
+      free(new_index);
+      break;
+     }
+    else if (newindex_fd >= 0)
+     {
+      /* Dispose of old index. */
+      if (rha->index_mmap_length > 0)
+       {
+        munmap(rha->entries, rha->index_mmap_length);
+        close(rha->mmap_fd);
+        rha->index_mmap_length = 0;
+        rha->mmap_fd = -1;
+       }
+      else if (rha->entries != NULL) free(rha->entries);
+      rha->entries = NULL;
+      rha->firstrec = 0;
+      rha->lastrec = 0;
+      rha->n_entries = 0;
+      rha->n_alloc = 0;
+
+      while ((ren = job_registry_get_next(rha, fd)) != NULL)
+       {
+        if (rha->firstrec == 0) rha->firstrec = ren->recnum;
+        if (ren->recnum > rha->lastrec) rha->lastrec = ren->recnum;
+        (rha->n_entries)++;
+        if (rha->mode == BY_BLAH_ID_MMAP)         chosen_id = ren->blah_id;
+        else if(rha->mode == BY_USER_PREFIX_MMAP) chosen_id = ren->user_prefix;
+        else                                      chosen_id = ren->batch_id;
+      
+        JOB_REGISTRY_ASSIGN_ENTRY(newin.id,chosen_id);
+        newin.recnum = ren->recnum; 
+        if (write(newindex_fd, &newin, sizeof(newin)) < sizeof(newin))
+         {
+          free(ren);
+          unlink(new_index);
+          close(newindex_fd);
+          free(new_index);
+          rha->firstrec = 0;
+          rha->lastrec = 0;
+          rha->n_entries = 0;
+          return JOB_REGISTRY_FWRITE_FAIL;
+         }
+        free(ren);
+       }
+
+      rha->index_mmap_length = lseek(newindex_fd, 0, SEEK_CUR);
+      rha->entries = mmap(0, rha->index_mmap_length, 
+                          PROT_READ|PROT_WRITE, MAP_SHARED, newindex_fd, 0);
+      if (rha->entries == NULL)
+       {
+        unlink(new_index);
+        close(newindex_fd);
+        free(new_index);
+        rha->firstrec = 0;
+        rha->lastrec = 0;
+        rha->n_entries = 0;
+        rha->index_mmap_length = 0;
+        return JOB_REGISTRY_MMAP_FAIL;
+       }
+      job_registry_sort(rha);
+      if (munmap(rha->entries, rha->index_mmap_length) < 0)
+       {
+        /* Something went wrong while syncing the sorted index to disk */
+        unlink(new_index);
+        close(newindex_fd);
+        free(new_index);
+        rha->firstrec = 0;
+        rha->lastrec = 0;
+        rha->n_entries = 0;
+        rha->index_mmap_length = 0;
+        return JOB_REGISTRY_MUNMAP_FAIL;
+       }
+      if (rename (new_index, rha->mmappableindex) < 0)
+       {
+        unlink(new_index);
+        close(newindex_fd);
+        free(new_index);
+        rha->firstrec = 0;
+        rha->lastrec = 0;
+        rha->n_entries = 0;
+        rha->index_mmap_length = 0;
+        return JOB_REGISTRY_MMAP_FAIL;
+       }
+      rha->entries = mmap(0, rha->index_mmap_length, PROT_READ, MAP_SHARED, newindex_fd, 0);
+      if (rha->entries == NULL)
+       {
+        close(newindex_fd);
+        free(new_index);
+        rha->firstrec = 0;
+        rha->lastrec = 0;
+        rha->n_entries = 0;
+        rha->index_mmap_length = 0;
+        return JOB_REGISTRY_MMAP_FAIL;
+       }
+      free(new_index);
+      break;
+     }
+
+    if (update_exponential_backoff > JOB_REGISTRY_MMAP_UPDATE_TIMEOUT)
+     {
+      /* Unlinking the 'new' file after this long cannot hurt anyone */
+      /* If there is a process that was really trying to write it, it */
+      /* will just fall back to the in-memory index. */
+      /* This will handle the case of a 'new_index' file left behind */
+      /* by a dead process */
+      unlink(new_index);
+      free(new_index);
+      return JOB_REGISTRY_UPDATE_TIMEOUT;
+     }
+
+    free(new_index);
+
+    sleep(update_exponential_backoff);
+    update_exponential_backoff*=2;
+
+    /* Did a good index (updated by somebody else) appear in the meanwhile ? */
+    if (fstat(fileno(fd), &rst) < 0) return JOB_REGISTRY_STAT_FAIL;
+    mst_ret = stat(rha->mmappableindex, &mst);
+    if (mst_ret >= 0)
+     {
+      if ((mst.st_size/sizeof(job_registry_index)) ==
+          (rst.st_size/sizeof(job_registry_entry)))
+       { 
+        break;
+       }
+     }
+   }
+
+  if (newindex_fd < 0)
+   {
+    /* Need to attach to an existing and up-to-date mmap file */
+    newindex_fd = open(rha->mmappableindex, O_RDONLY);
+    if (newindex_fd < 0) return JOB_REGISTRY_FOPEN_FAIL;
+
+    /* Dispose of old index. */
+    if (rha->index_mmap_length > 0)
+     {
+      munmap(rha->entries, rha->index_mmap_length);
+      close(rha->mmap_fd);
+      rha->index_mmap_length = 0;
+      rha->mmap_fd = -1;
+     }
+    else if (rha->entries != NULL) free(rha->entries);
+    rha->entries = NULL;
+    rha->firstrec = 0;
+    rha->lastrec = 0;
+    rha->n_entries = 0;
+    rha->n_alloc = 0;
+
+    rha->index_mmap_length = lseek(newindex_fd, 0, SEEK_END);
+    if (rha->index_mmap_length < 0)
+     {
+      close(newindex_fd);
+      rha->index_mmap_length = 0;
+      return JOB_REGISTRY_FSEEK_FAIL;
+     }
+
+    rha->entries = mmap(0, rha->index_mmap_length, PROT_READ, MAP_SHARED, newindex_fd, 0);
+    if (rha->entries == NULL)
+     {
+      close(newindex_fd);
+      rha->index_mmap_length = 0;
+      return JOB_REGISTRY_MMAP_FAIL;
+     }
+
+    rha->n_entries = (rha->index_mmap_length)/sizeof(job_registry_index);
+    rha->firstrec = JOB_REGISTRY_MAX_RECNUM;
+    /* Compute first/last recnum from sorted index. */
+    for (i=0; i<rha->n_entries; i++)
+     {
+      if (rha->entries[i].recnum < rha->firstrec) 
+        rha->firstrec = rha->entries[i].recnum;
+      if (rha->entries[i].recnum > rha->lastrec) 
+        rha->lastrec = rha->entries[i].recnum;
+     }
+   }
+
+  rha->mmap_fd = newindex_fd;
+
+  if ((rha->lastrec != old_lastrec) || (rha->firstrec != old_firstrec))
+   {
+    return JOB_REGISTRY_CHANGED;
+   }
+  return JOB_REGISTRY_SUCCESS;
+}
+
+/*
  * job_registry_resync
  *
  * Update the cache inside the job registry handle, if enabled,
@@ -934,17 +1230,33 @@ job_registry_resync(job_registry_handle *rha, FILE *fd)
   job_registry_entry *ren;
   job_registry_index *new_entries;
   char *chosen_id;
+  int mret;
+
+  if (rha->mode == BY_BLAH_ID_MMAP || rha->mode == BY_BATCH_ID_MMAP ||
+      rha->mode == BY_USER_PREFIX_MMAP)
+   {
+     if ((mret = job_registry_resync_mmap(rha, fd)) >= 0)
+       return mret;
+   }
 
   old_lastrec = rha->lastrec;
   old_firstrec = rha->firstrec;
 
   firstrec = job_registry_firstrec(rha,fd);
 
-       /* File new or changed? */
-  if ( (rha->lastrec == 0 && rha->firstrec == 0) || firstrec != rha->firstrec)
+       /* File new or changed? Or mmap failed ? */
+  if ( (rha->lastrec == 0 && rha->firstrec == 0) || firstrec != rha->firstrec
+                                                 || rha->index_mmap_length > 0 )
    {
     if (fseek(fd,0L,SEEK_SET) < 0) return JOB_REGISTRY_FSEEK_FAIL;
-    if (rha->entries != NULL) free(rha->entries);
+    if (rha->index_mmap_length > 0)
+     {
+      munmap(rha->entries, rha->index_mmap_length);
+      close(rha->mmap_fd);
+      rha->index_mmap_length = 0;
+      rha->mmap_fd = -1;
+     }
+    else if (rha->entries != NULL) free(rha->entries);
     rha->entries = NULL;
     rha->firstrec = 0;
     rha->lastrec = 0;

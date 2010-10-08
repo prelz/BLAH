@@ -16,6 +16,8 @@
  *   4-Feb-2010 Added updater_info field to store updater state.
  *  20-Sep-2010 Added JOB_REGISTRY_UNCHANGED return code.
  *  21-Sep-2010 Added JOB_REGISTRY_BINFO_ONLY return code.
+ *   7-Oct-2010 Added support for optional mmap sharing 
+ *              of entry index.
  *
  *  Description:
  *    Prototypes of functions defined in job_registry.c
@@ -50,6 +52,8 @@
 #include <string.h>
 #include <time.h>
 #include "blahpd.h"
+
+#define JOB_REGISTRY_MMAP_UPDATE_TIMEOUT 300
 
 typedef uint32_t job_registry_recnum_t;
 typedef uint32_t job_registry_update_bitmask_t;
@@ -127,7 +131,10 @@ typedef enum job_registry_index_mode_e
    BY_BLAH_ID,
    BY_BATCH_ID,
    NAMES_ONLY,
-   BY_USER_PREFIX
+   BY_USER_PREFIX,
+   BY_BLAH_ID_MMAP,
+   BY_BATCH_ID_MMAP,
+   BY_USER_PREFIX_MMAP
  } job_registry_index_mode;
 
 typedef struct job_registry_handle_s
@@ -146,6 +153,9 @@ typedef struct job_registry_handle_s
    int n_alloc;
    job_registry_index_mode mode;
    uint32_t disk_firstrec;
+   int mmap_fd;
+   off_t index_mmap_length;
+   char *mmappableindex;
  } job_registry_handle;
 
 typedef enum job_registry_sort_state_e
@@ -189,6 +199,10 @@ typedef struct job_registry_hash_store_s
 #define JOB_REGISTRY_BAD_RECNUM      -14 
 #define JOB_REGISTRY_OPENDIR_FAIL    -15 
 #define JOB_REGISTRY_HASH_EXISTS     -16 
+#define JOB_REGISTRY_STAT_FAIL       -17 
+#define JOB_REGISTRY_MMAP_FAIL       -18 
+#define JOB_REGISTRY_MUNMAP_FAIL     -19 
+#define JOB_REGISTRY_UPDATE_TIMEOUT  -20 
 
 #define JOB_REGISTRY_TEST_FILE "/tmp/test_reg.bjr"
 #define JOB_REGISTRY_REGISTRY_NAME "registry"
@@ -204,6 +218,7 @@ job_registry_handle *job_registry_init(const char *path,
                                        job_registry_index_mode mode);
 void job_registry_destroy(job_registry_handle *rhandle);
 job_registry_recnum_t job_registry_firstrec(job_registry_handle *rhandle, FILE *fd);
+int job_registry_resync_mmap(job_registry_handle *rhandle, FILE *fd);
 int job_registry_resync(job_registry_handle *rhandle, FILE *fd);
 int job_registry_sort(job_registry_handle *rhandle);
 job_registry_recnum_t job_registry_get_recnum(const job_registry_handle *rha,

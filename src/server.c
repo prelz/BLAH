@@ -309,6 +309,8 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	int n_threads_value;
 	char *final_results;
 	struct stat tmp_stat;
+	config_entry *jr_mmap;
+	job_registry_index_mode jr_mode;
 
 	blah_config_handle = config_read(NULL);
 	if (blah_config_handle == NULL)
@@ -414,7 +416,11 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	jre = config_get("job_registry", blah_config_handle);
 	if (jre != NULL)
 	{
-		blah_jr_handle = job_registry_init(jre->value, BY_BLAH_ID);
+		jr_mode = BY_BLAH_ID;
+		if (config_test_boolean(config_get("job_registry_use_mmap", blah_config_handle))) {
+			jr_mode = BY_BLAH_ID_MMAP;
+		}
+		blah_jr_handle = job_registry_init(jre->value, jr_mode);
 		if (blah_jr_handle != NULL)
 		{
 			/* Enable BLAH_JOB_STATUS_ALL/SELECT commands */
