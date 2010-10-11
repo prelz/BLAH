@@ -452,6 +452,7 @@ Job Id: 11.cream-12.pd.infn.it
 				batch_str=strdel(token[1]," ");
 				JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
 				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
+				en.exitcode=-1;
 				bupdater_push_active_job(&bact, en.batch_id);
 				free(batch_str);
 				freetoken(&token,maxtok_t);
@@ -466,9 +467,11 @@ Job Id: 11.cream-12.pd.infn.it
 				status_str=strdel(token[1]," ");
 				if(status_str && strcmp(status_str,"Q")==0){ 
 					en.status=IDLE;
+					en.exitcode=-1;
 					JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 				}else if(status_str && strcmp(status_str,"W")==0){ 
 					en.status=IDLE;
+					en.exitcode=-1;
 				}else if(status_str && strcmp(status_str,"R")==0){ 
 					en.status=RUNNING;
 					en.exitcode=-1;
@@ -477,12 +480,14 @@ Job Id: 11.cream-12.pd.infn.it
 					JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				}else if(status_str && strcmp(status_str,"H")==0){ 
 					en.status=HELD;
+					en.exitcode=-1;
 					JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 				}
 				free(status_str);
 				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line,"unable to run job")){
 				en.status=IDLE;	
+				en.exitcode=-1;
 			}else if(line && strstr(line,"exit_status = ")){
 				maxtok_t = strtoken(line, '=', &token);
 				ex_str=strdel(token[1]," ");

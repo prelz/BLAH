@@ -455,6 +455,7 @@ IntStateQueryShort()
 				
 			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,tmp);
 			JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
+			en.exitcode=-1;
 			bupdater_push_active_job(&bact, en.batch_id);
 			free(tmp);
 			
@@ -470,8 +471,10 @@ IntStateQueryShort()
 			first=FALSE;        
 			if(token[2] && strcmp(token[2],"PEND")==0){ 
 				en.status=IDLE;
+				en.exitcode=-1;
 			}else if(token[2] && ((strcmp(token[2],"USUSP")==0) || (strcmp(token[2],"PSUSP")==0) ||(strcmp(token[2],"SSUSP")==0))){ 
 				en.status=HELD;
+				en.exitcode=-1;
 			}else if(token[2] && strcmp(token[2],"RUN")==0){ 
 				en.status=RUNNING;
 				en.exitcode=-1;
@@ -567,6 +570,7 @@ IntStateQuery()
 	en.status=UNDEFINED;
 	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 	JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+	JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,"\0");
 	en.exitcode=-1;
 	bupdater_free_active_jobs(&bact);
 
@@ -607,12 +611,16 @@ IntStateQuery()
 						}
 					}
 					en.status = UNDEFINED;
+					JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+					JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,"\0");
 					JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
+					en.exitcode=-1;
 				}
 				maxtok_t = strtoken(line, ',', &token);
 				batch_str=strdel(token[0],"Job <>");
 				JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
 				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
+				en.exitcode=-1;
 				bupdater_push_active_job(&bact, en.batch_id);
 				free(batch_str);
 				freetoken(&token,maxtok_t);
@@ -624,6 +632,7 @@ IntStateQuery()
 				first=FALSE;
 			}else if(line && strstr(line," <PEND>, ")){	
 				en.status=IDLE;
+				en.exitcode=-1;
 				if(use_bhist_for_susp && strcmp(use_bhist_for_susp,"yes")==0){
 				/*If status was HELD we have to check timestamp of resume to pend with bhist (the info is not there with bjobs)*/
 					if(ren && ren->status==HELD){
@@ -647,6 +656,7 @@ IntStateQuery()
 				}
 			}else if(line && (strstr(line," <USUSP>,") || strstr(line," <PSUSP>,") || strstr(line," <SSUSP>,"))){	
 				en.status=HELD;
+				en.exitcode=-1;
 				if(ren && ren->status==IDLE){
 					JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 				}
