@@ -629,6 +629,9 @@ IntStateQuery()
 						fprintf(stderr,"Get of record returns error ");
 						perror("");
 				}
+				if(ren){
+					en.udate=ren->udate;
+				}
 				first=FALSE;
 			}else if(line && strstr(line," <PEND>, ")){	
 				en.status=IDLE;
