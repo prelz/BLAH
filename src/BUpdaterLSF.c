@@ -631,6 +631,8 @@ IntStateQuery()
 				}
 				if(ren){
 					en.udate=ren->udate;
+				}else{
+					en.udate=time(0);
 				}
 				first=FALSE;
 			}else if(line && strstr(line," <PEND>, ")){	
