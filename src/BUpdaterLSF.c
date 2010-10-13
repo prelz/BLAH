@@ -630,9 +630,11 @@ IntStateQuery()
 						perror("");
 				}
 				if(ren){
-					en.udate=ren->udate;
-				}else{
-					en.udate=time(0);
+					if(strlen(ren->updater_info)>0){
+						en.udate=ren->udate;
+					}else{
+						en.udate=time(0);
+					}
 				}
 				first=FALSE;
 			}else if(line && strstr(line," <PEND>, ")){	
