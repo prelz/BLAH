@@ -262,12 +262,14 @@ PollDB()
 	char *finalbuffer=NULL;
         char *cdate=NULL;
 	time_t now;
-        int  maxtok,i;
+        int  maxtok,i,maxtokl;
         char **tbuf;
+        char **lbuf;
 	int len=0,flen=0;
         struct stat sbuf;
         int rc;
 	char *regfile;
+        char *cp=NULL;
 	
 	rha=job_registry_init(registry_file, BY_BATCH_ID);
 	if (rha == NULL){
@@ -365,7 +367,17 @@ PollDB()
 					buffer=ComposeClassad(en);
 				}else{
 					cdate=iepoch2str(now);
-					buffer=make_message("[BlahJobName=\"%s\"; JobStatus=4; JwExitCode=999; ExitReason=\"job not found\"; Reason=\"reason=999\"; ChangeTime=\"%s\"; ]\n",tbuf[i],cdate);
+					maxtokl=strtoken(tbuf[i],'_',&lbuf);
+					if(lbuf[1]){
+						if ((cp = strrchr (lbuf[1], '\n')) != NULL){
+							*cp = '\0';
+						}
+						if ((cp = strrchr (lbuf[1], '\r')) != NULL){
+							*cp = '\0';
+						}
+						buffer=make_message("[BlahJobName=\"%s\"; ClientJobId=\"%s\"; JobStatus=4; JwExitCode=999; ExitReason=\"job not found\"; Reason=\"reason=999\"; ChangeTime=\"%s\"; ]\n",tbuf[i],lbuf[1],cdate);
+					}
+					freetoken(&lbuf,maxtokl);
 					free(cdate);
 				}
 				free(en);
