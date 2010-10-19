@@ -52,13 +52,7 @@ main(int argc, char *argv[])
 	/* Get log dir name and port from conf file*/
 
 	ldir=GetLogDir(argc,argv);
-    
-	if(debug){
-		if((debuglogfile = fopen(debuglogname, "a+"))==0){
-			debuglogfile =  fopen("/dev/null", "a+");
-		}
-	}
-    
+        
 	eventsfile=make_message("%s/%s",ldir,lsbevents);
     
 	/* Set to zero all the cache */
@@ -1093,6 +1087,12 @@ GetLogDir(int largc, char *largv[])
 	if(debug <=0){
 		debug=0;
 	}
+	
+	if(debug){
+		if((debuglogfile = fopen(debuglogname, "a+"))==0){
+			debuglogfile =  fopen("/dev/null", "a+");
+		}
+	}
   
 	if((econfpath=getenv("LSF_ENVDIR"))!=NULL){
 		conffile=make_message("%s/lsf.conf",econfpath);
@@ -1131,6 +1131,7 @@ creamdone:
 	if(tbuf[1]){
 		lsf_base_pathtmp=strdup(tbuf[1]);
 	} else {
+		do_log(debuglogfile, debug, 1, "Unable to find logdir in conf file");
 		sysfatal("Unable to find logdir in conf file: %r");
 	}
  
@@ -1146,9 +1147,11 @@ creamdone:
 		s=make_message("%s/lsid",ebinpath);
 		rc=stat(s,&sbuf);
 		if(rc) {
+			do_log(debuglogfile, debug, 1, "%s not found",s);
 			sysfatal("%s not found: %r",s);
 		}
 		if( ! (sbuf.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH)) ) {
+			do_log(debuglogfile, debug, 1, "%s is not executable, but mode %05o",s,(int)sbuf.st_mode);
 			sysfatal("%s is not executable, but mode %05o: %r",s,(int)sbuf.st_mode);
 		}
 		free(s);
@@ -1159,9 +1162,11 @@ creamdone:
 	s=make_message("%s/lsid",binpath);
 	rc=stat(s,&sbuf);
 	if(rc) {
+		do_log(debuglogfile, debug, 1, "%s not found",s);
 		sysfatal("%s not found: %r",s);
 	}
 	if( ! (sbuf.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH)) ) {
+		do_log(debuglogfile, debug, 1, "%s is not executable, but mode %05o",s,(int)sbuf.st_mode);
 		sysfatal("%s is not executable, but mode %05o: %r",s,(int)sbuf.st_mode);
 	}
 	free(s);
@@ -1173,9 +1178,11 @@ creamdone:
 		s=make_message("%s/lsid",ebinpath);
 		rc=stat(s,&sbuf);
 		if(rc) {
+			do_log(debuglogfile, debug, 1, "%s not found",s);
 			sysfatal("%s not found: %r",s);
 		}
 		if( ! (sbuf.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH)) ) {
+			do_log(debuglogfile, debug, 1, "%s is not executable, but mode %05o",s,(int)sbuf.st_mode);
 			sysfatal("%s is not executable, but mode %05o: %r",s,(int)sbuf.st_mode);
 		}
 		free(s);

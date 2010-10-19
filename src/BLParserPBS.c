@@ -173,6 +173,7 @@ main(int argc, char *argv[])
 	}
 
 	if (opendir(ldir)==NULL){
+		do_log(debuglogfile, debug, 1, "dir %s does not exist or is not readable",ldir);
 		sysfatal("dir %s does not exist or is not readable: %r",ldir);
 	}
 
