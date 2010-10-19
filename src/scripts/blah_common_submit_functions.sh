@@ -756,7 +756,7 @@ function bls_wrap_up_submit ()
 
   if [ -d "$blah_debug_save_submit_info" -a -n "$bls_tmp_name" ]; then
     # Store files used for this job in a directory
-    bls_info_dir="$blah_submit_store_info/$bls_tmp_name.debug"     
+    bls_info_dir="$blah_debug_save_submit_info/$bls_tmp_name.debug"     
     mkdir "$bls_info_dir"
     if [ $? -eq 0 ]; then
       # Best effort.
