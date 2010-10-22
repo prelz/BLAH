@@ -416,7 +416,7 @@ Job Id: 11.cream-12.pd.infn.it
 			if ((cp = strrchr (line, '\n')) != NULL){
 				*cp = '\0';
 			}
-			do_log(debuglogfile, debug, 4, "%s: line in IntStateQuery is:%s\n",argv0,line);
+			do_log(debuglogfile, debug, 3, "%s: line in IntStateQuery is:%s\n",argv0,line);
 			now=time(0);
 			string_now=make_message("%d",now);
 			if(line && strstr(line,"Job Id: ")){
@@ -710,6 +710,9 @@ Job: 13.cream-12.pd.infn.it
 	}
 	
 	now=time(0);
+	if(failed_count>10){
+		failed_count=10;
+	}
 	time_to_add=pow(failed_count,1.5);
 	next_finalstatequery=now+time_to_add;
 	do_log(debuglogfile, debug, 3, "%s: next FinalStatequery will be in %d seconds\n",argv0,time_to_add);
