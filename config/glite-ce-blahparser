@@ -60,6 +60,7 @@ case "$1" in
   status)
 	     status ${GLITE_CE_BUPDATER}
 	     status ${GLITE_CE_BNOTIFIER}
+             RETVAL=$?
 	     ;;
 
   restart)
@@ -72,5 +73,5 @@ case "$1" in
         exit 1
 esac
 
-exit 0
+exit $RETVAL
 
