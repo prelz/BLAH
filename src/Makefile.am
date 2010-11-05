@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.49 2010/05/10 15:26:21 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.50 2010/11/05 13:23:41 mezzadri Exp $ 
 #
 # File:           Makefile.am
 #
@@ -42,7 +42,7 @@ GLOBUS_EXECS =
 endif
 
 bin_PROGRAMS = blahpd blahpd_daemon BLClient BLParserLSF BLParserPBS test_condor_logger blah_job_registry_add blah_job_registry_lkup blah_job_registry_scan_by_subject BUpdaterCondor BNotifier BUpdaterLSF BUpdaterPBS BUpdaterSGE $(GLOBUS_EXECS)  blparser_master blah_check_config
-noinst_PROGRAMS = test_job_registry_create test_job_registry_purge test_job_registry_update test_job_registry_access
+noinst_PROGRAMS = test_job_registry_create test_job_registry_purge test_job_registry_update test_job_registry_access blah_job_registry_dump
 
 common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C proxy_hashcontainer.c config.c job_registry.c blah_utils.c env_helper.c mapped_exec.c md5.c 
 
@@ -123,6 +123,9 @@ blparser_master_LDADD =
 
 blah_check_config_SOURCES = blah_check_config.c Bfunctions.c config.c blah_utils.c
 blah_check_config_LDADD =
+
+blah_job_registry_dump_SOURCES = blah_job_registry_dump.c job_registry.c md5.c config.c
+blah_job_registry_dump_CFLAGS = $(AM_CFLAGS)
 
 noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h condor_create_log.h proxy_hashcontainer.h job_registry.h md5.h config.h BUpdaterCondor.h Bfunctions.h BNotifier.h BUpdaterLSF.h BUpdaterPBS.h BUpdaterSGE.h blah_utils.h env_helper.h mapped_exec.h blah_check_config.h BLfunctions.h
 
