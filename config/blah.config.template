@@ -49,6 +49,15 @@ pbs_BLPport1=
 pbs_BLPserver2=
 pbs_BLPport2=
 
+# Certain Torque versions, starting with 2.4.6, don't support the
+# multiple stagein/stagout directive documented in the qsub manpage due to a 
+# bug.
+# As a safe recipe for automatically detecting this condition at runtime cannot
+# be established, this is left to manual configuration.
+# Setting this attribute to 'yes' -should- be compatible with older
+# Torque versions, but may be failing with PBSpro.
+blah_torque_multiple_staging_directive_bug=no
+
 ####
 
 #Path where LSF executables are located 
