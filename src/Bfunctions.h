@@ -91,6 +91,7 @@ int bupdater_lookup_active_jobs(bupdater_active_jobs *bact,
 void bupdater_free_active_jobs(bupdater_active_jobs *bact);
 int do_log(FILE *debuglogfile, int debuglevel, int dbgthresh, const char *fmt, ...);
 int check_config_file(char *logdev);
+char *GetPBSSpoolPath(char *binpath);
 
 extern int bfunctions_poll_timeout; 
 

@@ -45,6 +45,10 @@
 . `dirname $0`/blah_common_submit_functions.sh
 
 logpath=${pbs_spoolpath}/server_logs
+if [ ! -d $logpath -o ! -x $logpath ]; then
+ pbs_spoolpath=`${pbs_binpath}/tracejob | grep 'default prefix path'|awk -F" " '{ print $5 }'`
+ logpath=${pbs_spoolpath}/server_logs
+fi
 
 bls_job_id_for_renewal=PBS_JOBID
 

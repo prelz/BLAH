@@ -41,6 +41,10 @@ fi
 usage_string="Usage: $0 [-w] [-n]"
 
 logpath=${pbs_spoolpath}/server_logs
+if [ ! -d $logpath -o ! -x $logpath ]; then
+ pbs_spoolpath=`${pbs_binpath}/tracejob | grep 'default prefix path'|awk -F" " '{ print $5 }'`
+ logpath=${pbs_spoolpath}/server_logs
+fi
 
 #get worker node info
 getwn=""

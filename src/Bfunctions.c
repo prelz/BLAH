@@ -850,3 +850,30 @@ int check_config_file(char *logdev){
 
 	return 0;
 }
+
+char *GetPBSSpoolPath(char *binpath)
+{
+	char *command_string=NULL;
+	int len=0;
+	FILE *file_output;
+	char *pbs_spool=NULL;
+
+	command_string=make_message("%s/tracejob | grep 'default prefix path'|awk -F\" \" '{ print $5 }'",binpath);
+        file_output = popen(command_string,"r");
+	
+        if((pbs_spool=calloc(STR_CHARS,1)) == 0){
+                sysfatal("can't malloc pbs_spool in GetPBSSpoolpath: %r");
+        }
+
+        if (file_output != NULL){
+                len = fread(pbs_spool, sizeof(char), STR_CHARS - 1 , file_output);
+                if (len>0){
+                        pbs_spool[len-1]='\000';
+                }
+        }
+        pclose(file_output);
+	free(command_string);
+	
+	return pbs_spool;
+
+}

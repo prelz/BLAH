@@ -52,7 +52,7 @@ main(int argc, char *argv[])
 	pthread_t UpdateThd;
 	pthread_t CreamThd;
    
-	char *espooldir;
+	char *tspooldir;
 
 	argv0 = argv[0];
 
@@ -70,6 +70,7 @@ main(int argc, char *argv[])
 		{"version",   no_argument,             0, 'v'},
 		{"port",      required_argument,       0, 'p'},
 		{"creamport", required_argument,       0, 'm'},
+		{"binpath",   required_argument,       0, 'b'},
 		{"spooldir",  required_argument,       0, 's'},
 		{"logfile",   required_argument,       0, 'l'},
 		{"debug",     required_argument,       0, 'd'},
@@ -106,6 +107,10 @@ main(int argc, char *argv[])
 	       
 		case 'm':
 			creamport=atoi(optarg);
+			break;
+	       
+		case 'b':
+			binpath=strdup(optarg);
 			break;
 	       
 		case 's':
@@ -165,16 +170,19 @@ main(int argc, char *argv[])
  
 	/* Get log dir name */
 
-	if((espooldir=getenv("PBS_SPOOL_DIR"))!=NULL){
-		ldir=make_message("%s/server_logs",espooldir);
-	
-	} else{
-		ldir=make_message("%s/server_logs",spooldir);
-	}
+	ldir=make_message("%s/server_logs",spooldir);
 
 	if (opendir(ldir)==NULL){
-		do_log(debuglogfile, debug, 1, "dir %s does not exist or is not readable",ldir);
-		sysfatal("dir %s does not exist or is not readable: %r",ldir);
+		do_log(debuglogfile, debug, 1, "dir %s does not exist or is not readable trying to get spool dir from pbs commands",ldir);
+		tspooldir=GetPBSSpoolPath(binpath);
+		free(ldir);
+		ldir=make_message("%s/server_logs",tspooldir);
+		free(spooldir);
+		spooldir=strdup(tspooldir);
+		if (opendir(ldir)==NULL){
+			do_log(debuglogfile, debug, 1, "dir %s does not exist or is not readable (using pbs commands)",ldir);
+			sysfatal("dir %s does not exist or is not readable (using pbs commands): %r",ldir);
+		}
 	}
 
 	now=time(NULL);
@@ -1595,6 +1603,7 @@ usage()
 	printf("Usage: BLParserPBS [OPTION...]\n");
 	printf("  -p, --port=<port number>               port\n");
 	printf("  -m, --creamport=<creamport number>     creamport\n");
+	printf("  -b, --binpath=<PBSbinpath>             PBS binpath\n");
 	printf("  -s, --spooldir=<PBSspooldir>           PBS spooldir\n");
 	printf("  -l, --logfile =<DebugLogFile>          DebugLogFile\n");
 	printf("  -d, --debug=INT                        enable debugging\n");
@@ -1611,7 +1620,7 @@ int
 short_usage()
 {
 	printf("Usage: BLParserPBS [-Dv?] [-p|--port <port number>]\n");
-	printf("        [-m|--creamport <creamport number>] [-s|--spooldir <PBSspooldir>]\n");
+	printf("        [-m|--creamport <creamport number>] [-s|--spooldir <PBSspooldir>] [-b|--binpath <PBSbinpath>]\n");
 	printf("        [-l|--logfile  <DebugLogFile>] [-d|--debug INT] [-D|--daemon]\n");
 	printf("        [-v|--version] [-?|--help] [--usage]\n");
 	exit(EXIT_SUCCESS);

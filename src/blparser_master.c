@@ -311,6 +311,7 @@ main(int argc, char *argv[])
 	char *debuglogfilepbstmp=NULL;
 	char *debuglogfilepbs=NULL;
 	char *spooldirpbs=NULL;
+	char *binpathpbs=NULL;
 	
 	char *debuglevellsf=NULL;
 	char *debuglogfilelsftmp=NULL;
@@ -412,6 +413,14 @@ main(int argc, char *argv[])
 				exit(MALLOC_ERROR);
 			}
         	}
+		ret = config_get("GLITE_CE_BLPARSERPBS_BINPATH",blah_config_handle);
+		if (ret != NULL){
+			binpathpbs = make_message("-b %s",ret->value);
+			if(binpathpbs == NULL){
+				fprintf(stderr, "Out of memory\n");
+				exit(MALLOC_ERROR);
+			}
+		}
 
         	ret = config_get("GLITE_CE_BLPARSERPBS_NUM",blah_config_handle);
         	if (ret != NULL){
@@ -464,7 +473,7 @@ main(int argc, char *argv[])
 			}
 			free(s);
 			
-			parser_pbs[i].exefile = make_message("%s/bin/%s %s %s %s %s %s",blah_location,parser_names[0],debuglevelpbs,debuglogfilepbs,spooldirpbs,portpbs,creamportpbs);
+			parser_pbs[i].exefile = make_message("%s/bin/%s %s %s %s %s %s %s",blah_location,parser_names[0],debuglevelpbs,debuglogfilepbs,spooldirpbs,binpathpbs,portpbs,creamportpbs);
 			parser_pbs[i].pidfile = make_message("%s/%s%d.pid",PID_DIR,parser_names[0],i+1);
 
 			if(parser_pbs[i].exefile == NULL || parser_pbs[i].pidfile == NULL){
@@ -481,6 +490,7 @@ main(int argc, char *argv[])
 		free(debuglogfilepbstmp);
 		free(debuglogfilepbs);
 		free(spooldirpbs);
+		free(binpathpbs);
 	}
 	
 	/* LSF part */

@@ -99,6 +99,7 @@ int freetoken(char ***token, int maxtok);
 int strtoken(const char *s, char delim, char ***token);
 int str2epoch(char *str, char *f);
 char *iepoch2str(time_t epoch, char *f);
+char *GetPBSSpoolPath(char *binpath);
 int do_log(FILE *debuglogfile, int debuglevel, int dbgthresh, const char *fmt, ...);
 void daemonize();
 void eprint(int err, char *fmt, va_list args);

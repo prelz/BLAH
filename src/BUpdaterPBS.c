@@ -34,6 +34,7 @@ int main(int argc, char *argv[]){
 	char *final_string=NULL;
 	char *cp=NULL;
 	char *tpath;
+	char *tspooldir;
 	
 	int version=0;
 	int first=TRUE;
@@ -174,8 +175,15 @@ int main(int argc, char *argv[]){
 
 		tpath=make_message("%s/server_logs",pbs_spoolpath);
 		if (opendir(tpath)==NULL){
-			do_log(debuglogfile, debug, 1, "%s: dir %s does not exist or is not readable\n",argv0,tpath);
-			sysfatal("dir %s does not exist or is not readable: %r",tpath);
+			do_log(debuglogfile, debug, 1, "%s: dir %s does not exist or is not readable. Trying now pbs commands\n",argv0,tpath);
+                	tspooldir=GetPBSSpoolPath(pbs_binpath);
+                	free(tpath);
+                	tpath=make_message("%s/server_logs",tspooldir);
+                	free(tspooldir);
+                	if (opendir(tpath)==NULL){
+				do_log(debuglogfile, debug, 1, "dir %s does not exist or is not readable (using pbs commands)",tpath);
+				sysfatal("dir %s does not exist or is not readable (using pbs commands): %r",tpath);
+                	}
 		}
 		free(tpath);
         }
