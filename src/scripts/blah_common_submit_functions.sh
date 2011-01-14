@@ -620,6 +620,8 @@ function bls_add_job_wrapper ()
   fi
 
   echo "mkdir \$new_home">>$bls_tmp_file
+  echo "trap 'cd \$old_home; rm -rf \$new_home; exit 255' 1 2 3 15" >> $bls_tmp_file
+  echo "trap 'cd \$old_home; rm -rf \$new_home' 0" >> $bls_tmp_file
 
   echo "# Copy into new home any shared input sandbox file" >> $bls_tmp_file
   bls_fl_subst_and_dump inputcopy "cp \"@@F_LOCAL\" \"\$new_home/@@F_REMOTE\" &> /dev/null" $bls_tmp_file
@@ -702,7 +704,6 @@ function bls_add_job_wrapper ()
   bls_fl_subst_relative_paths_and_dump inputsand "rm \"@@F_WORKNAME\" 2> /dev/null" $bls_tmp_file
 
   echo "cd \$old_home" >> $bls_tmp_file
-  echo "rm -rf \$new_home" >> $bls_tmp_file
   
   echo "" >> $bls_tmp_file
   
