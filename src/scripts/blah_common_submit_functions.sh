@@ -620,7 +620,7 @@ function bls_add_job_wrapper ()
   fi
 
   echo "mkdir \$new_home">>$bls_tmp_file
-  echo "trap 'cd \$old_home; rm -rf \$new_home; exit 255' 1 2 3 15" >> $bls_tmp_file
+  echo "trap 'cd \$old_home; rm -rf \$new_home; exit 255' 1 2 3 15 24" >> $bls_tmp_file
   echo "trap 'cd \$old_home; rm -rf \$new_home' 0" >> $bls_tmp_file
 
   echo "# Copy into new home any shared input sandbox file" >> $bls_tmp_file
