@@ -331,6 +331,8 @@ main(int argc, char *argv[])
 	
 	char *s=NULL;
 	
+	char *ldir=NULL;
+	
 	int i;
 	
 		
@@ -407,12 +409,21 @@ main(int argc, char *argv[])
 
         	ret = config_get("GLITE_CE_BLPARSERPBS_SPOOLDIR",blah_config_handle);
         	if (ret != NULL){
+			ldir=make_message("%s/server_logs",ret->value);
+			if (opendir(ldir)==NULL){
+				fprintf(stderr, "dir %s does not exist or is not readable\n",ldir);
+				exit(EXIT_FAILURE);
+			}
+
 			spooldirpbs = make_message("-s %s",ret->value);
 			if(spooldirpbs == NULL){
 				fprintf(stderr, "Out of memory\n");
 				exit(MALLOC_ERROR);
 			}
-        	}
+        	}else{
+			fprintf(stderr, "GLITE_CE_BLPARSERPBS_SPOOLDIR is not defined\n");
+			exit(EXIT_FAILURE);
+		}
 		ret = config_get("GLITE_CE_BLPARSERPBS_BINPATH",blah_config_handle);
 		if (ret != NULL){
 			binpathpbs = make_message("-b %s",ret->value);

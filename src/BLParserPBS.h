@@ -88,8 +88,7 @@ to know if cream is connected:
 */
 int creamisconn=0;
 
-/* spooldir default */
-char *spooldir="/var/spool/pbs";
+char *spooldir=NULL;
 
 char *binpath="/usr/bin";
 
