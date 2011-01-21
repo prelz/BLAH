@@ -1580,6 +1580,9 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
 		}else{
 			exitreason=make_message("");
 		}
+	}else{
+		outreason=make_message("");
+		exitreason=make_message("");
 	}
     
 	maxtok = strtoken(blahjobid, '_', &clientjobid);    
@@ -1587,7 +1590,7 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
 	if(wn && strcmp(wn,"NA")!=0){
 		buffer=make_message("[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\"; WorkerNode=%s;%s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], wn, outreason, exitreason, timestamp);
 	}else{
-		buffer=make_message("[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\"; ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], timestamp);
+		buffer=make_message("[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\"; %s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], outreason, exitreason, timestamp);
 	}
     
 	freetoken(&clientjobid,maxtok);
