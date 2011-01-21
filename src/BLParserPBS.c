@@ -805,7 +805,7 @@ LookupAndSend(int m_sock)
 	
 		Readline(conn_s, buffer, STR_CHARS-1);
 		buftmp=strdel(buffer,"\n");
-		do_log(debuglogfile, debug, 1, "Received:%s",buftmp);
+		do_log(debuglogfile, debug, 3, "Received:%s\n",buftmp);
 		free(buftmp);
 	
 		/* printf("thread/0x%08lx\n",pthread_self()); */
@@ -1056,7 +1056,7 @@ LookupAndSend(int m_sock)
 	
 close:	
 		Writeline(conn_s, out_buf, strlen(out_buf));
-		do_log(debuglogfile, debug, 1, "Sent:%s",out_buf);
+		do_log(debuglogfile, debug, 3, "Sent:%s",out_buf);
 
 		free(out_buf);
 		free(buffer);
@@ -1451,14 +1451,17 @@ NotifyCream(int jobid, char *newstatus, char *blahjobid, char *wn, char *reason,
 		}else{
 			exitreason=make_message("");	
 		}
-	}
+	}else{
+                outreason=make_message("");
+                exitreason=make_message("");
+        }
     
 	maxtok = strtoken(blahjobid, '_', &clientjobid);    
     
 	if(wn && strcmp(wn,"NA")!=0){
 		buffer=make_message("[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\"; WorkerNode=%s;%s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], wn, outreason, exitreason, timestamp);
 	}else{
-		buffer=make_message("[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\"; ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], timestamp);
+		buffer=make_message("[BatchJobId=\"%s\"; JobStatus=%s; BlahJobName=\"%s\"; ClientJobId=\"%s\"; %s%s ChangeTime=\"%s\";]\n",sjobid, newstatus, blahjobid, clientjobid[1], outreason, exitreason, timestamp);
 	}
     
 	freetoken(&clientjobid,maxtok);

@@ -637,7 +637,7 @@ LookupAndSend(int m_sock)
 	
 		Readline(conn_s, buffer, STR_CHARS-1);	
 		buftmp=strdel(buffer,"\n");
-		do_log(debuglogfile, debug, 1, "Received:%s",buftmp);
+		do_log(debuglogfile, debug, 3, "Received:%s\n",buftmp);
 		free(buftmp);
 	
 		/* printf("thread/0x%08lx\n",pthread_self()); */
@@ -915,7 +915,7 @@ LookupAndSend(int m_sock)
 	
 close:	
 		Writeline(conn_s, out_buf, strlen(out_buf));
-		do_log(debuglogfile, debug, 1, "Sent:%s",out_buf);
+		do_log(debuglogfile, debug, 3, "Sent:%s",out_buf);
 	
 		free(out_buf);
 		free(buffer);
