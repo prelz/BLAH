@@ -311,7 +311,6 @@ main(int argc, char *argv[])
 	char *debuglogfilepbstmp=NULL;
 	char *debuglogfilepbs=NULL;
 	char *spooldirpbs=NULL;
-	char *binpathpbs=NULL;
 	
 	char *debuglevellsf=NULL;
 	char *debuglogfilelsftmp=NULL;
@@ -414,7 +413,7 @@ main(int argc, char *argv[])
 				fprintf(stderr, "dir %s does not exist or is not readable\n",ldir);
 				exit(EXIT_FAILURE);
 			}
-
+			free(ldir);
 			spooldirpbs = make_message("-s %s",ret->value);
 			if(spooldirpbs == NULL){
 				fprintf(stderr, "Out of memory\n");
@@ -423,14 +422,6 @@ main(int argc, char *argv[])
         	}else{
 			fprintf(stderr, "GLITE_CE_BLPARSERPBS_SPOOLDIR is not defined\n");
 			exit(EXIT_FAILURE);
-		}
-		ret = config_get("GLITE_CE_BLPARSERPBS_BINPATH",blah_config_handle);
-		if (ret != NULL){
-			binpathpbs = make_message("-b %s",ret->value);
-			if(binpathpbs == NULL){
-				fprintf(stderr, "Out of memory\n");
-				exit(MALLOC_ERROR);
-			}
 		}
 
         	ret = config_get("GLITE_CE_BLPARSERPBS_NUM",blah_config_handle);
@@ -484,7 +475,7 @@ main(int argc, char *argv[])
 			}
 			free(s);
 			
-			parser_pbs[i].exefile = make_message("%s/bin/%s %s %s %s %s %s %s",blah_location,parser_names[0],debuglevelpbs,debuglogfilepbs,spooldirpbs,binpathpbs,portpbs,creamportpbs);
+			parser_pbs[i].exefile = make_message("%s/bin/%s %s %s %s %s %s %s",blah_location,parser_names[0],debuglevelpbs,debuglogfilepbs,spooldirpbs,portpbs,creamportpbs);
 			parser_pbs[i].pidfile = make_message("%s/%s%d.pid",PID_DIR,parser_names[0],i+1);
 
 			if(parser_pbs[i].exefile == NULL || parser_pbs[i].pidfile == NULL){
@@ -501,7 +492,6 @@ main(int argc, char *argv[])
 		free(debuglogfilepbstmp);
 		free(debuglogfilepbs);
 		free(spooldirpbs);
-		free(binpathpbs);
 	}
 	
 	/* LSF part */
@@ -574,7 +564,7 @@ main(int argc, char *argv[])
 					exit(MALLOC_ERROR);
 				}
 			}
-			if(parsernumpbs>1){
+			if(parsernumlsf>1){
 				debuglogfilelsf=make_message("%s-%d",debuglogfilelsftmp,i+1);
 				if(debuglogfilelsf == NULL){
 					fprintf(stderr, "Out of memory\n");
