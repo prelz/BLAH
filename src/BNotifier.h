@@ -27,6 +27,7 @@
 #include "config.h"
 
 #define LISTENQ            1024
+#define LISTBUFFER         5000000
 
 #define DEFAULT_LOOP_INTERVAL 5
 

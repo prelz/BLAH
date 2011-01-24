@@ -517,7 +517,7 @@ STARTNOTIFYJOBEND
 	char      *buffer;
 	time_t    now;
 
-	if((buffer=calloc(STR_CHARS,1)) == 0){
+	if((buffer=calloc(LISTBUFFER,1)) == 0){
 		sysfatal("can't malloc buffer in CreamConnection: %r");
 	}
 
@@ -530,7 +530,7 @@ STARTNOTIFYJOBEND
 		}
 		while ( 1 ) {
 			*buffer = 0;
-			if(Readline(conn_c, buffer, STR_CHARS-1)<=0){
+			if(Readline(conn_c, buffer, LISTBUFFER-1)<=0){
 				close(conn_c);
 				creamisconn=FALSE;
 				break;

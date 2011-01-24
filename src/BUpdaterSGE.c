@@ -413,6 +413,8 @@ int StateQuery(char *command_string)
 	char *token[6];
 	job_registry_entry en;
 	int ret;
+        time_t now;
+        char *string_now=NULL;
 
 	file_output = popen(command_string,"r");
 
@@ -434,6 +436,11 @@ int StateQuery(char *command_string)
 		  en.udate=atoi(token[3]);
 		  JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,token[4]);
 		  JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+		  now=time(0);
+                  string_now=calloc(13,1);
+                  string_now=sprintf("%d",now);
+                  JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now)
+                  free(string_now);
 		  
 		  if ((ret=job_registry_update(rha, &en)) < 0)
 		    {
