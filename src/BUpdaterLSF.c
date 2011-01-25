@@ -857,6 +857,19 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				free(ex_str);
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				freetoken(&token,maxtok_t);
+			}else if(line && strstr(line," Exited by signal") && en.status != REMOVED){	
+				maxtok_t = strtoken(line, ' ', &token);
+				timestamp=make_message("%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp[strlen(timestamp)-1]='\0';
+				tmstampepoch=str2epoch(timestamp,"W");
+				en.udate=tmstampepoch;
+				en.status=COMPLETED;
+				free(timestamp);
+				ex_str=strdel(token[7],".");
+				en.exitcode=atoi(ex_str);
+				free(ex_str);
+				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line," Done successfully") && en.status != REMOVED){	
 				maxtok_t = strtoken(line, ' ', &token);
 				timestamp=make_message("%s %s %s %s",token[0],token[1],token[2],token[3]);
