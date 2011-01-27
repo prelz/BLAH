@@ -39,6 +39,7 @@
 #include <wordexp.h>
 #include <signal.h>
 #include <unistd.h>
+#include <dirent.h>
 
 #include "blahpd.h"
 #include "config.h"

@@ -47,14 +47,11 @@ main(int argc, char *argv[])
   char *my_home;
   job_registry_index_mode mode=BY_BLAH_ID;
   job_registry_entry *ren;
-  char *cad;
   config_handle *cha;
-  config_entry *rge,*anpe,*anhe;
+  config_entry *rge;
   job_registry_handle *rha;
   int opt_get_unfinished = FALSE;
   int opt_get_finished = FALSE;
-  char *anhname;
-  struct utsname ruts;
   FILE *fd;
   char *proxypath;
   
@@ -75,10 +72,10 @@ main(int argc, char *argv[])
         break;
       case 'h':
         fprintf(stdout,"Usage: %s [-u|-f] [-h]\n",argv[0]);
-        fprintf(stdout,"\tno options to list all the jobs in the registry \n",argv[0]);
-        fprintf(stdout,"\t-u to list only unfinished\n",argv[0]);
-        fprintf(stdout,"\t-u to list only finished\n",argv[0]);
-        fprintf(stdout,"\t-h for help\n",argv[0]);
+        fprintf(stdout,"\tno options to list all the jobs in the registry \n");
+        fprintf(stdout,"\t-u to list only unfinished\n");
+        fprintf(stdout,"\t-u to list only finished\n");
+        fprintf(stdout,"\t-h for help\n");
         return 0;
      }
    }
@@ -145,9 +142,9 @@ while ((ren = job_registry_get_next(rha, fd)) != NULL)
  if(opt_get_unfinished && (ren->status == 3 || ren->status == 4)) continue;
  if(opt_get_finished && (ren->status == 1 || ren->status == 2 || ren->status == 5)) continue;
  printf("[ BatchJobId=\"%s\"; JobStatus=%d; BlahJobId=\"%s\"; "
-                   "CreateTime=%u; ModifiedTime=%u; UserTime=%u; "
+                   "CreateTime=%ld; ModifiedTime=%ld; UserTime=%ld; "
                    "SubmitterUid=%d;",ren->batch_id, ren->status, ren->blah_id,
-                  ren->cdate, ren->mdate, ren->udate, ren->submitter);
+                  (unsigned long)ren->cdate, (unsigned long)ren->mdate, (unsigned long)ren->udate, ren->submitter);
 		  
   if ((ren->wn_addr != NULL) && (strlen(ren->wn_addr) > 0))
    { 
