@@ -207,6 +207,28 @@ int main(int argc, char *argv[]){
                 }
 	}
 	
+	ret = config_get("condor_batch_caching_enabled",cha);
+	if (ret == NULL){
+		do_log(debuglogfile, debug, 1, "%s: key condor_batch_caching_enabled not found using default\n",argv0,condor_batch_caching_enabled);
+	} else {
+		condor_batch_caching_enabled=strdup(ret->value);
+                if(condor_batch_caching_enabled == NULL){
+                        sysfatal("strdup failed for condor_batch_caching_enabled in main: %r");
+                }
+	}
+	
+	ret = config_get("batch_command_caching_filter",cha);
+	if (ret == NULL){
+		do_log(debuglogfile, debug, 1, "%s: key batch_command_caching_filter not found using default\n",argv0,batch_command_caching_filter);
+	} else {
+		batch_command_caching_filter=strdup(ret->value);
+                if(batch_command_caching_filter == NULL){
+                        sysfatal("strdup failed for batch_command_caching_filter in main: %r");
+                }
+	}
+	
+	batch_command=(strcmp(condor_batch_caching_enabled,"yes")==0?make_message("%s ",batch_command_caching_filter):make_message(""));
+	
 	if( !nodmn ) daemonize();
 
 
@@ -352,7 +374,7 @@ IntStateQuery()
 	time_t now;
 	char *string_now=NULL;
 
-	command_string=make_message("%s/condor_q -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus|grep -v condorc-",condor_binpath);
+	command_string=make_message("%s%s/condor_q -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus|grep -v condorc-",batch_command,condor_binpath);
 	do_log(debuglogfile, debug, 2, "%s: command_string in IntStateQuery:%s\n",argv0,command_string);
 	fp = popen(command_string,"r");
 
@@ -449,7 +471,7 @@ FinalStateQuery(char *query)
 	char *cp=NULL; 
 	char *command_string=NULL;
 
-	command_string=make_message("%s/condor_history -constraint \"%s\" -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus",condor_binpath,query);
+	command_string=make_message("%s%s/condor_history -constraint \"%s\" -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus",batch_command,condor_binpath,query);
 	do_log(debuglogfile, debug, 2, "%s: command_string in FinalStateQuery:%s\n",argv0,command_string);
 	fp = popen(command_string,"r");
 

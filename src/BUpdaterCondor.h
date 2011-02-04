@@ -47,6 +47,9 @@ int finalstate_query_interval=30;
 int alldone_interval=36000;
 int debug=FALSE;
 int nodmn=FALSE;
+char *condor_batch_caching_enabled="Not";
+char *batch_command_caching_filter=NULL;
+char *batch_command=NULL;
 
 FILE *debuglogfile;
 char *debuglogname=NULL;

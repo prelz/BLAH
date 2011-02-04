@@ -50,6 +50,9 @@ int alldone_interval=36000;
 int next_finalstatequery=0;
 int debug=FALSE;
 int nodmn=FALSE;
+char *pbs_batch_caching_enabled="Not";
+char *batch_command_caching_filter=NULL;
+char *batch_command=NULL;
 
 bupdater_active_jobs bact;
 

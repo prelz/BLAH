@@ -223,6 +223,28 @@ int main(int argc, char *argv[]){
                 }
 	}
 	
+	ret = config_get("sge_batch_caching_enabled",cha);
+	if (ret == NULL){
+		do_log(debuglogfile, debug, 1, "%s: key sge_batch_caching_enabled not found using default\n",argv0,sge_batch_caching_enabled);
+	} else {
+		sge_batch_caching_enabled=strdup(ret->value);
+                if(sge_batch_caching_enabled == NULL){
+                        sysfatal("strdup failed for sge_batch_caching_enabled in main: %r");
+                }
+	}
+	
+	ret = config_get("batch_command_caching_filter",cha);
+	if (ret == NULL){
+		do_log(debuglogfile, debug, 1, "%s: key batch_command_caching_filter not found using default\n",argv0,batch_command_caching_filter);
+	} else {
+		batch_command_caching_filter=strdup(ret->value);
+                if(batch_command_caching_filter == NULL){
+                        sysfatal("strdup failed for batch_command_caching_filter in main: %r");
+                }
+	}
+	
+	batch_command=(strcmp(sge_batch_caching_enabled,"yes")==0?make_message("%s ",batch_command_caching_filter):make_message(""));
+	
 	if( !nodmn ) daemonize();
 
 
@@ -361,7 +383,7 @@ IntStateQuery()
 		sysfatal("can't malloc command_string %r");
 	}
 	
-	sprintf(command_string,"%s --qstat --sgeroot=%s --cell=%s --all", sge_helper_path, sge_root, sge_cell);
+	sprintf(command_string,"%s%s --qstat --sgeroot=%s --cell=%s --all", batch_command, sge_helper_path, sge_root, sge_cell);
 	
 	StateQuery( command_string );
 
@@ -377,9 +399,9 @@ FinalStateQuery(char *query)
 	if((command_string=calloc(NUM_CHARS+strlen(query),1)) == 0){
 		sysfatal("can't malloc command_string %r");
 	}
-
-	sprintf(command_string,"%s --sgeroot=%s --cell=%s --qacct %s", sge_helper_path, sge_root, sge_cell, query);
-
+	
+	sprintf(command_string,"%s%s --sgeroot=%s --cell=%s --qacct %s", batch_command, sge_helper_path, sge_root, sge_cell, query);
+	
 	StateQuery( command_string );
 
 	free(command_string);
@@ -437,8 +459,7 @@ int StateQuery(char *command_string)
 		  JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,token[4]);
 		  JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 		  now=time(0);
-                  string_now=calloc(13,1);
-                  string_now=sprintf("%d",now);
+                  string_now=make_message("%d",now);
                   JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now)
                   free(string_now);
 		  

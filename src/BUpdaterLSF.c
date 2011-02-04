@@ -242,6 +242,28 @@ int main(int argc, char *argv[]){
                 }
 	}
 	
+	ret = config_get("lsf_batch_caching_enabled",cha);
+	if (ret == NULL){
+		do_log(debuglogfile, debug, 1, "%s: key lsf_batch_caching_enabled not found using default\n",argv0,lsf_batch_caching_enabled);
+	} else {
+		lsf_batch_caching_enabled=strdup(ret->value);
+                if(lsf_batch_caching_enabled == NULL){
+                        sysfatal("strdup failed for lsf_batch_caching_enabled in main: %r");
+                }
+	}
+	
+	ret = config_get("batch_command_caching_filter",cha);
+	if (ret == NULL){
+		do_log(debuglogfile, debug, 1, "%s: key batch_command_caching_filter not found using default\n",argv0,batch_command_caching_filter);
+	} else {
+		batch_command_caching_filter=strdup(ret->value);
+                if(batch_command_caching_filter == NULL){
+                        sysfatal("strdup failed for batch_command_caching_filter in main: %r");
+                }
+	}
+	
+	batch_command=(strcmp(lsf_batch_caching_enabled,"yes")==0?make_message("%s ",batch_command_caching_filter):make_message(""));
+	
 	if( !nodmn ) daemonize();
 
 
@@ -390,7 +412,7 @@ IntStateQueryShort()
 	time_t now;
 	char *string_now=NULL;
 
-	command_string=make_message("%s/bjobs -u all -w",lsf_binpath);
+	command_string=make_message("%s%s/bjobs -u all -w",batch_command,lsf_binpath);
 	fp = popen(command_string,"r");
 
 	en.status=UNDEFINED;
@@ -564,7 +586,7 @@ IntStateQuery()
 	time_t now;
 	char *string_now=NULL;
 
-	command_string=make_message("%s/bjobs -u all -l",lsf_binpath);
+	command_string=make_message("%s%s/bjobs -u all -l",batch_command,lsf_binpath);
 	fp = popen(command_string,"r");
 
 	en.status=UNDEFINED;
@@ -791,8 +813,8 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	}else{
 		start_date_flagged=make_message("");
 	}
-	command_string=make_message("%s/bhist -u all -d -l -n %d %s",lsf_binpath,logs_to_read,start_date_flagged);
 
+	command_string=make_message("%s%s/bhist -u all -d -l -n %d %s",batch_command,lsf_binpath,logs_to_read,start_date_flagged);
 	fp = popen(command_string,"r");
 	
 	do_log(debuglogfile, debug, 3, "%s: command_string in FinalStateQuery is:%s\n",argv0,command_string);

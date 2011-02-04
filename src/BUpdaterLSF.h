@@ -57,6 +57,9 @@ char *bjobs_long_format="yes";
 char *use_bhist_for_susp="no";
 int debug=FALSE;
 int nodmn=FALSE;
+char *lsf_batch_caching_enabled="Not";
+char *batch_command_caching_filter=NULL;
+char *batch_command=NULL;
 
 bupdater_active_jobs bact;
 

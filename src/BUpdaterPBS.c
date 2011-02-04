@@ -244,6 +244,28 @@ int main(int argc, char *argv[]){
                 }
 	}
 	
+	ret = config_get("pbs_batch_caching_enabled",cha);
+	if (ret == NULL){
+		do_log(debuglogfile, debug, 1, "%s: key pbs_batch_caching_enabled not found using default\n",argv0,pbs_batch_caching_enabled);
+	} else {
+		pbs_batch_caching_enabled=strdup(ret->value);
+                if(pbs_batch_caching_enabled == NULL){
+                        sysfatal("strdup failed for pbs_batch_caching_enabled in main: %r");
+                }
+	}
+	
+	ret = config_get("batch_command_caching_filter",cha);
+	if (ret == NULL){
+		do_log(debuglogfile, debug, 1, "%s: key batch_command_caching_filter not found using default\n",argv0,batch_command_caching_filter);
+	} else {
+		batch_command_caching_filter=strdup(ret->value);
+                if(batch_command_caching_filter == NULL){
+                        sysfatal("strdup failed for batch_command_caching_filter in main: %r");
+                }
+	}
+	
+	batch_command=(strcmp(pbs_batch_caching_enabled,"yes")==0?make_message("%s ",batch_command_caching_filter):make_message(""));
+	
 	if( !nodmn ) daemonize();
 
 
@@ -405,7 +427,7 @@ Job Id: 11.cream-12.pd.infn.it
 	time_t now;
 	char *string_now=NULL;
 
-	command_string=make_message("%s/qstat -f",pbs_binpath);
+	command_string=make_message("%s%s/qstat -f",batch_command,pbs_binpath);
 	fp = popen(command_string,"r");
 
 	en.status=UNDEFINED;
@@ -636,12 +658,9 @@ Job: 13.cream-12.pd.infn.it
 	
 		if(jobid[k] && strlen(jobid[k])==0) continue;
 
-		if(pbs_spoolpath){
-			pbs_spool=make_message("-p %s",pbs_spoolpath);
-			command_string=make_message("%s/tracejob %s -m -l -a -n %d %s",pbs_binpath,pbs_spool,logs_to_read,jobid[k]);
-		}else{
-			command_string=make_message("%s/tracejob -m -l -a -n %d %s",pbs_binpath,logs_to_read,jobid[k]);
-		}
+		pbs_spool=(pbs_spoolpath?make_message("-p %s ",pbs_spoolpath):make_message(""));
+		command_string=make_message("%s%s/tracejob %s-m -l -a -n %d %s",batch_command,pbs_binpath,pbs_spool,logs_to_read,jobid[k]);
+		free(pbs_spool);
 		
 		fp = popen(command_string,"r");
 		
@@ -714,7 +733,6 @@ Job: 13.cream-12.pd.infn.it
 			failed_count++;
 		}		
 		free(command_string);
-		if(pbs_spoolpath) free(pbs_spool);
 	}
 	
 	now=time(0);

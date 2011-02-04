@@ -44,6 +44,9 @@ int finalstate_query_interval=5;
 int alldone_interval=864000;
 int debug=0;
 int nodmn=0;
+char *sge_batch_caching_enabled="Not";
+char *batch_command_caching_filter=NULL;
+char *batch_command=NULL;
 
 FILE *debuglogfile;
 char *debuglogname=NULL;
