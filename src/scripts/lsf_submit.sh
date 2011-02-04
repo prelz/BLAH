@@ -105,7 +105,39 @@ end_of_preamble
 # handle queue overriding
 [ -z "$bls_opt_queue" ] || grep -q "^#BSUB -q" $bls_tmp_file || echo "#BSUB -q $bls_opt_queue" >> $bls_tmp_file
 
-[ -z "$bls_opt_mpinodes" ]       || echo "#BSUB -n $bls_opt_mpinodes" >> $bls_tmp_file
+# Extended support for MPI attributes
+if [ "x$bls_opt_wholenodes" == "xyes" ] ; then
+  bls_opt_hostsmpsize=${bls_opt_hostsmpsize:-1}
+  if [[ ! -z "$bls_opt_smpgranularity" ]] ; then
+    if [[ -z "$bls_opt_hostnumber" ]] ; then
+      echo "#BSUB -n $bls_opt_hostsmpsize" >> $bls_tmp_file
+      echo "#BSUB -R \"span[hosts=1]\"" >> $bls_tmp_file
+    else
+      echo "#BSUB -n $((bls_opt_hostsmpsize * bls_opt_hostnumber))" >> $bls_tmp_file
+      echo "#BSUB -R \"span[ptile=$bls_opt_hostsmpsize]\"" >> $bls_tmp_file
+    fi
+    echo "#BSUB -x" >> $bls_tmp_file
+  else
+    if [[ ! -z "$bls_opt_hostnumber" ]] ; then
+      echo "#BSUB -n $((bls_opt_hostsmpsize * bls_opt_hostnumber))" >> $bls_tmp_file
+      echo "#BSUB -R \"span[ptile=$bls_opt_hostsmpsize]\"" >> $bls_tmp_file
+      echo "#BSUB -x" >> $bls_tmp_file
+    fi
+  fi
+else
+  if [[ ! -z "$bls_opt_smpgranularity" ]] ; then
+    echo "#BSUB -n $bls_opt_mpinodes" >> $bls_tmp_file
+    echo "#BSUB -R \"span[ptile=$bls_opt_smpgranularity]\"" >> $bls_tmp_file
+  else
+    if [[ ! -z "$bls_opt_hostnumber" ]] ; then
+      echo "#BSUB -n $bls_opt_mpinodes" >> $bls_tmp_file
+      echo "#BSUB -R \"span[ptile=$(((bls_opt_mpinodes + bls_opt_hostnumber - 1) / bls_opt_hostnumber))]\"" >> $bls_tmp_file
+    elif [[ $bls_opt_mpinodes -gt 0 ]] ; then
+      echo "#BSUB -n $bls_opt_mpinodes" >> $bls_tmp_file
+    fi
+  fi
+fi
+# --- End of MPI directives
 
 #local batch system-specific file output must be added to the submit file
 bls_local_submit_attributes_file=${GLITE_LOCATION:-/opt/glite}/bin/lsf_local_submit_attributes.sh

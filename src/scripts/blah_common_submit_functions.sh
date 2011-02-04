@@ -271,7 +271,7 @@ function bls_parse_submit_options ()
   ###############################################################
   # Parse parameters
   ###############################################################
-  while getopts "a:i:o:e:c:s:v:V:dw:q:n:r:p:l:x:u:j:T:I:O:R:C:" arg 
+  while getopts "a:i:o:e:c:s:v:V:dw:q:n:N:z:h:S:r:p:l:x:u:j:T:I:O:R:C:" arg 
   do
       case "$arg" in
       a) bls_opt_xtra_args="$OPTARG" ;;
@@ -286,6 +286,10 @@ function bls_parse_submit_options ()
       w) bls_opt_workdir="$OPTARG";;
       q) bls_opt_queue="$OPTARG";;
       n) bls_opt_mpinodes="$OPTARG";;
+      N) bls_opt_hostsmpsize="$OPTARG";;
+      z) bls_opt_wholenodes="$OPTARG";;
+      h) bls_opt_hostnumber="$OPTARG";;
+      S) bls_opt_smpgranularity="$OPTARG";;
       r) bls_opt_proxyrenew="$OPTARG" ;;
       p) bls_opt_prnpoll="$OPTARG" ;;
       l) bls_opt_prnlifetime="$OPTARG" ;;
