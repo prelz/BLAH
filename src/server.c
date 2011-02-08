@@ -3136,7 +3136,7 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId, char *
 		cur = superbuffer; 
 		while ((next_comma = strchr(cur, ',')) != NULL)
 		{
-			if (next_comma > (cur+1))
+			if (next_comma > cur)
 			{
 				if (*cur != '/')
 				{
