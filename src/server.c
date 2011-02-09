@@ -3338,6 +3338,9 @@ char*  outputfileRemaps(char *sb,char *sbrmp)
                                 endstridx1=0;
                                 if(!strncmp(&sbrmp[j],tstr,strlen(tstr)))
                                 {
+					/* Argument boundary checks */
+					if ((j > 0) && (sbrmp[j-1] != ';')) { j++; continue; }
+					if (sbrmp[j + strlen(tstr)] != '=') { j++; continue; }
                                         begstridx1 = j + strlen(tstr) + 1;
                /* separator ; */        while((sbrmp[begstridx1 + endstridx1] != ';')&&((begstridx1 + endstridx1) <= sbrmplen ))
                                                  endstridx1++;
