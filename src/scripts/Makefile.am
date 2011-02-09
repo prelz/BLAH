@@ -2,7 +2,7 @@
 # * BLAHP scripts * 
 # *****************
 #
-# $Id: Makefile.am,v 1.6 2011/02/04 09:24:08 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.7 2011/02/09 14:14:31 mezzadri Exp $ 
 #
 # File:           Makefile.am
 #
@@ -36,6 +36,6 @@ bin_SCRIPTS = blah_common_submit_functions.sh \
   lsf_cancel.sh lsf_status.sh lsf_submit.sh lsf_hold.sh lsf_resume.sh \
   condor_cancel.sh condor_status.sh condor_submit.sh condor_hold.sh condor_resume.sh \
   sge_cancel.sh sge_helper sge_resume.sh sge_submit.sh sge_filestaging \
-  sge_hold.sh sge_status.sh runcmd.pl
+  sge_hold.sh sge_status.sh runcmd.pl.template
 
 EXTRA_DIST = $(bin_SCRIPTS)
