@@ -1,0 +1,4 @@
+#!/usr/bin/perl
+use CommandProxyTools;
+print RunCommand(join ' ',@ARGV);
+
