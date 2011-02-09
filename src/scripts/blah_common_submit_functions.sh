@@ -575,19 +575,25 @@ function bls_setup_all_files ()
 
               bls_test_shared_dir "$xfile"
               if [ "x$bls_is_in_shared_dir" != "xyes" ] ; then
+                  if [ "${xfile:0:1}" != "/" ] ; then
+                       xfile_base="`basename ${xfile}`"
+                       xfile_transfer="${blah_wn_outputsandbox}${xfile_base}.$uni_ext"
+                  else
+                       xfile_transfer="$xfile"
+                  fi
                   if [ ! -z $xfileremap ] ; then
                       if [ "${xfileremap:0:1}" != "/" ] ; then
-                          bls_fl_add_value outputsand "${bls_opt_workdir}/${xfileremap}" "${blah_wn_outputsandbox}${xfile}.$uni_ext" "$xfile"
+                          bls_fl_add_value outputsand "${bls_opt_workdir}/${xfileremap}" "$xfile_transfer" "$xfile"
                       else
                           bls_test_shared_dir "$xfileremap"
                           if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
                               bls_fl_add_value outputmove "${xfileremap}" "$xfile"
                           else
-                              bls_fl_add_value outputsand "${xfileremap}" "${blah_wn_outputsandbox}${xfile}.$uni_ext" "$xfile"
+                              bls_fl_add_value outputsand "${xfileremap}" "$xfile_transfer" "$xfile"
                           fi
                       fi
                   else
-                      bls_fl_add_value outputsand "${bls_opt_workdir}/${xfile}" "${blah_wn_outputsandbox}${xfile}.$uni_ext" "$xfile"
+                      bls_fl_add_value outputsand "${bls_opt_workdir}/${xfile}" "$xfile_transfer" "$xfile"
                   fi
               fi
           fi
