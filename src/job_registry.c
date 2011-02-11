@@ -1010,7 +1010,7 @@ job_registry_resync_mmap(job_registry_handle *rha, FILE *fd)
     sprintf(new_index,"%s.tmp",rha->mmappableindex);
 
     newindex_fd = open(new_index, O_RDWR|O_CREAT|O_EXCL, 0666);
-    if (newindex_fd < 0 && errno != EEXIST)
+    if (newindex_fd < 0 && errno != EEXIST && errno != EACCES)
      {
       free(new_index);
       return JOB_REGISTRY_FOPEN_FAIL;
@@ -1062,7 +1062,7 @@ job_registry_resync_mmap(job_registry_handle *rha, FILE *fd)
           return JOB_REGISTRY_FWRITE_FAIL;
          }
         free(ren);
-       }
+       } /* End of mmap file update cycle */
 
       rha->index_mmap_length = lseek(newindex_fd, 0, SEEK_CUR);
       rha->entries = mmap(0, rha->index_mmap_length, 
@@ -1100,7 +1100,7 @@ job_registry_resync_mmap(job_registry_handle *rha, FILE *fd)
         rha->lastrec = 0;
         rha->n_entries = 0;
         rha->index_mmap_length = 0;
-        return JOB_REGISTRY_MMAP_FAIL;
+        return JOB_REGISTRY_RENAME_FAIL;
        }
       rha->entries = mmap(0, rha->index_mmap_length, PROT_READ, MAP_SHARED, newindex_fd, 0);
       if (rha->entries == NULL)
@@ -1114,22 +1114,12 @@ job_registry_resync_mmap(job_registry_handle *rha, FILE *fd)
         return JOB_REGISTRY_MMAP_FAIL;
        }
       free(new_index);
-      break;
+      break; /* Done with registry update. */
      }
 
-    if (update_exponential_backoff > JOB_REGISTRY_MMAP_UPDATE_TIMEOUT)
-     {
-      /* Unlinking the 'new' file after this long cannot hurt anyone */
-      /* If there is a process that was really trying to write it, it */
-      /* will just fall back to the in-memory index. */
-      /* This will handle the case of a 'new_index' file left behind */
-      /* by a dead process */
-      unlink(new_index);
-      free(new_index);
-      return JOB_REGISTRY_UPDATE_TIMEOUT;
-     }
-
-    free(new_index);
+    /* If we reach here, the creation of the new mmappable index failed */
+    /* with EEXIST, i.e. someone else is trying to update it. */
+    /* We back off until (hopefully) this is complete. */
 
     sleep(update_exponential_backoff);
     update_exponential_backoff*=2;
@@ -1142,10 +1132,28 @@ job_registry_resync_mmap(job_registry_handle *rha, FILE *fd)
       if ((mst.st_size/sizeof(job_registry_index)) ==
           (rst.st_size/sizeof(job_registry_entry)))
        { 
+        free(new_index);
         break;
        }
      }
-   }
+
+    if (update_exponential_backoff > JOB_REGISTRY_MMAP_UPDATE_TIMEOUT)
+     {
+      /* Unlinking the 'new' file after this long cannot hurt anyone */
+      /* If there is a process that was really trying to write it, it */
+      /* will just fall back to the in-memory index. */
+      /* This will handle the case of a 'new_index' file left behind */
+      /* by a dead process */
+      if (unlink(new_index) < 0)
+       {
+        free(new_index);
+        return JOB_REGISTRY_UPDATE_TIMEOUT;
+       }
+      /* We try creating the updated index again if we were able to unlink */
+      /* the stale one. */
+     }
+    free(new_index);
+   } /* End of while(need_to_update) loop */
 
   if (newindex_fd < 0)
    {
