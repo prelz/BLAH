@@ -58,7 +58,12 @@ main(int argc, char *argv[])
   int i;
   job_registry_index_mode test_mode = BY_BLAH_ID;
 
-  if (argc > 1 && (strncmp(argv[1],"-m",2) == 0)) test_mode = BY_BLAH_ID_MMAP;
+  if (argc > 1 && (strncmp(argv[1],"-m",2) == 0))
+   {
+    test_mode = BY_BLAH_ID_MMAP;
+    if (argc > 2) test_registry_file = argv[2];
+   }
+  else if (argc > 1) test_registry_file = argv[1];
 
   srand(time(0));
 
