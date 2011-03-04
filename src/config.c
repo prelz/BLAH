@@ -2,7 +2,7 @@
  *  File :     config.c
  *
  *
- *  Author :   Francesco Prelz ($Author: mezzadri $)
+ *  Author :   Francesco Prelz ($Author: fprelz $)
  *  e-mail :   "francesco.prelz@mi.infn.it"
  *
  *  Revision history :
@@ -94,11 +94,12 @@ config_read(const char *ipath)
   int line_alloc = 0;
   int c;
   const int line_alloc_chunk = 128;
-  FILE *cf;
+  FILE *test,*cf;
+  config_entry *bp;
 
-  if ((install_location = getenv("GLITE_LOCATION")) == NULL)
+  if ((install_location = getenv("BLAHPD_LOCATION")) == NULL)
    {
-    install_location = getenv("BLAHPD_LOCATION");
+    install_location = getenv("GLITE_LOCATION");
     if (install_location == NULL) install_location = DEFAULT_GLITE_LOCATION;
    }
 
@@ -111,6 +112,10 @@ config_read(const char *ipath)
       path = (char *)malloc(strlen(CONFIG_FILE_BASE)+strlen(install_location)+6);
       if (path == NULL) return NULL;
       sprintf(path,"%s/etc/%s",install_location,CONFIG_FILE_BASE);
+      test = fopen(path, "r");
+      /* Last resort if file cannot be read from. */
+      if (test == NULL) sprintf(path,"/etc/%s",CONFIG_FILE_BASE);
+      else fclose(test);
      }
     else
      {
@@ -155,15 +160,14 @@ config_read(const char *ipath)
   rha->config_path = path;
   rha->list = NULL;
   if (install_location != NULL) rha->install_path = strdup(install_location);
-  rha->bin_path = (char *)malloc(strlen(install_location)+5);
-  if (rha->install_path == NULL || rha->bin_path == NULL)
+  if (rha->install_path == NULL)
    {
     /* Out of memory */
     fclose(cf);
     config_free(rha);
     return NULL;
    }
-  sprintf(rha->bin_path,"%s/bin",install_location);
+  rha->bin_path = NULL; /* May be filled out of config file contents. */
 
   line_alloc = line_alloc_chunk;
   line = (char *)malloc(line_alloc);
@@ -286,6 +290,23 @@ config_read(const char *ipath)
   
   fclose(cf);
   free(line);
+
+  if ((bp = config_get("blah_bin_directory", rha)) != NULL)
+   {
+    rha->bin_path = strdup(bp->value);
+   }
+  else
+   {
+    rha->bin_path = (char *)malloc(strlen(install_location)+5);
+    if (rha->bin_path != NULL) sprintf(rha->bin_path,"%s/bin",install_location);
+   }
+  if (rha->bin_path == NULL)
+   {
+    /* Out of memory */
+    config_free(rha);
+    return NULL;
+   }
+
   return rha;
  }
 

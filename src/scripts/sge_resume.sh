@@ -20,7 +20,7 @@
 #
 
 
-[ -f ${GLITE_LOCATION:-/opt/glite}/etc/blah.config ] && . ${GLITE_LOCATION:-/opt/glite}/etc/blah.config
+. `dirname $0`/blah_load_config.sh
 
 if [ -z "$sge_root" ]; then sge_root="/usr/local/sge/pro"; fi
 if [ -r "$sge_root/${sge_cell:-default}/common/settings.sh" ]

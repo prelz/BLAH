@@ -315,7 +315,7 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	blah_config_handle = config_read(NULL);
 	if (blah_config_handle == NULL)
 	{
-		fprintf(stderr, "Cannot access blah.config file in default locations ($GLITE_LOCATION/etc or $BLAHPD_LOCATION/etc): ");
+		fprintf(stderr, "Cannot access blah.config file in default locations ($BLAHPD_CONFIG_LOCATION, or $GLITE_LOCATION/etc or $BLAHPD_LOCATION/etc): ");
 		perror("");
 		exit(MALLOC_ERROR);
 	}

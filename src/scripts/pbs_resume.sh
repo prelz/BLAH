@@ -23,7 +23,7 @@
 # limitations under the License.
 #
 
-[ -f ${GLITE_LOCATION:-/opt/glite}/etc/blah.config ] && . ${GLITE_LOCATION:-/opt/glite}/etc/blah.config
+. `dirname $0`/blah_load_config.sh
 
 requested=`echo $1 | sed 's/^.*\///'`
 ${pbs_binpath}/qrls $requested >/dev/null 2>&1

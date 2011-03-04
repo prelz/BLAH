@@ -24,7 +24,7 @@
 #
 
 
-[ -f ${GLITE_LOCATION:-/opt/glite}/etc/blah.config ] && . ${GLITE_LOCATION:-/opt/glite}/etc/blah.config
+. `dirname $0`/blah_load_config.sh
 
 requested=`echo $1 | sed 's/^.*\///'`
 requestedshort=`expr match "$requested" '\([0-9]*\)'`

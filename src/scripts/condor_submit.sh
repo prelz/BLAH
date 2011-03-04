@@ -30,7 +30,7 @@
 # limitations under the License.
 #
 
-[ -f ${GLITE_LOCATION:-/opt/glite}/etc/blah.config ] && . ${GLITE_LOCATION:-/opt/glite}/etc/blah.config
+. `dirname $0`/blah_load_config.sh
 
 usage_string="Usage: $0 -c <command> [-i <stdin>] [-o <stdout>] [-e <stderr>] [-v <environment>] [-s <yes | no>] [-- command_arguments]"
 
@@ -265,7 +265,7 @@ else
 fi
 
 #local batch system-specific file output must be added to the submit file
-local_submit_attributes_file=${GLITE_LOCATION:-/opt/glite}/bin/condor_local_submit_attributes.sh
+local_submit_attributes_file=${blah_bin_directory}/condor_local_submit_attributes.sh
 if [ -r $local_submit_attributes_file ] ; then
     echo \#\!/bin/sh > $tmp_req_file
     if [ ! -z $req_file ] ; then

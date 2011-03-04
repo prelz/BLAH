@@ -338,19 +338,29 @@ main(int argc, char *argv[])
 		
 /* Read config common part */
 
-	if ((blah_location = getenv("GLITE_LOCATION")) == NULL)
+	if ((blah_location = getenv("BLAHPD_LOCATION")) == NULL)
 	{
-		blah_location = getenv("BLAHPD_LOCATION");
+		blah_location = getenv("GLITE_LOCATION");
 		if (blah_location == NULL) blah_location = DEFAULT_GLITE_LOCATION;
 	}
 	
-	config_file = (char *)malloc(strlen(CONFIG_FILE_PARSER)+strlen(blah_location)+6);
-	if(config_file == NULL){
-		fprintf(stderr, "Out of memory\n");
-		exit(MALLOC_ERROR);
-	}
-	sprintf(config_file,"%s/etc/%s",blah_location,CONFIG_FILE_PARSER);
+	config_file = getenv("BLPARSER_CONFIG_LOCATION");
+	if (config_file == NULL){
+ 		config_file = (char *)malloc(strlen(CONFIG_FILE_PARSER)+strlen(blah_location)+6);
+		if(config_file == NULL){
+			fprintf(stderr, "Out of memory\n");
+			exit(MALLOC_ERROR);
+		}
+		sprintf(config_file,"%s/etc/%s",blah_location,CONFIG_FILE_PARSER);
 	
+		if(access(config_file,R_OK)){
+			/* Last resort: default location. */
+			sprintf(config_file,"/etc/%s",blah_location,CONFIG_FILE_PARSER);
+			
+		}
+
+	}
+
 	if(access(config_file,R_OK)){
 		fprintf(stderr, "%s does not exist or is not readable\n",config_file);
 		exit(EXIT_FAILURE);

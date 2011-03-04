@@ -31,10 +31,10 @@
 # limitations under the License.
 #
 
-[ -f ${GLITE_LOCATION:-/opt/glite}/etc/blah.config ] && . ${GLITE_LOCATION:-/opt/glite}/etc/blah.config
+. `dirname $0`/blah_load_config.sh
 
 if [ "x$job_registry" != "x" ] ; then
-   ${GLITE_LOCATION:-/opt/glite}/bin/blah_job_registry_lkup $@
+   ${blah_bin_directory}/blah_job_registry_lkup $@
    exit 0
 fi
 
@@ -56,7 +56,7 @@ usedBLParser="no"
 
 srvfound=""
 
-BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
+BLClient="${blah_bin_directory}/BLClient"
 
 qstatuser=`whoami`
 qstatcache=/tmp/qstatcache_${qstatuser}.txt

@@ -24,13 +24,35 @@
 # Source function library
 . /etc/rc.d/init.d/functions
 
-GLITE_LOCATION=${GLITE_LOCATION:-/opt/glite}
-GLITE_LOCATION_VAR=${GLITE_LOCATION_VAR:-${GLITE_LOCATION}/var}
+if [ "x${BLAHPD_LOCATION}" != "x" -a -d "${BLAHPD_LOCATION}/bin" ]; then
+  blparser_bin_directory="${BLAHPD_LOCATION}/bin"
+else
+  if [ -d "${GLITE_LOCATION}/bin" ]; then
+    blparser_bin_directory="${GLITE_LOCATION}/bin"
+  else
+#   Default when everything else fails.
+    blparser_bin_directory="/usr/bin"
+  fi
+fi
 
-[ -f $GLITE_LOCATION/etc/blparser.conf ] && . $GLITE_LOCATION/etc/blparser.conf
+if [ ! -r "$BLPARSER_CONFIG_LOCATION" ]; then
+  if [ -r "${GLITE_LOCATION:-/opt/glite}/etc/blparser.conf" ]; then
+    export BLPARSER_CONFIG_LOCATION="${GLITE_LOCATION:-/opt/glite}/etc/blparser.conf"
+  elif [ -r "/etc/blparser.conf" ]; then
+#   Default when everything else fails.
+    export BLPARSER_CONFIG_LOCATION="/etc/blparser.conf"
+  fi
+fi
 
-GLITE_CE_BLPARSERPBS=${GLITE_LOCATION}/bin/BLParserPBS
-GLITE_CE_BLPARSERLSF=${GLITE_LOCATION}/bin/BLParserLSF
+if [ ! -r "$BLPARSER_CONFIG_LOCATION" ]; then
+  echo "$0: Cannot read BLParser config file at: $BLPARSER_CONFIG_LOCATION"
+  exit 1
+fi
+
+. $BLPARSER_CONFIG_LOCATION
+
+GLITE_CE_BLPARSERPBS=${blparser_bin_directory}/BLParserPBS
+GLITE_CE_BLPARSERLSF=${blparser_bin_directory}/BLParserLSF
 
 [ "x$GLITE_CE_USE_BLPARSERPBS" == "xyes" ] && LRMS1=PBS
 [ "x$GLITE_CE_USE_BLPARSERLSF" == "xyes" ] && LRMS2=LSF

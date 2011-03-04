@@ -64,7 +64,7 @@ cat > $bls_tmp_file << end_of_preamble
 end_of_preamble
 
 #local batch system-specific file output must be added to the submit file
-bls_local_submit_attributes_file=${GLITE_LOCATION:-/opt/glite}/bin/sge_local_submit_attributes.sh
+bls_local_submit_attributes_file=${blah_bin_directory}/sge_local_submit_attributes.sh
 
 bls_set_up_local_and_extra_args
 

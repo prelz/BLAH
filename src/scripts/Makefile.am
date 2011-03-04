@@ -2,11 +2,11 @@
 # * BLAHP scripts * 
 # *****************
 #
-# $Id: Makefile.am,v 1.7 2011/02/09 14:14:31 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.8 2011/03/04 12:40:31 fprelz Exp $ 
 #
 # File:           Makefile.am
 #
-# Author(s):      Francesco Prelz ($Author: mezzadri $)
+# Author(s):      Francesco Prelz ($Author: fprelz $)
 #        e-mail: "Francesco.Prelz@mi.infn.it"
 #
 # Revision history:
@@ -31,7 +31,7 @@
 #
 
 
-bin_SCRIPTS = blah_common_submit_functions.sh \
+bin_SCRIPTS = blah_load_config.sh blah_common_submit_functions.sh \
   pbs_cancel.sh pbs_status.sh pbs_submit.sh pbs_hold.sh pbs_resume.sh \
   lsf_cancel.sh lsf_status.sh lsf_submit.sh lsf_hold.sh lsf_resume.sh \
   condor_cancel.sh condor_status.sh condor_submit.sh condor_hold.sh condor_resume.sh \

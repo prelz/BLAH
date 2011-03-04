@@ -21,7 +21,7 @@
 # limitations under the License.
 #
 
-[ -f ${GLITE_LOCATION:-/opt/glite}/etc/blah.config ] && . ${GLITE_LOCATION:-/opt/glite}/etc/blah.config
+. `dirname $0`/blah_load_config.sh
 
 #
 # Functions to handle the file mapping tables
@@ -245,7 +245,7 @@ function bls_parse_submit_options ()
   
   if [ "x$blah_wn_proxy_renewal_daemon" == "x" ]
   then
-    bls_proxyrenewald="${GLITE_LOCATION:-/opt/glite}/bin/BPRserver"
+    bls_proxyrenewald="${blah_bin_directory}/BPRserver"
   else
     bls_proxyrenewald="$blah_wn_proxy_renewal_daemon"
   fi
@@ -266,7 +266,7 @@ function bls_parse_submit_options ()
   bls_opt_prnpoll=30
   bls_opt_prnlifetime=0
   
-  bls_BLClient="${GLITE_LOCATION:-/opt/glite}/bin/BLClient"
+  bls_BLClient="${blah_bin_directory}/BLClient"
   
   ###############################################################
   # Parse parameters
@@ -660,6 +660,9 @@ function bls_add_job_wrapper ()
       echo "elif [ -x /opt/lcg/libexec/jobwrapper ]" >> $bls_tmp_file
       echo "then" >> $bls_tmp_file
       echo "/opt/lcg/libexec/jobwrapper $bls_opt_the_command $bls_arguments &" >>$bls_tmp_file
+      echo "elif [ -x \$BLAH_AUX_JOBWRAPPER ]" >> $bls_tmp_file
+      echo "then" >> $bls_tmp_file
+      echo "\$BLAH_AUX_JOBWRAPPER $bls_opt_the_command $bls_arguments &" >>$bls_tmp_file
       echo "else" >>$bls_tmp_file
       echo "\$new_home/`basename $bls_opt_the_command` $bls_arguments &" >> $bls_tmp_file
       echo "fi" >>$bls_tmp_file

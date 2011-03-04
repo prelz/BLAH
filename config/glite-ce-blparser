@@ -24,10 +24,19 @@
 # Source function library
 . /etc/rc.d/init.d/functions
 
-GLITE_LOCATION=${GLITE_LOCATION:-/opt/glite}
-GLITE_LOCATION_VAR=${GLITE_LOCATION_VAR:-${GLITE_LOCATION}/var}
+if [ "x${BLAHPD_LOCATION}" != "x" -a -d "${BLAHPD_LOCATION}/bin" ]; then
+  blparser_bin_directory="${BLAHPD_LOCATION}/bin"
+else
+  if [ -d "${GLITE_LOCATION}/bin" ]; then
+    blparser_bin_directory="${GLITE_LOCATION}/bin"
+  else
+#   Default value when everything else fails.
+    blparser_bin_directory="/usr/bin"
+  fi
+fi
 
-GLITE_CE_PARSER_MASTER=${GLITE_LOCATION}/bin/blparser_master
+GLITE_CE_PARSER_MASTER=${blparser_bin_directory}/blparser_master
+
 case "$1" in
 
   start)

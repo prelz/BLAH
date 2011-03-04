@@ -109,7 +109,7 @@ then
 fi
 
 #local batch system-specific file output must be added to the submit file
-bls_local_submit_attributes_file=${GLITE_LOCATION:-/opt/glite}/bin/pbs_local_submit_attributes.sh
+bls_local_submit_attributes_file=${blah_bin_directory}/pbs_local_submit_attributes.sh
 
 bls_set_up_local_and_extra_args
 

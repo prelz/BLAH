@@ -23,7 +23,7 @@
 # limitations under the License.
 #
 
-[ -f ${GLITE_LOCATION:-/opt/glite}/etc/blah.config ] && . ${GLITE_LOCATION:-/opt/glite}/etc/blah.config
+. `dirname $0`/blah_load_config.sh
 
 # The first and only argument is a JobId whose format is: Id/Queue/Pool
 
