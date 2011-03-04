@@ -289,6 +289,16 @@ int main(int argc, char *argv[]){
 			if(en->status!=REMOVED && en->status!=COMPLETED){
 			
 				confirm_time=atoi(en->updater_info);
+				if(confirm_time==0){
+					confirm_time=en->mdate;
+				}
+				
+				/* Assign Status=4 and ExitStatus=999 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
+				if(now-confirm_time>alldone_interval){
+					AssignFinalState(en->batch_id);	
+					free(en);
+					continue;
+				}
 				
 				if(now-confirm_time>finalstate_query_interval){
 					/* create the constraint that will be used in condor_history command in FinalStateQuery*/
@@ -309,13 +319,6 @@ int main(int argc, char *argv[]){
 					}
 					free(constraint);
 					runfinal=TRUE;
-				}
-				
-				/* Assign Status=4 and ExitStatus=999 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
-				if(now-confirm_time>alldone_interval && !runfinal){
-					AssignFinalState(en->batch_id);	
-					free(en);
-					continue;
 				}
 			}
 			free(en);
