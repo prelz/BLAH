@@ -355,7 +355,7 @@ main(int argc, char *argv[])
 	
 		if(access(config_file,R_OK)){
 			/* Last resort: default location. */
-			sprintf(config_file,"/etc/%s",blah_location,CONFIG_FILE_PARSER);
+			sprintf(config_file,"/etc/%s",CONFIG_FILE_PARSER);
 			
 		}
 

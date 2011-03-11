@@ -23,6 +23,11 @@
  *              changes don't affect entry mdate.
  *   7-Oct-2010 Added support for optional mmap sharing 
  *              of entry index.
+ *  11-Mar-2011 Removed ID uniqueness check from 
+ *              job_registry_merge_pending_nonpriv_updates
+ *              (for efficiency reasons: ID uniqueness in that
+ *              case is guaranteed by the invoking service).
+ *              Added job_registry_check_index_key_uniqueness.
  *
  *  Description:
  *    File-based container to cache job IDs and statuses to implement
@@ -1642,6 +1647,10 @@ job_registry_append_nonpriv(job_registry_handle *rha,
  * Look for new entries that could not be appended to the registry
  * file due to lack of privileges and append them to the registry.
  *
+ * NOTE: for non privileged updates, any check that the added entries
+ *       are unique w.r.t. the current index/search key is dropped.
+ *
+ *
  * @param rha Pointer to a job registry handle returned by job_registry_init.
  * @param fd Stream descriptor of an open and *write* locked 
  *        registry file. The registry file will be opened and closed if
@@ -1668,6 +1677,9 @@ job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
   struct dirent *de;
   char subline[JOB_REGISTRY_MAX_SUBJECTLIST_LINE];
   char *sp;
+  job_registry_index_mode saved_rha_mode;
+  off_t last_end;
+  uint32_t saved_rha_lastrec;
 
   ofd = fd;
 
@@ -1677,6 +1689,9 @@ job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
     return JOB_REGISTRY_OPENDIR_FAIL; 
    }
   
+  saved_rha_mode = rha->mode;
+  saved_rha_lastrec = rha->lastrec;
+
   while ((de = readdir(npd)) != NULL) 
    {
     cfp = (char *)malloc(strlen(rha->npudir)+strlen(de->d_name)+2);
@@ -1719,30 +1734,54 @@ job_registry_merge_pending_nonpriv_updates(job_registry_handle *rha,
           closedir(npd);
           return JOB_REGISTRY_FLOCK_FAIL;
          }
+        /* Append nonpriv entries with no further check */
+        job_registry_resync(rha, ofd);
+        saved_rha_lastrec = rha->lastrec;
+        rha->mode = NO_INDEX;
        }
 
+      fseek(ofd, 0L, SEEK_END);
+      last_end = ftell(ofd);
       /* Use the file mtime as event creation timestamp */
       if ((rapp = job_registry_append_op(rha, &en, ofd, cfp_st.st_mtime)) < 0) 
        {
         free(cfp);
+        rha->mode = saved_rha_mode;
+        rha->lastrec = saved_rha_lastrec;
+        job_registry_resync(rha, ofd);
         if (fd == NULL && ofd != NULL) fclose(ofd);
         closedir(npd);
         return rapp;
        }
       else
        {
+        /* With no entry uniqueness check, failing to unlink the */
+        /* NPU file becomes a consistency error we have to avoid. */
+        if (unlink(cfp) < 0)
+         {
+          free(cfp);
+          /* Undo the append while we still hold a write lock */
+          ftruncate(fileno(ofd), last_end);
+          rha->mode = saved_rha_mode;
+          rha->lastrec = saved_rha_lastrec;
+          job_registry_resync(rha, ofd);
+          if (fd == NULL && ofd != NULL) fclose(ofd);
+          closedir(npd);
+          return JOB_REGISTRY_UNLINK_FAIL;
+         }
         nadd++;
-        unlink(cfp);
-        /* FIXME: If the unlink operation fails we should report a warning. */
-        /* No bad things will happen if this file is re-read, but that */
-        /* will be inefficient. The job registry creator should *always* */
-        /* be able to unlink the file as it is also the owner of the ufd */
-        /* directory. */
        }
       free(cfp);
      }
    }
   closedir(npd);
+  /* Resync before (possibly) dropping the write lock */
+  if (ofd != NULL)
+   {
+    rha->mode = saved_rha_mode;
+    rha->lastrec = saved_rha_lastrec;
+    job_registry_resync(rha, ofd);
+   }
   if (fd == NULL && ofd != NULL) fclose(ofd);
 
   if (nadd > 0)

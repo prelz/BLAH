@@ -18,6 +18,8 @@
  *  21-Sep-2010 Added JOB_REGISTRY_BINFO_ONLY return code.
  *   7-Oct-2010 Added support for optional mmap sharing 
  *              of entry index.
+ *  11-Mar-2010 Added JOB_REGISTRY_UNLINK_FAIL return code.
+ *              Added job_registry_check_index_key_uniqueness.
  *
  *  Description:
  *    Prototypes of functions defined in job_registry.c
@@ -203,6 +205,7 @@ typedef struct job_registry_hash_store_s
 #define JOB_REGISTRY_MMAP_FAIL       -18 
 #define JOB_REGISTRY_MUNMAP_FAIL     -19 
 #define JOB_REGISTRY_UPDATE_TIMEOUT  -20 
+#define JOB_REGISTRY_UNLINK_FAIL     -21 
 
 #define JOB_REGISTRY_TEST_FILE "/tmp/test_reg.bjr"
 #define JOB_REGISTRY_REGISTRY_NAME "registry"
@@ -299,6 +302,8 @@ int job_registry_lookup_hash(const job_registry_hash_store *hst,
 void job_registry_free_hash_store(job_registry_hash_store *hst);
 int job_registry_purge_subject_hash_list(const job_registry_handle *rha,
                                          const job_registry_hash_store *hst);
+int job_registry_check_index_key_uniqueness(const job_registry_handle *rha,
+                                            char **first_duplicate_id);
 
 
 #ifndef TRUE
