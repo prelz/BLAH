@@ -33,16 +33,15 @@ if [ ! -d "$BLAHPD_LOCATION" ]; then
 fi
 
 if [ ! -r "$BLAHPD_CONFIG_LOCATION" ]; then
-  if [ -r "${BLAHPD_LOCATION:-/opt/glite}/etc/blah.config" ]; then
-    export BLAHPD_CONFIG_LOCATION="${BLAHPD_LOCATION:-/opt/glite}/etc/blah.config"
-  elif [ -r "/etc/blah.config" ]; then
-#   Default value when everything else fails.
+  if [ -r "/etc/blah.config" ]; then
     export BLAHPD_CONFIG_LOCATION="/etc/blah.config"
+  elif [ -r "${BLAHPD_LOCATION:-/opt/glite}/etc/blah.config" ]; then
+    export BLAHPD_CONFIG_LOCATION="${BLAHPD_LOCATION:-/opt/glite}/etc/blah.config"
   fi
 fi
 
 if [ ! -r "$BLAHPD_CONFIG_LOCATION" ]; then
-  echo "$0: Cannot read BLAH config file at: $BLAHPD_CONFIG_LOCATION"
+  echo "$0: Cannot read BLAH config file (\$BLAHPD_CONFIG_LOCATION, or /etc/blah.config, or /opt/glite/etc/blah.config)"
   exit 1
 fi
 

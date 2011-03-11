@@ -27,7 +27,7 @@
 if [ "x${BLAHPD_LOCATION}" != "x" -a -d "${BLAHPD_LOCATION}/bin" ]; then
   blparser_bin_directory="${BLAHPD_LOCATION}/bin"
 else
-  if [ -d "${GLITE_LOCATION}/bin" ]; then
+  if [ "x${GLITE_LOCATION}" != "x" -a -d "${GLITE_LOCATION}/bin" ]; then
     blparser_bin_directory="${GLITE_LOCATION}/bin"
   else
 #   Default value when everything else fails.

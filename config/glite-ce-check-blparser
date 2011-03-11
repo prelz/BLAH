@@ -27,7 +27,7 @@
 if [ "x${BLAHPD_LOCATION}" != "x" -a -d "${BLAHPD_LOCATION}/bin" ]; then
   blparser_bin_directory="${BLAHPD_LOCATION}/bin"
 else
-  if [ -d "${GLITE_LOCATION}/bin" ]; then
+  if [ "x${GLITE_LOCATION}" != "x" -a -d "${GLITE_LOCATION}/bin" ]; then
     blparser_bin_directory="${GLITE_LOCATION}/bin"
   else
 #   Default when everything else fails.
@@ -36,16 +36,15 @@ else
 fi
 
 if [ ! -r "$BLPARSER_CONFIG_LOCATION" ]; then
-  if [ -r "${GLITE_LOCATION:-/opt/glite}/etc/blparser.conf" ]; then
-    export BLPARSER_CONFIG_LOCATION="${GLITE_LOCATION:-/opt/glite}/etc/blparser.conf"
-  elif [ -r "/etc/blparser.conf" ]; then
-#   Default when everything else fails.
+  if [ -r "/etc/blparser.conf" ]; then
     export BLPARSER_CONFIG_LOCATION="/etc/blparser.conf"
+  elif [ -r "${GLITE_LOCATION:-/opt/glite}/etc/blparser.conf" ]; then
+    export BLPARSER_CONFIG_LOCATION="${GLITE_LOCATION:-/opt/glite}/etc/blparser.conf"
   fi
 fi
 
 if [ ! -r "$BLPARSER_CONFIG_LOCATION" ]; then
-  echo "$0: Cannot read BLParser config file at: $BLPARSER_CONFIG_LOCATION"
+  echo "$0: Cannot read BLParser config file (\$BLPARSER_CONFIG_LOCATION, or /etc/blparser.conf, or /opt/glite/etc/blparser.conf)"
   exit 1
 fi
 
