@@ -19,7 +19,7 @@
 #
 
 escaped_prefix=$(echo "$RPM_INSTALL_PREFIX"|sed 's/\//\\\//g')
-if [ -z "$escaped_prefix" ]; then
+if [ -z "$escaped_prefix" -o "$RPM_INSTALL_PREFIX" == "/"]; then
   escaped_prefix="\\/usr"
 fi 
 pids=$(ps ax | sed -n "/${escaped_prefix}\/bin\/\(BNotifier\|BUpdater\|blahpd\|BLParser\)/s/^[ ]*\([0-9]*\).*/\1/p")

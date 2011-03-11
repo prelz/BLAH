@@ -17,7 +17,7 @@
 #
 
 blah_install_prefix="${RPM_INSTALL_PREFIX}"
-if [ -z "$blah_install_prefix" ]; then
+if [ -z "$blah_install_prefix" -o "$blah_install_prefix" == "/" ]; then
   blah_install_prefix="/usr"
 fi
 
