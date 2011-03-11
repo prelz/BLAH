@@ -2041,6 +2041,7 @@ job_registry_update_op(job_registry_handle *rha,
  * Binary search for an entry in the indexed, sorted job registry pointed to by
  * rha. The record number in the current JR cache is returned.
  * No file access is required.
+ * In case multiple entries are found, the lowest recnum is returned.
  *
  * @param rha Pointer to a job registry handle returned by job_registry_init.
  * @param id Job id key to be looked up 
@@ -2053,7 +2054,7 @@ job_registry_get_recnum(const job_registry_handle *rha,
                         const char *id)
 {
   /* Binary search in entries */
-  int left,right,cur;
+  int left,right,cur,tcur;
   job_registry_recnum_t found=0;
   int cmp;
 
@@ -2067,6 +2068,16 @@ job_registry_get_recnum(const job_registry_handle *rha,
     if (cmp == 0)
      {
       found = rha->entries[cur].recnum;
+      /* Check for duplicates. */
+      for (tcur=cur-1; tcur >=0 && strcmp(rha->entries[tcur].id,id)==0; tcur--)
+       {
+        if (rha->entries[tcur].recnum < found) found = rha->entries[tcur].recnum;
+       }
+      for (tcur=cur+1;tcur < rha->n_entries && 
+                             strcmp(rha->entries[tcur].id,id)==0; tcur++)
+       {
+        if (rha->entries[tcur].recnum < found) found = rha->entries[tcur].recnum;
+       }
       break;
      }
     else if (cmp < 0)
@@ -3357,4 +3368,36 @@ job_registry_purge_subject_hash_list(const job_registry_handle *rha,
   free(templist);
 
   return retcod;
+}
+
+/*
+ * job_registry_check_index_key_uniqueness
+ *
+ * Check whether in the current index (if any) there are any duplicated
+ * entries. 
+ * Will optionally return the ID of the first duplicated entry.
+ *
+ * @param rha Pointer to a job registry handle returned by job_registry_init.
+ * @param first_duplicate_id If non-NULL, will be set to
+ *                           a pointer to the first duplicated ID that
+ *                           was found.
+ * @return 0 if no duplicates are found, < 0 if they are found.
+ */
+
+int job_registry_check_index_key_uniqueness(const job_registry_handle *rha,
+                                            char **first_duplicate_id)
+{
+  int cur;
+
+  for (cur=1; cur < rha->n_entries; cur++)
+   {
+    if (strcmp(rha->entries[cur-1].id, rha->entries[cur].id) == 0)
+     {
+      if (first_duplicate_id != NULL) 
+        *first_duplicate_id=rha->entries[cur-1].id;
+      return JOB_REGISTRY_FAIL;
+     }
+   }
+
+  return JOB_REGISTRY_SUCCESS; 
 }
