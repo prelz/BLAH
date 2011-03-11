@@ -53,6 +53,7 @@ int finalstate_query_interval=30;
 int alldone_interval=36000;
 int next_finalstatequery=0;
 int bhist_logs_to_read=10;
+int bupdater_consistency_check_interval=3600;
 char *bjobs_long_format="yes";
 char *use_bhist_for_susp="no";
 int debug=FALSE;

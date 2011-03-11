@@ -30,11 +30,14 @@ int main(int argc, char *argv[]){
 	job_registry_entry *en;
 	time_t now;
 	time_t purge_time=0;
+	time_t last_consistency_check=0;
 	char *pidfile=NULL;
 	char *final_string=NULL;
 	char *cp=NULL;
 	char *tpath;
 	char *tspooldir;
+	
+	char *first_duplicate=NULL;
 	
 	int version=0;
 	int first=TRUE;
@@ -234,6 +237,13 @@ int main(int argc, char *argv[]){
 		loop_interval=atoi(ret->value);
 	}
 	
+	ret = config_get("bupdater_consistency_check_interval",cha);
+	if (ret == NULL){
+		do_log(debuglogfile, debug, 1, "%s: key bupdater_consistency_check_interval not found using the default:%d\n",argv0,bupdater_consistency_check_interval);
+	} else {
+		bupdater_consistency_check_interval=atoi(ret->value);
+	}
+	
 	ret = config_get("bupdater_pidfile",cha);
 	if (ret == NULL){
 		do_log(debuglogfile, debug, 1, "%s: key bupdater_pidfile not found\n",argv0);
@@ -294,6 +304,17 @@ int main(int argc, char *argv[]){
 
 			}else{
 				purge_time=time(0);
+			}
+		}
+		
+		now=time(0);
+		if(now - last_consistency_check > bupdater_consistency_check_interval){
+			if(job_registry_check_index_key_uniqueness(rha,&first_duplicate)==JOB_REGISTRY_FAIL){
+				do_log(debuglogfile, debug, 1, "%s: Found job registry duplicate entry. The first one is:%s\n",argv0,first_duplicate);
+               	        	fprintf(stderr,"%s: Found job registry duplicate entry. The first one is:%s",argv0,first_duplicate);
+ 
+			}else{
+				last_consistency_check=time(0);
 			}
 		}
 	       

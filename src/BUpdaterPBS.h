@@ -48,6 +48,7 @@ int tracejob_logs_to_read=2;
 int finalstate_query_interval=30;
 int alldone_interval=36000;
 int next_finalstatequery=0;
+int bupdater_consistency_check_interval=3600;
 int debug=FALSE;
 int nodmn=FALSE;
 char *pbs_batch_caching_enabled="Not";
