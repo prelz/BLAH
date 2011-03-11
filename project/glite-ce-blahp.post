@@ -16,6 +16,10 @@
 #    limitations under the License.
 #
 
+blah_install_prefix="${RPM_INSTALL_PREFIX}"
+if [ -z "$blah_install_prefix" ]; then
+  blah_install_prefix="/usr"
+fi
 
-/bin/mv ${RPM_INSTALL_PREFIX}/bin/condor_status.sh ${RPM_INSTALL_PREFIX}/bin/condor_status.sh.save
-/bin/cp ${RPM_INSTALL_PREFIX}/bin/blah_job_registry_lkup ${RPM_INSTALL_PREFIX}/bin/condor_status.sh
+/bin/mv ${blah_install_prefix}/bin/condor_status.sh ${blah_install_prefix}/bin/condor_status.sh.save
+/bin/cp ${blah_install_prefix}/bin/blah_job_registry_lkup ${blah_install_prefix}/bin/condor_status.sh
