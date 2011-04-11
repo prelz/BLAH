@@ -369,7 +369,6 @@ daemonize()
 	}
 	
 	chdir("/");
-	umask(0);
 
 	freopen ("/dev/null", "r", stdin);
 	freopen ("/dev/null", "w", stdout);

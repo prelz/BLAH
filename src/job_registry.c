@@ -610,11 +610,16 @@ job_registry_init(const char *path,
          }
         need_to_create_regdir = TRUE;
        }
+      else
+       {
+        /* Make sure the file has as-restrictive as possible permissions */
+        chmod(path, fst.st_mode&(~(S_IROTH|S_IWOTH)));
+       }
      }
     if (need_to_create_regdir)
      {
       old_umask = umask(0);
-      if (mkdir(path,01777) < 0)
+      if (mkdir(path,S_ISVTX|S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IXOTH) < 0)
        {
         if (old_path != NULL) 
          {
@@ -704,7 +709,7 @@ job_registry_init(const char *path,
       if (errno == ENOENT)
        {
         old_umask = umask(0);
-        if ((cfd=creat(rha->lockfile,0666)) < 0)
+        if ((cfd=creat(rha->lockfile,S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH)) < 0)
          {
           umask(old_umask);
           job_registry_destroy(rha);
@@ -719,12 +724,18 @@ job_registry_init(const char *path,
         return NULL;
        }
      }
+    else
+     {
+      /* Make sure the file is empty has as-restrictive as possible permissions */
+      chmod(rha->lockfile, lst.st_mode&(~(S_IXUSR|S_IXGRP|S_IXOTH)));
+      truncate(rha->lockfile, 0);
+     }
     if (stat(rha->subjectlist, &lst) < 0)
      {
       if (errno == ENOENT)
        {
         old_umask = umask(0);
-        if ((cfd=creat(rha->subjectlist,0664)) < 0)
+        if ((cfd=creat(rha->subjectlist,S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH)) < 0)
          {
           umask(old_umask);
           job_registry_destroy(rha);
@@ -738,6 +749,11 @@ job_registry_init(const char *path,
         job_registry_destroy(rha);
         return NULL;
        }
+     }
+    else
+     {
+      /* Make sure the file has as-restrictive as possible permissions */
+      chmod(rha->subjectlist, lst.st_mode&(~(S_IXUSR|S_IXGRP|S_IXOTH|S_IWOTH)));
      }
    }
 
@@ -764,7 +780,7 @@ job_registry_init(const char *path,
         if (errno == ENOENT)
          {
           old_umask = umask(0);
-          if (mkdir(*dir,01777) < 0)
+          if (mkdir(*dir,S_ISVTX|S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IWOTH|S_IXOTH) < 0)
            {
             umask(old_umask);
             job_registry_destroy(rha);
@@ -786,6 +802,8 @@ job_registry_init(const char *path,
           errno = ENOTDIR;
           return NULL;
          }
+        /* Make sure the file has as-restrictive as possible permissions */
+        chmod(*dir, dst.st_mode&(~(S_IROTH)));
        }
      }
    }
@@ -1014,7 +1032,8 @@ job_registry_resync_mmap(job_registry_handle *rha, FILE *fd)
      }
     sprintf(new_index,"%s.tmp",rha->mmappableindex);
 
-    newindex_fd = open(new_index, O_RDWR|O_CREAT|O_EXCL, 0666);
+    newindex_fd = open(new_index, O_RDWR|O_CREAT|O_EXCL, 
+                       S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
     if (newindex_fd < 0 && errno != EEXIST && errno != EACCES)
      {
       free(new_index);
@@ -2316,7 +2335,8 @@ job_registry_rdlock(const job_registry_handle *rha, FILE *sfd)
   /* to make sure no write lock is pending */
 
   old_umask = umask(0);
-  lfd = open(rha->lockfile, O_WRONLY|O_CREAT, 0666); 
+  lfd = open(rha->lockfile, O_WRONLY|O_CREAT, 
+             S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH); 
   umask(old_umask);
   if (lfd < 0) return lfd;
 
@@ -2373,7 +2393,8 @@ job_registry_wrlock(const job_registry_handle *rha, FILE *sfd)
   /* to prevent new read locks. */
 
   old_umask = umask(0);
-  lfd = open(rha->lockfile, O_WRONLY|O_CREAT, 0666); 
+  lfd = open(rha->lockfile, O_WRONLY|O_CREAT,
+             S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH); 
   umask(old_umask);
   if (lfd < 0) return lfd;
 
@@ -2387,6 +2408,10 @@ job_registry_wrlock(const job_registry_handle *rha, FILE *sfd)
     close(lfd);
     return ret;
    }
+
+  /* Make sure the world-writable lock file continues to be empty */
+  /* We check this when obtaining registry write locks only */
+  ftruncate(lfd, 0);
 
   /* Now obtain the requested write lock */
 

@@ -388,7 +388,6 @@ daemonize()
 		exit(EXIT_SUCCESS);
 	}
 	chdir("/");
-	umask(0);
     
 	freopen ("/dev/null", "r", stdin);  
 	freopen ("/dev/null", "w", stdout);
@@ -400,9 +399,18 @@ int
 writepid(char * pidfile)
 {
 	FILE *fpid;
-	
+	struct stat pstat;
+	mode_t pidmode = S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH;
+
+	if (stat(pidfile, &pstat) >= 0){
+		pidmode = pstat.st_mode;
+		pidmode &= ~(S_IWGRP|S_IWOTH);
+	}
+
 	fpid = fopen(pidfile, "w");
 	if ( !fpid ) { perror(pidfile); return 1; }
+	fchmod(fileno(fpid), pidmode);
+
 	if (fprintf(fpid, "%d", getpid()) <= 0) { perror(pidfile); return 1; }
 	if (fclose(fpid) != 0) { perror(pidfile); return 1; }
 	return 0;
