@@ -3109,6 +3109,7 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId, char *
 						iwd = NULL;
 					}
 				}
+				else break;
 			}
 		}
 
