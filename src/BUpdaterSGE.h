@@ -21,6 +21,7 @@
 #include "Bfunctions.h"
 #include "config.h"
 
+#define DEFAULT_LOOP_INTERVAL 5
 #define CSTR_CHARS         25
 
 #ifndef VERSION
@@ -28,25 +29,27 @@
 #endif
 
 int IntStateQuery();
+//int FinalStateQuery(char *query, int logs_to_read);
 int FinalStateQuery(char *query);
 int AssignFinalState(char *batchid);
+void sighup();
 int usage();
 int short_usage();
 
 int runfinal=FALSE;
 char *command_string;
-char *sge_helper_path="/opt/glite/bin/sge_helper";
-char *sge_root="/usr/local/sge";
-char *sge_cell="default";
+char *sge_helperpath=NULL;
+char *sge_rootpath=NULL;
+char *sge_cellname=NULL;
+char *sge_binpath=NULL;
 char *registry_file;
-int purge_interval=864000;
-int finalstate_query_interval=5;
-int alldone_interval=864000;
-int debug=0;
+int purge_interval=2500000;
+int finalstate_query_interval=30;
+int alldone_interval=36000;
+int debug;
 int nodmn=0;
-char *sge_batch_caching_enabled="Not";
-char *batch_command_caching_filter=NULL;
-char *batch_command=NULL;
+
+bupdater_active_jobs bact;
 
 FILE *debuglogfile;
 char *debuglogname=NULL;
