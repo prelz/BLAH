@@ -437,24 +437,81 @@ FinalStateQuery(char *query)
 {
         char *command_string;
 	FILE *file_output;
-	char line[6];
+	char line[STR_CHARS];
+	char fail[6];
 	job_registry_entry en;
 	time_t now;
 	char *string_now=NULL;
+	int i;
+	char *list;
+	char *saveptr;
 	
 	if((command_string=calloc(NUM_CHARS+strlen(query),1)) == 0){
 		sysfatal("can't malloc command_string %r");
 	}
 
-	char *list=strtok(query, " \n" );
+	
+	list=strtok_r(query, " \n", &saveptr);
 	while (list != NULL){
-	  sprintf(command_string,"%s --qstat --sgeroot=%s --cell=%s --status %s",sge_helperpath, sge_rootpath, sge_cellname, list);
-	  file_output = popen(command_string,"r");
+	    sprintf(command_string,"%s --qstat --sgeroot=%s --cell=%s --status %s",sge_helperpath, sge_rootpath, sge_cellname, list);
+	    file_output = popen(command_string,"r");
   
-	  if (file_output == NULL) return 0;
+	    if (file_output == NULL) return 0;
+	  
+	    fgets( line,sizeof(line), file_output );
 
-	  fgets( line,sizeof(line), file_output );
-	  if (strcmp (line,"Error") == 0){
+	    strncpy(fail,line,5);
+	    fail[5]='\0';
+
+	    if (strcmp (fail,"Error") == 0){
+	      /*
+	      When a job ends ok there are some time between status 2 and status 4
+	      that you can't make a qstat or you get error, so we can detect false errors
+	      we sleep some time and we check again to avoid that
+	      */
+		sleep(60);
+		FILE *file_output_er;
+		char line_er[STR_CHARS];
+		  
+		file_output_er = popen(command_string,"r");
+		if (file_output_er == NULL) return 0;
+		  
+		fgets( line_er,sizeof(line), file_output_er );
+		strncpy(fail,line_er,5);
+		fail[5]='\0';
+
+		if (strcmp (fail,"Error") == 0){
+		    char *elto=strtok(list, " ." );
+		    JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,elto);
+		    en.status=atoi("3");
+		    en.exitcode=atoi("3");
+		    JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
+		    JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"reason=3");
+		    now=time(0);
+		    string_now=make_message("%d",now);
+		    JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now)
+		    en.udate=now;
+		    free(string_now);
+
+		    if ((ret=job_registry_update(rha, &en)) < 0){
+			fprintf(stderr,"Update of record returns %d: ", ret);
+			perror("");
+		    }else{
+			if (en.status == REMOVED || en.status == COMPLETED){
+			    job_registry_unlink_proxy(rha, &en);
+			}
+		    }
+		  }
+	  }else{
+	      /*
+		we detect a posible error in our tests that said as message: cannot convert date: "-/-"
+		if don't check it, BUpdaterSGE ends with Segmention Fault, but I detect that
+		we can't get the error, we get first a blank line, so compare with ""
+		
+		in future version check that, because, is not really removed job
+		it finish with error, so status 3 it's no so good
+	      */
+	      if (strcmp (fail,"") == 0){
 		  char *elto=strtok(list, " ." );
 		  JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,elto);
 		  en.status=atoi("3");
@@ -466,25 +523,36 @@ FinalStateQuery(char *query)
 		  JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now)
 		  en.udate=now;
 		  free(string_now);
+		  
 		  if ((ret=job_registry_update(rha, &en)) < 0)
-		    {
+		  {
 		      fprintf(stderr,"Update of record returns %d: ", ret);
 		      perror("");
-		    }
+		  }
 		  else
-		    {
+		  {
 		      if (en.status == REMOVED || en.status == COMPLETED){
-			job_registry_unlink_proxy(rha, &en);
+			  job_registry_unlink_proxy(rha, &en);
 		      }
-		    }
-
-	  }else{
-	    sprintf(command_string,"%s --sgeroot=%s --cell=%s --qacct %s", sge_helperpath, sge_rootpath, sge_cellname, list);
-	    StateQuery( command_string );
+		  }
+	      }else{
+		char *token[15];
+		char *saveptr1;
+		token[0] = strtok_r( line, " ;" , &saveptr1);
+		for ( i = 1 ; i <= 14 && token[i-1] != NULL ; i++ ) {
+		    token[i] = strtok_r( NULL, " ;", &saveptr1 );
+		}
+		if ((strcmp(token[10],"1") != 0) && (strcmp(token[10],"2") != 0)){
+		    sprintf(command_string,"%s --sgeroot=%s --cell=%s --qacct %s", sge_helperpath, sge_rootpath, sge_cellname, list);
+do_log(debuglogfile, debug, 1, "++Voy hacer un qacct :%s\n\n",command_string);
+		    StateQuery( command_string );
+		}
+	      }
 	  }
-	  sprintf(command_string,"\0");
-	  pclose( file_output );
-	  list = strtok (NULL, " \n");
+ 	  sprintf(command_string,"\0");
+ 	  pclose( file_output );
+	  line[0]='\0';
+	  list = strtok_r (NULL, " \n", &saveptr);
 	}
 
 	free(command_string);
@@ -520,7 +588,7 @@ int StateQuery(char *command_string)
 	int ret;
         time_t now;
         char *string_now=NULL;
-
+char *saveptr;
 	file_output = popen(command_string,"r");
 
         if (file_output == NULL){
@@ -531,9 +599,9 @@ int StateQuery(char *command_string)
 
 	while ( fgets( line, sizeof( line ), file_output ) > 0 ) {
 		int i;
-	        token[0] = strtok( line, " \n" );
+		token[0] = strtok_r( line, " \n", &saveptr );
 		for ( i = 1 ; i <= 5 && token[i-1] != NULL ; i++ ) {
-		  token[i] = strtok( NULL, " \n" );
+		    token[i] = strtok_r( NULL, " \n", &saveptr );
 		}
 
 		if ( token[5] && strcmp( token[5], "OK" ) == 0 ) {
