@@ -514,6 +514,11 @@ FinalStateQuery(char *query)
 			char *saveptr1;
 			token[0] = strtok_r( line, " ;" , &saveptr1);
 			for ( i = 1 ; i <= 14 && token[i-1] != NULL ; i++ ) {
+			    if (token[i-1] == NULL) {
+				token[i-1]="";
+				token[i]=NULL;
+				continue;
+			    }
 			    token[i] = strtok_r( NULL, " ;", &saveptr1 );
 			}
 			if ((strcmp(token[10],"1") != 0) && (strcmp(token[10],"2") != 0)){
