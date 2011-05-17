@@ -1,7 +1,7 @@
 /*
  *  File :     blah_job_registry_lkup.c
  *
- *  Author :   Francesco Prelz ($Author: mezzadri $)
+ *  Author :   Francesco Prelz ($Author: fprelz $)
  *  e-mail :   "francesco.prelz@mi.infn.it"
  *
  *  Revision history :
@@ -61,10 +61,11 @@ main(int argc, char *argv[])
   int opt_get_port = FALSE;
   char *anhname;
   struct utsname ruts;
+  const char *usage_string="1ERROR Usage: %s [-w (get worker node)] [-p (get user proxy)] [-n (get parser host:port)] [-b (look up for batch IDs)] <id>\n";
  
   if (argc < 2)
    {
-    fprintf(stdout,"1ERROR Usage: %s [-w (get worker node)] [-p (get user proxy)] [-n (get parser host:port)] [-b (look up for batch IDs)] <id>\n",argv[0]);
+    fprintf(stdout,usage_string,argv[0]);
     return 1;
    }
 
@@ -90,6 +91,11 @@ main(int argc, char *argv[])
    }
 
   id = argv[idc];
+  if (id == NULL) /* Is there an argument that doesn't start with '-' ? */
+   {
+    fprintf(stdout,usage_string,argv[0]);
+    return 1;
+   }
 
   cha = config_read(NULL); /* Read config from default locations. */
   if (cha != NULL)
