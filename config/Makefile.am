@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.12 2009/01/26 09:10:54 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.13 2011/05/18 13:12:55 mezzadri Exp $ 
 #
 # File:           Makefile.am
 #
@@ -25,10 +25,11 @@ EXTRA_DIST = blah.config.template \
              blparser.conf.template \
              glite-ce-blparser \
              glite-ce-blahparser \
+             glite-ce-blah \
              glite-ce-check-blparser 
 
 bldir = $(sysconfdir)/init.d
-bl_SCRIPTS = glite-ce-blparser glite-ce-blahparser glite-ce-check-blparser
+bl_SCRIPTS = glite-ce-blparser glite-ce-blahparser glite-ce-blah glite-ce-check-blparser
 
 CLEANFILES =
 
