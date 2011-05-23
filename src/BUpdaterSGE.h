@@ -46,6 +46,7 @@ char *registry_file;
 int purge_interval=2500000;
 int finalstate_query_interval=30;
 int alldone_interval=36000;
+int bupdater_consistency_check_interval=3600;
 int debug;
 int nodmn=0;
 
