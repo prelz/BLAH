@@ -167,7 +167,11 @@ if ( $QACCT ) {
 		if ( /^exit_status\s+(\d+)/ ) {
 		    $jobinfo{'BatchJobId'} = $jobid;
 		    $jobinfo{'ExitCode'} = $1;
-		    $jobinfo{'JobStatus'} = BLAH_FINISHED;
+		    if ( $jobinfo{'ExitCode'} == 137 ){
+			$jobinfo{'JobStatus'} = BLAH_DELETED;
+		    } else {
+			$jobinfo{'JobStatus'} = BLAH_FINISHED;
+		    }
 		} elsif ( $CLASSAD && /^qsub_time\s+(.+)$/ ) {
 		    #ASG
 		    $jobinfo{'LRMSSubmissionTime'} = '"'.&convert_date( $1 ).'"';
@@ -256,6 +260,7 @@ sub convert_date {
 	( $sec, $min, $hour, $day, $month, $year ) = localtime( $1 );
 	$month++; $year += 1900;
     } elsif ( defined( $date ) && $date ne '' ) {
+	print "cannot convert date: \"$date\"\n";
 	die "cannot convert date: \"$date\"\n";
     }
 

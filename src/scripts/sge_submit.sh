@@ -36,10 +36,10 @@
 
 . `dirname $0`/blah_common_submit_functions.sh
 
-if [ -z "$sge_root" ]; then sge_root="/usr/local/sge/pro"; fi
-if [ -r "$sge_root/${sge_cell:-default}/common/settings.sh" ]
+if [ -z "$sge_rootpath" ]; then sge_rootpath="/usr/local/sge/pro"; fi
+if [ -r "$sge_rootpath/${sge_cellname:-default}/common/settings.sh" ]
 then
-  . $sge_root/${sge_cell:-default}/common/settings.sh
+  . $sge_rootpath/${sge_cellname:-default}/common/settings.sh
 fi
 
 bls_job_id_for_renewal=JOB_ID
@@ -64,14 +64,26 @@ cat > $bls_tmp_file << end_of_preamble
 end_of_preamble
 
 #local batch system-specific file output must be added to the submit file
-bls_local_submit_attributes_file=${blah_bin_directory}/sge_local_submit_attributes.sh
+local_submit_attributes_file=${GLITE_LOCATION:-/opt/glite}/bin/sge_local_submit_attributes.sh
+if [ -r $local_submit_attributes_file ] ; then
+    echo \#\!/bin/sh > $bls_opt_tmp_req_file
+    if [ ! -z $bls_opt_req_file ] ; then
+        cat $bls_opt_req_file >> $bls_opt_tmp_req_file
+    fi
+    echo "source $local_submit_attributes_file" >> $bls_opt_tmp_req_file
+    chmod +x $bls_opt_tmp_req_file
+    $bls_opt_tmp_req_file >> $bls_tmp_file 2> /dev/null
+    rm -f $bls_opt_tmp_req_file
+fi
 
-bls_set_up_local_and_extra_args
+if [ ! -z "$bls_opt_xtra_args" ] ; then
+    echo -e $bls_opt_xtra_args >> $bls_tmp_file 2> /dev/null
+fi
 
 # Write SGE directives according to command line options
 # handle queue overriding
 [ -z "$bls_opt_queue" ] || grep -q "^#\$ -q" $bls_tmp_file || echo "#\$ -q $bls_opt_queue" >> $bls_tmp_file
-[ -z "$bls_opt_mpinodes" ] || grep -q "^#\$ -pe *\\*" $bls_tmp_file || echo "#\$ -pe * $bls_opt_mpinodes" >> $bls_tmp_file
+[ -z "$bls_opt_mpinodes" ]             || echo "#\$ -pe * $bls_opt_mpinodes" >> $bls_tmp_file
 
 # Input and output sandbox setup.
 bls_fl_subst_and_accumulate inputsand "@@F_REMOTE@`hostname -f`:@@F_LOCAL" "@@@"

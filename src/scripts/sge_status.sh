@@ -20,7 +20,7 @@
 #
 
 
-. `dirname $0`/blah_load_config.sh
+[ -f ${GLITE_LOCATION:-/opt/glite}/etc/blah.config ] && . ${GLITE_LOCATION:-/opt/glite}/etc/blah.config
 
 usage_string="Usage: $0 [-w] [-n]"
 
@@ -53,10 +53,10 @@ then
     exec `dirname $0`/blah_job_registry_lkup -n
 fi
 
-if [ -z "$sge_root" ]; then sge_root="/usr/local/sge/pro"; fi
-if [ -r "$sge_root/${sge_cell:-default}/common/settings.sh" ]
+if [ -z "$sge_rootpath" ]; then sge_rootpath="/usr/local/sge/pro"; fi
+if [ -r "$sge_rootpath/${sge_cellname:-default}/common/settings.sh" ]
 then
-  . $sge_root/${sge_cell:-default}/common/settings.sh
+  . $sge_rootpath/${sge_cellname:-default}/common/settings.sh
 fi
 
 tmpid=`echo "$@"|sed 's/.*\/.*\///g'`

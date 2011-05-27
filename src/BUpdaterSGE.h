@@ -31,7 +31,8 @@
 int IntStateQuery();
 //int FinalStateQuery(char *query, int logs_to_read);
 int FinalStateQuery(char *query);
-int AssignFinalState(char *batchid);
+// int AssignFinalState(char *batchid);
+int AssignState (char *element, char *status, char *exit, char *reason, char *wn, char *udate);
 void sighup();
 int usage();
 int short_usage();
@@ -46,7 +47,6 @@ char *registry_file;
 int purge_interval=2500000;
 int finalstate_query_interval=30;
 int alldone_interval=36000;
-int bupdater_consistency_check_interval=3600;
 int debug;
 int nodmn=0;
 
