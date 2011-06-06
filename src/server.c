@@ -2770,6 +2770,7 @@ logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char
 {
 	int i=0, rc=0, cs=0, result=0, fd = -1, count = 0, slen = 0, slen2 = 0;
 	char *gridjobid=NULL;
+	char *clientjobid, *clientjobidstr=NULL;
 	char *ce_id=NULL;
 	char *ce_idtmp=NULL;
 	char *temp_str=NULL;
@@ -2815,7 +2816,16 @@ logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char
 	{
 		classad_get_dstring_attribute(cad, "uniquejobid", &gridjobid);
 	}
-	if (gridjobid == NULL) gridjobid = make_message("");
+	if (gridjobid == NULL) gridjobid = strdup("");
+
+	/* 'Client' (e.g. 'Cream') jobID */
+	classad_get_dstring_attribute(cad, "ClientJobId", &clientjobid);
+	if (clientjobid != NULL)
+	{
+		clientjobidstr = make_message(" \"clientID=%s\"", clientjobid);
+		free(clientjobid);
+	}
+	if (clientjobidstr == NULL) clientjobidstr = strdup("");
 
 	/* lrms job ID */
 	if((spid = job_registry_split_blah_id(jobId)) == NULL)
@@ -2885,7 +2895,7 @@ logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char
 	plock.l_start = 0;
 	plock.l_len = 0; /* Lock whole file */
   	if (fcntl(fileno(logf), F_SETLKW, &plock) >= 0) {
-		if (fprintf(logf, "\"timestamp=%s\" \"userDN=%s\" %s \"ceID=%s\" \"jobID=%s\" \"lrmsID=%s\" \"localUser=%s\"\n", date_str, userDN, fqan, ce_id, gridjobid, lrms_jobid, uid) >= 0) retcode = 0;
+		if (fprintf(logf, "\"timestamp=%s\" \"userDN=%s\" %s \"ceID=%s\" \"jobID=%s\" \"lrmsID=%s\" \"localUser=%s\"%s\n", date_str, userDN, fqan, ce_id, gridjobid, lrms_jobid, uid, clientjobidstr) >= 0) retcode = 0;
 	}
 
 	fclose(logf);
@@ -2894,11 +2904,12 @@ free_3:
 	free(uid);
 
 free_2:
-	if(gridjobid) free(gridjobid);
 	if (ce_id) free(ce_id);
 	job_registry_free_split_id(spid);
 
 free_1:
+	if(clientjobidstr) free(clientjobidstr);
+	if(gridjobid) free(gridjobid);
 	free(logf_name);
 
 	return retcode;
