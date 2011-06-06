@@ -2770,7 +2770,7 @@ logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char
 {
 	int i=0, rc=0, cs=0, result=0, fd = -1, count = 0, slen = 0, slen2 = 0;
 	char *gridjobid=NULL;
-	char *clientjobid, *clientjobidstr=NULL;
+	char *clientjobid=NULL, *clientjobidstr=NULL;
 	char *ce_id=NULL;
 	char *ce_idtmp=NULL;
 	char *temp_str=NULL;
