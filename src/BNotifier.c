@@ -375,7 +375,7 @@ PollDB()
 						if ((cp = strrchr (lbuf[1], '\r')) != NULL){
 							*cp = '\0';
 						}
-						buffer=make_message("[BlahJobName=\"%s\"; ClientJobId=\"%s\"; JobStatus=4; JwExitCode=999; ExitReason=\"job not found\"; Reason=\"reason=999\"; ChangeTime=\"%s\"; ]\n",tbuf[i],lbuf[1],cdate);
+						buffer=make_message("[BlahJobName=\"%s\"; ClientJobId=\"%s\"; JobStatus=4; JwExitCode=999; ExitReason=\"BUpdater is not able to find anymore the job\"; Reason=\"BUpdater is not able to find anymore the job\"; ChangeTime=\"%s\"; ]\n",tbuf[i],lbuf[1],cdate);
 					}
 					freetoken(&lbuf,maxtokl);
 					free(cdate);
