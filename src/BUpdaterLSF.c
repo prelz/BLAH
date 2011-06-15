@@ -824,6 +824,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	int failed_count=0;
 	int time_to_add=0;
 	time_t now;
+	char *string_now=NULL;
 
 	
 	if(start_date != 0){
@@ -852,11 +853,14 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				*cp = '\0';
 			}
 			do_log(debuglogfile, debug, 3, "%s: line in FinalStateQuery is:%s\n",argv0,line);
+			now=time(0);
+			string_now=make_message("%d",now);
 			if(line && strstr(line,"Job <")){	
 				if(en.status!=UNDEFINED && en.status!=IDLE){	
 					if ((ret=job_registry_update_select(rha, &en,
 					JOB_REGISTRY_UPDATE_UDATE |
 					JOB_REGISTRY_UPDATE_STATUS |
+					JOB_REGISTRY_UPDATE_UPDATER_INFO |
 					JOB_REGISTRY_UPDATE_EXITCODE |
 					JOB_REGISTRY_UPDATE_EXITREASON )) < 0){
 						if(ret != JOB_REGISTRY_NOT_FOUND){
@@ -884,6 +888,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				en.status=REMOVED;
 				free(timestamp);
 				en.exitcode=-999;
+				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line," Exited with exit code") && en.status != REMOVED){	
@@ -897,6 +902,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				ex_str=strdel(token[8],".");
 				en.exitcode=atoi(ex_str);
 				free(ex_str);
+				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line," Exited by signal") && en.status != REMOVED){	
@@ -910,6 +916,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				ex_str=strdel(token[7],".");
 				en.exitcode=atoi(ex_str);
 				free(ex_str);
+				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line," Done successfully") && en.status != REMOVED){	
@@ -921,6 +928,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				en.status=COMPLETED;
 				free(timestamp);
 				en.exitcode=0;
+				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				freetoken(&token,maxtok_t);
 			}
@@ -933,6 +941,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 		if ((ret=job_registry_update_select(rha, &en,
 		JOB_REGISTRY_UPDATE_UDATE |
 		JOB_REGISTRY_UPDATE_STATUS |
+		JOB_REGISTRY_UPDATE_UPDATER_INFO |
 		JOB_REGISTRY_UPDATE_EXITCODE |
 		JOB_REGISTRY_UPDATE_EXITREASON )) < 0){
 			if(ret != JOB_REGISTRY_NOT_FOUND){

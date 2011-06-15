@@ -670,6 +670,7 @@ Job: 13.cream-12.pd.infn.it
 	char *cp=NULL;
 	char *command_string=NULL;
 	char *pbs_spool=NULL;
+	char *string_now=NULL;
 
 	do_log(debuglogfile, debug, 3, "%s: input_string in FinalStateQuery is:%s\n",argv0,input_string);
 	
@@ -702,6 +703,8 @@ Job: 13.cream-12.pd.infn.it
 					*cp = '\0';
 				}
                         	do_log(debuglogfile, debug, 3, "%s: line in FinalStateQuery is:%s\n",argv0,line);
+				now=time(0);
+				string_now=make_message("%d",now);
 				if(line && (strstr(line,"Job deleted") || (strstr(line,"dequeuing from") && strstr(line,"state RUNNING")))){	
 					maxtok_t = strtoken(line, ' ', &token);
 					timestamp=make_message("%s %s",token[0],token[1]);
@@ -711,6 +714,7 @@ Job: 13.cream-12.pd.infn.it
 					en.udate=tmstampepoch;
 					en.status=REMOVED;
                         		en.exitcode=-999;
+					JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 					JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				}else if(line && strstr(line,"Exit_status=") && en.status != REMOVED){	
 					maxtok_t = strtoken(line, ' ', &token);
@@ -727,6 +731,7 @@ Job: 13.cream-12.pd.infn.it
 					en.udate=tmstampepoch;
                         		en.exitcode=atoi(token[1]);
 					en.status=COMPLETED;
+					JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 					JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 					freetoken(&token,maxtok_t);
 				}
@@ -739,6 +744,7 @@ Job: 13.cream-12.pd.infn.it
 			if ((ret=job_registry_update_select(rha, &en,
 			JOB_REGISTRY_UPDATE_UDATE |
 			JOB_REGISTRY_UPDATE_STATUS |
+			JOB_REGISTRY_UPDATE_UPDATER_INFO |
 			JOB_REGISTRY_UPDATE_EXITCODE |
 			JOB_REGISTRY_UPDATE_EXITREASON )) < 0){
 				if(ret != JOB_REGISTRY_NOT_FOUND){
