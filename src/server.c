@@ -114,10 +114,10 @@
 #endif
 
 const char *opt_format[] = {
-	" %s %s",               /* NO_QUOTE */
-	" %s \"%s\"",           /* SINGLE_QUOTE */
-	" %s \"\\\"%s\\\"\"",   /* DOUBLE_QUOTE */
-	" %s %d"                /* INT_NOQUOTE */
+	" %s %s",          /* NO_QUOTE */
+	" %s '%s'",        /* SINGLE_QUOTE */
+	" %s '\"%s\"'",    /* DOUBLE_QUOTE */
+	" %s %d"           /* INT_NOQUOTE */
 };
 
 const char *statusstring[] = {
@@ -1192,7 +1192,7 @@ cmd_submit_job(void *args)
 	    (set_cmd_bool_option  (&command, cad, "StageCmd",   "-s", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "ClientJobId","-j", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "BatchExtraSubmitArgs", "-a", SINGLE_QUOTE) == C_CLASSAD_OUT_OF_MEMORY))
-//	    (set_cmd_string_option(&command, cad, "Args",      	"--", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY))
+//	    (set_cmd_string_option(&command, cad, "Args",      	"--", SINGLE_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY))
 	{
 		/* PUSH A FAILURE */
 		resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
@@ -1260,7 +1260,7 @@ cmd_submit_job(void *args)
 	}
 	else /* use Args old syntax */
 	{
-		if (set_cmd_string_option(&command, cad, "Args","--", NO_QUOTE) == C_CLASSAD_OUT_OF_MEMORY)
+		if (set_cmd_string_option(&command, cad, "Args","--", SINGLE_QUOTE) == C_CLASSAD_OUT_OF_MEMORY)
 		{
 			/* PUSH A FAILURE */
 			resultLine = make_message("%s 1 Out\\ of\\ memory\\ parsing\\ classad N/A", reqId);
