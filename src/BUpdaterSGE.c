@@ -496,7 +496,7 @@ int FinalStateQuery(char *query){
 		strcat(query_err," ");
 	    }else{			
 		if ((strcmp (fail,"") == 0) || (strcmp (fail2,"cannot") == 0)){
-		    AssignState (cmd,"3","3","reason=3","\0","");
+		    AssignState (list,"3","3","reason=3","\0","");
 		}else{
 		    char **saveptr1;
 		    int cont=0;
