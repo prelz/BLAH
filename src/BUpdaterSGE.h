@@ -28,14 +28,20 @@
 #define VERSION            "1.8.0"
 #endif
 
-int IntStateQuery();
+//int IntStateQuery();
+//void *StateQuery(void *job);
+int StateQuery(char *command_string);
 //int FinalStateQuery(char *query, int logs_to_read);
-int FinalStateQuery(char *query);
+int FinalStateQuery(char *query,char *queryStates);
 // int AssignFinalState(char *batchid);
 int AssignState (char *element, char *status, char *exit, char *reason, char *wn, char *udate);
 void sighup();
 int usage();
 int short_usage();
+void *CheckError(void *job);
+// void *checkQacct(void *l);
+/*void *CheckElements(void *query);*/
+    
 
 int runfinal=FALSE;
 char *command_string;

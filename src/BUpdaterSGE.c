@@ -1,23 +1,24 @@
 /*
-# Copyright (c) Members of the EGEE Collaboration. 2009. 
-# See http://www.eu-egee.org/partners/ for details on the copyright
-# holders.  
-# 
-# Licensed under the Apache License, Version 2.0 (the "License"); 
-# you may not use this file except in compliance with the License. 
-# You may obtain a copy of the License at 
-# 
-#     http://www.apache.org/licenses/LICENSE-2.0 
-# 
-# Unless required by applicable law or agreed to in writing, software 
-# distributed under the License is distributed on an "AS IS" BASIS, 
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
-# See the License for the specific language governing permissions and 
-# limitations under the License.
-#
-*/
+# Copyright (c) Members of the EGEE Collaboration. 2009.                                                                                                                                                             
+# See http://www.eu-egee.org/partners/ for details on the copyright                                                                                                                                                  
+# holders.                                                                                                                                                                                                           
+#                                                                                                                                                                                                                    
+# Licensed under the Apache License, Version 2.0 (the "License");                                                                                                                                                    
+# you may not use this file except in compliance with the License.                                                                                                                                                   
+# You may obtain a copy of the License at                                                                                                                                                                            
+#                                                                                                                                                                                                                    
+#     http://www.apache.org/licenses/LICENSE-2.0                                                                                                                                                                     
+#                                                                                                                                                                                                                    
+# Unless required by applicable law or agreed to in writing, software                                                                                                                                                
+# distributed under the License is distributed on an "AS IS" BASIS,                                                                                                                                                  
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.                                                                                                                                           
+# See the License for the specific language governing permissions and                                                                                                                                                
+# limitations under the License.                                                                                                                                                                                     
+#                                                                                                                                                                                                                    
+*/                                                                                                                                                                                                                   
 
 #include "BUpdaterSGE.h"
+#include <pthread.h>
 
 extern int bfunctions_poll_timeout;
 
@@ -28,8 +29,11 @@ int main(int argc, char *argv[]){
     time_t now;
     time_t purge_time=0;
     char *constraint=NULL;
+    char *constraint2=NULL;
     char *query=NULL;
+    char *queryStates=NULL;
     char *q=NULL;
+    char *q2=NULL;
     char *pidfile=NULL;
     char *final_string=NULL;
     char *cp=NULL;
@@ -43,7 +47,7 @@ int main(int argc, char *argv[]){
     
     int fsq_ret=0;
     
-    int c;				
+    int c;
     
     int confirm_time=0;
     
@@ -59,7 +63,7 @@ int main(int argc, char *argv[]){
 	    {"version",   no_argument,       0, 'v'},
 	    {0, 0, 0, 0}
 	};
-	    
+	
 	int option_index = 0;
 	
 	c = getopt_long (argc, argv, "vo",long_options, &option_index);
@@ -91,7 +95,7 @@ int main(int argc, char *argv[]){
 		abort ();
 	}
     }
-	
+    
     if(help){
 	usage();
     }
@@ -149,12 +153,12 @@ int main(int argc, char *argv[]){
     }else{
 	debug = 0;
     }
-    
+
     ret = config_get("debug_level",cha);
     if (ret != NULL){
 	debug=atoi(ret->value);
     }
-    
+
     ret = config_get("debug_logfile",cha);
     if (ret != NULL){
 	debuglogname=strdup(ret->value);
@@ -165,7 +169,7 @@ int main(int argc, char *argv[]){
     if(debug <=0){
 	debug=0;
     }
-    
+
     if(debuglogname){
 	if((debuglogfile = fopen(debuglogname, "a+"))==0){
 	    debug = 0;
@@ -173,7 +177,7 @@ int main(int argc, char *argv[]){
     }else{
 	debug = 0;
     }
-    
+
     ret = config_get("sge_binpath",cha);
     if (ret == NULL){
 	do_log(debuglogfile, debug, 1, "%s: key sge_binpath not found\n",argv0);
@@ -183,7 +187,7 @@ int main(int argc, char *argv[]){
 	    sysfatal("strdup failed for sge_binpath in main: %r");
 	}
     }
-    
+
     ret = config_get("sge_rootpath",cha);
     if (ret == NULL){
 	do_log(debuglogfile, debug, 1, "%s: key sge_rootpath not found\n",argv0);
@@ -200,7 +204,7 @@ int main(int argc, char *argv[]){
 	}
 	free(tpath);
     }
-    
+
     ret = config_get("sge_cellname",cha);
     if (ret == NULL){
 	do_log(debuglogfile, debug, 1, "%s: key sge_cellname not found\n",argv0);
@@ -210,7 +214,7 @@ int main(int argc, char *argv[]){
 	    sysfatal("strdup failed for sge_cellname in main: %r");
 	}
     }
-    
+
     ret = config_get("sge_helperpath",cha);
     if (ret == NULL){
 	do_log(debuglogfile, debug, 1, "%s: key sge_helperpath not found\n",argv0);
@@ -232,7 +236,7 @@ int main(int argc, char *argv[]){
 	    sysfatal("strdup failed for sge_helperpath in main: %r");
 	}
     }
-    
+
     ret = config_get("sge_rootpath",cha);
     if (ret == NULL){
 	if(debug){
@@ -245,7 +249,7 @@ int main(int argc, char *argv[]){
 	    sysfatal("strdup failed for sge_rootpath in main: %r");
 	}
     }
-    
+
     ret = config_get("sge_cellname",cha);
     if (ret == NULL){
 	if(debug){
@@ -258,7 +262,7 @@ int main(int argc, char *argv[]){
 	    sysfatal("strdup failed for sge_cellname in main: %r");
 	}
     }
-    
+
     ret = config_get("job_registry",cha);
     if (ret == NULL){
 	do_log(debuglogfile, debug, 1, "%s: key job_registry not found\n",argv0);
@@ -269,35 +273,35 @@ int main(int argc, char *argv[]){
 	    sysfatal("strdup failed for registry_file in main: %r");
 	}
     }
-    
+
     ret = config_get("purge_interval",cha);
     if (ret == NULL){
 	do_log(debuglogfile, debug, 1, "%s: key purge_interval not found using the default:%d\n",argv0,purge_interval);
     } else {
 	purge_interval=atoi(ret->value);
     }
-    
+
     ret = config_get("finalstate_query_interval",cha);
     if (ret == NULL){
 	do_log(debuglogfile, debug, 1, "%s: key finalstate_query_interval not found using the default:%d\n",argv0,finalstate_query_interval);
     } else {
 	finalstate_query_interval=atoi(ret->value);
     }
-    
+
     ret = config_get("alldone_interval",cha);
     if (ret == NULL){
 	do_log(debuglogfile, debug, 1, "%s: key alldone_interval not found using the default:%d\n",argv0,alldone_interval);
     } else {
 	alldone_interval=atoi(ret->value);
     }
-    
+
     ret = config_get("bupdater_loop_interval",cha);
     if (ret == NULL){
 	do_log(debuglogfile, debug, 1, "%s: key bupdater_loop_interval not found using the default:%d\n",argv0,loop_interval);
     } else {
 	loop_interval=atoi(ret->value);
     }
-    
+
     ret = config_get("bupdater_pidfile",cha);
     if (ret == NULL){
 	do_log(debuglogfile, debug, 1, "%s: key bupdater_pidfile not found\n",argv0);
@@ -306,24 +310,24 @@ int main(int argc, char *argv[]){
 	if(pidfile == NULL){
 	    sysfatal("strdup failed for pidfile in main: %r");
 	}
-    }	
-    
+    }
+
     if( !nodmn ) daemonize();
-    
+
     if( pidfile ){
 	writepid(pidfile);
 	free(pidfile);
     }
-    
+
     config_free(cha);
-    
-    rha=job_registry_init(registry_file, BY_BATCH_ID);	
+
+    rha=job_registry_init(registry_file, BY_BATCH_ID);
     if (rha == NULL){
 	do_log(debuglogfile, debug, 1, "%s: Error initialising job registry %s\n",argv0,registry_file);
 	fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
 	perror("");
     }
-    
+
     for(;;){
 	/* Purge old entries from registry */
 	now=time(0);
@@ -336,10 +340,9 @@ int main(int argc, char *argv[]){
 		purge_time=time(0);
 	    }
 	}
-
-	IntStateQuery();
-	fd = job_registry_open(rha, "r");
 	
+	//IntStateQuery();
+	fd = job_registry_open(rha, "r");
 	if (fd == NULL)
 	{
 	    do_log(debuglogfile, debug, 1, "%s: Error opening job registry %s\n",argv0,registry_file);
@@ -364,18 +367,28 @@ int main(int argc, char *argv[]){
 	if((query=calloc(STR_CHARS,1)) == 0){
 	    sysfatal("can't malloc query %r");
 	}
-	
+	if((queryStates=calloc(STR_CHARS,1)) == 0){
+	    sysfatal("can't malloc query %r");
+	}
+	if((constraint2=calloc(STR_CHARS,1)) == 0){
+	    sysfatal("can't malloc query %r");
+	}
 	
 	query[0]=' ';
+	queryStates[0]=' ';
 	first=TRUE;
 	while ((en = job_registry_get_next(rha, fd)) != NULL)
 	{
 	    if(((now - en->mdate) > finalstate_query_interval) && en->status!=3 && en->status!=4)
 	    {
 		/* create the constraint that will be used in condor_history command in FinalStateQuery*/
-		sprintf(constraint," %s.%s",en->batch_id,sge_cellname);
-
+		sprintf(constraint," %s",en->batch_id);
+		if (en->status==0) sprintf(constraint2," u");
+		if (en->status==1) sprintf(constraint2," qw");
+		if (en->status==2) sprintf(constraint2," r");
+		if (en->status==5) sprintf(constraint2," hqw");
 		q=realloc(query,strlen(query)+strlen(constraint)+1);
+		q2=realloc(queryStates,strlen(queryStates)+strlen(constraint2)+1);
 		if(q != NULL){
 		    query=q;
 		}else{
@@ -386,9 +399,22 @@ int main(int argc, char *argv[]){
 		    fprintf(stderr,"%s: can't realloc query: ",argv[0]);
 		    perror("");
 		    sleep(2);
-		    continue;			
+		    continue;
+		}
+		if(q2 != NULL){
+		    queryStates=q2;
+		}else{
+		    if(debug){
+			fprintf(debuglogfile, "can't realloc query\n");
+			fflush(debuglogfile);
+		    }
+		    fprintf(stderr,"%s: can't realloc query: ",argv[0]);
+		    perror("");
+		    sleep(2);
+		    continue;
 		}
 		strcat(query,constraint);
+		strcat(queryStates,constraint2);
 		runfinal=TRUE;
 	    }
 	    /* Assign Status=4 and ExitStatus=-1 to all entries that after alldone_interval are still not in a final state(3 or 4) */
@@ -402,131 +428,147 @@ int main(int argc, char *argv[]){
 	    free(en);
 	}
 	if(runfinal){
-	    FinalStateQuery(query);
-	    runfinal=FALSE;
+	    FinalStateQuery(query,queryStates);
 	}
-	free(constraint);		
+	free(constraint);
+	free(constraint2);
 	free(query);
-	fclose(fd);		
-	sleep(2);
+	free(queryStates);
+	fclose(fd);
+	if (runfinal){
+	    runfinal=FALSE;
+	    sleep (5);
+	}else sleep (60);
     }
-    
-    job_registry_destroy(rha);	
-    return(0);	
-}
 
-
-int IntStateQuery(){
-
-    char *command_string;
-
-    if((command_string=calloc(STR_CHARS,1)) == 0){
-	sysfatal("can't malloc command_string %r");
-    }
-    
-    sprintf(command_string,"%s --qstat --sgeroot=%s --cell=%s --all", sge_helperpath, sge_rootpath, sge_cellname);
-    StateQuery( command_string );
-    free(command_string);
+    job_registry_destroy(rha);
     return(0);
 }
 
 
-int FinalStateQuery(char *query){
-    char *command_string;
-    FILE *file_output;
-    char line[STR_CHARS];
-    char fail[6],fail2[7];
-    job_registry_entry en;
+int FinalStateQuery(char *query,char *queryStates){
+
+    char *command_string,*cmd,*list,*qstatJob,*qstatStates,*qstatNodes;
+    char *qHostname, *qFailed, *qExit;
+    char line[STR_CHARS],line_err[STR_CHARS],query_err[strlen(query)],fail[6];
+    char **saveptr1,**saveptr2,**saveptr3,**saveptr_err,**list_query,**list_queryStates,**list_qstat,**list_states,**list_nodes,**line_qacct;
+    FILE *file_output,*file_output_err;
+    int numQuery=0,numQstat=0,numStates=0,numQueryStates=0,numQueryNodes=0,j=0,k=0,l=0,cont=0,linesQstat=0;
+    int doQacct;
     time_t now;
-    char *string_now=NULL;
-    int i;
-    char *list;
-    char *saveptr;
-    char query_err[strlen(query)];
-    char *list_err;
-    char **saveptr_err;
-    FILE *file_output_err;
-    char line_err[STR_CHARS];
-    char *cmd;
-    char **list_el;
-    int num=0;
 
-    if((command_string=calloc(NUM_CHARS+strlen(query),1)) == 0){
+    if((command_string=calloc(NUM_CHARS+strlen(query),1)) == 0)
 	sysfatal("can't malloc command_string %r");
-    }
+    if ((qHostname = calloc (100,1))==0)
+	sysfatal("can't malloc qstatJob %r");
+    if ((qFailed = calloc (10,1))==0)
+	sysfatal("can't malloc qstatJob %r");
+    if ((qExit = calloc (10,1))==0)
+	sysfatal("can't malloc qstatJob %r");
+    
+    numQuery=strtoken(query,' ',&list_query);
+    numQueryStates=strtoken(queryStates,' ',&list_queryStates);
+    if (numQuery!=numQueryStates) return 1;
 
-    query_err[0]='\0';
-    num=strtoken(query,' ',&list_el);
-    int j=0;
-    while ( j < num ){
-	if(list_el[j]){
-	    list=strdup(list_el[j]);
-	}else{
-	    if((list=calloc(STR_CHARS,1)) == 0){
-		sysfatal("can't malloc cmd in GetAndSend: %r");
-	    }
-	    cmd=strdup("\0");
-	}
+    sprintf(command_string,"%s/qstat",sge_binpath);
+    if (debug) do_log(debuglogfile, debug, 1, "+-+command_string:%s\n",command_string);
 
-	sprintf(command_string,"%s --qstat --sgeroot=%s --cell=%s --status %s",sge_helperpath, sge_rootpath, sge_cellname, list);
-	if (debug) do_log(debuglogfile, debug, 1, "+++++line 472, command_string:%s\n",command_string);
-	file_output = popen(command_string,"r");
+    file_output = popen(command_string,"r");
+    if (file_output == NULL) return 0;
+    while (fgets(line,sizeof(line), file_output) != NULL) linesQstat++;
+    pclose(file_output);
 
-	if (file_output == NULL) return 0;
+    if ((qstatJob = calloc (linesQstat*STR_CHARS,1))==0)
+	sysfatal("can't malloc qstatJob %r");
+    if ((qstatNodes=calloc(linesQstat*STR_CHARS,1)) == 0)
+	sysfatal("can't malloc qstatNodes %r");
+    if ((qstatStates=calloc(linesQstat*STR_CHARS,1)) == 0)
+	sysfatal("can't malloc qstatStates %r");
 
-	fgets( line,sizeof(line), file_output );
-	
-	if (strlen(line) > 0){
-	    strncpy(fail,line,5);
-	    fail[5]='\0';
-	    /*
-	    sometimes we get from sge_helper that error: cannot convert date: "-/-"
-	    we must check it specifically parsing exitcode
-	    */
-	    strncpy(fail2,line,6);
-	    fail2[6]='\0';
-
-	    if (strcmp (fail,"Error") == 0){
-		/*
-		When a job ends ok there are some seconds between status 2 and 
-		status 4 where qstat gives a false "Error" output, so we put
-		all error jobs in a list to check later
-		*/
-		strcat(query_err,list);
-		strcat(query_err," ");
-	    }else{			
-		if ((strcmp (fail,"") == 0) || (strcmp (fail2,"cannot") == 0)){
-		    AssignState (list,"3","3","reason=3","\0","");
-		}else{
-		    char **saveptr1;
-		    int cont=0;
-		    cont=strtoken(line, ' ', &saveptr1);
-		    
-		    if(saveptr1[17]){
-			    cmd=strdup(saveptr1[17]);
-			    cmd[strlen(cmd)-1]='\0';//to delete a final ;
-		    }else{
-			if((cmd=calloc(STR_CHARS,1)) == 0){
-			    sysfatal("can't malloc cmd in GetAndSend: %r");
-			}
-			cmd=strdup("\0");
-		    }
-		    if ((strcmp(cmd,"1") != 0) && ((cmd,"2") != 0)){
-			sprintf(command_string,"%s --sgeroot=%s --cell=%s --qacct %s", sge_helperpath, sge_rootpath, sge_cellname, list);
-			StateQuery( command_string );
-		    }
-		}
+    sprintf(qstatNodes," \0");
+    sprintf(qstatJob,"\0");
+    sprintf(qstatStates,"\0");
+    
+    //load in qstatJob list of jobids from qstat command exec
+    file_output = popen(command_string,"r");
+    if (file_output == NULL) return 0;
+    while (fgets(line,sizeof(line), file_output) != NULL){
+	cont=strtoken(line, ' ', &saveptr1);
+	if ((strcmp(saveptr1[0],"job-ID")!=0)&&(strncmp(saveptr1[0],"-",1)!=0)){
+	    if (j>0) sprintf(qstatJob,"%s %s",qstatJob, saveptr1[0]);
+	    else sprintf(qstatJob,"%s",saveptr1[0]);
+	    if (j>0) sprintf(qstatStates,"%s %s",qstatStates, saveptr1[4]);
+	    else sprintf(qstatStates,"%s",saveptr1[4]);
+	    if (strlen(saveptr1[7])>3){
+		cont=strtoken(saveptr1[7], '@', &saveptr3);
+		if (j>0) sprintf(qstatNodes,"%s %s",qstatNodes, saveptr3[1]);
+		else sprintf(qstatNodes,"%s",saveptr3[1]);
+		saveptr3[0]='\0';
+	    }else{
+		if (j>0) sprintf(qstatNodes,"%s %s",qstatNodes, "x");
+		else sprintf(qstatNodes,"%s","x");
 	    }
 	}
-	sprintf(command_string,"\0");
-	pclose( file_output );
-	line[0]='\0';
 	j++;
-    }//end while
+	line[0]='\0';
+	saveptr1[0]='\0';
+    }
+    pclose( file_output );
 
-    if (debug) do_log(debuglogfile, debug, 1, "+++++line 527, query errors list:%s\n",query_err);
+    numQstat=strtoken(qstatJob,' ',&list_qstat);
+    numStates=strtoken(qstatStates,' ',&list_states);
+    numQueryStates=strtoken(queryStates,' ',&list_queryStates);
+    numQueryNodes=strtoken(qstatNodes,' ',&list_nodes);
 
-    //when all is checked we must check error list	  
+    //compare job registry jobids with qstat list jobids, if a job is in job registry
+    //and not in qstat job list, so it must be checked
+    k=0;
+    query_err[0]='\0';
+    while ( k < numQuery ){
+	for (l=0;l<numQstat;l++){
+	    if (strcmp(list_query[k],list_qstat[l])==0){
+		if (strcmp(list_queryStates[k],list_states[l])!=0){
+		    now=time(0);
+		    if (strcmp(list_states[l],"u")==0) AssignState(list_query[k],"0","0","","",make_message("%d",now));
+		    if (strcmp(list_states[l],"qw")==0)  AssignState(list_query[k],"1","0","","",make_message("%d",now));
+		    if (strcmp(list_states[l],"r")==0) AssignState(list_query[k],"2","0","",list_nodes[l],make_message("%d",now));
+		    if (strcmp(list_states[l],"hqw")==0) AssignState(list_query[k],"5","0","","",make_message("%d",now));
+		}
+		break;
+	    }
+	}
+	if ((l==numQstat)||(numQstat==0)){ //not finded in qstat
+	    sprintf(command_string,"%s/qacct -j %s",sge_binpath,list_query[k]);
+	    if (debug) do_log(debuglogfile, debug, 1, "+-+line 542,command_string:%s\n",command_string);
+	    file_output = popen(command_string,"r");
+	    if (file_output == NULL) return 0;
+	    //if a job number is here means that job was in query previously and
+	    //if now it's not in query and not finished (NULL qstat) it was deleted 
+	    //or it's on transition time
+	    if (fgets( line,sizeof(line), file_output )==NULL){
+		strcat(query_err,list_query[k]);
+		strcat(query_err," ");
+	    }
+	    //there is no problem to lost first line with previous fgets, because 
+	    //it's only a line of =============================================
+	    while (fgets( line,sizeof(line), file_output )!=NULL){
+		cont=strtoken(line, ' ', &saveptr1);
+		if (strcmp(saveptr1[0],"hostname")==0) qHostname=strdup(saveptr1[1]);
+		if (strcmp(saveptr1[0],"failed")==0) qFailed=strdup(saveptr1[1]);
+		if (strcmp(saveptr1[0],"exit_status")==0) qExit=strdup(saveptr1[1]);
+	    }
+	    pclose( file_output );
+	    now=time(0);
+	    if (strcmp(qExit,"137")==0){
+		AssignState(list_query[k],"3","3",qFailed,"",make_message("%d",now));
+	    }else{
+		AssignState(list_query[k],"4",qExit,qFailed,qHostname,make_message("%d",now));
+	    }
+	}
+	k++;
+    }//end while k<numQuery
+
+    //now check acumulated error jobids to verify if they are an error or not
     if (strcmp(query_err,"\0")!=0){
 	sleep(60);
 	int cont_err=0;
@@ -541,30 +583,38 @@ int FinalStateQuery(char *query){
 		}
 		cmd=strdup("\0");
 	    }
-	    sprintf(command_string,"%s --qstat --sgeroot=%s --cell=%s --status %s",sge_helperpath, sge_rootpath, sge_cellname, cmd);
-	    if (debug) do_log(debuglogfile, debug, 1, "+++++line 545, command_string for errors:%s\n",command_string);
-
+	    sprintf(command_string,"%s/qacct -j %s",sge_binpath,cmd);
+	    if (debug) do_log(debuglogfile, debug, 1, "+-+line 587, command_string:%s\n",command_string);
 	    file_output_err = popen(command_string,"r");
-
 	    if (file_output_err == NULL) return 0;
-
-	    fgets( line_err,sizeof(line_err), file_output_err );
-
-	    if (strlen(line_err) > 0){
-		strncpy(fail,line_err,5);
-		fail[5]='\0';
-		if (strcmp (fail,"Error") == 0){
-		    AssignState (cmd,"3","3","reason=3","\0","");
-		}
+	    //if a job number is here means that job was in query previously and
+	    //if now it's not in query and not finished (NULL qstat) it was deleted 
+	    if (fgets( line,sizeof(line), file_output_err )==NULL){
+		now=time(0);
+		AssignState(cmd,"3","3","reason=3"," ",make_message("%d",now));
+		pclose( file_output_err );
+		sprintf(command_string,"\0");
+		line_err[0]='\0';
+		n++;
+		continue;
 	    }
-	    sprintf(command_string,"\0");
+	    //there is no problem to lost first line with previous fgets, because 
+	    //it's only a line of =============================================
+	    while (fgets( line,sizeof(line), file_output_err )!=NULL){
+		cont=strtoken(line, ' ', &saveptr1);
+		if (strcmp(saveptr1[0],"hostname")==0) qHostname=strdup(saveptr1[1]);
+		if (strcmp(saveptr1[0],"failed")==0) qFailed=strdup(saveptr1[1]);
+		if (strcmp(saveptr1[0],"exit_status")==0) qExit=strdup(saveptr1[1]);
+	    }
+	    now=time(0);
+	    if (strcmp(qExit,"137")==0) AssignState(cmd,"3","3",qFailed,"",make_message("%d",now));
+	    else AssignState(cmd,"4",qExit,qFailed,qHostname,make_message("%d",now));
 	    pclose( file_output_err );
+	    sprintf(command_string,"\0");
 	    line_err[0]='\0';
 	    n++;
 	}
     }
-    query_err[0]='\0';
-    free(command_string);
     return 0;
 }
 
@@ -576,8 +626,7 @@ int AssignState (char *element, char *status, char *exit, char *reason, char *wn
     int n=strtoken(element, '.', &id_element);
     
     if(id_element[0]){
-	element=strdup(id_element[0]);
-	JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,element);
+	JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,id_element[0]);
 	en.status=atoi(status);
 	en.exitcode=atoi(exit);
 	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn);
@@ -591,7 +640,6 @@ int AssignState (char *element, char *status, char *exit, char *reason, char *wn
 	if((element=calloc(STR_CHARS,1)) == 0){
 	    sysfatal("can't malloc cmd in GetAndSend: %r");
 	}
-	element=strdup("\0");
     }
     if ((ret=job_registry_update(rha, &en)) < 0){
 	fprintf(stderr,"Update of record returns %d: \nJobId: &d", ret,en.batch_id);
@@ -604,77 +652,6 @@ int AssignState (char *element, char *status, char *exit, char *reason, char *wn
     return 0;
 }
 
-int StateQuery(char *command_string)
-{
-    /*
-    sge_helper output for unfinished jobs:
-    batch_id  status  exitcode   udate(timestamp_for_current_status) workernode
-    22018     2       0          1202288920			  hostname
-    
-    Filled entries:
-    batch_id
-    status
-    exitcode
-    udate
-    wn_addr
-    
-    Filled by suhmit script:
-    blah_id 
-    
-    Unfilled entries:
-    exitreason
-    */
-    FILE *file_output;
-    char line[STR_CHARS];
-    char *token[6];
-    job_registry_entry en;
-    int ret;
-    time_t now;
-    char *string_now=NULL;
-    file_output = popen(command_string,"r");
-
-    if (debug) do_log(debuglogfile, debug, 1, "+++++line 678, command_string:%s\n",command_string);
-
-    if (file_output == NULL){
-	return 0;
-    }
-
-    while ( fgets( line, sizeof( line ), file_output ) > 0 ) {
-
-	char **saveptr;
-	int cont=0;
-	int i;
-	char *cmd;
-	
-	cont=strtoken(line, ' ', &saveptr);
-	for ( i = 0 ; i <= 5 && saveptr[i] != NULL ; i++ ) {
-	    if(saveptr[i]){
-		token[i]=strdup(saveptr[i]);
-	    }else{
-		if((cmd=calloc(STR_CHARS,1)) == 0){
-		    sysfatal("can't malloc cmd in GetAndSend: %r");
-		}
-		token[i]=strdup("\0");
-	    }
-	}
-	
-	if (token[5]){
-	    if (strcmp(token,"Error") == 0) return 0;//if accounting file is in diferent node
-						     //there some time between finish and file is
-						     //putted in accounting file while qacct 
-						     //return Error, so we check later
-	}
-	
-	if ( token[5] ) token[5][2]='\0';//to get only OK without spaces and \n
-	if ( token[5] && strcmp( token[5], "OK" ) == 0 ) {
-	    AssignState(token[0],token[1],token[2],"",token[4],token[3]);
-	}
-    }
-    pclose( file_output );
-
-    return(0);
-}
-
 void sighup()
 {
     if(debug){
@@ -684,8 +661,8 @@ void sighup()
 	}
     }
 }
-
-
+    
+    
 int 
 usage()
 {
