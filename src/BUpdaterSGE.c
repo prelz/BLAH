@@ -18,7 +18,7 @@
 */                                                                                                                                                                                                                   
 
 #include "BUpdaterSGE.h"
-#include <pthread.h>
+
 
 extern int bfunctions_poll_timeout;
 
@@ -35,8 +35,8 @@ int main(int argc, char *argv[]){
     char *q=NULL;
     char *q2=NULL;
     char *pidfile=NULL;
-    char *final_string=NULL;
-    char *cp=NULL;
+/*    char *final_string=NULL;*/
+//     char *cp=NULL;
     char *tpath;
     
     int version=0;
@@ -384,9 +384,9 @@ int main(int argc, char *argv[]){
 		/* create the constraint that will be used in condor_history command in FinalStateQuery*/
 		sprintf(constraint," %s",en->batch_id);
 		if (en->status==0) sprintf(constraint2," u");
-		if (en->status==1) sprintf(constraint2," qw");
+		if (en->status==1) sprintf(constraint2," q");
 		if (en->status==2) sprintf(constraint2," r");
-		if (en->status==5) sprintf(constraint2," hqw");
+		if (en->status==5) sprintf(constraint2," h");
 		q=realloc(query,strlen(query)+strlen(constraint)+1);
 		q2=realloc(queryStates,strlen(queryStates)+strlen(constraint2)+1);
 		if(q != NULL){
@@ -434,6 +434,7 @@ int main(int argc, char *argv[]){
 	free(constraint2);
 	free(query);
 	free(queryStates);
+	//free(q);
 	fclose(fd);
 	if (runfinal){
 	    runfinal=FALSE;
@@ -448,10 +449,10 @@ int main(int argc, char *argv[]){
 
 int FinalStateQuery(char *query,char *queryStates){
 
-    char *command_string,*cmd,*list,*qstatJob,*qstatStates,*qstatNodes;
+    char *command_string,*cmd,*qstatJob,*qstatStates,*qstatNodes;
     char *qHostname, *qFailed, *qExit;
-    char line[STR_CHARS],line_err[STR_CHARS],query_err[strlen(query)],fail[6];
-    char **saveptr1,**saveptr2,**saveptr3,**saveptr_err,**list_query,**list_queryStates,**list_qstat,**list_states,**list_nodes,**line_qacct;
+    char line[STR_CHARS],query_err[strlen(query)],fail[6];
+    char **saveptr1,**saveptr3,**saveptr_err,**list_query,**list_queryStates,**list_qstat,**list_states,**list_nodes;
     FILE *file_output,*file_output_err;
     int numQuery=0,numQstat=0,numStates=0,numQueryStates=0,numQueryNodes=0,j=0,k=0,l=0,cont=0,linesQstat=0;
     int doQacct;
@@ -530,9 +531,9 @@ int FinalStateQuery(char *query,char *queryStates){
 		if (strcmp(list_queryStates[k],list_states[l])!=0){
 		    now=time(0);
 		    if (strcmp(list_states[l],"u")==0) AssignState(list_query[k],"0","0","","",make_message("%d",now));
-		    if (strcmp(list_states[l],"qw")==0)  AssignState(list_query[k],"1","0","","",make_message("%d",now));
+		    if (strcmp(list_states[l],"q")==0)  AssignState(list_query[k],"1","0","","",make_message("%d",now));
 		    if (strcmp(list_states[l],"r")==0) AssignState(list_query[k],"2","0","",list_nodes[l],make_message("%d",now));
-		    if (strcmp(list_states[l],"hqw")==0) AssignState(list_query[k],"5","0","","",make_message("%d",now));
+		    if (strcmp(list_states[l],"h")==0) AssignState(list_query[k],"5","0","","",make_message("%d",now));
 		}
 		break;
 	    }
@@ -594,7 +595,6 @@ int FinalStateQuery(char *query,char *queryStates){
 		AssignState(cmd,"3","3","reason=3"," ",make_message("%d",now));
 		pclose( file_output_err );
 		sprintf(command_string,"\0");
-		line_err[0]='\0';
 		n++;
 		continue;
 	    }
@@ -610,11 +610,19 @@ int FinalStateQuery(char *query,char *queryStates){
 	    if (strcmp(qExit,"137")==0) AssignState(cmd,"3","3",qFailed,"",make_message("%d",now));
 	    else AssignState(cmd,"4",qExit,qFailed,qHostname,make_message("%d",now));
 	    pclose( file_output_err );
-	    sprintf(command_string,"\0");
-	    line_err[0]='\0';
 	    n++;
 	}
+// 	free(cmd);
     }
+    
+    free(command_string);
+    free(qHostname);
+    free(qFailed);
+    free(qExit);
+    free(qstatJob);
+    free(qstatNodes);
+    free(qstatStates);
+    
     return 0;
 }
 
@@ -649,6 +657,7 @@ int AssignState (char *element, char *status, char *exit, char *reason, char *wn
 	    job_registry_unlink_proxy(rha, &en);
 	}
     }
+    free(element);
     return 0;
 }
 
