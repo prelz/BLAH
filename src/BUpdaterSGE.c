@@ -445,8 +445,8 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 			sprintf(string_now,"%d",now);
 			if (strcmp(saveptr1[4],"u")==0){
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,list_query[l]);
-			    en.status=atoi("0");
-			    en.exitcode=atoi("0");
+			    en.status=0;
+			    en.exitcode=0;
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"");
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"0");
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now)
@@ -458,8 +458,8 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 			}
 			if (strcmp(saveptr1[4],"q")==0){
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,list_query[l]);
-			    en.status=atoi("1");
-			    en.exitcode=atoi("0");
+			    en.status=1;
+			    en.exitcode=0;
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"");
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"0");
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now)
@@ -472,8 +472,8 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 			if (strcmp(saveptr1[4],"r")==0){
 			    cont2=strtoken(saveptr1[7], '@', &saveptr2);
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,list_query[l]);
-			    en.status=atoi("2");
-			    en.exitcode=atoi("0");
+			    en.status=2;
+			    en.exitcode=0;
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,saveptr2[1]);
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"0");
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now)
@@ -486,8 +486,8 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 			}
 			if ((strcmp(saveptr1[4],"hr")==0)||strcmp(saveptr1[4],"hqw")==0){
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,list_query[l]);
-			    en.status=atoi("5");
-			    en.exitcode=atoi("0");
+			    en.status=5;
+			    en.exitcode=0;
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"");
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"0");
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now)
@@ -526,6 +526,8 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 	if (fgets( line,sizeof(line), file_output )==NULL){
 	    strcat(query_err,list_query[l]);
 	    strcat(query_err," ");
+	    pclose( file_output );
+	    continue;
 	}
 
 	//there is no problem to lost first line with previous fgets, because 
@@ -542,7 +544,7 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 	sprintf(string_now,"%d",now);
 	if (strcmp(qExit,"137")==0){
 	    JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,list_query[l]);
-	    en.status=atoi("3");
+	    en.status=3;
 	    en.exitcode=atoi(qExit);
 	    JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,qHostname);
 	    JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"");
@@ -554,7 +556,7 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 	    }else job_registry_unlink_proxy(rha, &en);
 	}else{
 	    JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,list_query[l]);
-	    en.status=atoi("4");
+	    en.status=4;
 	    en.exitcode=atoi(qExit);
 	    JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,qHostname);
 	    JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,qFailed);
@@ -590,8 +592,8 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 	    //if now it's not in query and not finished (NULL qstat) it was deleted 
 	    if (fgets( line,sizeof(line), file_output )==NULL){
 		JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,cmd);
-		en.status=atoi("3");
-		en.exitcode=atoi("3");
+		en.status=3;
+		en.exitcode=3;
 		JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"");
 		JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"reason=3");
 		now=time(0);
@@ -620,7 +622,7 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 	    sprintf(string_now,"%d",now);
 	    if (strcmp(qExit,"137")==0){
 		JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,cmd);
-		en.status=atoi("3");
+		en.status=3;
 		en.exitcode=atoi(qExit);
 		JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,qHostname);
 		JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"");
@@ -632,7 +634,7 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 		}else job_registry_unlink_proxy(rha, &en);
 	    }else{
 		JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,cmd);
-		en.status=atoi("4");
+		en.status=4;
 		en.exitcode=atoi(qExit);
 		JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,qHostname);
 		JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,qFailed);
