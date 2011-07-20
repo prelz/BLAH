@@ -429,7 +429,7 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
     numQueryStates=strtoken(queryStates,' ',&list_queryStates);
     if (numQuery!=numQueryStates) return 1;
     
-    sprintf(command_string,"%s/qstat",sge_binpath);
+    sprintf(command_string,"%s/qstat -u '*'",sge_binpath);
     if (debug) do_log(debuglogfile, debug, 1, "+-+line 475, command_string:%s\n",command_string);
     
     //load in qstatJob list of jobids from qstat command exec
