@@ -2,11 +2,11 @@
 # * BLAHP scripts * 
 # *****************
 #
-# $Id: Makefile.am,v 1.8 2011/03/04 12:40:31 fprelz Exp $ 
+# $Id: Makefile.am,v 1.9 2011/07/21 07:37:11 pandreet Exp $ 
 #
 # File:           Makefile.am
 #
-# Author(s):      Francesco Prelz ($Author: fprelz $)
+# Author(s):      Francesco Prelz ($Author: pandreet $)
 #        e-mail: "Francesco.Prelz@mi.infn.it"
 #
 # Revision history:
@@ -36,6 +36,6 @@ bin_SCRIPTS = blah_load_config.sh blah_common_submit_functions.sh \
   lsf_cancel.sh lsf_status.sh lsf_submit.sh lsf_hold.sh lsf_resume.sh \
   condor_cancel.sh condor_status.sh condor_submit.sh condor_hold.sh condor_resume.sh \
   sge_cancel.sh sge_helper sge_resume.sh sge_submit.sh sge_filestaging \
-  sge_hold.sh sge_status.sh runcmd.pl.template
+  sge_hold.sh sge_status.sh runcmd.pl.template sge_local_submit_attributes.sh
 
 EXTRA_DIST = $(bin_SCRIPTS)
