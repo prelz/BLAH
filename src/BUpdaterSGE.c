@@ -497,14 +497,14 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 				perror("");
 			    }
 			}
-			//i must put out element from query
-			for (j=l;j<nq;j++)
-			    if (list_query[j+1]!=NULL) strcpy(list_query[j],list_query[j+1]);
-			for (j=l;j<nq;j++)
-			    if (list_queryStates[j+1]!=NULL) strcpy(list_queryStates[j],list_queryStates[j+1]);
-			nq--;
-			break;
 		    }
+		    //i must put out element from query
+		    for (j=l;j<nq;j++)
+			if (list_query[j+1]!=NULL) strcpy(list_query[j],list_query[j+1]);
+		    for (j=l;j<nq;j++)
+			if (list_queryStates[j+1]!=NULL) strcpy(list_queryStates[j],list_queryStates[j+1]);
+		    nq--;
+		    break;
 		}
 	    }
 	}
