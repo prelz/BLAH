@@ -428,15 +428,21 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
     nq=numQuery;
     numQueryStates=strtoken(queryStates,' ',&list_queryStates);
     if (numQuery!=numQueryStates) return 1;
-    
-    sprintf(command_string,"%s/qstat -u '*'",sge_binpath);
-    if (debug) do_log(debuglogfile, debug, 1, "+-+line 475, command_string:%s\n",command_string);
-    
+
+    sprintf(command_string,"%s/qstat -u '*' 2>&1",sge_binpath);
+    if (debug) do_log(debuglogfile, debug, 1, "+-+line 433, command_string:%s\n",command_string);
+
     //load in qstatJob list of jobids from qstat command exec
     file_output = popen(command_string,"r");
     if (file_output == NULL) return 0;
     while (fgets(line,sizeof(line), file_output) != NULL){
+// 	if (debug) do_log(debuglogfile, debug, 1, "+-+line 439,qstat result:%s\n",line);
 	cont=strtoken(line, ' ', &saveptr1);
+	if (strcmp(saveptr1[0],"error:")==0){
+	    pclose( file_output );
+	    sleep(60);
+	    return 1;
+	}
 	if ((strcmp(saveptr1[0],"job-ID")!=0)&&(strncmp(saveptr1[0],"-",1)!=0)){
 	    for (l=0;l<nq;l++){
 		if (strcmp(list_query[l],saveptr1[0])==0){
@@ -517,7 +523,7 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
     //because they're not in qstat result
     for (l=0; l<nq; l++){
 	sprintf(command_string,"%s/qacct -j %s",sge_binpath,list_query[l]);
-	if (debug) do_log(debuglogfile, debug, 1, "+-+line 554,command_string:%s\n",command_string);
+	if (debug) do_log(debuglogfile, debug, 1, "+-+line 520,command_string:%s\n",command_string);
 	file_output = popen(command_string,"r");
 	if (file_output == NULL) return 1;
 	//if a job number is here means that job was in query previously and
