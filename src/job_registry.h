@@ -20,6 +20,7 @@
  *              of entry index.
  *  11-Mar-2010 Added JOB_REGISTRY_UNLINK_FAIL return code.
  *              Added job_registry_check_index_key_uniqueness.
+ *  21-Jul-2011 Added job_registry_need_update function.
  *
  *  Description:
  *    Prototypes of functions defined in job_registry.c
@@ -206,6 +207,11 @@ typedef struct job_registry_hash_store_s
 #define JOB_REGISTRY_MUNMAP_FAIL     -19 
 #define JOB_REGISTRY_UPDATE_TIMEOUT  -20 
 #define JOB_REGISTRY_UNLINK_FAIL     -21 
+#define JOB_REGISTRY_SOCKET_FAIL     -22 
+#define JOB_REGISTRY_MCAST_FAIL      -23 
+#define JOB_REGISTRY_BIND_FAIL       -24 
+#define JOB_REGISTRY_CONNECT_FAIL    -25 
+#define JOB_REGISTRY_TTL_FAIL        -26 
 
 #define JOB_REGISTRY_TEST_FILE "/tmp/test_reg.bjr"
 #define JOB_REGISTRY_REGISTRY_NAME "registry"
@@ -265,6 +271,9 @@ int job_registry_update_op(job_registry_handle *rhandle,
                         job_registry_entry *entry,
                         int use_recn, FILE *fd,
                         job_registry_update_bitmask_t upbits);
+int job_registry_need_update(const job_registry_entry *olde,
+                             const job_registry_entry *newe,
+                             job_registry_update_bitmask_t upbits);
 job_registry_entry *job_registry_get(job_registry_handle *rhandle,
                                      const char *id);
 FILE *job_registry_open(job_registry_handle *rhandle, const char *mode);

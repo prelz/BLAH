@@ -2,7 +2,7 @@
  *  File :     blah_job_registry_add.c
  *
  *
- *  Author :   Francesco Prelz ($Author: mezzadri $)
+ *  Author :   Francesco Prelz ($Author: fprelz $)
  *  e-mail :   "francesco.prelz@mi.infn.it"
  *
  *  Revision history :
@@ -10,6 +10,7 @@
  *  27-Feb-2008 Added user_prefix.
  *   3-Mar-2008 Added non-privileged updates to fit CREAM's file and process
  *              ownership model.
+ *  14-Jul-2011 Added remote/multicast registry update if found in config file.
  *
  *  Description:
  *   Executable to add (append or update) an entry to the job registry.
@@ -39,6 +40,7 @@
 #include <time.h>
 #include <errno.h>
 #include "job_registry.h"
+#include "job_registry_updater.h"
 #include "config.h"
 
 int
@@ -59,11 +61,12 @@ main(int argc, char *argv[])
   char *wn_addr = "";
   time_t udate=0;
   char *blah_id, *batch_id;
-  int ret, prret, rhret;
+  int ent, ret, prret, rhret;
   config_handle *cha;
-  config_entry *rge;
+  config_entry *rge, *remupd_conf;
   job_registry_handle *rha, *rhano;
   job_registry_index_mode rgin_mode = NO_INDEX;
+  job_registry_updater_endpoint *remupd_head = NULL;
 
   if (argc > 1 && (strcmp(argv[1], "-u") == 0))
    {
@@ -98,6 +101,20 @@ main(int argc, char *argv[])
   if (cha != NULL)
    {
     rge = config_get("job_registry", cha);
+    remupd_conf = config_get("job_registry_add_remote", cha);
+    if (remupd_conf != NULL)
+     {
+      if (job_registry_updater_setup_sender(remupd_conf->values,
+                                            remupd_conf->n_values, 2,
+                                           &remupd_head) < 0)
+       {
+         fprintf(stderr,"%s: warning: cannot set network sender(s) up for remote update to:\n",argv[0]);
+         for (ent = 0; ent < remupd_conf->n_values; ent++)
+          {
+           fprintf(stderr," - %s\n", remupd_conf->values[ent]);
+          }
+       }
+     }
     if (rge != NULL) registry_file = rge->value;
    }
 
@@ -118,6 +135,7 @@ main(int argc, char *argv[])
     else 
      {
       if (cha != NULL) config_free(cha);
+      if (remupd_head != NULL) job_registry_updater_free_endpoints(remupd_head);
       return 1;
      }
    }
@@ -163,9 +181,10 @@ main(int argc, char *argv[])
          {
           fprintf(stderr,"%s: job_registry_append_nonpriv returns %d: ",argv[0],ret);
           perror("");
+          if (remupd_head != NULL) job_registry_updater_free_endpoints(remupd_head);
           return 4;
          } 
-        else return 0;
+        else goto happy_ending;
        }
      }
     else
@@ -173,6 +192,7 @@ main(int argc, char *argv[])
       fprintf(stderr,"%s: error initialising job registry: ",argv[0]);
       perror("");
      }
+    if (remupd_head != NULL) job_registry_updater_free_endpoints(remupd_head);
     return 2;
    }
 
@@ -215,17 +235,32 @@ main(int argc, char *argv[])
        {
         fprintf(stderr,"%s: job_registry_append_nonpriv returns %d: ",argv[0],ret);
         perror("");
+        if (remupd_head != NULL) job_registry_updater_free_endpoints(remupd_head);
         return 5;
        } 
-      else return 0;
+      else goto happy_ending;
      }
 
     fprintf(stderr,"%s: job_registry_append returns %d: ",argv[0],ret);
     perror("");
     job_registry_destroy(rha);
+    if (remupd_head != NULL) job_registry_updater_free_endpoints(remupd_head);
     return 3;
    } 
 
   job_registry_destroy(rha);
+
+ happy_ending:
+  if (remupd_head != NULL)
+   {
+    if (job_registry_send_update(remupd_head, &en,
+              (strlen(proxy_subject) > 0 ? proxy_subject : NULL),
+              (strlen(user_proxy) > 0 ? user_proxy : NULL)) < 0)
+     {
+      fprintf(stderr,"%s: warning: sending network update: ",argv[0]);
+      perror("");
+     }
+    job_registry_updater_free_endpoints(remupd_head);
+   }
   return 0;
 }

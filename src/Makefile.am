@@ -2,11 +2,11 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.51 2010/11/05 13:28:31 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.52 2011/08/25 16:30:46 fprelz Exp $ 
 #
 # File:           Makefile.am
 #
-# Author(s):      Francesco Prelz ($Author: mezzadri $)
+# Author(s):      Francesco Prelz ($Author: fprelz $)
 #        e-mail: "Francesco.Prelz@mi.infn.it"
 #
 # Revision history:
@@ -42,7 +42,7 @@ GLOBUS_EXECS =
 endif
 
 bin_PROGRAMS = blahpd blahpd_daemon BLClient BLParserLSF BLParserPBS test_condor_logger blah_job_registry_add blah_job_registry_lkup blah_job_registry_scan_by_subject BUpdaterCondor BNotifier BUpdaterLSF BUpdaterPBS BUpdaterSGE $(GLOBUS_EXECS)  blparser_master blah_check_config blah_job_registry_dump
-noinst_PROGRAMS = test_job_registry_create test_job_registry_purge test_job_registry_update test_job_registry_access
+noinst_PROGRAMS = test_job_registry_create test_job_registry_purge test_job_registry_update test_job_registry_access test_job_registry_update_from_network
 
 common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C proxy_hashcontainer.c config.c job_registry.c blah_utils.c env_helper.c mapped_exec.c md5.c 
 
@@ -81,7 +81,7 @@ BLParserPBS_LDADD =
 test_condor_logger_SOURCES = test_condor_create_log.c condor_create_log.c config.c blah_utils.c
 test_condor_logger_CFLAGS = $(AM_CFLAGS)
 
-blah_job_registry_add_SOURCES = blah_job_registry_add.c job_registry.c md5.c config.c
+blah_job_registry_add_SOURCES = blah_job_registry_add.c job_registry.c job_registry_updater.c md5.c config.c
 blah_job_registry_add_CFLAGS = $(AM_CFLAGS)
 
 blah_job_registry_lkup_SOURCES = blah_job_registry_lkup.c job_registry.c md5.c config.c
@@ -102,6 +102,9 @@ test_job_registry_update_CFLAGS = $(AM_CFLAGS)
 
 test_job_registry_access_SOURCES = test_job_registry_access.c job_registry.c md5.c
 test_job_registry_access_CFLAGS = $(AM_CFLAGS)
+
+test_job_registry_update_from_network_SOURCES = test_job_registry_update_from_network.c job_registry.c job_registry_updater.c md5.c config.c
+blah_job_registry_update_from_network_CFLAGS = $(AM_CFLAGS)
 
 BUpdaterCondor_SOURCES = BUpdaterCondor.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c
 BUpdaterCondor_LDADD = -lpthread

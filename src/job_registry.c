@@ -28,6 +28,7 @@
  *              (for efficiency reasons: ID uniqueness in that
  *              case is guaranteed by the invoking service).
  *              Added job_registry_check_index_key_uniqueness.
+ *  21-Jul-2011 Added job_registry_need_update function.
  *
  *  Description:
  *    File-based container to cache job IDs and statuses to implement
@@ -1982,6 +1983,8 @@ job_registry_update_op(job_registry_handle *rha,
    }
 
   /* Update original entry and rewrite it */
+  /* Warning: these checks should all be mirrored in job_registry_need_update */
+  /*          below */
   if (((upbits & JOB_REGISTRY_UPDATE_WN_ADDR) != 0) &&
       (strncmp(old_entry.wn_addr, entry->wn_addr, 
                sizeof(old_entry.wn_addr)) != 0))
@@ -2052,6 +2055,73 @@ job_registry_update_op(job_registry_handle *rha,
   memcpy(entry, &old_entry, sizeof(job_registry_entry));
 
   return retcod;
+}
+
+/*
+ * job_registry_need_update
+ *
+ * Check two job registry entries, an 'old' and a 'new' one, and
+ * check whether job_registry_update would need to actually write
+ * an update to disk. This function is meant to save the unneeded
+ * acquisition of a write lock.
+ *
+ * @param olde pointer to an existing registry entry.
+ * @param newe pointer to a possibly updated registry entry.
+ * @param upbits Bitmask selecting which registry fields should be
+ *               checked. Or'ed combination of the following:
+ *         - JOB_REGISTRY_UPDATE_WN_ADDR 
+ *         - JOB_REGISTRY_UPDATE_STATUS  
+ *         - JOB_REGISTRY_UPDATE_EXITCODE 
+ *         - JOB_REGISTRY_UPDATE_UDATE 
+ *         - JOB_REGISTRY_UPDATE_EXITREASON 
+ *         - JOB_REGISTRY_UPDATE_UPDATER_INFO
+ *         or JOB_REGISTRY_UPDATE_ALL for all of the above fields.
+ *
+ * @return Boolean valued integer. TRUE (nonzero) if an update is
+ *         actually needed.
+ */
+
+int
+job_registry_need_update(const job_registry_entry *olde,
+                         const job_registry_entry *newe,
+                         job_registry_update_bitmask_t upbits)
+{
+  int need_to_update = FALSE;
+
+  if (((upbits & JOB_REGISTRY_UPDATE_WN_ADDR) != 0) &&
+      (strncmp(olde->wn_addr, newe->wn_addr, 
+               sizeof(olde->wn_addr)) != 0))
+   {
+    need_to_update = TRUE;
+   }
+  if (((upbits & JOB_REGISTRY_UPDATE_STATUS) != 0) &&
+       (olde->status != newe->status))
+   {
+    need_to_update = TRUE;
+   }
+  if (((upbits & JOB_REGISTRY_UPDATE_EXITCODE) != 0) &&
+       (olde->exitcode != newe->exitcode))
+   {
+    need_to_update = TRUE;
+   }
+  if (((upbits & JOB_REGISTRY_UPDATE_UDATE) != 0) &&
+       (olde->udate != newe->udate))
+   {
+    need_to_update = TRUE;
+   }
+  if (((upbits & JOB_REGISTRY_UPDATE_EXITREASON) != 0) &&
+       (strncmp(olde->exitreason, newe->exitreason, 
+                sizeof(olde->exitreason)) != 0))
+   {
+    need_to_update = TRUE;
+   }
+  if (((upbits & JOB_REGISTRY_UPDATE_UPDATER_INFO) != 0) &&
+       (strncmp(olde->updater_info, newe->updater_info, 
+                sizeof(olde->updater_info)) != 0))
+   {
+    need_to_update = TRUE;
+   }
+  return need_to_update;
 }
 
 /*
