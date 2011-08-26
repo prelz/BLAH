@@ -126,7 +126,8 @@ merciful_kill(pid_t pid, exec_cmd_t *cmd)
 				kill(-pid, SIGTERM);
 			else
 			{
-				snprintf(kill_args, sizeof(kill_args), "-s SIGTERM -%d", pid); 
+				/* Warning: execute_cmd requires a leading space in its arguments */
+				snprintf(kill_args, sizeof(kill_args), " -s SIGTERM -%d", pid); 
 				execute_cmd(cmd);
 			}
 		}
@@ -139,7 +140,8 @@ merciful_kill(pid_t pid, exec_cmd_t *cmd)
 		else
 		{
 			recycle_cmd(cmd);
-			snprintf(kill_args, sizeof(kill_args), "-s SIGKILL -%d", pid); 
+			/* Warning: execute_cmd requires a leading space in its arguments */
+			snprintf(kill_args, sizeof(kill_args), " -s SIGKILL -%d", pid); 
 			execute_cmd(cmd);
 			kill_status = cmd->exit_code;
 		}
