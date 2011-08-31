@@ -90,6 +90,7 @@
 #include "mapped_exec.h"
 #include "proxy_hashcontainer.h"
 #include "blah_utils.h"
+#include "cmdbuffer.h"
 
 #define COMMAND_PREFIX "-c"
 #define JOBID_REGEXP            "(^|\n)BLAHP_JOBID_PREFIX([^\n]*)"
@@ -283,6 +284,7 @@ int
 serveConnection(int cli_socket, char* cli_ip_addr)
 {
 	char *input_buffer;
+	int get_cmd_res;
 	char *reply;
 	char *result;
 	char *cmd_result;
@@ -311,12 +313,25 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	struct stat tmp_stat;
 	config_entry *jr_mmap;
 	job_registry_index_mode jr_mode;
+	config_entry *check_children_interval_conf;
+	int check_children_interval = -1; /* no timeout by default */
 
 	blah_config_handle = config_read(NULL);
 	if (blah_config_handle == NULL)
 	{
 		fprintf(stderr, "Cannot access blah.config file in default locations ($BLAHPD_CONFIG_LOCATION, or $GLITE_LOCATION/etc or $BLAHPD_LOCATION/etc): ");
 		perror("");
+		exit(MALLOC_ERROR);
+	}
+
+	check_children_interval_conf = config_get("blah_check_children_interval",blah_config_handle);
+	if (check_children_interval_conf != NULL)
+		check_children_interval = atoi(check_children_interval_conf->value);
+
+	/* Start with a 4 KB input buffer */
+	if (cmd_buffer_init(cli_socket, 4096, check_children_interval) != CMDBUF_OK)
+	{
+		perror("Cannot allocate input buffer");
 		exit(MALLOC_ERROR);
 	}
 
@@ -494,8 +509,12 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	write(server_socket, "\r\n", 2);
 	while(!exit_program)
 	{
-		input_buffer = get_command(cli_socket);
-		if (input_buffer)
+		get_cmd_res = cmd_buffer_get_command(&input_buffer);
+		if (get_cmd_res == CMDBUF_TIMEOUT)
+		{
+			if (blah_children_count>0) check_on_children(blah_children, blah_children_count);
+		}
+		else if (get_cmd_res == CMDBUF_OK)
 		{
 			if (parse_command(input_buffer, &argc, &argv) == 0)
 				command = find_command(argv[0]);
@@ -566,7 +585,7 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 			
 			free(input_buffer);
 		}
-		else /* command was NULL */
+		else /* cmd_buffer_get_command() returned an error */
 		{
 			if (synchronous_termination)
 			{
@@ -601,6 +620,7 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 		}
 
 	}
+
 	if (cli_socket != 0) 
 	{
 		shutdown(cli_socket, SHUT_RDWR);
@@ -609,6 +629,7 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 
 	free(blah_script_location);
 	free(blah_version);
+	cmd_buffer_free();
 
 	exit(exitcode);
 }
@@ -2327,111 +2348,6 @@ cmd_get_hostport(void *args)
 
 /* Utility functions
  * */
-
-char*
-get_command(int s)
-{
-	static char *cmd_queue = NULL;
-	static char *next_cmd;
-	static char *queue_end;
-	char *message = NULL;
-	char *tmp_realloc;
-	int allocated_size = 0;
-	char buffer[2047];
-	int read_chars = 0; 
-	int recv_chars, i;
-	int done = FALSE;
-	char last_char;
-
-	/* if the queue is empty, read from the socket */
-	if (!cmd_queue)
-	{
-		while (!done)
-		{
-			if ((recv_chars = read(s, buffer, sizeof(buffer))) > 0)
-			{
-				if ((read_chars + recv_chars) > allocated_size)
-				{
-					allocated_size += sizeof(buffer) + 1;
-					tmp_realloc = (char *) realloc (message, allocated_size);
-					if (tmp_realloc == NULL)
-					{
-						allocated_size = 0;
-						perror("Error allocating buffer for incoming message");
-						close(s);
-						if (message) free(message);
-						exit(MALLOC_ERROR);
-					}
-					else
-						message = tmp_realloc;
-				}
-				memcpy(&message[read_chars], buffer, recv_chars);
-				read_chars += recv_chars;
-				message[read_chars] = '\000';
-			} else {
-				/* Error or EOF */
-				break;
-			}
-			if (message != NULL) {
-				/* Require LF terminated messages */
-				last_char = message[read_chars -1];
-				if (last_char == '\n') break;
-			}
-		}
-	
-		if (recv_chars <= 0)
-		{
-			return(NULL);
-		}
-		else if (read_chars > 0)
-		{
-			/* return(message); */
-			cmd_queue = strdup(message);
-			next_cmd = cmd_queue;
-			queue_end = cmd_queue + read_chars;
-			free(message);
-		}
-	}
-
-	/* save the pointer to current command */
-	message = next_cmd;
-
-	/* search for end of current command */
-	while(next_cmd <= queue_end)
-	{
-		if (*next_cmd == '\n' || *next_cmd == '\r' || *next_cmd == '\000') break;
-		next_cmd++;
-	}
-
-	/* mark end of command */
-	*next_cmd = '\000';
-	
-	/* make a copy of the command to be returned */
-	message = strdup(message);
-	if (message == NULL)
-	{
-		fprintf(stderr, "Out of memory.\n");
-		exit(MALLOC_ERROR);
-	}
-
-	/* search for beginning of next command */
-	next_cmd++;
-	while(next_cmd <= queue_end)
-	{
-		if ((*next_cmd != '\n' && *next_cmd != '\r') || *next_cmd == '\000') break;
-		next_cmd++;
-	}
-	
-	/* if we reached end of queue free all */
-	if (next_cmd >= queue_end)
-	{
-		free(cmd_queue);
-		cmd_queue = NULL;
-		next_cmd = NULL;
-	}
-	
-	return(message);
-}
 
 int
 enqueue_result(char *res)
