@@ -545,7 +545,13 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 
 						if (sem_trywait(&sem_total_commands))
 						{
-							reply = make_message("F Threads\\ limit\\ reached\r\n");
+							if (errno == EAGAIN)
+								reply = make_message("F Threads\\ limit\\ reached\r\n");
+							else
+							{
+								perror("sem_trywait()");
+								exit(1);
+							}
 						}
 						else if (pthread_create(&task_tid, &cmd_threads_attr, command->cmd_handler, (void *)argv))
 						{
