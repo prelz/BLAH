@@ -376,11 +376,13 @@ int main(int argc, char *argv[]){
 			if (final_string[finstr_len-1] == ':' && (cp = strrchr (final_string, ':')) != NULL){
 				*cp = '\0';
 			}
+			
+			fsq_ret=FinalStateQuery(final_string,1);
+			
 			if(fsq_ret != 0){
 				fsq_ret=FinalStateQuery(final_string,tracejob_logs_to_read);
-			}else{
-				fsq_ret=FinalStateQuery(final_string,1);
 			}
+			
 			runfinal=FALSE;
 		}
 		if (final_string != NULL){
@@ -716,7 +718,7 @@ Job: 13.cream-12.pd.infn.it
                         		en.exitcode=-999;
 					JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 					JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
-				}else if(line && strstr(line,"Exit_status=") && en.status != REMOVED){	
+				}else if(line && strstr(line," Exit_status=") && en.status != REMOVED){	
 					maxtok_t = strtoken(line, ' ', &token);
 					timestamp=make_message("%s %s",token[0],token[1]);
 					tmstampepoch=str2epoch(timestamp,"A");
@@ -726,14 +728,18 @@ Job: 13.cream-12.pd.infn.it
                 			}
 					free(timestamp);
 					freetoken(&token,maxtok_t);
-					maxtok_t = strtoken(exit_str, '=', &token);
+					if(strstr(exit_str,"Exit_status=")){
+						maxtok_t = strtoken(exit_str, '=', &token);
+                        			en.exitcode=atoi(token[1]);
+						freetoken(&token,maxtok_t);
+					}else{
+						en.exitcode=-1;
+					}
 					free(exit_str);
 					en.udate=tmstampepoch;
-                        		en.exitcode=atoi(token[1]);
 					en.status=COMPLETED;
 					JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 					JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
-					freetoken(&token,maxtok_t);
 				}
 				free(line);
 			}
