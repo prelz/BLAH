@@ -59,7 +59,7 @@ config_parse_array_values(config_entry *en)
     while (regexec(&regbuf, match_start, 2, pmatch, 0) == 0)
      {
       value_len = pmatch[1].rm_eo - pmatch[1].rm_so;
-      new_values = (char **)realloc(en->values, sizeof(char *)*(en->n_values+1));
+      new_values = (char **)realloc(en->values, sizeof(char *)*(en->n_values+2));
       if (new_values == NULL) return -1;
       en->values = new_values;
       en->values[en->n_values] = (char *)malloc(value_len+1);
@@ -69,6 +69,8 @@ config_parse_array_values(config_entry *en)
              value_len);
       en->values[en->n_values][value_len] = '\000';
       en->n_values++;
+      /* Keep list NULL-terminated */
+      en->values[en->n_values] = NULL;
       match_start += pmatch[0].rm_eo;
      }
    }
