@@ -35,6 +35,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <poll.h>
+#include <errno.h>
 #include "cmdbuffer.h"
 
 #define BUFF_INCR_STEP 1024
@@ -77,6 +78,7 @@ cmd_buffer_get_command(char **command)
 	size_t endcmd;
 	ssize_t space_left;
 	ssize_t chunk_len; 
+	int pollret;
 
 	/* The queue must be initialised first */
 	if (cmd_queue_start == NULL) return (CMDBUF_ERROR_NOBUFFER);
@@ -110,11 +112,16 @@ cmd_buffer_get_command(char **command)
 		}
 
 		/* No command was found, wait for some more data */
-		switch (poll(cmd_fds, 1, cmd_timeout))
+		pollret = poll(cmd_fds, 1, cmd_timeout);
+		if (pollret < 0)
 		{
-		case -1: /* Error during poll() */
-			return(CMDBUF_ERROR_POLL);
-		case 0:	 /* Timeout occurred */
+			if (errno != 0 && errno != EINTR)
+				return(CMDBUF_ERROR_POLL);
+			else
+				return(CMDBUF_TIMEOUT);
+		} else if (pollret == 0)
+		{
+		 	/* Timeout occurred */
 			return(CMDBUF_TIMEOUT);
 		}
 
