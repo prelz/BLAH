@@ -2,7 +2,7 @@
   File :     classad_c_helper.h
 
 
-  Author :   Francesco Prelz ($Author: mezzadri $)
+  Author :   Francesco Prelz ($Author: fprelz $)
   e-mail :   "francesco.prelz@mi.infn.it"
 
   Revision history :
@@ -12,6 +12,8 @@
   19-Aug-2004 Added boolean attribute.
   30-Nov-2007 Added helper function to evaluate a boolean expression
               in a classad;
+  15-Sep-2011 Added helper function to accumulate and return all the attribute 
+              names in a classad.
 
   Description:
    Prototypes and typedefs for c-callable layer for handling Classad parse and 
@@ -80,5 +82,7 @@ int unwind_attributes(classad_context cad, char *attribute_name, char ***results
 classad_expr_tree classad_parse_expr(const char *s_ex);
 int classad_evaluate_boolean_expr(const char *s_in, const classad_expr_tree t_ex, int *result);
 void classad_free_tree(classad_expr_tree t_ex);
+int classad_get_attribute_names(classad_context cad, char ***results);
+void classad_free_results(char **results);
 
 #endif /* defined CLASSAD_C_HELPER_INCLUDED */

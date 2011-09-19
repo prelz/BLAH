@@ -2,7 +2,7 @@
 #  File :     classad_c_helper.C
 #
 #
-#  Author :   Francesco Prelz ($Author: mezzadri $)
+#  Author :   Francesco Prelz ($Author: fprelz $)
 #  e-mail :   "francesco.prelz@mi.infn.it"
 #
 #  Revision history :
@@ -12,6 +12,8 @@
 #  19-Aug-2004 Added boolean attribute.
 #  30-Nov-2007 Added function to evaluate a boolean expression 
 #              in the context of a classad.
+#  15-Sep-2011 Added helper function to accumulate and return all the attribute 
+#              names in a classad.
 #
 #  Description:
 #  c-callable layer for handling Classad parse and unparse via the 'new'
@@ -108,6 +110,8 @@ extern "C"
     if (cad == NULL) return C_CLASSAD_INVALID_CONTEXT;
 
     ClassAd *ad = (ClassAd *)cad;
+    if (result != NULL) *result = NULL; /* For those who don't check */
+                                        /* the return code... */
 
     Value v;
     ad->EvaluateAttr(attribute_name, v);
@@ -163,7 +167,7 @@ extern "C"
       et_result->GetComponents(ads);
       // Get string values.
       for(std::vector<ExprTree*>::const_iterator it = ads.begin();
-          it != ads.end(); it++) 
+          it != ads.end(); ++it) 
        {
         if ((*it)->GetKind() == ExprTree::LITERAL_NODE) 
          {
@@ -404,7 +408,7 @@ extern "C"
 
     std::vector<std::string>::const_iterator it;
     for (it = res_unp.m_unwind_output.begin(); 
-         it != res_unp.m_unwind_output.end(); it++)
+         it != res_unp.m_unwind_output.end(); ++it)
      {
       n_results++;
       char **new_results;
@@ -480,6 +484,53 @@ extern "C"
     delete ad;  
 
     return retcod;
+   }
+
+  int
+  classad_get_attribute_names(classad_context cad, char ***results) 
+   {
+    if (cad == NULL) return C_CLASSAD_INVALID_CONTEXT;
+    if (results == NULL)
+      return C_CLASSAD_INVALID_ARG;
+
+    ClassAd *ad = (ClassAd *)cad;
+
+    int n_results = 0;
+
+    ClassAd::const_iterator it;
+    for (it = ad->begin(); it != ad->end(); ++it)
+     {
+      n_results++;
+      char **new_results;
+      new_results = (char **)realloc(*results, (n_results+1)*sizeof(char *));
+      if (new_results == NULL)
+       {
+        return C_CLASSAD_OUT_OF_MEMORY;
+       }
+      (*results) = new_results;
+      (*results)[n_results] = NULL;
+      (*results)[n_results-1] = strdup(it->first.c_str());
+      if (((*results)[n_results-1]) == NULL)
+       {
+        return C_CLASSAD_OUT_OF_MEMORY;
+       }
+     }
+
+    return C_CLASSAD_NO_ERROR;
+   }
+
+  void
+  classad_free_results(char **results) 
+   {
+    char **cur;
+    if (results != NULL)
+     {
+      for(cur=results; (*cur)!=NULL; cur++)
+       {
+        free(*cur);
+       }
+      free(results);
+     }
    }
 
  } // end of extern "C"
