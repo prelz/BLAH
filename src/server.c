@@ -33,6 +33,8 @@
 #   18 Mar 2009 - (rebatto@mi.infn.it) Glexec references replaced with generic
 #                                      mapping names. Constants' definitions
 #                                      moved to mapped_exec.h.
+#   15 Sep 2011 - (prelz@mi.infn.it). Optionally pass any submit attribute
+#                                     to local configuration script.
 #                                      
 #
 #  Description:
@@ -138,7 +140,7 @@ int set_cmd_bool_option(char **command, classad_context cad, const char *attribu
 char *limit_proxy(char* proxy_name, char *requested_name);
 int getProxyInfo(char* proxname, char** subject, char** fqan);
 int logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char* userDN, char** environment);
-int CEReq_parse(classad_context cad, char* filename);
+int CEReq_parse(classad_context cad, char* filename, char *proxysubject, char *proxyfqan);
 char* outputfileRemaps(char *sb,char *sbrmp);
 int check_TransferINOUT(classad_context cad, char **command, char *reqId, char **resultLine, char ***files_to_clean_up);
 char *ConvertArgs(char* args, char sep);
@@ -180,6 +182,8 @@ int synchronous_termination = FALSE;
 
 static char *mapping_parameter[MEXEC_PARAM_COUNT];
 
+static char **submit_attributes_to_pass = NULL;
+static int pass_all_submit_attributes = FALSE;
 
 /* Check on good health of our managed children
  **/
@@ -315,6 +319,10 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	job_registry_index_mode jr_mode;
 	config_entry *check_children_interval_conf;
 	int check_children_interval = -1; /* no timeout by default */
+        config_entry *pass_attr;
+	int virtualorg_found;
+	char **attr;
+	int n_attrs;
 
 	blah_config_handle = config_read(NULL);
 	if (blah_config_handle == NULL)
@@ -379,6 +387,39 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	enable_condor_glexec = config_test_boolean(config_get("blah_enable_glexec_from_condor",blah_config_handle));
 	disable_wn_proxy_renewal = config_test_boolean(config_get("blah_disable_wn_proxy_renewal",blah_config_handle));
 	disable_proxy_user_copy = config_test_boolean(config_get("blah_disable_proxy_user_copy",blah_config_handle));
+
+	/* Scan configuration for submit attributes to pass to local script */
+	pass_all_submit_attributes = config_test_boolean(config_get("blah_pass_all_submit_attributes",blah_config_handle));
+	if (!pass_all_submit_attributes)
+	{
+		pass_attr = config_get("blah_pass_submit_attributes",blah_config_handle);
+		if (pass_attr != NULL)
+		{
+			submit_attributes_to_pass = pass_attr->values;
+		}
+		virtualorg_found = FALSE;
+		n_attrs = 0;
+		for (attr = submit_attributes_to_pass; (attr != NULL) && ((*attr) != NULL); attr++)
+		{
+			if (strcmp(*attr, "VirtualOrganisation") == 0) virtualorg_found = TRUE;
+			n_attrs++;
+		}
+		/* Make sure we have VirtualOrganisation here */
+		if (!virtualorg_found)
+		{
+			submit_attributes_to_pass = realloc(submit_attributes_to_pass, n_attrs+2);
+			if (submit_attributes_to_pass != NULL)
+			{
+				submit_attributes_to_pass[n_attrs] = strdup("VirtualOrganisation");
+				submit_attributes_to_pass[n_attrs+1] = NULL;
+				if (pass_attr != NULL)
+				{
+					pass_attr->values = submit_attributes_to_pass;
+				}
+			}
+		}
+		
+	}
 				
 	if (enable_condor_glexec)
 	{
@@ -1188,7 +1229,7 @@ cmd_submit_job(void *args)
 	/* Set the CE requirements */
 	gettimeofday(&ts, NULL);
 	req_file = make_message("%s/ce-req-file-%d%d",tmp_dir, ts.tv_sec, ts.tv_usec);
-	if(CEReq_parse(cad, req_file) >= 0)
+	if(CEReq_parse(cad, req_file, proxysubject, proxyfqan) >= 0)
 	{
 		command_ext = make_message("%s -C %s", command, req_file);
 		if (command_ext == NULL)
@@ -2922,30 +2963,53 @@ getProxyInfo(char* proxname, char** subject, char** fqan)
 	return 0;
 }
 
-int CEReq_parse(classad_context cad, char* filename)
+int CEReq_parse(classad_context cad, char* filename, 
+                char *proxysubject, char *proxyfqan)
 {
 	FILE *req_file=NULL;
 	char **reqstr=NULL;
 	char **creq;
 	int cs=0;
-	char *vo=NULL;
+	char *attr=NULL;
 	int n_written=-1;
 	config_entry *aen;
 	int i;
+	char **reqattr=NULL;
+	int clret;
 
-	classad_get_dstring_attribute(cad, "VirtualOrganisation", &vo);
-	if(vo)
+	if (pass_all_submit_attributes)
 	{
-		if (req_file== NULL)
+		classad_get_attribute_names(cad, &reqattr);
+	} else {
+		reqattr = submit_attributes_to_pass;
+	}
+
+	for (creq = reqattr; ((creq != NULL) && ((*creq) != NULL)); creq++)
+	{
+		clret = classad_get_dstring_attribute(cad, *creq, &attr);
+		if((clret == C_CLASSAD_NO_ERROR) && (attr != NULL))
 		{
-			req_file=fopen(filename,"w");
-			if(req_file==NULL) return -1;
+ 			if (req_file== NULL)
+			{
+				req_file=fopen(filename,"w");
+				if(req_file==NULL) return -1;
+			}
+			if (strcasecmp(*creq, "x509UserProxySubject") == 0)
+			{
+				cs = fprintf(req_file, "%s='%s'\n", *creq, proxysubject);
+			} else if (strcasecmp(*creq, "x509UserProxyFQAN") == 0) {
+				cs = fprintf(req_file, "%s='%s'\n", *creq, proxyfqan);
+			} else {
+				cs = fprintf(req_file, "%s='%s'\n", *creq, attr);
+			}
+			free(attr);
+			n_written++;
 		}
-		cs = fwrite("VirtualOrganisation=", 1, strlen("VirtualOrganisation="), req_file);
-		cs = fwrite(vo, 1, strlen(vo), req_file);
-		cs = fwrite("\n" ,1, strlen("\n"), req_file);
-		free(vo);
-		n_written++;
+	}
+
+	if (pass_all_submit_attributes)
+	{
+		classad_free_results(reqattr);
 	}
 
 	/* Look up any configured attribute */
@@ -2981,14 +3045,7 @@ int CEReq_parse(classad_context cad, char* filename)
 	if (req_file != NULL) fclose(req_file);
 
 free_reqstr:
-	if (reqstr != NULL)
-	{
-		for(creq=reqstr; (*creq)!=NULL; creq++)
-		{
-			free(*creq);
-		}
-		free(reqstr);
-	}
+	classad_free_results(reqstr);
 	return n_written;
 }
 
