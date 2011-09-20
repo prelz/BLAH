@@ -191,3 +191,14 @@ bupdater_use_bhist_for_susp=no
 #blah_wn_inputsandbox=/tmp
 #blah_wn_outputsandbox=/tmp
 
+#The following configuration attributes allow for additional
+#submit command attributes to be set in the local shell callout
+#for batch system customizations.
+#
+#Set this variable to pass all submit command attributes:
+#blah_pass_all_submit_attributes=yes
+#
+#-Or- select individual attributes as follows:
+#blah_pass_submit_attributes[0]="x509UserProxySubject"
+#blah_pass_submit_attributes[1]="x509UserProxy"
+
