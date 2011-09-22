@@ -12,11 +12,14 @@
 #       Council for the Central Laboratory of the Research Councils (CCLRC), United Kingdom
 #
 #       Authors: Francesco Prelz <francesco.prelz@mi.infn.it>
-#       Version info: $Id: configure.ac,v 1.48 2010/10/08 14:55:48 fprelz Exp $
+#       Version info: $Id: configure.ac,v 1.49 2011/09/22 08:12:13 pandreet Exp $
 #       Release: $Name:  $
 #
 #       Revision history:
 #       $Log: configure.ac,v $
+#       Revision 1.49  2011/09/22 08:12:13  pandreet
+#       Changes for the new packager
+#
 #       Revision 1.48  2010/10/08 14:55:48  fprelz
 #       Added an option to access the job registry index in a shared fashion
 #       by multiple blahpd processes via mmap.
@@ -178,17 +181,23 @@ AC_HEADER_TIME
 dnl Checks for library functions.
 AC_CHECK_FUNCS(select socket strdup strerror bsearch vsnprintf mmap munmap)
 
-AC_GLITE
+GLITE_CHECK_LIBDIR
+GLITE_CHECK_INITDIR
 
-have_classads=no
+AC_ARG_WITH(dist_location,
+   [  --with-dist-location=PFX     prefix where DIST location is. (pwd)],
+   [],
+   with_dist_location=$WORKDIR/../dist)
+
+DISTTAR=$with_dist_location
+
+AC_SUBST(DISTTAR)
+
+AC_CLASSADS([], AC_MSG_RESULT(["CLASSADS ok"]), AC_MSG_ERROR(["CLASSADS not found"]))
+
 have_globus=no
-
-AC_CLASSADS([], have_classads=yes, have_classads=no)
 AC_GLOBUS([], have_globus=yes, have_globus=no)
-
-AC_MSG_RESULT(["CLASSADS found $have_classads"])
 AC_MSG_RESULT(["GLOBUS found $have_globus"])
-
 AM_CONDITIONAL([HAVE_GLOBUS], [test x$have_globus = xyes])
 
 dnl Temporarily built with no optimisation

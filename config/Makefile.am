@@ -2,11 +2,11 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.13 2011/05/18 13:12:55 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.14 2011/09/22 08:12:13 pandreet Exp $ 
 #
 # File:           Makefile.am
 #
-# Author(s):      Francesco Prelz ($Author: mezzadri $)
+# Author(s):      Francesco Prelz ($Author: pandreet $)
 #        e-mail: "Francesco.Prelz@mi.infn.it"
 #
 # Revision history:
@@ -28,7 +28,7 @@ EXTRA_DIST = blah.config.template \
              glite-ce-blah \
              glite-ce-check-blparser 
 
-bldir = $(sysconfdir)/init.d
+bldir = $(sysconfdir)/$(initdir)
 bl_SCRIPTS = glite-ce-blparser glite-ce-blahparser glite-ce-blah glite-ce-check-blparser
 
 CLEANFILES =
