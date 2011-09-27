@@ -428,21 +428,15 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
     nq=numQuery;
     numQueryStates=strtoken(queryStates,' ',&list_queryStates);
     if (numQuery!=numQueryStates) return 1;
-
-    sprintf(command_string,"%s/qstat -u '*' 2>&1",sge_binpath);
+    
+    sprintf(command_string,"%s/qstat -u '*'",sge_binpath);
     if (debug) do_log(debuglogfile, debug, 1, "+-+line 433, command_string:%s\n",command_string);
-
+    
     //load in qstatJob list of jobids from qstat command exec
     file_output = popen(command_string,"r");
     if (file_output == NULL) return 0;
     while (fgets(line,sizeof(line), file_output) != NULL){
-// 	if (debug) do_log(debuglogfile, debug, 1, "+-+line 439,qstat result:%s\n",line);
 	cont=strtoken(line, ' ', &saveptr1);
-	if (strcmp(saveptr1[0],"error:")==0){
-	    pclose( file_output );
-	    sleep(60);
-	    return 1;
-	}
 	if ((strcmp(saveptr1[0],"job-ID")!=0)&&(strncmp(saveptr1[0],"-",1)!=0)){
 	    for (l=0;l<nq;l++){
 		if (strcmp(list_query[l],saveptr1[0])==0){
@@ -548,7 +542,7 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 	pclose( file_output );
 	now=time(0);
 	sprintf(string_now,"%d",now);
-	if (strcmp(qExit,"137")==0){
+	if ((strcmp(qExit,"137")==0)||(strcmp(qExit,"143")==0)){
 	    JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,list_query[l]);
 	    en.status=3;
 	    en.exitcode=atoi(qExit);
@@ -626,7 +620,7 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 	    pclose( file_output );
 	    now=time(0);
 	    sprintf(string_now,"%d",now);
-	    if (strcmp(qExit,"137")==0){
+	    if ((strcmp(qExit,"137"))||(strcmp(qExit,"143")==0)){
 		JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,cmd);
 		en.status=3;
 		en.exitcode=atoi(qExit);
