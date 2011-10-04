@@ -23,6 +23,7 @@
 */
 
 #include "job_registry.h"
+#include "job_registry_updater.h"
 #include "Bfunctions.h"
 #include "config.h"
 
@@ -32,6 +33,7 @@
 #define VERSION            "1.8.0"
 #endif
 
+int ReceiveUpdateFromNetwork();
 int IntStateQueryShort();
 int IntStateQuery();
 int FinalStateQuery(time_t start_date, int logs_to_read);
@@ -71,3 +73,8 @@ job_registry_handle *rha;
 config_handle *cha;
 config_entry *ret;
 char *progname="BUpdaterLSF";
+
+struct pollfd *remupd_pollset = NULL;
+int remupd_nfds;
+job_registry_updater_endpoint *remupd_head = NULL;
+job_registry_updater_endpoint *remupd_head_send = NULL;

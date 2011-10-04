@@ -2,11 +2,11 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.53 2011/08/31 15:03:46 drebatto Exp $ 
+# $Id: Makefile.am,v 1.54 2011/10/04 11:04:50 mezzadri Exp $ 
 #
 # File:           Makefile.am
 #
-# Author(s):      Francesco Prelz ($Author: drebatto $)
+# Author(s):      Francesco Prelz ($Author: mezzadri $)
 #        e-mail: "Francesco.Prelz@mi.infn.it"
 #
 # Revision history:
@@ -106,16 +106,16 @@ test_job_registry_access_CFLAGS = $(AM_CFLAGS)
 test_job_registry_update_from_network_SOURCES = test_job_registry_update_from_network.c job_registry.c job_registry_updater.c md5.c config.c
 blah_job_registry_update_from_network_CFLAGS = $(AM_CFLAGS)
 
-BUpdaterCondor_SOURCES = BUpdaterCondor.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c
+BUpdaterCondor_SOURCES = BUpdaterCondor.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c job_registry_updater.c
 BUpdaterCondor_LDADD = -lpthread
 
 BNotifier_SOURCES = BNotifier.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c
 BNotifier_LDADD = -lpthread
 
-BUpdaterLSF_SOURCES = BUpdaterLSF.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c
+BUpdaterLSF_SOURCES = BUpdaterLSF.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c job_registry_updater.c
 BUpdaterLSF_LDADD = -lpthread -lm
 
-BUpdaterPBS_SOURCES = BUpdaterPBS.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c
+BUpdaterPBS_SOURCES = BUpdaterPBS.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c job_registry_updater.c
 BUpdaterPBS_LDADD = -lpthread -lm
 
 BUpdaterSGE_SOURCES = BUpdaterSGE.c Bfunctions.c job_registry.c md5.c config.c blah_utils.c
@@ -133,7 +133,7 @@ blah_job_registry_dump_CFLAGS = $(AM_CFLAGS)
 test_cmdbuffer_SOURCES = cmdbuffer.c
 test_cmdbuffer_CFLAGS = $(AM_CFLAGS) -DCMDBUF_DEBUG
 
-noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h condor_create_log.h proxy_hashcontainer.h job_registry.h md5.h config.h BUpdaterCondor.h Bfunctions.h BNotifier.h BUpdaterLSF.h BUpdaterPBS.h BUpdaterSGE.h blah_utils.h env_helper.h mapped_exec.h blah_check_config.h BLfunctions.h cmdbuffer.h
+noinst_HEADERS = blahpd.h classad_binary_op_unwind.h classad_c_helper.h commands.h job_status.h resbuffer.h server.h console.h BPRcomm.h tokens.h BLParserPBS.h BLParserLSF.h condor_create_log.h proxy_hashcontainer.h job_registry.h md5.h config.h BUpdaterCondor.h Bfunctions.h BNotifier.h BUpdaterLSF.h BUpdaterPBS.h BUpdaterSGE.h blah_utils.h env_helper.h mapped_exec.h blah_check_config.h BLfunctions.h cmdbuffer.h job_registry_updater.h
 
 #bin_SCRIPTS = pbs_cancel.sh pbs_status.sh pbs_submit.sh lsf_cancel.sh lsf_status.sh lsf_submit.sh
 

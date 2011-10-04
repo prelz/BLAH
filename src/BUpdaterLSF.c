@@ -34,6 +34,10 @@ int main(int argc, char *argv[]){
 	char *pidfile=NULL;
 	char *first_duplicate=NULL;
 	
+	config_entry *remupd_conf;
+	struct pollfd *remupd_pollset = NULL;
+	int remupd_nfds;
+	
 	int version=0;
 	int first=TRUE;
 	int tmptim;
@@ -42,7 +46,10 @@ int main(int argc, char *argv[]){
 	
 	int rc;				
 	int c;				
+	int status;
 	
+	pthread_t RecUpdNetThd;
+
 	int confirm_time=0;	
 
         static int help;
@@ -273,6 +280,38 @@ int main(int argc, char *argv[]){
 	
 	batch_command=(strcmp(lsf_batch_caching_enabled,"yes")==0?make_message("%s ",batch_command_caching_filter):make_message(""));
 	
+	ret = config_get("job_registry_use_mmap",cha);
+	if (ret == NULL){
+		do_log(debuglogfile, debug, 1, "%s: key job_registry_use_mmap not found. Default is NO\n",argv0);
+	} else {
+		do_log(debuglogfile, debug, 1, "%s: key job_registry_use_mmap is set to %s\n",argv0,ret->value);
+	}
+	
+	remupd_conf = config_get("job_registry_add_remote",cha);
+	if (remupd_conf == NULL){
+		do_log(debuglogfile, debug, 1, "%s: key job_registry_add_remote not found\n",argv0);
+	}else{
+		if (job_registry_updater_setup_receiver(remupd_conf->values,remupd_conf->n_values,&remupd_head) < 0){
+			do_log(debuglogfile, debug, 1, "%s: Cannot set network receiver(s) up for remote update\n",argv0);
+			fprintf(stderr,"%s: Cannot set network receiver(s) up for remote update \n",argv0);
+       		}
+ 
+		if (remupd_head == NULL){
+			do_log(debuglogfile, debug, 1, "%s: Cannot find values for network endpoints in configuration file (attribute 'job_registry_add_remote').\n",argv0);
+			fprintf(stderr,"%s: Cannot find values for network endpoints in configuration file (attribute 'job_registry_add_remote').\n", argv0);
+		}
+
+		if ((remupd_nfds = job_registry_updater_get_pollfd(remupd_head, &remupd_pollset)) < 0){
+			do_log(debuglogfile, debug, 1, "%s: Cannot setup poll set for receiving data.\n",argv0);
+    			fprintf(stderr,"%s: Cannot setup poll set for receiving data.\n", argv0);
+		}
+		if (remupd_pollset == NULL || remupd_nfds == 0){
+			do_log(debuglogfile, debug, 1, "%s: No poll set available for receiving data.\n",argv0);
+			fprintf(stderr,"%s: No poll set available for receiving data.\n",argv0);
+		}
+	
+	}
+	
 	if( !nodmn ) daemonize();
 
 
@@ -283,11 +322,25 @@ int main(int argc, char *argv[]){
 	
 	config_free(cha);
 	
+	
 	rha=job_registry_init(registry_file, BY_BATCH_ID);
 	if (rha == NULL){
 		do_log(debuglogfile, debug, 1, "%s: Error initialising job registry %s\n",argv0,registry_file);
 		fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
 		perror("");
+	}
+	
+	pthread_create(&RecUpdNetThd, NULL, (void *(*)(void *))ReceiveUpdateFromNetwork, (void *)NULL);
+	pthread_join(RecUpdNetThd, (void **)&status);
+	pthread_exit(NULL);
+	
+	if (job_registry_updater_setup_sender(remupd_conf->values,remupd_conf->n_values,0,&remupd_head_send) < 0){
+			do_log(debuglogfile, debug, 1, "%s: Cannot set network sender(s) up for remote update\n",argv0);
+			fprintf(stderr,"%s: Cannot set network sender(s) up for remote update \n",argv0);
+       	}
+	if (remupd_head_send == NULL){
+		do_log(debuglogfile, debug, 1, "%s: Cannot find values for network endpoints in configuration file (attribute 'job_registry_add_remote').\n",argv0);
+		fprintf(stderr,"%s: Cannot find values for network endpoints in configuration file (attribute 'job_registry_add_remote').\n", argv0);
 	}
 
 	for(;;){
@@ -395,6 +448,71 @@ int main(int argc, char *argv[]){
 	
 }
 
+int 
+ReceiveUpdateFromNetwork()
+{
+	char *proxy_path, *proxy_subject;
+	int timeout_ms = 0;
+	int ent, ret, prret, rhret;
+	job_registry_entry *nen;
+	job_registry_entry *ren;
+  
+	proxy_path = NULL;
+	proxy_subject = NULL;
+	
+	while (nen = job_registry_receive_update(remupd_pollset, remupd_nfds,timeout_ms, &proxy_subject, &proxy_path)){
+	
+		JOB_REGISTRY_ASSIGN_ENTRY(nen->subject_hash,"\0");
+		JOB_REGISTRY_ASSIGN_ENTRY(nen->proxy_link,"\0");
+		
+		if ((ren=job_registry_get(rha, nen->batch_id)) == NULL){
+			if ((ret=job_registry_append(rha, nen)) < 0){
+				fprintf(stderr,"%s: Warning: job_registry_append returns %d: ",argv0,ret);
+				perror("");
+			} 
+		}else{
+		
+			if(ren->subject_hash!=NULL && strlen(ren->subject_hash) && ren->proxy_link!=NULL && strlen(ren->proxy_link)){
+				JOB_REGISTRY_ASSIGN_ENTRY(nen->subject_hash,ren->subject_hash);
+				JOB_REGISTRY_ASSIGN_ENTRY(nen->proxy_link,ren->proxy_link);
+			}else{
+				if (proxy_path != NULL && strlen(proxy_path) > 0){
+					prret = job_registry_set_proxy(rha, nen, proxy_path);
+     			 		if (prret < 0){
+						do_log(debuglogfile, debug, 1, "%s: warning: setting proxy to %s\n",argv0,proxy_path);
+        					fprintf(stderr,"%s: warning: setting proxy to %s: ",argv0,proxy_path);
+        					perror("");
+        					/* Make sure we don't renew non-existing proxies */
+						nen->renew_proxy = 0;  		
+					}
+					free(proxy_path);
+  
+					nen->subject_hash[0] = '\000';
+					if (proxy_subject != NULL && strlen(proxy_subject) > 0){
+						job_registry_compute_subject_hash(nen, proxy_subject);
+						rhret = job_registry_record_subject_hash(rha, nen->subject_hash, proxy_subject, TRUE);  
+						if (rhret < 0){
+							do_log(debuglogfile, debug, 1, "%s: warning: recording proxy subject %s (hash %s)\n",argv0, proxy_subject, nen->subject_hash);
+							fprintf(stderr,"%s: warning: recording proxy subject %s (hash %s): ",argv0, proxy_subject, nen->subject_hash);
+							perror("");
+						}
+					}
+					free(proxy_subject);
+  
+				}
+			}
+			if(job_registry_need_update(ren,nen,JOB_REGISTRY_UPDATE_ALL)){
+				if ((ret=job_registry_update(rha, nen)) < 0){
+					fprintf(stderr,"%s: Warning: job_registry_update returns %d: ",argv0,ret);
+					perror("");
+				}
+			} 
+		}
+		free(nen);
+	}
+  
+	return 0;
+}
 
 int
 IntStateQueryShort()
@@ -486,6 +604,9 @@ IntStateQueryShort()
 						}else{
 							do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQueryShort for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
 						}
+						if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
+							do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in IntStateQueryShort\n",argv0);
+						}
 					}
 				}
 				en.status = UNDEFINED;
@@ -551,6 +672,8 @@ IntStateQueryShort()
 				fprintf(stderr,"Update of record returns %d: ",ret);
 				perror("");
 			}
+			
+			
 		} else {
 			if(ret==JOB_REGISTRY_SUCCESS){
 				if (en.status == REMOVED || en.status == COMPLETED) {
@@ -558,6 +681,9 @@ IntStateQueryShort()
 					job_registry_unlink_proxy(rha, &en);
 				}else{
 					do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQueryShort for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
+				}
+				if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
+					do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in IntStateQueryShort\n",argv0);
 				}
 			}
 		}
@@ -649,6 +775,9 @@ IntStateQuery()
 								job_registry_unlink_proxy(rha, &en);
 							}else{
 								do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
+							}
+							if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
+								do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in IntStateQuery\n",argv0);
 							}
 						}
 					}
@@ -765,6 +894,9 @@ IntStateQuery()
 				}else{
 					do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
 				}
+				if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
+					do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in IntStateQuery\n",argv0);
+				}
 			}
 		}
 	}				
@@ -869,8 +1001,12 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 						}
 					} else {
 						do_log(debuglogfile, debug, 2, "%s: registry update in FinalStateQuery for: jobid=%s creamjobid=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.status);
-						if (en.status == REMOVED || en.status == COMPLETED)
+						if (en.status == REMOVED || en.status == COMPLETED){
 							job_registry_unlink_proxy(rha, &en);
+						}
+					}
+					if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
+						do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in FinalStateQuery\n",argv0);
 					}
 					en.status = UNDEFINED;
 				}				
@@ -950,8 +1086,12 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			}
 		} else {
 			do_log(debuglogfile, debug, 2, "%s: f registry update in FinalStateQuery for: jobid=%s creamjobid=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.status);
-			if (en.status == REMOVED || en.status == COMPLETED)
+			if (en.status == REMOVED || en.status == COMPLETED){
 				job_registry_unlink_proxy(rha, &en);
+			}
+			if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
+				do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in FinalStateQuery\n",argv0);
+			}
 		}
 	}else{
 		failed_count++;
@@ -1121,6 +1261,9 @@ int AssignFinalState(char *batchid){
 	} else {
 		do_log(debuglogfile, debug, 2, "%s: registry update in AssignStateQuery for: jobid=%s creamjobid=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.status);
 		job_registry_unlink_proxy(rha, &en);
+		if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
+			do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in AssignFinalState\n",argv0);
+		}
 	}
 
 	

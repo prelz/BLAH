@@ -309,6 +309,13 @@ int main(int argc, char *argv[]){
 	    sysfatal("strdup failed for pidfile in main: %r");
 	}
     }
+    
+    ret = config_get("job_registry_use_mmap",cha);
+    if (ret == NULL){
+        do_log(debuglogfile, debug, 1, "%s: key job_registry_use_mmap not found. Default is NO\n",argv0);
+    } else {
+        do_log(debuglogfile, debug, 1, "%s: key job_registry_use_mmap is set to %s\n",argv0,ret->value);
+    }
 
     if( !nodmn ) daemonize();
 

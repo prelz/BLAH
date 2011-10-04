@@ -23,6 +23,7 @@
 */
 
 #include "job_registry.h"
+#include "job_registry_updater.h"
 #include "Bfunctions.h"
 #include "config.h"
 
@@ -32,6 +33,7 @@
 #define VERSION            "1.8.0"
 #endif
 
+int ReceiveUpdateFromNetwork();
 int IntStateQuery();
 int FinalStateQuery(char *input_string, int logs_to_read);
 int AssignFinalState(char *batchid);
@@ -64,3 +66,8 @@ job_registry_handle *rha;
 config_handle *cha;
 config_entry *ret;
 char *progname="BUpdaterPBS";
+
+struct pollfd *remupd_pollset = NULL;
+int remupd_nfds;
+job_registry_updater_endpoint *remupd_head = NULL;
+job_registry_updater_endpoint *remupd_head_send = NULL;
