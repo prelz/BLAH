@@ -486,7 +486,7 @@ main(int argc, char *argv[])
 			}
 			free(s);
 			
-			parser_pbs[i].exefile = make_message("%s/bin/%s %s %s %s %s %s %s",blah_location,parser_names[0],debuglevelpbs,debuglogfilepbs,spooldirpbs,portpbs,creamportpbs);
+			parser_pbs[i].exefile = make_message("%s/bin/%s %s %s %s %s %s",blah_location,parser_names[0],debuglevelpbs,debuglogfilepbs,spooldirpbs,portpbs,creamportpbs);
 			parser_pbs[i].pidfile = make_message("%s/%s%d.pid",PID_DIR,parser_names[0],i+1);
 
 			if(parser_pbs[i].exefile == NULL || parser_pbs[i].pidfile == NULL){
