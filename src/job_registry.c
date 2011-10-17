@@ -1089,10 +1089,20 @@ job_registry_resync_mmap(job_registry_handle *rha, FILE *fd)
         free(ren);
        } /* End of mmap file update cycle */
 
+      if (rha->n_entries == 0)
+       {
+        /* Registry empty - no need to mmap */
+        unlink(new_index);
+        close(newindex_fd);
+        free(new_index);
+        return JOB_REGISTRY_NO_VALID_RECORD;
+       }
+
       rha->index_mmap_length = lseek(newindex_fd, 0, SEEK_CUR);
+
       rha->entries = mmap(0, rha->index_mmap_length, 
                           PROT_READ|PROT_WRITE, MAP_SHARED, newindex_fd, 0);
-      if (rha->entries == NULL)
+      if (rha->entries == MAP_FAILED)
        {
         unlink(new_index);
         close(newindex_fd);
@@ -1100,6 +1110,7 @@ job_registry_resync_mmap(job_registry_handle *rha, FILE *fd)
         rha->firstrec = 0;
         rha->lastrec = 0;
         rha->n_entries = 0;
+        rha->entries = NULL;
         rha->index_mmap_length = 0;
         return JOB_REGISTRY_MMAP_FAIL;
        }
