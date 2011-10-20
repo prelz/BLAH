@@ -571,6 +571,7 @@ GetAllEvents(char *file)
 	char *line;
 	char **opfile;
 	int maxtok,i;
+	char *full_logname=NULL;
  
 	maxtok = strtoken(file, ' ', &opfile);
 
@@ -580,7 +581,8 @@ GetAllEvents(char *file)
   
 	for(i=0; i<maxtok; i++){ 
  
-		if((fp=fopen(opfile[i], "r")) != 0){
+		full_logname=make_message("%s/%s",ldir,opfile[i]);
+		if((fp=fopen(full_logname, "r")) != 0){
 			while(fgets(line, STR_CHARS, fp)){
 				if(line && ((strstr(line,rex_queued)!=NULL) || (strstr(line,rex_running)!=NULL) || (strstr(line,rex_status)!=NULL) || (strstr(line,rex_signal)!=NULL))){
 					AddToStruct(line,0);
@@ -590,6 +592,7 @@ GetAllEvents(char *file)
 		} else {
 			syserror("Cannot open %s file: %r",opfile[i]);
 		}
+		free(full_logname);
   
 	} /* close for*/
 	
@@ -1231,7 +1234,7 @@ GetLogList(char *logdate)
 	char            *slogs;
 	int 		n;
 
-	if((slogs=calloc(MAX_CHARS,1)) == 0){
+	if((slogs=calloc(MAX_CHARS*4,1)) == 0){
 		sysfatal("can't malloc slogs: %r");
 	}
 	 
@@ -1251,15 +1254,15 @@ GetLogList(char *logdate)
 	} else {
 		while(n--) {
 			if( *(direntry[n]->d_name) == '.' ) continue;
-			s=make_message("%s/%s",ldir,direntry[n]->d_name);
+			s=make_message("%s/%s",direntry[n]->d_name);
 			rc=stat(s,&sbuf);
 			if(rc) {
 				syserror("Cannot stat file %s: %r", s);
 				return NULL;
 			}
 			if ( sbuf.st_mtime > tage ) {
-				if(strstr(s,lsbevents)!=NULL && strstr(s,"lock")==NULL && strstr(s,"index")==NULL){
-					strcat(slogs,s);
+				if(strstr(direntry[n]->d_name,lsbevents)!=NULL && strstr(direntry[n]->d_name,"lock")==NULL && strstr(direntry[n]->d_name,"index")==NULL){
+					strcat(slogs,direntry[n]->d_name);
 					strcat(slogs," ");
 				}
 			}  

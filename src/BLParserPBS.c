@@ -1103,7 +1103,7 @@ GetLogList(char *logdate)
 	char            *slogs;
 	int 		i,n;
 
-	if((slogs=calloc(MAX_CHARS,1)) == 0){
+	if((slogs=calloc(MAX_CHARS*3,1)) == 0){
 		sysfatal("can't malloc slogs: %r");
 	}
 	 
