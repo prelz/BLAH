@@ -78,3 +78,4 @@ struct pollfd *remupd_pollset = NULL;
 int remupd_nfds;
 job_registry_updater_endpoint *remupd_head = NULL;
 job_registry_updater_endpoint *remupd_head_send = NULL;
+config_entry *remupd_conf;

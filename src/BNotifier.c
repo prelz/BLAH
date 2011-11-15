@@ -282,7 +282,7 @@ PollDB()
 	
 		now=time(NULL);
 	
-		if(!startnotify && !startnotifyjob && !(firstnotify && sentendonce)){
+		if(!startnotify && !startnotifyjob && !sentendonce){
 			sleep(loop_interval);
 			continue;
 		}
@@ -411,13 +411,13 @@ PollDB()
 			job_registry_destroy(rhc);
 		}
 
-		if(firstnotify && sentendonce){
+		if(sentendonce){
 			if(NotifyCream("NTFDATE/END\n")!=-1){
-				startnotify=TRUE;
 				sentendonce=FALSE;
-				firstnotify=FALSE;
 			}
 		}		
+		startnotify=TRUE;
+		
 		sleep(loop_interval);
 	}
                 
@@ -493,7 +493,6 @@ CreamConnection(int c_sock)
 /*
 startnotify 	controls the normal operation in PollDB
 startnotifyjob 	is used to send notification of jobs contained in joblist_string 
-firstnotify 	controls if NTFDATE/END has to be sent (together with sentendonce)
 sentendonce 	controls if NTFDATE/END has to be sent (is used to permit STARTNOTIFYJOBLIST to be used during
             	normal notifier operation without sending NTFDATE/END). It is reset to TRUE only by CREAMFILTER command
             	otherwise it remains FALSE after the first notification (finished with NTFDATE/END).
@@ -541,13 +540,11 @@ STARTNOTIFYJOBEND
 				if(buffer && strstr(buffer,"STARTNOTIFY/")!=NULL){
 					NotifyStart(buffer);
 					startnotify=TRUE;
-					firstnotify=TRUE;
 				} else if(buffer && strstr(buffer,"STARTNOTIFYJOBLIST/")!=NULL){
 					GetJobList(buffer);
 					startnotifyjob=TRUE;
 					startnotify=FALSE;
                                	} else if(buffer && strstr(buffer,"STARTNOTIFYJOBEND/")!=NULL){
-					firstnotify=TRUE;
 					now=time(NULL);
 					lastnotiftime=now;
 				} else if(buffer && strstr(buffer,"CREAMFILTER/")!=NULL){

@@ -34,7 +34,6 @@ int main(int argc, char *argv[]){
 	char *pidfile=NULL;
 	char *first_duplicate=NULL;
 	
-	config_entry *remupd_conf;
 	struct pollfd *remupd_pollset = NULL;
 	int remupd_nfds;
 	
@@ -330,17 +329,19 @@ int main(int argc, char *argv[]){
 		perror("");
 	}
 	
-	pthread_create(&RecUpdNetThd, NULL, (void *(*)(void *))ReceiveUpdateFromNetwork, (void *)NULL);
-	pthread_join(RecUpdNetThd, (void **)&status);
-	pthread_exit(NULL);
+	if (remupd_conf != NULL){
+		pthread_create(&RecUpdNetThd, NULL, (void *(*)(void *))ReceiveUpdateFromNetwork, (void *)NULL);
+		pthread_join(RecUpdNetThd, (void **)&status);
+		pthread_exit(NULL);
 	
-	if (job_registry_updater_setup_sender(remupd_conf->values,remupd_conf->n_values,0,&remupd_head_send) < 0){
+		if (job_registry_updater_setup_sender(remupd_conf->values,remupd_conf->n_values,0,&remupd_head_send) < 0){
 			do_log(debuglogfile, debug, 1, "%s: Cannot set network sender(s) up for remote update\n",argv0);
 			fprintf(stderr,"%s: Cannot set network sender(s) up for remote update \n",argv0);
-       	}
-	if (remupd_head_send == NULL){
-		do_log(debuglogfile, debug, 1, "%s: Cannot find values for network endpoints in configuration file (attribute 'job_registry_add_remote').\n",argv0);
-		fprintf(stderr,"%s: Cannot find values for network endpoints in configuration file (attribute 'job_registry_add_remote').\n", argv0);
+       		}
+		if (remupd_head_send == NULL){
+			do_log(debuglogfile, debug, 1, "%s: Cannot find values for network endpoints in configuration file (attribute 'job_registry_add_remote').\n",argv0);
+			fprintf(stderr,"%s: Cannot find values for network endpoints in configuration file (attribute 'job_registry_add_remote').\n", argv0);
+		}
 	}
 
 	for(;;){
@@ -604,8 +605,10 @@ IntStateQueryShort()
 						}else{
 							do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQueryShort for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
 						}
-						if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
-							do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in IntStateQueryShort\n",argv0);
+						if (remupd_conf != NULL){
+							if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
+								do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in IntStateQueryShort\n",argv0);
+							}
 						}
 					}
 				}
@@ -682,8 +685,10 @@ IntStateQueryShort()
 				}else{
 					do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQueryShort for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
 				}
-				if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
-					do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in IntStateQueryShort\n",argv0);
+				if (remupd_conf != NULL){
+					if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
+						do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in IntStateQueryShort\n",argv0);
+					}
 				}
 			}
 		}
@@ -776,8 +781,10 @@ IntStateQuery()
 							}else{
 								do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
 							}
-							if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
-								do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in IntStateQuery\n",argv0);
+							if (remupd_conf != NULL){
+								if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
+									do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in IntStateQuery\n",argv0);
+								}
 							}
 						}
 					}
@@ -894,8 +901,10 @@ IntStateQuery()
 				}else{
 					do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
 				}
-				if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
-					do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in IntStateQuery\n",argv0);
+				if (remupd_conf != NULL){
+					if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
+						do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in IntStateQuery\n",argv0);
+					}
 				}
 			}
 		}
@@ -1005,8 +1014,10 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 							job_registry_unlink_proxy(rha, &en);
 						}
 					}
-					if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
-						do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in FinalStateQuery\n",argv0);
+					if (remupd_conf != NULL){
+						if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
+							do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in FinalStateQuery\n",argv0);
+						}
 					}
 					en.status = UNDEFINED;
 				}				
@@ -1089,8 +1100,10 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			if (en.status == REMOVED || en.status == COMPLETED){
 				job_registry_unlink_proxy(rha, &en);
 			}
-			if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
-				do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in FinalStateQuery\n",argv0);
+			if (remupd_conf != NULL){
+				if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
+					do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in FinalStateQuery\n",argv0);
+				}
 			}
 		}
 	}else{
@@ -1261,8 +1274,10 @@ int AssignFinalState(char *batchid){
 	} else {
 		do_log(debuglogfile, debug, 2, "%s: registry update in AssignStateQuery for: jobid=%s creamjobid=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.status);
 		job_registry_unlink_proxy(rha, &en);
-		if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
-			do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in AssignFinalState\n",argv0);
+		if (remupd_conf != NULL){
+			if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
+				do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in AssignFinalState\n",argv0);
+			}
 		}
 	}
 
