@@ -23,10 +23,14 @@
 # limitations under the License.
 #
 
-
 proxy_dir=~/.blah_jobproxy_dir
 
 . `dirname $0`/blah_load_config.sh
+
+if [ "x$job_registry" != "x" ] ; then
+   ${blah_bin_directory}/blah_job_registry_lkup $@
+   exit 0
+fi
 
 FORMAT='-format "%d" ClusterId -format "," ALWAYS -format "%d" JobStatus -format "," ALWAYS -format "%f" RemoteSysCpu -format "," ALWAYS -format "%f" RemoteUserCpu -format "," ALWAYS -format "%f" BytesSent -format "," ALWAYS -format "%f" BytesRecvd -format "," ALWAYS -format "%f" RemoteWallClockTime -format "," ALWAYS -format "%d" ExitBySignal -format "," ALWAYS -format "%d" ExitCode -format "%d" ExitSignal -format "\n" ALWAYS'
 
