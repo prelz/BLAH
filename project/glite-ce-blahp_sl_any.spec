@@ -48,32 +48,33 @@ fi
 rm -rf %{buildroot} 
 
 %post
-/bin/mv /usr/bin/condor_status.sh /usr/bin/condor_status.sh.save
-/bin/cp /usr/bin/blah_job_registry_lkup /usr/bin/condor_status.sh
 
 if [ $1 -eq 1 ] ; then
-    #/sbin/chkconfig --add glite-ce-blparser
-    #/sbin/chkconfig --add glite-ce-check-blparser
     /sbin/chkconfig --add glite-ce-blahparser
 
-    if [ -d /var/log/cream -a ! "x`grep tomcat /etc/passwd`" == "x" ] ; then
+    if [ ! "x`grep tomcat /etc/passwd`" == "x" ] ; then
         mkdir -p /var/log/cream/accounting
         chown root.tomcat /var/log/cream/accounting
         chmod 0730 /var/log/cream/accounting
+        
+        mkdir -p /var/blahp
+        chown tomcat.tomcat /var/blahp
+        chmod 771 /var/blahp
+    
     fi
 fi
 
 %preun
 if [ $1 -eq 0 ] ; then
-    #/sbin/service glite-ce-blparser stop >/dev/null 2>&1
-    #/sbin/chkconfig --del glite-ce-blparser
-    #/sbin/service glite-ce-check-blparser stop >/dev/null 2>&1
-    #/sbin/chkconfig --del glite-ce-check-blparser
     /sbin/service glite-ce-blahparser stop >/dev/null 2>&1
     /sbin/chkconfig --del glite-ce-blahparser
 
     if [ -d /var/log/cream/accounting ] ; then
         rm -rf /var/log/cream/accounting 
+    fi
+    
+    if [ -d /var/blahp ] ; then
+        rm -rf /var/blahp
     fi
 fi
 
