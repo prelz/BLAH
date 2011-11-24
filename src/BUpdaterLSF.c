@@ -966,6 +966,8 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	int time_to_add=0;
 	time_t now;
 	char *string_now=NULL;
+	int first=TRUE;
+	job_registry_entry *ren=NULL;
 
 	
 	if(start_date != 0){
@@ -997,7 +999,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			now=time(0);
 			string_now=make_message("%d",now);
 			if(line && strstr(line,"Job <")){	
-				if(en.status!=UNDEFINED && en.status!=IDLE){	
+				if(!first && en.status!=UNDEFINED && en.status!=IDLE && ren && ren->status!=REMOVED && ren->status!=COMPLETED){	
 					if ((ret=job_registry_update_select(rha, &en,
 					JOB_REGISTRY_UPDATE_UDATE |
 					JOB_REGISTRY_UPDATE_STATUS |
@@ -1024,6 +1026,12 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				maxtok_t = strtoken(line, ',', &token);
 				batch_str=strdel(token[0],"Job <>");
 				JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
+				if(!first) free(ren);
+				if ((ren=job_registry_get(rha, en.batch_id)) == NULL){
+						fprintf(stderr,"Get of record returns error ");
+						perror("");
+				}
+				first=FALSE;
 				free(batch_str);
 				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line," Signal <KILL>")){	
@@ -1084,7 +1092,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 		pclose(fp);
 	}
 	
-	if(en.status!=UNDEFINED && en.status!=IDLE){	
+	if(en.status!=UNDEFINED && en.status!=IDLE && ren && ren->status!=REMOVED && ren->status!=COMPLETED){	
 		if ((ret=job_registry_update_select(rha, &en,
 		JOB_REGISTRY_UPDATE_UDATE |
 		JOB_REGISTRY_UPDATE_STATUS |
@@ -1115,6 +1123,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	next_finalstatequery=now+time_to_add;
 	do_log(debuglogfile, debug, 3, "%s: next FinalStatequery will be in %d seconds\n",argv0,time_to_add);
 
+	free(ren);
 	free(command_string);
 	return 0;
 }
