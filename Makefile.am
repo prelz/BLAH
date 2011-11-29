@@ -22,7 +22,7 @@ docdir = $(datadir)/doc/@PACKAGE@-@PVER@
 doc_DATA = LICENSE
 
 ## Subdirectories list
-SUBDIRS = src config
+SUBDIRS = src config doc
 
 ## Default flags to run aclocal
 ACLOCAL_AMFLAGS = -I project -I ../org.glite/project

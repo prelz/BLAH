@@ -1,2 +1,3 @@
 usr/bin/*
 etc/*.template
+usr/share/man/man1/*.1.gz

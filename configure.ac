@@ -12,11 +12,14 @@
 #       Council for the Central Laboratory of the Research Councils (CCLRC), United Kingdom
 #
 #       Authors: Francesco Prelz <francesco.prelz@mi.infn.it>
-#       Version info: $Id: configure.ac,v 1.49 2011/09/22 08:12:13 pandreet Exp $
+#       Version info: $Id: configure.ac,v 1.50 2011/11/29 14:11:38 pandreet Exp $
 #       Release: $Name:  $
 #
 #       Revision history:
 #       $Log: configure.ac,v $
+#       Revision 1.50  2011/11/29 14:11:38  pandreet
+#       Templates for man pages
+#
 #       Revision 1.49  2011/09/22 08:12:13  pandreet
 #       Changes for the new packager
 #
@@ -183,6 +186,7 @@ AC_CHECK_FUNCS(select socket strdup strerror bsearch vsnprintf mmap munmap)
 
 GLITE_CHECK_LIBDIR
 GLITE_CHECK_INITDIR
+AC_GLITE_DOCBOOK
 
 AC_ARG_WITH(dist_location,
    [  --with-dist-location=PFX     prefix where DIST location is. (pwd)],
@@ -213,5 +217,6 @@ AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([config/Makefile])
 AC_CONFIG_FILES([src/Makefile])
 AC_CONFIG_FILES([src/scripts/Makefile])
+AC_CONFIG_FILES([doc/Makefile])
 
 AC_OUTPUT

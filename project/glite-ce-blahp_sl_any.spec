@@ -1,14 +1,14 @@
-Summary: The BLAHP daemon is a light component accepting commands to manage jobs on different Local Resources Management Systems
+Summary: Batch Local ASCII Helper Protocol suite
 Name: glite-ce-blahp
 Version:
 Release:
-License: Apache License 2.0
+License: Apache Software License
 Vendor: EMI
 Packager: CREAM group <cream-support@lists.infn.it>
 URL: http://glite.cern.ch/
 Group: Applications/Internet
 BuildArch:
-BuildRequires: libtool, classads-devel
+BuildRequires: libtool, classads-devel, docbook-style-xsl
 Requires(post): chkconfig
 Requires(preun): chkconfig
 Requires(preun): initscripts
@@ -19,12 +19,13 @@ Source: %{name}-%{version}-%{release}.tar.gz
 %global debug_package %{nil}
 
 %description
-The BLAHP daemon is a light component accepting commands to manage jobs on different Local Resources Management Systems
+The BLAHP daemon is a light component accepting commands to manage jobs 
+on different Local Resources Management Systems
 
 %prep
  
 
-%setup -c
+%setup -c -q
 
 %build
 %{!?extbuilddir:%define extbuilddir "--"}
@@ -87,6 +88,7 @@ fi
 /usr/bin/*
 %dir /usr/share/doc/glite-ce-blahp-%{version}/
 %doc /usr/share/doc/glite-ce-blahp-%{version}/LICENSE
+%doc /usr/share/man/man1/*.1.gz
 
 %changelog
 
