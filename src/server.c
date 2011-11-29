@@ -95,6 +95,7 @@
 #include "cmdbuffer.h"
 
 #define COMMAND_PREFIX "-c"
+#define CHILD_PREFIX "-p"
 #define JOBID_REGEXP            "(^|\n)BLAHP_JOBID_PREFIX([^\n]*)"
 #define HOLD_JOB                1
 #define RESUME_JOB              0
@@ -149,6 +150,7 @@ char *ConvertArgs(char* args, char sep);
 struct blah_managed_child {
 	char *exefile;
 	char *pidfile;
+	char *sname;
 	time_t lastfork;
 };
 static struct blah_managed_child *blah_children=NULL;
@@ -236,8 +238,8 @@ check_on_children(struct blah_managed_child *children, const int count)
 			/* Don't attempt to restart too often. */
 			if ((now - children[i].lastfork) < calldiff) 
 			{
-				fprintf(stderr,"Restarting %s too frequently.\n",
-					children[i].exefile);
+				fprintf(stderr,"Restarting %s (%s) too frequently.\n",
+					children[i].exefile, children[i].sname);
 				fprintf(stderr,"Last restart %d seconds ago (<%d).\n",
 					(int)(now - children[i].lastfork), calldiff);
 				continue;
@@ -246,16 +248,20 @@ check_on_children(struct blah_managed_child *children, const int count)
 			if (fret == 0)
 			{
 				/* Child process. Exec exe file. */
-				if (execl(children[i].exefile, children[i].exefile, NULL) < 0)
+				if (execl(children[i].exefile, children[i].exefile, CHILD_PREFIX, children[i].sname, NULL) < 0)
 				{
-					fprintf(stderr,"Cannot exec %s: %s\n",
+					fprintf(stderr,"Cannot exec %s %s %s: %s\n",
 						children[i].exefile,
+                                                CHILD_PREFIX,
+						children[i].sname,
 						strerror(errno));
 					exit(1);
 				}
 			} else if (fret < 0) {
-				fprintf(stderr,"Cannot fork trying to start %s: %s\n",
+				fprintf(stderr,"Cannot fork trying to start %s %s %s: %s\n",
 					children[i].exefile,
+                                        CHILD_PREFIX,
+					children[i].sname,
 					strerror(errno));
 			}
 			children[i].lastfork = now;
@@ -525,8 +531,10 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 			}
 			blah_children[blah_children_count].exefile = strdup(child_config_exe->value);
 			blah_children[blah_children_count].pidfile = strdup(child_config_pid->value);
+			blah_children[blah_children_count].sname = strdup(*child_prefix);
 			if (blah_children[blah_children_count].exefile == NULL ||
-			    blah_children[blah_children_count].pidfile == NULL)
+			    blah_children[blah_children_count].pidfile == NULL ||
+                            blah_children[blah_children_count].sname == NULL )
 			{
 				fprintf(stderr, "Out of memory\n");
 				exit(MALLOC_ERROR);
