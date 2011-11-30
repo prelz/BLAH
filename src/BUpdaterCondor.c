@@ -47,7 +47,6 @@ int main(int argc, char *argv[]){
 	int loop_interval=DEFAULT_LOOP_INTERVAL;
 	
 	int c;				
-	int status;
 	
 	pthread_t RecUpdNetThd;
 
@@ -63,12 +62,13 @@ int main(int argc, char *argv[]){
 		{"usage",     no_argument,     &short_help, 1},
 		{"nodaemon",  no_argument,       0, 'o'},
 		{"version",   no_argument,       0, 'v'},
+		{"prefix",    required_argument, 0, 'p'},
 		{0, 0, 0, 0}
 		};
 
 		int option_index = 0;
      
-		c = getopt_long (argc, argv, "vo",long_options, &option_index);
+		c = getopt_long (argc, argv, "vop:",long_options, &option_index);
      
 		if (c == -1){
 			break;
@@ -88,6 +88,9 @@ int main(int argc, char *argv[]){
 	       
 		case 'o':
 			nodmn=1;
+			break;
+
+		case 'p':
 			break;
 
 		case '?':
@@ -284,8 +287,6 @@ int main(int argc, char *argv[]){
 		free(pidfile);
 	}
 	
-	config_free(cha);
-	
 	rha=job_registry_init(registry_file, BY_BATCH_ID);
 	if (rha == NULL){
 		do_log(debuglogfile, debug, 1, "%s: Error initialising job registry %s\n",argv0,registry_file);
@@ -295,8 +296,6 @@ int main(int argc, char *argv[]){
 
 	if (remupd_conf != NULL){
 		pthread_create(&RecUpdNetThd, NULL, (void *(*)(void *))ReceiveUpdateFromNetwork, (void *)NULL);
-		pthread_join(RecUpdNetThd, (void **)&status);
-		pthread_exit(NULL);
 		
 		if (job_registry_updater_setup_sender(remupd_conf->values,remupd_conf->n_values,0,&remupd_head_send) < 0){
 			do_log(debuglogfile, debug, 1, "%s: Cannot set network sender(s) up for remote update\n",argv0);
@@ -307,6 +306,8 @@ int main(int argc, char *argv[]){
 			fprintf(stderr,"%s: Cannot find values for network endpoints in configuration file (attribute 'job_registry_add_remote').\n", argv0);
 		}
 	}
+	
+	config_free(cha);
 
 	for(;;){
 		/* Purge old entries from registry */

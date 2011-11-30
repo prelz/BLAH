@@ -51,7 +51,6 @@ int main(int argc, char *argv[]){
 	int fsq_ret=0;
 	
 	int c;				
-	int status;
 	
 	pthread_t RecUpdNetThd;
 
@@ -326,7 +325,6 @@ int main(int argc, char *argv[]){
 		free(pidfile);
 	}
 	
-
 	rha=job_registry_init(registry_file, BY_BATCH_ID);
 	if (rha == NULL){
 		do_log(debuglogfile, debug, 1, "%s: Error initialising job registry %s\n",argv0,registry_file);
@@ -336,8 +334,6 @@ int main(int argc, char *argv[]){
 	
 	if (remupd_conf != NULL){
 		pthread_create(&RecUpdNetThd, NULL, (void *(*)(void *))ReceiveUpdateFromNetwork, (void *)NULL);
-		// ?? pthread_join(RecUpdNetThd, (void **)&status);
-		// ???? pthread_exit(NULL);
 	
 		if (job_registry_updater_setup_sender(remupd_conf->values,remupd_conf->n_values,0,&remupd_head_send) < 0){
 			do_log(debuglogfile, debug, 1, "%s: Cannot set network sender(s) up for remote update\n",argv0);
