@@ -56,12 +56,13 @@ main(int argc, char *argv[])
 		{"usage",     no_argument,     &short_help, 1},
 		{"nodaemon",  no_argument,       0, 'o'},
 		{"version",   no_argument,       0, 'v'},
+		{"prefix",    required_argument, 0, 'p'},
 		{0, 0, 0, 0}
 		};
 
 		int option_index = 0;
      
-		c = getopt_long (argc, argv, "vo",long_options, &option_index);
+		c = getopt_long (argc, argv, "vop:",long_options, &option_index);
      
 		if (c == -1){
 			break;
@@ -81,6 +82,9 @@ main(int argc, char *argv[])
 	       
 		case 'o':
 			nodmn=1;
+			break;
+
+		case 'p':
 			break;
 
 		case '?':
