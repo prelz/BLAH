@@ -220,7 +220,9 @@ follow(char *infile, char *line)
 		}
 		real_off=ftell(fp);
 		if(real_off < off){
-			off=0;
+			/*For the lsb.events file, the first line has the format "# <history seek position>", 
+			which indicates the file position of the first history event after log switch.*/ 
+			off=GetHistorySeekPos(fp);
 		}
 		
 		if(fseek(fp, off, SEEK_SET) < 0){

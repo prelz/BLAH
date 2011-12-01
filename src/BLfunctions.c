@@ -320,6 +320,38 @@ char *GetPBSSpoolPath(char *binpath)
 
 }
 
+
+long GetHistorySeekPos(FILE *fp){
+
+	char *cp;
+	char *tline;
+	char *tlineout;
+	long lret=0;
+	
+	if((tline=calloc(NUM_CHARS,1)) == 0){
+		sysfatal("can't malloc tline in GetHistorySeekPos: %r");
+	}
+
+	
+	if(fseek(fp, 0L, SEEK_SET) < 0){
+		syserror("poll() timeout in NotifyCream: %r");
+		return 0L;
+	}
+        while(fgets(tline, NUM_CHARS, fp)){
+		if ((cp = strrchr (tline, '\n')) != NULL){
+			*cp = '\0';
+			tlineout=strdel(tline, "#");
+			lret=atol(tlineout);
+			free(tline);
+			free(tlineout);
+			return lret;
+       		}
+	}
+
+	return 0L;	
+}
+
+
 int 
 do_log(FILE *debuglogfile, int debuglevel, int dbgthresh, const char *fmt, ...)
 {
