@@ -91,7 +91,7 @@ main(int argc, char *argv[])
    }
 
   id = argv[idc];
-  if (id == NULL) /* Is there an argument that doesn't start with '-' ? */
+  if (id == NULL && (!opt_get_port)) /* Is there an argument that doesn't start with '-' ? */
    {
     fprintf(stdout,usage_string,argv[0]);
     return 1;
