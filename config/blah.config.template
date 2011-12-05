@@ -56,6 +56,9 @@ pbs_BLPport2=
 # be established, this is left to manual configuration.
 # Setting this attribute to 'yes' -should- be compatible with older
 # Torque versions, but may be failing with PBSpro.
+# A new setting ('multiline') triggers an undocumented syntax
+# which is reported to be compatible with most Torque version:
+# use it as failback solution if neither 'yes' nor 'no' works for you.
 blah_torque_multiple_staging_directive_bug=no
 
 ####
