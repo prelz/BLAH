@@ -117,6 +117,10 @@
 #define TRUE  1
 #endif
 
+#ifndef VERSION
+#define VERSION            "1.8.0"
+#endif
+
 const char *opt_format[] = {
 	" %s %s",          /* NO_QUOTE */
 	" %s '%s'",        /* SINGLE_QUOTE */

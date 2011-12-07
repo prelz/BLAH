@@ -12,11 +12,14 @@
 #       Council for the Central Laboratory of the Research Councils (CCLRC), United Kingdom
 #
 #       Authors: Francesco Prelz <francesco.prelz@mi.infn.it>
-#       Version info: $Id: configure.ac,v 1.50 2011/11/29 14:11:38 pandreet Exp $
+#       Version info: $Id: configure.ac,v 1.51 2011/12/07 10:59:57 pandreet Exp $
 #       Release: $Name:  $
 #
 #       Revision history:
 #       $Log: configure.ac,v $
+#       Revision 1.51  2011/12/07 10:59:57  pandreet
+#       Fixes for sl6
+#
 #       Revision 1.50  2011/11/29 14:11:38  pandreet
 #       Templates for man pages
 #
@@ -155,6 +158,7 @@ AC_INIT([GLite CE blahp], [1.17.0])
 AC_CONFIG_AUX_DIR([./project])
 AM_INIT_AUTOMAKE([1.6.3 subdir-objects])
 AC_CONFIG_SRCDIR([src/main.c])
+AC_CONFIG_HEADERS([src/autogen/acconfig.h])
                                                                                 
 #Environment.
 WORKDIR=`pwd`
@@ -209,7 +213,8 @@ dnl Temporarily built with no optimisation
 CXXFLAGS="-g -O0"
 CFLAGS="-g -O0"
 
-AC_DEFINE(BLAHPD_BINDIR,"@bindir@")
+AC_DEFINE([BLAHPD_BINDIR], ["@bindir@"], [Location of BLAHP executables])
+AC_DEFINE_UNQUOTED([VERSION], [${PVER}], [Package version from ETICS])
 
 # Configuration items
 AC_PREFIX_DEFAULT([/opt/glite])
