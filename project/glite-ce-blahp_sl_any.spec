@@ -1,13 +1,12 @@
 Summary: Batch Local ASCII Helper Protocol suite
 Name: glite-ce-blahp
-Version:
-Release:
+Version: %{extversion}
+Release: %{extage}.%{extdist}
 License: Apache Software License
 Vendor: EMI
-Packager: CREAM group <cream-support@lists.infn.it>
 URL: http://glite.cern.ch/
 Group: Applications/Internet
-BuildArch:
+BuildArch: %{_arch}
 BuildRequires: libtool, classads-devel, docbook-style-xsl
 Requires(post): chkconfig
 Requires(preun): chkconfig
@@ -91,4 +90,6 @@ fi
 %doc /usr/share/man/man1/*.1.gz
 
 %changelog
+* %(date +"%%a %%b %%d %%Y") CREAM group <cream-support@lists.infn.it> - %{version}-%{release}
+- %{extclog}
 
