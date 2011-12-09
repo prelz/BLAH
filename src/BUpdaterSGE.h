@@ -17,6 +17,8 @@
 # 
 */
 
+#include "acconfig.h"
+
 #include "job_registry.h"
 #include "Bfunctions.h"
 #include "config.h"

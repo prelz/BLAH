@@ -12,11 +12,14 @@
 #       Council for the Central Laboratory of the Research Councils (CCLRC), United Kingdom
 #
 #       Authors: Francesco Prelz <francesco.prelz@mi.infn.it>
-#       Version info: $Id: configure.ac,v 1.51 2011/12/07 10:59:57 pandreet Exp $
+#       Version info: $Id: configure.ac,v 1.52 2011/12/09 10:42:38 pandreet Exp $
 #       Release: $Name:  $
 #
 #       Revision history:
 #       $Log: configure.ac,v $
+#       Revision 1.52  2011/12/09 10:42:38  pandreet
+#       version definition from autoconf
+#
 #       Revision 1.51  2011/12/07 10:59:57  pandreet
 #       Fixes for sl6
 #
@@ -213,8 +216,7 @@ dnl Temporarily built with no optimisation
 CXXFLAGS="-g -O0"
 CFLAGS="-g -O0"
 
-AC_DEFINE([BLAHPD_BINDIR], ["@bindir@"], [Location of BLAHP executables])
-AC_DEFINE_UNQUOTED([VERSION], [${PVER}], [Package version from ETICS])
+AC_DEFINE_UNQUOTED([VERSION], ["${PVER}"], [Package version from ETICS])
 
 # Configuration items
 AC_PREFIX_DEFAULT([/opt/glite])

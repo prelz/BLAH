@@ -22,6 +22,8 @@
 # 
 */
 
+#include "acconfig.h"
+
 #define _GNU_SOURCE
 #define _XOPEN_SOURCE
 #include <unistd.h>

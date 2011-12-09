@@ -22,6 +22,8 @@
 # 
 */
 
+#include "acconfig.h"
+
 #include "job_registry.h"
 #include "job_registry_updater.h"
 #include "Bfunctions.h"
