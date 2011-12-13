@@ -929,22 +929,7 @@ int check_config_file(char *logdev){
                 free(s);
 
                 free(sge_root);
-
-/* Check if sge_helperpath exists and is accessible */
-
-                lret = config_get("sge_helperpath",lcha);
-                if (lret == NULL){
-                        do_log(ldebuglogfile, ldebug, 1, "%s: key sge_helperpath not found\n",argv0);
-                        sysfatal("sge_helperpath not defined. Exiting");
-                } else {
-                        sge_helperpath=strdup(lret->value);
-                        if(sge_helperpath == NULL){
-                                sysfatal("strdup failed for sge_helperpath in check_config_file: %r");
-                        }
-                }
-
-                s=make_message("%s",sge_helperpath);
-                /*rc=stat(s,&sbuf);
+		/*rc=stat(s,&sbuf);
                 if(rc) {
                         do_log(ldebuglogfile, ldebug, 1, "%s: dir %s does not exist\n",argv0,s);
                         sysfatal("dir %s does not exist: %r",s);
@@ -957,16 +942,8 @@ int check_config_file(char *logdev){
                         do_log(ldebuglogfile, ldebug, 1, "%s: dir %s is not accessible\n",argv0,s);
                         sysfatal("dir %s is not accessible: %r",s);
                 }*/
-		if(access(s,X_OK)){
-			do_log(ldebuglogfile, ldebug, 1, "%s: %s is not accessible or %s is not executable\n",argv0,s);
-			sysfatal("%s is not accessible or %s is not executable: %r",s);
-		}
-		free(s);
-		
-                free(sge_helperpath);
-
         }
-
+	
 	free(supplrms);
 	free(ldebuglogname);
 	if(ldebug!=0){

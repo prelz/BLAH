@@ -213,28 +213,6 @@ int main(int argc, char *argv[]){
 	}
     }
 
-    ret = config_get("sge_helperpath",cha);
-    if (ret == NULL){
-	do_log(debuglogfile, debug, 1, "%s: key sge_helperpath not found\n",argv0);
-    } else {
-	sge_helperpath=strdup(ret->value);
-	if(sge_helperpath == NULL){
-	    sysfatal("strdup failed for sge_helperpath in main: %r");
-	}
-    }
-    ret = config_get("sge_helperpath",cha);
-    if (ret == NULL){
-	if(debug){
-	    fprintf(debuglogfile, "%s: key sge_helperpath not found\n",argv0);
-	    fflush(debuglogfile);
-	}
-    } else {
-	sge_helperpath=strdup(ret->value);
-	if(sge_helperpath == NULL){
-	    sysfatal("strdup failed for sge_helperpath in main: %r");
-	}
-    }
-
     ret = config_get("sge_rootpath",cha);
     if (ret == NULL){
 	if(debug){
@@ -266,9 +244,9 @@ int main(int argc, char *argv[]){
 	do_log(debuglogfile, debug, 1, "%s: key job_registry not found\n",argv0);
 	sysfatal("job_registry not defined. Exiting");
     } else {
-	registry_file=strdup(ret->value);
-	if(registry_file == NULL){
-	    sysfatal("strdup failed for registry_file in main: %r");
+	reg_file=strdup(ret->value);
+	if(reg_file == NULL){
+	    sysfatal("strdup failed for reg_file in main: %r");
 	}
     }
 
@@ -309,7 +287,7 @@ int main(int argc, char *argv[]){
 	    sysfatal("strdup failed for pidfile in main: %r");
 	}
     }
-    
+
     ret = config_get("job_registry_use_mmap",cha);
     if (ret == NULL){
         do_log(debuglogfile, debug, 1, "%s: key job_registry_use_mmap not found. Default is NO\n",argv0);
@@ -325,21 +303,19 @@ int main(int argc, char *argv[]){
     }
 
     config_free(cha);
-
-    rha=job_registry_init(registry_file, BY_BATCH_ID);
+    rha=job_registry_init(reg_file, BY_BATCH_ID);
     if (rha == NULL){
-	do_log(debuglogfile, debug, 1, "%s: Error initialising job registry %s\n",argv0,registry_file);
-	fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
+	do_log(debuglogfile, debug, 1, "%s: Error initialising job registry %s\n",argv0,reg_file);
+	fprintf(stderr,"%s: Error initialising job registry %s :",argv0,reg_file);
 	perror("");
     }
-
    for(;;){
 	/* Purge old entries from registry */
 	now=time(0);
 	if(now - purge_time > 86400){
-	    if(job_registry_purge(registry_file, now-purge_interval,0)<0){
-		do_log(debuglogfile, debug, 1, "%s: Error purging job registry %s\n",argv0,registry_file);
-		fprintf(stderr,"%s: Error purging job registry %s :",argv0,registry_file);
+	    if(job_registry_purge(reg_file, now-purge_interval,0)<0){
+		do_log(debuglogfile, debug, 1, "%s: Error purging job registry %s\n",argv0,reg_file);
+		fprintf(stderr,"%s: Error purging job registry %s :",argv0,reg_file);
 		perror("");
 	    }else{
 		purge_time=time(0);
@@ -350,25 +326,25 @@ int main(int argc, char *argv[]){
 	fd = job_registry_open(rha, "r");
 	if (fd == NULL)
 	{
-	    do_log(debuglogfile, debug, 1, "%s: Error opening job registry %s\n",argv0,registry_file);
-	    fprintf(stderr,"%s: Error opening job registry %s :",argv0,registry_file);
+	    do_log(debuglogfile, debug, 1, "%s: Error opening job registry %s\n",argv0,reg_file);
+	    fprintf(stderr,"%s: Error opening job registry %s :",argv0,reg_file);
 	    perror("");
 	    sleep(loop_interval);
 	}
 	if (job_registry_rdlock(rha, fd) < 0)
 	{
-	    do_log(debuglogfile, debug, 1, "%s: Error read locking job registry %s\n",argv0,registry_file);
-	    fprintf(stderr,"%s: Error read locking job registry %s :",argv0,registry_file);
+	    do_log(debuglogfile, debug, 1, "%s: Error read locking job registry %s\n",argv0,reg_file);
+	    fprintf(stderr,"%s: Error read locking job registry %s :",argv0,reg_file);
 	    perror("");
 	    sleep(loop_interval);
 	}
 	job_registry_firstrec(rha,fd);
 	fseek(fd,0L,SEEK_SET);
 
-	if((query=calloc(STR_CHARS,1)) == 0){
+	if((query=calloc(STR_CHARS*2,1)) == 0){
 	    sysfatal("can't malloc query %r");
 	}
-	if((queryStates=calloc(STR_CHARS,1)) == 0){
+	if((queryStates=calloc(STR_CHARS*2,1)) == 0){
 	    sysfatal("can't malloc query %r");
 	}
 	
@@ -627,7 +603,7 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 	    pclose( file_output );
 	    now=time(0);
 	    sprintf(string_now,"%d",now);
-	    if ((strcmp(qExit,"137"))||(strcmp(qExit,"143")==0)){
+	    if ((strcmp(qExit,"137")==0)||(strcmp(qExit,"143")==0)){
 		JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,cmd);
 		en.status=3;
 		en.exitcode=atoi(qExit);

@@ -17,8 +17,6 @@
 # 
 */
 
-#include "acconfig.h"
-
 #include "job_registry.h"
 #include "Bfunctions.h"
 #include "config.h"
@@ -47,7 +45,7 @@ char *sge_helperpath=NULL;
 char *sge_rootpath=NULL;
 char *sge_cellname=NULL;
 char *sge_binpath=NULL;
-char *registry_file;
+char *reg_file;
 int purge_interval=2500000;
 int finalstate_query_interval=30;
 int alldone_interval=36000;
