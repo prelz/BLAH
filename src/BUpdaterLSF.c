@@ -980,6 +980,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	}
 
 	command_string=make_message("%s%s/bhist -u all -d -l -n %d %s",batch_command,lsf_binpath,logs_to_read,start_date_flagged);
+	free(start_date_flagged);
 	fp = popen(command_string,"r");
 	
 	do_log(debuglogfile, debug, 3, "%s: command_string in FinalStateQuery is:%s\n",argv0,command_string);
@@ -1088,6 +1089,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				freetoken(&token,maxtok_t);
 			}
+			free(string_now);
 			free(line);
 		}
 		pclose(fp);

@@ -672,6 +672,7 @@ FinalStateQuery(char *query)
 				}
 			}
 			freetoken(&token,maxtok_t);
+			free(string_now);
 			free(line);
 		}
 		pclose(fp);

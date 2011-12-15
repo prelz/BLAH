@@ -874,6 +874,7 @@ Job: 13.cream-12.pd.infn.it
 					JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 					JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				}
+				free(string_now);
 				free(line);
 			}
 			pclose(fp);
