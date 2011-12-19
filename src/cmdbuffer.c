@@ -259,7 +259,7 @@ usage(const char *cmd)
 	printf("Usage: %s [-h] [-v <verb>] [-n <iter>]\n", cmd);
 	printf("  -h             print this help and exit\n");
 	printf("  -v <verb>      set verbosity to <verb> (from 0 to 2) (default = 1)\n");
-	printf("  -n <iter>      perform <iter> iterations to perform (default = 1000)\n\n");
+	printf("  -n <iter>      perform <iter> iterations of the tests (default = 1000)\n\n");
 	return;
 }
 
