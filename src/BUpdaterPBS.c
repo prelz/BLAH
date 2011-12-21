@@ -292,6 +292,13 @@ int main(int argc, char *argv[]){
 		do_log(debuglogfile, debug, 1, "%s: key job_registry_use_mmap is set to %s\n",argv0,ret->value);
 	}
 	
+	ret = config_get("tracejob_max_output",cha);
+	if (ret == NULL){
+		do_log(debuglogfile, debug, 1, "%s: key tracejob_max_output not found using default\n",argv0,tracejob_max_output);
+	} else {
+		tracejob_max_output==atoi(ret->value);
+	}
+	
 	remupd_conf = config_get("job_registry_add_remote",cha);
 	if (remupd_conf == NULL){
 		do_log(debuglogfile, debug, 1, "%s: key job_registry_add_remote not found\n",argv0);
@@ -802,6 +809,7 @@ Job: 13.cream-12.pd.infn.it
 	char *command_string=NULL;
 	char *pbs_spool=NULL;
 	char *string_now=NULL;
+	int tracejob_line_counter=0;
 
 	do_log(debuglogfile, debug, 3, "%s: input_string in FinalStateQuery is:%s\n",argv0,input_string);
 	
@@ -824,14 +832,23 @@ Job: 13.cream-12.pd.infn.it
 		
 		JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,jobid[k]);
 
+		tracejob_line_counter=0;
+		
 		if(fp!=NULL){
 			while(!feof(fp) && (line=get_line(fp))){
 				if(line && strlen(line)==0){
 					free(line);
 					continue;
 				}
+				if(tracejob_line_counter>tracejob_max_output){
+					do_log(debuglogfile, debug, 2, "%s: Tracejob output limit of %d lines reached. Skipping command.\n",argv0,tracejob_max_output);
+					free(line);
+					break;
+				}
 				if ((cp = strrchr (line, '\n')) != NULL){
 					*cp = '\0';
+					tracejob_line_counter++;
+					
 				}
                         	do_log(debuglogfile, debug, 3, "%s: line in FinalStateQuery is:%s\n",argv0,line);
 				now=time(0);

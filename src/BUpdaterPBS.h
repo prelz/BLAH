@@ -58,6 +58,7 @@ int nodmn=FALSE;
 char *pbs_batch_caching_enabled="Not";
 char *batch_command_caching_filter=NULL;
 char *batch_command=NULL;
+int tracejob_max_output=1000;
 
 bupdater_active_jobs bact;
 
