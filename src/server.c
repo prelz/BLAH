@@ -3073,7 +3073,7 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId, char *
         char *superbufferRemaps = NULL;
         char *superbufferTMP = NULL;
         char *iwd = NULL;
-	int  iwd_alloc = 256;
+	size_t  iwd_alloc = 256;
         struct timeval ts;
         int i=0,cs=0,fc=0,iwdlen=0;
         char *cur, *next_comma;
@@ -3096,13 +3096,15 @@ int check_TransferINOUT(classad_context cad, char **command, char *reqId, char *
 	if (result == C_CLASSAD_NO_ERROR)
 	{
 		result = classad_get_dstring_attribute(cad, "Iwd", &iwd);
+		/* very tempting, but it's a linux-only extension to POSIX:
+		if (iwd == NULL) iwd = getcwd(NULL, 0); */
 		if(iwd == NULL)
 		{
 			/* Try to set iwd to the current directory */
 			iwd = (char *)malloc(iwd_alloc);
 			while (iwd != NULL)
 			{
-				if (getcwd(iwd, iwd_alloc) < 0)
+				if (getcwd(iwd, iwd_alloc) == NULL)
 				{
 					if (errno == ERANGE)
 					{
