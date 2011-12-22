@@ -36,6 +36,7 @@
 #include <unistd.h>
 #include <poll.h>
 #include <errno.h>
+#include <string.h>
 #include "cmdbuffer.h"
 
 #define BUFF_INCR_STEP 1024
