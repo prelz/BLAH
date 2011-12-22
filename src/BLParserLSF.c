@@ -859,6 +859,8 @@ LookupAndSend(int m_sock)
 					exitreason=make_message(" ExitReason=\"FILEsize limit reached\";");
 				}else if(j2ec[id] && strcmp(j2ec[id],"157")==0){
 					exitreason=make_message(" ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
+				}else{
+					exitreason=make_message("");
 				}
 				out_buf=make_message("[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\";%s JwExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], j2ct[id], exitreason, j2ec[id], pr_removal);
 			}else if(j2rt[id] && strcmp(j2rt[id],"\0")!=0){
@@ -901,6 +903,8 @@ LookupAndSend(int m_sock)
 						exitreason=make_message(" ExitReason=\"FILEsize limit reached\";");
 					}else if(j2ec[id] && strcmp(j2ec[id],"157")==0){
 						exitreason=make_message(" ExitReason=\"Directory Access Error (No AFS token, dir does not exist)\";");
+					}else{
+						exitreason=make_message("");
 					}
 					out_buf=make_message("[BatchJobId=\"%s\"; %s JobStatus=%s; LRMSSubmissionTime=\"%s\"; LRMSStartRunningTime=\"%s\"; LRMSCompletedTime=\"%s\";%s JwExitCode=%s;]/%s\n",jobid, t_wnode, j2js[id], j2st[id], j2rt[id], j2ct[id], exitreason, j2ec[id], pr_removal);
 				}else if(j2rt[id] && strcmp(j2rt[id],"\0")!=0){
