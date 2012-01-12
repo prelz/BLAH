@@ -245,7 +245,7 @@ cmd_buffer_dump_internals(void)
 		fprintf(stderr, "%c (0x%02x) ", *c >= 32 ? *c : '.', *c);
 	}
 	fprintf(stderr, "\n  ---\n");
-	fprintf(stderr, "  cmd_queue_size= %d\n", cmd_queue_size);
+	fprintf(stderr, "  cmd_queue_size = %d\n", cmd_queue_size);
 	fprintf(stderr, "  cmd_queue_len = %d\n", cmd_queue_len);
 	fprintf(stderr, "  cmd_current = %d\n", cmd_current);
 	fprintf(stderr, "  cmd_fds[0].fd = %d\n", cmd_fds[0].fd);
@@ -260,7 +260,7 @@ usage(const char *cmd)
 	printf("Usage: %s [-h] [-v <verb>] [-n <iter>]\n", cmd);
 	printf("  -h             print this help and exit\n");
 	printf("  -v <verb>      set verbosity to <verb> (from 0 to 2) (default = 1)\n");
-	printf("  -n <iter>      perform <iter> iterations of the tests (default = 1000)\n\n");
+	printf("  -n <iter>      perform <iter> iterations of the tests (default = 100)\n\n");
 	return;
 }
 
