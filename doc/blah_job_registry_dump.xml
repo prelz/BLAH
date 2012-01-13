@@ -100,7 +100,7 @@
             <citerefentry>
                 <refentrytitle>blah_job_registry_lkup</refentrytitle>
                 <manvolnum>1</manvolnum>
-            </citerefentry>
+            </citerefentry>,
             <citerefentry>
                 <refentrytitle>blah_job_registry_scan_by_subject</refentrytitle>
                 <manvolnum>1</manvolnum>

@@ -17,7 +17,9 @@
 dist_man1_MANS = blah_job_registry_add.1 \
                  blah_job_registry_dump.1 \
                  blah_job_registry_lkup.1 \
-                 blah_job_registry_scan_by_subject.1
+                 blah_job_registry_scan_by_subject.1 \
+                 blah_check_config.1 \
+                 blahpd.1
 
 %.1: %.xml
 	xsltproc $(GLITE_DB_MANPAGES_STYLESHEET) $<

@@ -2,12 +2,12 @@
           "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd" [
 
     <!ENTITY dhtitle "User Manuals">
-    <!ENTITY dhcommand "blah_job_registry_lkup">
+    <!ENTITY dhcommand "blahpd">
     <!ENTITY dhsection "1">
     
-    <!ENTITY dhfirstname "Massimo">
-    <!ENTITY dhsurname "Mezzadri">
-    <!ENTITY dhemail "Massimo.Mezzadri@mi.infn.it">
+    <!ENTITY dhfirstname "David">
+    <!ENTITY dhsurname "Rebatto">
+    <!ENTITY dhemail "David.Rebatto@mi.infn.it">
     <!ENTITY dhcontrib "Developer of the BLAHP suite">
     
 ]>
@@ -38,66 +38,22 @@
 
     <refnamediv>
         <refname>&dhcommand;</refname>
-        <refpurpose>Query the registry.</refpurpose>
+        <refpurpose>Blahpd daemon.</refpurpose>
     </refnamediv>
 
     <refsynopsisdiv>
         <cmdsynopsis>
             <command>&dhcommand;</command>
-            <arg choice="opt"><option>options</option></arg>
-            <arg choice="plain"><replaceable><![CDATA[<id>]]></replaceable></arg>
         </cmdsynopsis>
     </refsynopsisdiv>
 
     <refsect1>
     
         <title>DESCRIPTION</title>
-        <para>The command <command>&dhcommand;</command> retrieves information from the registry.</para>
+        <para><command>&dhcommand;</command> is ....</para>
         
         <para>....more details.....</para>
                 
-    </refsect1>
-
-    <refsect1>
-        <title>OPTIONS</title>
-        <variablelist>
-
-            <varlistentry>
-                <term><option>-h</option></term>
-                <listitem>
-                    <para>Display information about this command</para>
-                </listitem>
-            </varlistentry>
-
-            <varlistentry>
-                <term><option>-w</option></term>
-                <listitem>
-                    <para>retrieve the worker node</para>
-                </listitem>
-            </varlistentry>
-
-            <varlistentry>
-                <term><option>-p</option></term>
-                <listitem>
-                    <para>retrieve the user proxy</para>
-                </listitem>
-            </varlistentry>
-            
-            <varlistentry>
-                <term><option>-n</option></term>
-                <listitem>
-                    <para>retrieve the host and the port of the parser</para>
-                </listitem>
-            </varlistentry>
-            
-            <varlistentry>
-                <term><option>-b</option></term>
-                <listitem>
-                    <para>look up for batch IDs</para>
-                </listitem>
-            </varlistentry>
-            
-        </variablelist>
     </refsect1>
 
     <refsect1>

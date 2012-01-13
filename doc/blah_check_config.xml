@@ -2,7 +2,7 @@
           "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd" [
 
     <!ENTITY dhtitle "User Manuals">
-    <!ENTITY dhcommand "blah_job_registry_lkup">
+    <!ENTITY dhcommand "blah_check_config">
     <!ENTITY dhsection "1">
     
     <!ENTITY dhfirstname "Massimo">
@@ -38,71 +38,41 @@
 
     <refnamediv>
         <refname>&dhcommand;</refname>
-        <refpurpose>Query the registry.</refpurpose>
+        <refpurpose>Perform some check on the config file.</refpurpose>
     </refnamediv>
 
     <refsynopsisdiv>
         <cmdsynopsis>
             <command>&dhcommand;</command>
-            <arg choice="opt"><option>options</option></arg>
-            <arg choice="plain"><replaceable><![CDATA[<id>]]></replaceable></arg>
         </cmdsynopsis>
     </refsynopsisdiv>
 
     <refsect1>
     
         <title>DESCRIPTION</title>
-        <para>The command <command>&dhcommand;</command> retrieves information from the registry.</para>
+        <para>The command <command>&dhcommand;</command> perform some checks on the config file.</para>
         
-        <para>....more details.....</para>
+        <para>For all the batch system:</para>
+	<para>Check if job_registry is defined.</para> 
+	<para>Check if async_notification_port is defined.</para>
+	<para>For PBS:</para>
+	<para>Check if pbs_binpath exists and that the programs that use it are executables.</para>
+	<para>Check if pbs_spoolpath/server_logs exists and is accessible.</para>
+	<para>For LSF:</para>
+	<para>Check if lsf_binpath exists  and that the programs that use it are executables.</para>
+	<para>For Condor:</para>
+	<para>Check if condor_binpath exists  and that the programs that use it are executables.</para>
+	<para>For SGE:</para>
+	<para>Check if sge_root,sge_cell and sge_helper exists  and that the programs that use it are executables.</para>
+	<para>Check if sge_cellname exists and is accessible.</para>
+	<para>Check if sge_rootpath exists and is accessible.</para>	
+	
                 
     </refsect1>
 
     <refsect1>
-        <title>OPTIONS</title>
-        <variablelist>
-
-            <varlistentry>
-                <term><option>-h</option></term>
-                <listitem>
-                    <para>Display information about this command</para>
-                </listitem>
-            </varlistentry>
-
-            <varlistentry>
-                <term><option>-w</option></term>
-                <listitem>
-                    <para>retrieve the worker node</para>
-                </listitem>
-            </varlistentry>
-
-            <varlistentry>
-                <term><option>-p</option></term>
-                <listitem>
-                    <para>retrieve the user proxy</para>
-                </listitem>
-            </varlistentry>
-            
-            <varlistentry>
-                <term><option>-n</option></term>
-                <listitem>
-                    <para>retrieve the host and the port of the parser</para>
-                </listitem>
-            </varlistentry>
-            
-            <varlistentry>
-                <term><option>-b</option></term>
-                <listitem>
-                    <para>look up for batch IDs</para>
-                </listitem>
-            </varlistentry>
-            
-        </variablelist>
-    </refsect1>
-
-    <refsect1>
         <title>EXIT STATUS</title>
-        <para><command>&dhcommand;</command> exits with a status value of 0 (zero) upon success and >0 (greater than zero) upon failure.</para>
+        <para><command>&dhcommand;</command> exits with a status value of 0 (zero) upon success and 1 upon failure.</para>
     </refsect1>
 
     <refsect1>
