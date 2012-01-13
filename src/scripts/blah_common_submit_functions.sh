@@ -245,7 +245,7 @@ function bls_parse_submit_options ()
   
   if [ "x$blah_wn_proxy_renewal_daemon" == "x" ]
   then
-    bls_proxyrenewald="${blah_bin_directory}/BPRserver"
+    bls_proxyrenewald="${blah_libexec_directory}/BPRserver"
   else
     bls_proxyrenewald="$blah_wn_proxy_renewal_daemon"
   fi
@@ -266,7 +266,7 @@ function bls_parse_submit_options ()
   bls_opt_prnpoll=30
   bls_opt_prnlifetime=0
   
-  bls_BLClient="${blah_bin_directory}/BLClient"
+  bls_BLClient="${blah_libexec_directory}/BLClient"
   
   ###############################################################
   # Parse parameters

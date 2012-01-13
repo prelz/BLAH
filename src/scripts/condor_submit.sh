@@ -265,7 +265,7 @@ else
 fi
 
 #local batch system-specific file output must be added to the submit file
-local_submit_attributes_file=${blah_bin_directory}/condor_local_submit_attributes.sh
+local_submit_attributes_file=${blah_libexec_directory}/condor_local_submit_attributes.sh
 if [ -r $local_submit_attributes_file ] ; then
     echo \#\!/bin/sh > $tmp_req_file
     if [ ! -z $req_file ] ; then

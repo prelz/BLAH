@@ -84,6 +84,8 @@ fi
 %config(noreplace) /etc/blah.config.template
 %dir /etc/rc.d/init.d/
 /etc/rc.d/init.d/glite-ce-*
+/usr/libexec/*
+/usr/sbin/*
 /usr/bin/*
 %dir /usr/share/doc/glite-ce-blahp-%{version}/
 %doc /usr/share/doc/glite-ce-blahp-%{version}/LICENSE

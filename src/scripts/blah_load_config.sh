@@ -30,6 +30,20 @@ elif [ -d "${GLITE_LOCATION:-/opt/glite}/bin" ]; then
 else
   blah_bin_directory="/usr/bin"
 fi
+if [ "x$BLAHPD_LOCATION" != "x" -a -d "${BLAHPD_LOCATION}/sbin" ]; then
+  blah_sbin_directory="${BLAHPD_LOCATION}/sbin"
+elif [ -d "${GLITE_LOCATION:-/opt/glite}/sbin" ]; then
+  blah_sbin_directory="${GLITE_LOCATION:-/opt/glite}/sbin"
+else
+  blah_sbin_directory="/usr/sbin"
+fi
+if [ "x$BLAHPD_LOCATION" != "x" -a -d "${BLAHPD_LOCATION}/libexec" ]; then
+  blah_libexec_directory="${BLAHPD_LOCATION}/libexec"
+elif [ -d "${GLITE_LOCATION:-/opt/glite}/libexec" ]; then
+  blah_libexec_directory="${GLITE_LOCATION:-/opt/glite}/libexec"
+else
+  blah_libexec_directory="/usr/libexec"
+fi
 
 # Let blah_bin_directory be overridden in the config file.
 

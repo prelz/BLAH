@@ -34,7 +34,7 @@
 . `dirname $0`/blah_load_config.sh
 
 if [ "x$job_registry" != "x" ] ; then
-   ${blah_bin_directory}/blah_job_registry_lkup $@
+   ${blah_sbin_directory}/blah_job_registry_lkup $@
    exit 0
 fi
 
@@ -56,7 +56,7 @@ usedBLParser="no"
 
 srvfound=""
 
-BLClient="${blah_bin_directory}/BLClient"
+BLClient="${blah_libexec_directory}/BLClient"
 
 qstatuser=`whoami`
 qstatcache=/tmp/qstatcache_${qstatuser}.txt
