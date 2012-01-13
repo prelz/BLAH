@@ -57,9 +57,9 @@ if [ $1 -eq 1 ] ; then
         chown root.tomcat /var/log/cream/accounting
         chmod 0730 /var/log/cream/accounting
         
-        mkdir -p /var/blahp
-        chown tomcat.tomcat /var/blahp
-        chmod 771 /var/blahp
+        mkdir -p /var/blah
+        chown tomcat.tomcat /var/blah
+        chmod 771 /var/blah
     
     fi
 fi
@@ -73,8 +73,8 @@ if [ $1 -eq 0 ] ; then
         rm -rf /var/log/cream/accounting 
     fi
     
-    if [ -d /var/blahp ] ; then
-        rm -rf /var/blahp
+    if [ -d /var/blah ] ; then
+        rm -rf /var/blah
     fi
 fi
 
