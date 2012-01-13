@@ -44,21 +44,44 @@
     <refsynopsisdiv>
         <cmdsynopsis>
             <command>&dhcommand;</command>
+            <arg choice="opt"><replaceable>-s</replaceable></arg>
         </cmdsynopsis>
     </refsynopsisdiv>
 
     <refsect1>
     
         <title>DESCRIPTION</title>
-        <para><command>&dhcommand;</command> is ....</para>
+        <para><command>&dhcommand;</command> is the Batch Local ASCII Helper
+        Protocol (BLAHP) server. It exposes a BLAHP interface for job 
+        controllers like CREAM and Condor gridmanager.
+        <command>&dhcommand;</command> is not intended to be a job controller
+        itself. It can be regarded as a modular interface between job state
+        machines and LRMSs.</para>
         
-        <para>....more details.....</para>
+        <para>For a description of the BLAH protocol commands, please see
+        <link>http://wiki.italiangrid.it/twiki/bin/view/CREAM/BlahUserGuide#BLAH_Commands_syntax_and_semanti</link>
+        </para>
                 
     </refsect1>
 
     <refsect1>
+        <title>OPTIONS</title>
+        <variablelist>
+            <varlistentry>
+                <term><option>-s</option></term>
+                <listitem>
+                    <para>on termination, let the daemon wait for all the 
+                    pending commands to terminate before exiting (off by 
+                    default)</para>
+                </listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
         <title>EXIT STATUS</title>
-        <para><command>&dhcommand;</command> exits with a status value of 0 (zero) upon success and >0 (greater than zero) upon failure.</para>
+        <para><command>&dhcommand;</command> exits with a status value of 0
+        (zero) upon success and >0 (greater than zero) upon failure.</para>
     </refsect1>
 
     <refsect1>
