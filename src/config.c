@@ -8,6 +8,7 @@
  *  Revision history :
  *  23-Nov-2007 Original release
  *  24-Apr-2009 Added parsing of shell arrays.
+ *  13-Jan-2012 Added sbin and libexec install dirs.
  *
  *  Description:
  *    Small library for access to the BLAH configuration file.
@@ -169,7 +170,9 @@ config_read(const char *ipath)
     config_free(rha);
     return NULL;
    }
-  rha->bin_path = NULL; /* May be filled out of config file contents. */
+  rha->bin_path = NULL; /* These may be filled out of config file contents. */
+  rha->sbin_path = NULL; 
+  rha->libexec_path = NULL;
 
   line_alloc = line_alloc_chunk;
   line = (char *)malloc(line_alloc);
@@ -309,6 +312,38 @@ config_read(const char *ipath)
     return NULL;
    }
 
+  if ((bp = config_get("blah_sbin_directory", rha)) != NULL)
+   {
+    rha->sbin_path = strdup(bp->value);
+   }
+  else
+   {
+    rha->sbin_path = (char *)malloc(strlen(install_location)+6);
+    if (rha->sbin_path != NULL) sprintf(rha->sbin_path,"%s/sbin",install_location);
+   }
+  if (rha->sbin_path == NULL)
+   {
+    /* Out of memory */
+    config_free(rha);
+    return NULL;
+   }
+
+  if ((bp = config_get("blah_libexec_directory", rha)) != NULL)
+   {
+    rha->libexec_path = strdup(bp->value);
+   }
+  else
+   {
+    rha->libexec_path = (char *)malloc(strlen(install_location)+9);
+    if (rha->libexec_path != NULL) sprintf(rha->libexec_path,"%s/libexec",install_location);
+   }
+  if (rha->libexec_path == NULL)
+   {
+    /* Out of memory */
+    config_free(rha);
+    return NULL;
+   }
+
   return rha;
  }
 
@@ -383,6 +418,8 @@ config_free(config_handle *handle)
   if ((handle->config_path) != NULL) free(handle->config_path);
   if ((handle->install_path) != NULL) free(handle->install_path);
   if ((handle->bin_path) != NULL) free(handle->bin_path);
+  if ((handle->sbin_path) != NULL) free(handle->sbin_path);
+  if ((handle->libexec_path) != NULL) free(handle->libexec_path);
 
   free(handle);
  }

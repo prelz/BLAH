@@ -2,11 +2,12 @@
  *  File :     config.h
  *
  *
- *  Author :   Francesco Prelz ($Author: mezzadri $)
+ *  Author :   Francesco Prelz ($Author: fprelz $)
  *  e-mail :   "francesco.prelz@mi.infn.it"
  *
  *  Revision history :
  *  23-Nov-2007 Original release
+ *  13-Jan-2012 Added sbin and libexec install dirs.
  *
  *  Description:
  *    Prototypes of functions defined in config.c
@@ -47,6 +48,8 @@ typedef struct config_handle_s
  {
    char *install_path;
    char *bin_path;
+   char *sbin_path;
+   char *libexec_path;
    char *config_path;
    config_entry *list;
  } config_handle;
