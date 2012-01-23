@@ -24,14 +24,14 @@
 # Source function library
 . /etc/rc.d/init.d/functions
 
-if [ "x${BLAHPD_LOCATION}" != "x" -a -d "${BLAHPD_LOCATION}/bin" ]; then
-  blparser_bin_directory="${BLAHPD_LOCATION}/bin"
+if [ "x${BLAHPD_LOCATION}" != "x" -a -d "${BLAHPD_LOCATION}/libexec" ]; then
+  blparser_bin_directory="${BLAHPD_LOCATION}/libexec"
 else
   if [ "x${GLITE_LOCATION}" != "x" -a -d "${GLITE_LOCATION}/bin" ]; then
     blparser_bin_directory="${GLITE_LOCATION}/bin"
   else
 #   Default value when everything else fails.
-    blparser_bin_directory="/usr/bin"
+    blparser_bin_directory="/usr/libexec"
   fi
 fi
 

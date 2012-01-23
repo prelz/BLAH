@@ -479,14 +479,14 @@ main(int argc, char *argv[])
 				}
 			}
 			
-			s=make_message("%s/bin/%s",blah_location,parser_names[0]);                
+			s=make_message("%s/libexec/%s",blah_location,parser_names[0]);                
 			if(access(s,X_OK)){
 				fprintf(stderr, "%s does not exist or it is not executable\n",s);
 				exit(EXIT_FAILURE);
 			}
 			free(s);
 			
-			parser_pbs[i].exefile = make_message("%s/bin/%s %s %s %s %s %s",blah_location,parser_names[0],debuglevelpbs,debuglogfilepbs,spooldirpbs,portpbs,creamportpbs);
+			parser_pbs[i].exefile = make_message("%s/libexec/%s %s %s %s %s %s",blah_location,parser_names[0],debuglevelpbs,debuglogfilepbs,spooldirpbs,portpbs,creamportpbs);
 			parser_pbs[i].pidfile = make_message("%s/%s%d.pid",PID_DIR,parser_names[0],i+1);
 
 			if(parser_pbs[i].exefile == NULL || parser_pbs[i].pidfile == NULL){
@@ -589,14 +589,14 @@ main(int argc, char *argv[])
 				}
 			}
 			
-			s=make_message("%s/bin/%s",blah_location,parser_names[1]);                
+			s=make_message("%s/libexec/%s",blah_location,parser_names[1]);                
 			if(access(s,X_OK)){
 				fprintf(stderr, "%s does not exist or it is not executable\n",s);
 				exit(EXIT_FAILURE);
 			}
 			
 			free(s);
-			parser_lsf[i].exefile = make_message("%s/bin/%s %s %s %s %s %s %s",blah_location,parser_names[1],debuglevellsf,debuglogfilelsf,binpathlsf,confpathlsf,portlsf,creamportlsf);
+			parser_lsf[i].exefile = make_message("%s/libexec/%s %s %s %s %s %s %s",blah_location,parser_names[1],debuglevellsf,debuglogfilelsf,binpathlsf,confpathlsf,portlsf,creamportlsf);
 			parser_lsf[i].pidfile = make_message("%s/%s%d.pid",PID_DIR,parser_names[1],i+1);
 			
 			if(parser_lsf[i].exefile == NULL || parser_lsf[i].pidfile == NULL){
