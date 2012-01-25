@@ -97,7 +97,6 @@
 #include "cmdbuffer.h"
 
 #define COMMAND_PREFIX "-c"
-#define CHILD_PREFIX "-p"
 #define JOBID_REGEXP            "(^|\n)BLAHP_JOBID_PREFIX([^\n]*)"
 #define HOLD_JOB                1
 #define RESUME_JOB              0
@@ -254,20 +253,16 @@ check_on_children(struct blah_managed_child *children, const int count)
 			if (fret == 0)
 			{
 				/* Child process. Exec exe file. */
-				if (execl(children[i].exefile, children[i].exefile, CHILD_PREFIX, children[i].sname, NULL) < 0)
+				if (execl(children[i].exefile, children[i].exefile, NULL) < 0)
 				{
-					fprintf(stderr,"Cannot exec %s %s %s: %s\n",
+					fprintf(stderr,"Cannot exec %s: %s\n",
 						children[i].exefile,
-                                                CHILD_PREFIX,
-						children[i].sname,
 						strerror(errno));
 					exit(1);
 				}
 			} else if (fret < 0) {
-				fprintf(stderr,"Cannot fork trying to start %s %s %s: %s\n",
+				fprintf(stderr,"Cannot fork trying to start %s: %s\n",
 					children[i].exefile,
-                                        CHILD_PREFIX,
-					children[i].sname,
 					strerror(errno));
 			}
 			children[i].lastfork = now;
