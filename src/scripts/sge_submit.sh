@@ -114,7 +114,7 @@ blahp_jobID=sge/`date +%Y%m%d%H%M%S`/$jobID
 if [ "x$job_registry" != "x" ]; then
   now=`date +%s`
   let now=$now-1
-  `dirname $0`/blah_job_registry_add "$blahp_jobID" "$jobID" 1 $now "$bls_opt_creamjobid" "$bls_proxy_local_file" "$bls_opt_proxyrenew_numeric" "$bls_opt_proxy_subject"
+  ${blah_sbin_directory}/blah_job_registry_add "$blahp_jobID" "$jobID" 1 $now "$bls_opt_creamjobid" "$bls_proxy_local_file" "$bls_opt_proxyrenew_numeric" "$bls_opt_proxy_subject"
 fi
 
 echo "BLAHP_JOBID_PREFIX$blahp_jobID"

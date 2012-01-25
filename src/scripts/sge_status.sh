@@ -50,7 +50,7 @@ shift `expr $OPTIND - 1`
 
 if [ "x$getcreamport" == "xyes" ]
 then
-    exec `dirname $0`/blah_job_registry_lkup -n
+    exec ${blah_sbin_directory}/blah_job_registry_lkup -n
 fi
 
 if [ -z "$sge_rootpath" ]; then sge_rootpath="/usr/local/sge/pro"; fi
