@@ -64,8 +64,6 @@
         <title>DESCRIPTION</title>
         <para>The command <command>&dhcommand;</command> inserts a new item in the registry.</para>
         
-        <para>.....more details....</para>
-                
     </refsect1>
 
     <refsect1>
@@ -82,84 +80,84 @@
             <varlistentry>
                 <term><option>-u</option></term>
                 <listitem>
-                    <para>....missing description....</para>
+                    <para>Check that the blah_id is unique</para>
                 </listitem>
             </varlistentry>
 
             <varlistentry>
                 <term><![CDATA[<BLAH id>]]></term>
                 <listitem>
-                    <para>....missing description....</para>
+                    <para>Blah id</para>
                 </listitem>
             </varlistentry>
             
             <varlistentry>
                 <term><![CDATA[<batch id>]]></term>
                 <listitem>
-                    <para>....missing description....</para>
+                    <para>Batch id</para>
                 </listitem>
             </varlistentry>
             
             <varlistentry>
                 <term>job status</term>
                 <listitem>
-                    <para>....missing description....</para>
+                    <para>Status for the job (1=IDLE, 2=RUNNING, 3=REMOVED, 4=COMPLETED, 5=HELD)</para>
                 </listitem>
             </varlistentry>
             
             <varlistentry>
                 <term>udate</term>
                 <listitem>
-                    <para>....missing description....</para>
+                    <para>User timestamp</para>
                 </listitem>
             </varlistentry>
             
             <varlistentry>
                 <term>user prefix</term>
                 <listitem>
-                    <para>....missing description....</para>
+                    <para>Cream jobid</para>
                 </listitem>
             </varlistentry>
             
             <varlistentry>
                 <term>user proxy</term>
                 <listitem>
-                    <para>....missing description....</para>
+                    <para>User proxy</para>
                 </listitem>
             </varlistentry>
             
             <varlistentry>
                 <term>renew proxy</term>
                 <listitem>
-                    <para>....missing description....</para>
+                    <para>Flag for proxy renewal</para>
                 </listitem>
             </varlistentry>
             
             <varlistentry>
                 <term>proxy subject</term>
                 <listitem>
-                    <para>....missing description....</para>
+                    <para>Proxy subject</para>
                 </listitem>
             </varlistentry>
             
             <varlistentry>
                 <term>worker node</term>
                 <listitem>
-                    <para>....missing description....</para>
+                    <para>Worker node</para>
                 </listitem>
             </varlistentry>
             
             <varlistentry>
                 <term>exit code</term>
                 <listitem>
-                    <para>....missing description....</para>
+                    <para>Job exit code</para>
                 </listitem>
             </varlistentry>
             
             <varlistentry>
                 <term>exit reason</term>
                 <listitem>
-                    <para>....missing description....</para>
+                    <para>Job exit reason</para>
                 </listitem>
             </varlistentry>
             
