@@ -552,7 +552,7 @@ IntStateQueryShort()
 	time_t now;
 	char *string_now=NULL;
 
-	command_string=make_message("%s%s/bjobs -u all -w",batch_command,lsf_binpath);
+	command_string=make_message("%s%s/bjobs -u all -w -a",batch_command,lsf_binpath);
 	fp = popen(command_string,"r");
 
 	en.status=UNDEFINED;
@@ -620,6 +620,7 @@ IntStateQueryShort()
 				en.exitcode=-1;
 			}
 				
+			en.status = UNDEFINED;
 			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,tmp);
 			JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 			en.exitcode=-1;
@@ -738,7 +739,7 @@ IntStateQuery()
 	time_t now;
 	char *string_now=NULL;
 
-	command_string=make_message("%s%s/bjobs -u all -l",batch_command,lsf_binpath);
+	command_string=make_message("%s%s/bjobs -u all -l -a",batch_command,lsf_binpath);
 	fp = popen(command_string,"r");
 
 	en.status=UNDEFINED;
@@ -795,6 +796,7 @@ IntStateQuery()
 					JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 					en.exitcode=-1;
 				}
+				en.status = UNDEFINED;
 				maxtok_t = strtoken(line, ',', &token);
 				batch_str=strdel(token[0],"Job <>");
 				JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);
