@@ -30,6 +30,7 @@
 
 #define LISTENQ            1024
 #define LISTBUFFER         5000000
+#define MAX_CONNECTIONS    8
 
 #define DEFAULT_LOOP_INTERVAL 5
 
@@ -37,47 +38,37 @@
 #define VERSION            "1.8.0"
 #endif
 
+typedef struct creamConnection {
+	char      *creamfilter;
+	int       socket_fd;
+	time_t    lastnotiftime;
+	pthread_t serving_thread;
+	int       startnotify;
+	int       startnotifyjob;
+	int       firstnotify;
+	int       sentendonce;
+	int       creamisconn;
+	char      *joblist_string;
+	char      *finalbuffer;
+} creamConnection_t;
+
+#define EMPTY_CONNECTION {NULL,0,0,0,0,0,0,0,0,NULL,NULL}
+
 /*  Function declarations  */
 
 int PollDB();
 char *ComposeClassad(job_registry_entry *en);
-int NotifyStart(char *buffer);
-int GetVersion();
-int GetFilter(char *buffer);
-int GetJobList(char *buffer);
-void CreamConnection(int c_sock);
-int NotifyCream(char *buffer);
+int NotifyStart(char *buffer, time_t *lastnotiftime);
+int GetVersion(const int conn_c);
+int GetFilter(char *buffer, const int conn_c, char **creamfilter);
+int GetJobList(char *buffer, char **joblist_string);
+void CreamConnection(creamConnection_t *connection);
+int NotifyCream(char *buffer, creamConnection_t *connection);
 void sighup();
 int usage();
 int short_usage();
+int get_socket_by_creamprefix(const char* prefix);
+int add_cream_connection(const int socket_fd);
+int free_cream_connection(creamConnection_t *connection);
 
-/* Variables initialization */
 
-char *progname="BNotifier";
-
-char *registry_file;
-
-char *creamfilter="";
-
-int async_notif_port;
-
-int debug=FALSE;
-int nodmn=FALSE;
-
-FILE *debuglogfile;
-char *debuglogname;
-
-int  conn_c=-1;
-int  c_sock;
-
-int creamisconn=FALSE;
-int startnotify=FALSE;
-int startnotifyjob=FALSE;
-int firstnotify=FALSE;
-int sentendonce=FALSE;
-
-char *joblist_string="";
-
-int loop_interval=DEFAULT_LOOP_INTERVAL;
-
-time_t lastnotiftime;

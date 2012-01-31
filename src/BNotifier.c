@@ -24,6 +24,37 @@
 
 #include "BNotifier.h"
 
+/* Variables initialization */
+
+char *progname="BNotifier";
+
+char *registry_file;
+
+char *creamfilter="";
+
+int async_notif_port;
+
+int debug=FALSE;
+int nodmn=FALSE;
+
+FILE *debuglogfile;
+char *debuglogname;
+
+int  c_sock;
+
+/* moved to per-thread structure
+int startnotify=FALSE;
+int startnotifyjob=FALSE;
+int firstnotify=FALSE;
+int sentendonce=FALSE;
+char *joblist_string="";
+time_t lastnotiftime;
+ */
+ 
+int loop_interval=DEFAULT_LOOP_INTERVAL;
+
+creamConnection_t connections[MAX_CONNECTIONS] = { EMPTY_CONNECTION };
+
 int
 main(int argc, char *argv[])
 {
@@ -35,12 +66,13 @@ main(int argc, char *argv[])
 	char ainfo_port_string[16];
 	struct addrinfo ai_req, *ai_ans, *cur_ans;
 	int address_found;
+	int new_connection_fd;
 
-	pthread_t CreamThd;
 	pthread_t PollThd;
 	config_handle *cha;
 	config_entry *ret;
 	char *pidfile=NULL;
+	int nocheck=0;
 	
 	int c;				
 
@@ -54,6 +86,7 @@ main(int argc, char *argv[])
 		{
 		{"help",      no_argument,     &help,       1},
 		{"usage",     no_argument,     &short_help, 1},
+		{"nocheck",   no_argument,       0, 'n'},
 		{"nodaemon",  no_argument,       0, 'o'},
 		{"version",   no_argument,       0, 'v'},
 		{"prefix",    required_argument, 0, 'p'},
@@ -62,7 +95,7 @@ main(int argc, char *argv[])
 
 		int option_index = 0;
      
-		c = getopt_long (argc, argv, "vop:",long_options, &option_index);
+		c = getopt_long (argc, argv, "vnop:",long_options, &option_index);
      
 		if (c == -1){
 			break;
@@ -80,6 +113,10 @@ main(int argc, char *argv[])
 			version=1;
 			break;
 	       
+		case 'n':
+			nocheck=1;
+			break;
+			
 		case 'o':
 			nodmn=1;
 			break;
@@ -116,7 +153,9 @@ main(int argc, char *argv[])
 	}   
 
 	/* Checking configuration */
-	check_config_file("NOTIFIER");
+	if(!nocheck){
+		check_config_file("NOTIFIER");
+	}
 
 	/* Reading configuration */
 	cha = config_read(NULL);
@@ -245,8 +284,23 @@ main(int argc, char *argv[])
        
 	config_free(cha);
 
-	pthread_create(&CreamThd, NULL, (void *(*)(void *))CreamConnection, (void *)list_c);
 	pthread_create(&PollThd, NULL, (void *(*)(void *))PollDB, (void *)NULL);
+
+	for ( ;; ) {
+		/* FIXME: exit condition??? */
+		do_log(debuglogfile, debug, 1, "Listening for new connection\n");
+		if ( (new_connection_fd = accept(list_c, NULL, NULL) ) < 0 ) 
+		{
+			do_log(debuglogfile, debug, 1, "Fatal Error:Error calling accept() on list_c\n");
+			sysfatal("Error calling accept(): %r");
+		}
+
+		if (add_cream_connection(new_connection_fd) != 0)
+		{
+			do_log(debuglogfile, debug, 1, "connection table full: unable to add the new connection\n");
+			close(new_connection_fd);
+		}
+	}
 
 	pthread_join(PollThd, (void **)&status);
 	pthread_exit(NULL);
@@ -266,7 +320,7 @@ PollDB()
 	char *finalbuffer=NULL;
         char *cdate=NULL;
 	time_t now;
-        int  maxtok,i,maxtokl;
+        int  maxtok,i,maxtokl,j;
         char **tbuf;
         char **lbuf;
 	int len=0,flen=0;
@@ -274,6 +328,8 @@ PollDB()
         int rc;
 	char *regfile;
         char *cp=NULL;
+	int to_sleep=FALSE;
+	int skip_reg_open=FALSE;
 	
 	rha=job_registry_init(registry_file, BY_BATCH_ID);
 	if (rha == NULL){
@@ -286,141 +342,166 @@ PollDB()
 	
 		now=time(NULL);
 	
-		if(!startnotify && !startnotifyjob && !sentendonce){
+		to_sleep=TRUE;
+		/* cycle over connections: sleep if startnotify, startnotifyjob and sentendonce are not set.
+		   If startnotifyjob is set the conn is served.
+		*/ 
+		for(i=0; i<MAX_CONNECTIONS; i++){
+		
+			if(!connections[i].startnotify && !connections[i].startnotifyjob && !(connections[i].firstnotify && connections[i].sentendonce)) continue;
+			if(connections[i].startnotify) to_sleep=FALSE;
+			
+			if(connections[i].startnotifyjob){
+				to_sleep=FALSE;
+				rhc=job_registry_init(registry_file, BY_USER_PREFIX);
+				if (rhc == NULL){
+					do_log(debuglogfile, debug, 1, "%s: Error initialising job registry %s\n",argv0,registry_file);
+					fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
+		 	   	  	perror("");
+		 	   	}
+		 	   	do_log(debuglogfile, debug, 2, "%s:Job list for notification:%s\n",argv0,connections[i].joblist_string);
+		 	   	maxtok=strtoken(connections[i].joblist_string,',',&tbuf);
+   		 	   	for(j=0;j<maxtok;j++){
+        	 	   	  	if ((en=job_registry_get(rhc, tbuf[j])) != NULL){
+						buffer=ComposeClassad(en);
+		 	   	  	}else{
+		 	   	  		cdate=iepoch2str(now);
+		 	   	  		maxtokl=strtoken(tbuf[j],'_',&lbuf);
+		 	   	  		if(lbuf[1]){
+		 	   	  			if ((cp = strrchr (lbuf[1], '\n')) != NULL){
+		 	   	  				*cp = '\0';
+		 	   	  			}
+		 	   	  			if ((cp = strrchr (lbuf[1], '\r')) != NULL){
+		 	   	  				*cp = '\0';
+		 	   	  			}
+		 	   	  			buffer=make_message("[BlahJobName=\"%s\"; ClientJobId=\"%s\"; JobStatus=4; JwExitCode=999; ExitReason=\"BUpdater is not able to find the job anymore\"; Reason=\"BUpdater is not able to find the job anymore\"; ChangeTime=\"%s\"; ]\n",tbuf[j],lbuf[1],cdate);
+		 	   	  		}
+		 	   	  		freetoken(&lbuf,maxtokl);
+		 	   	  		free(cdate);
+		 	   	  	}
+		 	   	  	free(en);
+		 	   	  	len=strlen(buffer);
+		 	   	  	if(connections[i].finalbuffer != NULL){
+		 	   	  		flen=strlen(connections[i].finalbuffer);
+		 	   	  	}else{
+		 	   	  		flen=0;
+		 	   	  	}
+		 	   	  	connections[i].finalbuffer = realloc(connections[i].finalbuffer,flen+len+2);
+		 	   	  	if (connections[i].finalbuffer == NULL){
+		 	   	  		sysfatal("can't realloc finalbuffer in PollDB: %r");
+		 	   	  	}
+		 	   	  	if(flen==0){
+		 	   	  		connections[i].finalbuffer[0]='\000';
+					}
+		 	   	  	strcat(connections[i].finalbuffer,buffer);
+		 	   	  	free(buffer);
+		 	   	}
+		 	   	freetoken(&tbuf,maxtok);
+		 	   
+		 	   	if(connections[i].finalbuffer != NULL){
+		 	   	  	if(NotifyCream(connections[i].finalbuffer,&connections[i])!=-1){
+	         	   	  		/* change last notification time */
+		 	   	  		connections[i].lastnotiftime=now;
+		 	   	  		connections[i].startnotifyjob=FALSE;
+		 	   	  	}
+		 	   	  	free(connections[i].finalbuffer);
+		 	   	  	connections[i].finalbuffer=NULL;
+		 	   	}
+		 	   	job_registry_destroy(rhc);
+			}
+			if(connections[i].firstnotify && connections[i].sentendonce){
+				to_sleep=FALSE;
+				if(NotifyCream("NTFDATE/END\n",&connections[i])!=-1){
+					connections[i].startnotify=TRUE;
+					connections[i].sentendonce=FALSE;
+		 	   	  	connections[i].firstnotify=FALSE;
+		 	   	  	connections[i].startnotifyjob=FALSE;
+				}
+			}
+			
+		}
+		
+		if(to_sleep){
 			sleep(loop_interval);
 			continue;
 		}
 
-		if(startnotify){
-
-                	regfile=make_message("%s/registry",registry_file);
-        		rc=stat(regfile,&sbuf);
-			free(regfile);
-			if(sbuf.st_mtime<lastnotiftime){
-				do_log(debuglogfile, debug, 3, "Skip registry opening: mtime:%d lastn:%d\n",sbuf.st_mtime,lastnotiftime);
-				sleep(loop_interval);
-				continue;
-			}
-			do_log(debuglogfile, debug, 3, "Normal registry opening: mtime:%d lastn:%d\n",sbuf.st_mtime,lastnotiftime);
-
-			fd = job_registry_open(rha, "r");
-			if (fd == NULL)
-			{
-				do_log(debuglogfile, debug, 1, "%s: Error opening job registry %s\n",argv0,registry_file);
-				fprintf(stderr,"%s: Error opening job registry %s :",argv0,registry_file);
-				perror("");
-				sleep(loop_interval);
-				continue;
-			}
-			if (job_registry_rdlock(rha, fd) < 0)
-			{
-				do_log(debuglogfile, debug, 1, "%s: Error read locking registry %s\n",argv0,registry_file);
-				fprintf(stderr,"%s: Error read locking registry %s :",argv0,registry_file);
-				perror("");
-				sleep(loop_interval);
-				continue;
-			}
-			while ((en = job_registry_get_next(rha, fd)) != NULL)
-			{
+                regfile=make_message("%s/registry",registry_file);
+        	rc=stat(regfile,&sbuf);
+		free(regfile);
 		
-				if(en->mdate >= lastnotiftime && en->mdate < now && en->user_prefix && strstr(en->user_prefix,creamfilter)!=NULL && strlen(en->updater_info)>0)
+		skip_reg_open=TRUE;
+		for(i=0; i<MAX_CONNECTIONS; i++){
+			if(sbuf.st_mtime>=connections[i].lastnotiftime){
+				skip_reg_open=FALSE;
+				break;
+			}
+		}
+		if(skip_reg_open){
+			do_log(debuglogfile, debug, 3, "Skip registry opening: mtime:%d lastn:%d\n",sbuf.st_mtime,connections[i].lastnotiftime);
+			sleep(loop_interval);
+			continue;
+		}
+		
+		do_log(debuglogfile, debug, 3, "Normal registry opening\n");
+
+		fd = job_registry_open(rha, "r");
+		if (fd == NULL)
+		{
+			do_log(debuglogfile, debug, 1, "%s: Error opening job registry %s\n",argv0,registry_file);
+			fprintf(stderr,"%s: Error opening job registry %s :",argv0,registry_file);
+			perror("");
+			sleep(loop_interval);
+			continue;
+		}
+		if (job_registry_rdlock(rha, fd) < 0)
+		{
+			do_log(debuglogfile, debug, 1, "%s: Error read locking registry %s\n",argv0,registry_file);
+			fprintf(stderr,"%s: Error read locking registry %s :",argv0,registry_file);
+			perror("");
+			sleep(loop_interval);
+			continue;
+		}
+		while ((en = job_registry_get_next(rha, fd)) != NULL)
+		{
+		
+			for(i=0; i<MAX_CONNECTIONS; i++){
+				if(connections[i].creamfilter==NULL) continue;
+				if(en->mdate >= connections[i].lastnotiftime && en->mdate < now && en->user_prefix && strstr(en->user_prefix,connections[i].creamfilter)!=NULL && strlen(en->updater_info)>0)
 				{
 					buffer=ComposeClassad(en);
 					len=strlen(buffer);
-					if(finalbuffer != NULL){
-						flen=strlen(finalbuffer);
+					if(connections[i].finalbuffer != NULL){
+						flen=strlen(connections[i].finalbuffer);
 					}else{
 						flen=0;
 					}
-					finalbuffer = realloc(finalbuffer,flen+len+2);
-					if (finalbuffer == NULL){
+					connections[i].finalbuffer = realloc(connections[i].finalbuffer,flen+len+2);
+					if (connections[i].finalbuffer == NULL){
 						sysfatal("can't realloc finalbuffer in PollDB: %r");
 					}
 					if(flen==0){
-						finalbuffer[0]='\000';
+						connections[i].finalbuffer[0]='\000';
 					}
-					strcat(finalbuffer,buffer);
+					strcat(connections[i].finalbuffer,buffer);
 					free(buffer);
 				}
-				free(en);
 			}
-
-			if(finalbuffer != NULL){
-				if(NotifyCream(finalbuffer)!=-1){
-	        			/* change last notification time */
-					lastnotiftime=now;
-				}
-				free(finalbuffer);
-				finalbuffer=NULL;
-			}
-			
-			fclose(fd);
-			
-			
-		}else if(startnotifyjob){
-			rhc=job_registry_init(registry_file, BY_USER_PREFIX);
-			if (rhc == NULL){
-				do_log(debuglogfile, debug, 1, "%s: Error initialising job registry %s\n",argv0,registry_file);
-				fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
-				perror("");
-			}
-			do_log(debuglogfile, debug, 2, "%s:Job list for notification:%s\n",argv0,joblist_string);
-			maxtok=strtoken(joblist_string,',',&tbuf);
-   			for(i=0;i<maxtok;i++){
-        			if ((en=job_registry_get(rhc, tbuf[i])) != NULL){
-					buffer=ComposeClassad(en);
-				}else{
-					cdate=iepoch2str(now);
-					maxtokl=strtoken(tbuf[i],'_',&lbuf);
-					if(lbuf[1]){
-						if ((cp = strrchr (lbuf[1], '\n')) != NULL){
-							*cp = '\0';
-						}
-						if ((cp = strrchr (lbuf[1], '\r')) != NULL){
-							*cp = '\0';
-						}
-						buffer=make_message("[BlahJobName=\"%s\"; ClientJobId=\"%s\"; JobStatus=4; JwExitCode=999; ExitReason=\"BUpdater is not able to find the job anymore\"; Reason=\"BUpdater is not able to find the job anymore\"; ChangeTime=\"%s\"; ]\n",tbuf[i],lbuf[1],cdate);
-					}
-					freetoken(&lbuf,maxtokl);
-					free(cdate);
-				}
-				free(en);
-				len=strlen(buffer);
-				if(finalbuffer != NULL){
-					flen=strlen(finalbuffer);
-				}else{
-					flen=0;
-				}
-				finalbuffer = realloc(finalbuffer,flen+len+2);
-				if (finalbuffer == NULL){
-					sysfatal("can't realloc finalbuffer in PollDB: %r");
-				}
-				if(flen==0){
-					finalbuffer[0]='\000';
-				}
-				strcat(finalbuffer,buffer);
-				free(buffer);
-			}
-			freetoken(&tbuf,maxtok);
-			
-			if(finalbuffer != NULL){
-				if(NotifyCream(finalbuffer)!=-1){
-	        			/* change last notification time */
-					lastnotiftime=now;
-					startnotifyjob=FALSE;
-				}
-				free(finalbuffer);
-				finalbuffer=NULL;
-			}
-			job_registry_destroy(rhc);
+			free(en);
 		}
 
-		if(sentendonce){
-			if(NotifyCream("NTFDATE/END\n")!=-1){
-				sentendonce=FALSE;
+		for(i=0; i<MAX_CONNECTIONS; i++){
+			if(connections[i].finalbuffer != NULL){
+				if(NotifyCream(connections[i].finalbuffer,&connections[i])!=-1){
+	        			/* change last notification time */
+					connections[i].lastnotiftime=now;
+				}
+				free(connections[i].finalbuffer);
+				connections[i].finalbuffer=NULL;
 			}
-		}		
-		startnotify=TRUE;
+		}
+		
+		fclose(fd);
 		
 		sleep(loop_interval);
 	}
@@ -492,11 +573,12 @@ ComposeClassad(job_registry_entry *en)
 }
 
 void 
-CreamConnection(int c_sock)
+CreamConnection(creamConnection_t *connection)
 { 
 /*
 startnotify 	controls the normal operation in PollDB
 startnotifyjob 	is used to send notification of jobs contained in joblist_string 
+firstnotify 	controls if NTFDATE/END has to be sent (together with sentendonce)
 sentendonce 	controls if NTFDATE/END has to be sent (is used to permit STARTNOTIFYJOBLIST to be used during
             	normal notifier operation without sending NTFDATE/END). It is reset to TRUE only by CREAMFILTER command
             	otherwise it remains FALSE after the first notification (finished with NTFDATE/END).
@@ -517,93 +599,91 @@ STARTNOTIFYJOBEND
 
 */
 
-	char      *buffer;
-	time_t    now;
+	char *buffer;
+	int  conn_c = connection->socket_fd;
 
 	if((buffer=calloc(LISTBUFFER,1)) == 0){
 		sysfatal("can't malloc buffer in CreamConnection: %r");
 	}
 
-	while ( 1 ) {
-	
-		do_log(debuglogfile, debug, 1, "Listening for new connection in CreamConnection\n");
-		if ( (conn_c = accept(c_sock, NULL, NULL) ) < 0 ) {
-			do_log(debuglogfile, debug, 1, "Fatal Error:Error calling accept() on c_sock in CreamConnection\n");
-			sysfatal("Error calling accept() in CreamConnection: %r");
-		}
-		while ( 1 ) {
-			*buffer = 0;
-			if(Readline(conn_c, buffer, LISTBUFFER-1)<=0){
-				close(conn_c);
-				creamisconn=FALSE;
-				break;
-			}
-
-			if(strlen(buffer)>0){
-				do_log(debuglogfile, debug, 1, "Received for Cream:%s\n",buffer);
-				if(buffer && strstr(buffer,"STARTNOTIFY/")!=NULL){
-					NotifyStart(buffer);
-					startnotify=TRUE;
-				} else if(buffer && strstr(buffer,"STARTNOTIFYJOBLIST/")!=NULL){
-					GetJobList(buffer);
-					startnotifyjob=TRUE;
-					startnotify=FALSE;
-                               	} else if(buffer && strstr(buffer,"STARTNOTIFYJOBEND/")!=NULL){
-					now=time(NULL);
-					lastnotiftime=now;
-				} else if(buffer && strstr(buffer,"CREAMFILTER/")!=NULL){
-                                        GetFilter(buffer);
-					creamisconn=TRUE;
-					sentendonce=TRUE;
-				} else if(buffer && strstr(buffer,"PARSERVERSION/")!=NULL){
-                                        GetVersion();
-                                }
+	while (Readline(conn_c, buffer, LISTBUFFER-1) > 0) {
+		if(strlen(buffer) > 0)
+		{
+			do_log(debuglogfile, debug, 1, "Received for Cream:%s\n", buffer);
+			if (strstr(buffer,"STARTNOTIFY/") != NULL) {
+				NotifyStart(buffer, &(connection->lastnotiftime));
+				connection->startnotify=TRUE;
+				connection->firstnotify=TRUE;
+			} else if (strstr(buffer,"STARTNOTIFYJOBLIST/") != NULL) {
+				GetJobList(buffer, &(connection->joblist_string));
+				connection->startnotifyjob = TRUE;
+				connection->startnotify = FALSE;
+			} else if (strstr(buffer,"STARTNOTIFYJOBEND/") != NULL) {
+				connection->firstnotify=TRUE;
+				connection->lastnotiftime = time(NULL);
+			} else if (strstr(buffer,"CREAMFILTER/") != NULL) {
+				GetFilter(buffer, connection->socket_fd, &(connection->creamfilter));
+				connection->creamisconn=TRUE;
+				connection->sentendonce=TRUE;
+			} else if (strstr(buffer,"PARSERVERSION/") != NULL) {
+				GetVersion(connection->socket_fd);
 			}
 		}
-	} 
+	}
+	connection->creamisconn=FALSE;
+	close(conn_c);
+	free(buffer);
+	connection->socket_fd = 0;
+	if (connection->creamfilter) 
+	{
+		free(connection->creamfilter);
+		connection->creamfilter = NULL;
+	}
 }
 
 int 
-GetVersion()
+GetVersion(const int conn_c)
 {
 
 	char *out_buf;
 
-	out_buf=make_message("%s__1\n",VERSION);
-	Writeline(conn_c, out_buf, strlen(out_buf));
-	do_log(debuglogfile, debug, 1, "Sent Reply for PARSERVERSION command:%s\n",out_buf);
-	free(out_buf);
-	
-	return 0;
-	
+	if ((out_buf = make_message("%s__1\n", VERSION)) != NULL)
+	{
+		Writeline(conn_c, out_buf, strlen(out_buf));
+		do_log(debuglogfile, debug, 1, "Sent Reply for PARSERVERSION command:%s\n",out_buf);
+		free(out_buf);
+		return 0;
+	}
+	else
+		return 1;
 }
 
 int 
-GetFilter(char *buffer)
+GetFilter(char *buffer, const int conn_c, char **creamfilter)
 {
 
-        int  maxtok;
-        char **tbuf;
-        char *cp=NULL;
-        char * out_buf;
+	int  maxtok;
+	char **tbuf;
+	char *cp=NULL;
+	char * out_buf;
 
-        maxtok=strtoken(buffer,'/',&tbuf);
+	maxtok = strtoken(buffer,'/',&tbuf);
 
-        if(tbuf[1]){
-		creamfilter=make_message("%s",tbuf[1]);
-        	if(creamfilter == NULL){
-                	sysfatal("strdup failed for creamfilter in GetFilter: %r");
-        	}
-                if ((cp = strrchr (creamfilter, '\n')) != NULL){
-                	*cp = '\0';
-                }
-                if ((cp = strrchr (creamfilter, '\r')) != NULL){
-                	*cp = '\0';
-                }
-		out_buf=make_message("CREAMFILTER set to %s\n",creamfilter);
+	if(tbuf[1]){
+		*creamfilter = make_message("%s",tbuf[1]);
+		if(*creamfilter == NULL){
+			sysfatal("strdup failed for creamfilter in GetFilter: %r");
+		}
+		if ((cp = strrchr (*creamfilter, '\n')) != NULL) {
+			*cp = '\0';
+		} 
+		if ((cp = strrchr (*creamfilter, '\r')) != NULL) {
+			*cp = '\0';
+		}
+		out_buf = make_message("CREAMFILTER set to %s\n", *creamfilter);
 
-        }else{
-		out_buf=make_message("CREAMFILTER ERROR\n");
+	} else {
+		out_buf = make_message("CREAMFILTER ERROR\n");
 	}
 		
 	Writeline(conn_c, out_buf, strlen(out_buf));
@@ -611,109 +691,100 @@ GetFilter(char *buffer)
 	do_log(debuglogfile, debug, 1, "Sent Reply for CREAMFILTER command:%s\n",out_buf);
 
 	freetoken(&tbuf,maxtok);
-        free(out_buf);
+	free(out_buf);
 	
-        return 0;
-
+	return 0;
 }
 
 int 
-NotifyStart(char *buffer)
+NotifyStart(char *buffer, time_t *lastnotiftime)
 {
 
-        int  maxtok;
-        char **tbuf;
-        char *cp=NULL;
+	int  maxtok;
+	char **tbuf;
+	char *cp=NULL;
 	char *notifdate=NULL;
-        time_t   notifepoch;
 	
-        maxtok=strtoken(buffer,'/',&tbuf);
+	maxtok = strtoken(buffer,'/',&tbuf);
 
-        if(tbuf[1]){
-                notifdate=strdup(tbuf[1]);
-        	if(notifdate == NULL){
-                	sysfatal("strdup failed for notifdate in NotifyStart: %r");
-        	}
-                if ((cp = strrchr (notifdate, '\n')) != NULL){
-                        *cp = '\0';
-                }
-                if ((cp = strrchr (notifdate, '\r')) != NULL){
-                        *cp = '\0';
-                }
-        }
+	if(tbuf[1]){
+		notifdate=strdup(tbuf[1]);
+		if(notifdate == NULL){
+			sysfatal("strdup failed for notifdate in NotifyStart: %r");
+		}
+		if ((cp = strrchr (notifdate, '\n')) != NULL){
+			*cp = '\0';
+		}
+		if ((cp = strrchr (notifdate, '\r')) != NULL){
+			*cp = '\0';
+		}
+	}
 
 	freetoken(&tbuf,maxtok);
 
-	notifepoch=str2epoch(notifdate,"S");
+	*lastnotiftime = str2epoch(notifdate,"S");
 	free(notifdate);
 
-	lastnotiftime=notifepoch;
-	
 	return 0;
-
 }
 
 int 
-GetJobList(char *buffer)
+GetJobList(char *buffer, char **joblist_string)
 {
 
-        int  maxtok;
-        char **tbuf;
-        char *cp=NULL;
-	
-        maxtok=strtoken(buffer,'/',&tbuf);
+	int  maxtok;
+	char **tbuf;
+	char *cp=NULL;
 
-        if(tbuf[1]){
-                joblist_string=strdup(tbuf[1]);
-        	if(joblist_string == NULL){
-                	sysfatal("strdup failed for joblist_string in GetJobList: %r");
-        	}
-                if ((cp = strrchr (joblist_string, '\n')) != NULL){
-                        *cp = '\0';
-                }
-                if ((cp = strrchr (joblist_string, '\r')) != NULL){
-                        *cp = '\0';
-                }
-        }
+	maxtok=strtoken(buffer,'/',&tbuf);
+
+	if(tbuf[1]){
+		*joblist_string = strdup(tbuf[1]);
+		if(*joblist_string == NULL){
+			sysfatal("strdup failed for joblist_string in GetJobList: %r");
+		}
+		if ((cp = strrchr(*joblist_string, '\n')) != NULL) {
+			*cp = '\0';
+		} 
+		if ((cp = strrchr(*joblist_string, '\r')) != NULL){
+			*cp = '\0';
+		}
+	}
 
 	freetoken(&tbuf,maxtok);
 
 	return 0;
-
 }
 
 
 int
-NotifyCream(char *buffer)
+NotifyCream(char *buffer, creamConnection_t *connection)
 {
 
 	int      retcod;
-        
 	struct   pollfd fds[2];
-	struct   pollfd *pfds;
-	int      nfds = 1;
+
+	if (connection->creamfilter == NULL) return -1;
     
-	fds[0].fd = conn_c;
-	fds[0].events = 0;
+	fds[0].fd = connection->socket_fd;
 	fds[0].events = ( POLLOUT | POLLPRI | POLLERR | POLLHUP | POLLNVAL ) ;
-	pfds = fds;    
     
-	if(!creamisconn){
+	if(!connection->creamisconn){
 		return -1;
 	}
-    
-	retcod = poll(pfds, nfds, bfunctions_poll_timeout); 
+	
+	retcod = poll(fds, 1, bfunctions_poll_timeout); 
         
-	if(retcod <0){
-		close(conn_c);
+	if (retcod < 0) {
+		free_cream_connection(connection);
 		do_log(debuglogfile, debug, 1, "Fatal Error:Poll error in NotifyCream errno:%d\n",errno);
 		sysfatal("Poll error in NotifyCream: %r");
-	}else if ( retcod == 0 ){
+	} else if ( retcod == 0 ) {
 		do_log(debuglogfile, debug, 1, "Error:poll() timeout in NotifyCream\n");
 		syserror("poll() timeout in NotifyCream: %r");
 		return -1;
-	}else if ( retcod > 0 ){
-		if ( ( fds[0].revents & ( POLLERR | POLLNVAL | POLLHUP) )){
+	} else if ( retcod > 0 ) {
+		if (( fds[0].revents & ( POLLERR | POLLNVAL | POLLHUP) )){
 			switch (fds[0].revents){
 			case POLLNVAL:
 				do_log(debuglogfile, debug, 1, "Error:poll() file descriptor error in NotifyCream\n");
@@ -729,8 +800,7 @@ NotifyCream(char *buffer)
 				return -1;
 			}
 		} else {
-			
-			Writeline(conn_c, buffer, strlen(buffer));
+			Writeline(connection->socket_fd, buffer, strlen(buffer));
 			do_log(debuglogfile, debug, 1, "Sent for Cream:%s",buffer);
 		} 
 	}       
@@ -739,7 +809,59 @@ NotifyCream(char *buffer)
 
 }
 
-void sighup()
+int
+get_socket_by_creamprefix(const char* prefix)
+{
+	int i;
+
+	for(i=0; i<MAX_CONNECTIONS; i++)
+		if (connections[i].creamfilter != NULL && 
+                    strcmp(prefix, connections[i].creamfilter) == 0)
+			return connections[i].socket_fd;
+
+	return 0; /* creamfilter not found */
+}
+
+int
+add_cream_connection(const int socket_fd)
+/* This must be invoked by the main thread only */
+{
+	int i;
+
+	for(i=0; i<MAX_CONNECTIONS && connections[i].socket_fd != 0; i++);
+
+	if (i<MAX_CONNECTIONS)
+	{
+		connections[i].socket_fd = socket_fd;
+		pthread_create(&(connections[i].serving_thread), NULL, (void *(*)(void *))CreamConnection, (void *)(connections+i));
+		return 0;
+	}
+	else
+		return -1;
+}
+
+int
+free_cream_connection(creamConnection_t *connection)
+{
+	if (connection->socket_fd) close(connection->socket_fd);
+	if (connection->creamfilter) free (connection->creamfilter);
+	if (connection->joblist_string) free (connection->joblist_string);
+
+	connection->creamfilter = NULL;
+	connection->socket_fd = 0;
+	connection->lastnotiftime = 0;
+	connection->serving_thread = 0;
+	connection->startnotify = FALSE;
+	connection->startnotifyjob = FALSE;
+	connection->firstnotify = FALSE;
+	connection->sentendonce = FALSE;
+	connection->joblist_string = NULL;
+
+	return 0;
+}
+
+void
+sighup()
 {
         if(debug){
                 fclose(debuglogfile);
