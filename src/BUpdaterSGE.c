@@ -94,6 +94,17 @@ int main(int argc, char *argv[]){
 	}
     }
     
+    //check if another instance is running 
+    char **ptr;
+    char out[3];
+    fgets(out, sizeof(out),popen("ps -d | grep -c BUpdaterSGE","r"));
+    strtoken(out,'\n',&ptr);
+    if (strcmp(ptr[0],"1")!=0){
+	fprintf(stderr,"There is another instance of BUpdaterSGE running.\nExiting ...\n");
+	return -1;
+    }
+    freetoken(&ptr,1);
+
     if(help){
 	usage();
     }
