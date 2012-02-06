@@ -50,7 +50,7 @@ rm -rf %{buildroot}
 %post
 
 if [ $1 -eq 1 ] ; then
-    /sbin/chkconfig --add glite-ce-blahparser
+    /sbin/chkconfig --add glite-ce-blah-parser
 
     if [ ! "x`grep tomcat /etc/passwd`" == "x" ] ; then
         mkdir -p /var/log/cream/accounting
@@ -66,8 +66,8 @@ fi
 
 %preun
 if [ $1 -eq 0 ] ; then
-    /sbin/service glite-ce-blahparser stop >/dev/null 2>&1
-    /sbin/chkconfig --del glite-ce-blahparser
+    /sbin/service glite-ce-blah-parser stop >/dev/null 2>&1
+    /sbin/chkconfig --del glite-ce-blah-parser
 
     if [ -d /var/log/cream/accounting ] ; then
         rm -rf /var/log/cream/accounting 

@@ -31,7 +31,7 @@ ifdef extbuilddir
 else
 	make install
 endif
-	mv $(INSTALLDIR)/etc/init.d/glite-ce-blahparser $(CURDIR)/debian/glite-ce-blahp.init
+	mv $(INSTALLDIR)/etc/init.d/glite-ce-blah-parser $(CURDIR)/debian/glite-ce-blahp.init
 
 binary-indep: build install
 
