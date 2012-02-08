@@ -139,11 +139,9 @@ function bls_fl_subst_and_dump ()
 #
   local container_name
   local subst_template
-  local filename
 
   container_name=${1:?"Missing container name argument to bls_fl_subst_and_dump"}
   subst_template=${2:?"Missing template argument to bls_fl_subst_and_dump"}
-  filename=${3:?"Missing filename argument to bls_fl_subst_and_dump"}
 
   local last_argument
 
@@ -155,7 +153,7 @@ function bls_fl_subst_and_dump ()
   for (( ind=0 ; ind < $last_argument ; ind++ )) ; do
       bls_fl_subst $container_name $ind "$subst_template"
       if [ ! -z "$bls_fl_subst_result" ] ; then
-          echo $bls_fl_subst_result >> $filename
+          echo $bls_fl_subst_result 
       fi
   done
 }
@@ -171,13 +169,11 @@ function bls_fl_subst_relative_paths_and_dump ()
 #
   local container_name
   local subst_template
-  local filename
   local destination_root
 
   container_name=${1:?"Missing container name argument to bls_fl_subst_relative_paths_and_dump"}
   subst_template=${2:?"Missing template argument to bls_fl_subst_relative_paths_and_dump"}
-  filename=${3:?"Missing filename argument to bls_fl_subst_relative_paths_and_dump"}
-  destination_root=$4
+  destination_root=$3
 
   local last_argument
 
@@ -205,7 +201,7 @@ function bls_fl_subst_relative_paths_and_dump ()
       if [ "${f_workname:0:1}" != "/" ]; then
           bls_fl_subst $container_name $ind "$subst_template"
           if [ ! -z "$bls_fl_subst_result" ] ; then
-              echo $bls_fl_subst_result >> $filename
+              echo $bls_fl_subst_result 
           fi
       fi
   done
@@ -603,131 +599,137 @@ function bls_setup_all_files ()
   fi
 } 
 
-function bls_add_job_wrapper ()
+function bls_start_job_wrapper ()
 {
   # Set the required environment variables (escape values with double quotes)
   if [ "x$bls_opt_environment" != "x" ] ; then
-          echo "" >> $bls_tmp_file
-          echo "# Setting the environment:" >> $bls_tmp_file
+          echo ""
+          echo "# Setting the environment:"
   	eval "env_array=($bls_opt_environment)"
           for  env_var in "${env_array[@]}"; do
-                   echo export \"$env_var\" >> $bls_tmp_file
+                   echo export \"$env_var\"
           done
   else
           if [ "x$bls_opt_envir" != "x" ] ; then
-                  echo "" >> $bls_tmp_file
-                  echo "# Setting the environment:" >> $bls_tmp_file
-                  echo "`echo ';'$bls_opt_envir | sed -e 's/;[^=]*;/;/g' -e 's/;[^=]*$//g' | sed -e 's/;\([^=]*\)=\([^;]*\)/;export \1=\"\2\"/g' | awk 'BEGIN { RS = ";" } ; { print $0 }'`" >> $bls_tmp_file
+                  echo ""
+                  echo "# Setting the environment:"
+                  echo "`echo ';'$bls_opt_envir | sed -e 's/;[^=]*;/;/g' -e 's/;[^=]*$//g' | sed -e 's/;\([^=]*\)=\([^;]*\)/;export \1=\"\2\"/g' | awk 'BEGIN { RS = ";" } ; { print $0 }'`"
           fi
   fi
   
-  echo "old_home=\`pwd\`">>$bls_tmp_file
+  echo "old_home=\`pwd\`"
   # Set the temporary home (including cd'ing into it)
   if [ -n "$blah_wn_temporary_home_dir" ] ; then
-    echo "new_home=${blah_wn_temporary_home_dir}/home_$bls_tmp_name">>$bls_tmp_file
+    echo "new_home=${blah_wn_temporary_home_dir}/home_$bls_tmp_name"
   else
-    echo "new_home=\${old_home}/home_$bls_tmp_name">>$bls_tmp_file
+    echo "new_home=\${old_home}/home_$bls_tmp_name"
   fi
 
-  echo "mkdir \$new_home">>$bls_tmp_file
-  echo "trap 'cd \$old_home; rm -rf \$new_home; exit 255' 1 2 3 15 24" >> $bls_tmp_file
-  echo "trap 'cd \$old_home; rm -rf \$new_home' 0" >> $bls_tmp_file
+  echo "mkdir \$new_home"
+  echo "trap 'cd \$old_home; rm -rf \$new_home; exit 255' 1 2 3 15 24"
+  echo "trap 'cd \$old_home; rm -rf \$new_home' 0"
 
-  echo "# Copy into new home any shared input sandbox file" >> $bls_tmp_file
-  bls_fl_subst_and_dump inputcopy "cp \"@@F_LOCAL\" \"\$new_home/@@F_REMOTE\" &> /dev/null" $bls_tmp_file
-  echo "# Move into new home any relative input sandbox file" >> $bls_tmp_file
-  bls_fl_subst_relative_paths_and_dump inputsand "mv \"@@F_REMOTE\" \"\$new_home/@@F_WORKNAME\" &> /dev/null" $bls_tmp_file
+  echo "# Copy into new home any shared input sandbox file"
+  bls_fl_subst_and_dump inputcopy "cp \"@@F_LOCAL\" \"\$new_home/@@F_REMOTE\" &> /dev/null" 
+  echo "# Move into new home any relative input sandbox file"
+  bls_fl_subst_relative_paths_and_dump inputsand "mv \"@@F_REMOTE\" \"\$new_home/@@F_WORKNAME\" &> /dev/null" 
 
-  echo "export HOME=\$new_home">>$bls_tmp_file
-  echo "cd \$new_home">>$bls_tmp_file
+  echo "export HOME=\$new_home"
+  echo "cd \$new_home"
   
   # Set the path to the user proxy
   if [ "x$bls_need_to_reset_proxy" == "xyes" ] ; then
-      echo "# Resetting proxy to local position" >> $bls_tmp_file
-      echo "export X509_USER_PROXY=\$new_home/${bls_proxy_remote_file}" >> $bls_tmp_file
+      echo "# Resetting proxy to local position"
+      echo "export X509_USER_PROXY=\$new_home/${bls_proxy_remote_file}"
   fi
   
   # Add the command (with full path if not staged)
-  echo "" >> $bls_tmp_file
-  echo "# Command to execute:" >> $bls_tmp_file
+  echo "" 
+  echo "# Command to execute:" 
   if [ "x$bls_opt_stgcmd" == "xyes" ] 
   then
       bls_opt_the_command="./`basename $bls_opt_the_command`"
-      echo "if [ ! -x $bls_opt_the_command ]; then chmod u+x $bls_opt_the_command; fi" >> $bls_tmp_file
-      echo "if [ -x \${GLITE_LOCATION:-/opt/glite}/libexec/jobwrapper ]" >> $bls_tmp_file
-      echo "then" >> $bls_tmp_file
-      echo "\${GLITE_LOCATION:-/opt/glite}/libexec/jobwrapper $bls_opt_the_command $bls_arguments &" >> $bls_tmp_file
-      echo "elif [ -x /opt/lcg/libexec/jobwrapper ]" >> $bls_tmp_file
-      echo "then" >> $bls_tmp_file
-      echo "/opt/lcg/libexec/jobwrapper $bls_opt_the_command $bls_arguments &" >>$bls_tmp_file
-      echo "elif [ -x \$BLAH_AUX_JOBWRAPPER ]" >> $bls_tmp_file
-      echo "then" >> $bls_tmp_file
-      echo "\$BLAH_AUX_JOBWRAPPER $bls_opt_the_command $bls_arguments &" >>$bls_tmp_file
-      echo "else" >>$bls_tmp_file
-      echo "\$new_home/`basename $bls_opt_the_command` $bls_arguments &" >> $bls_tmp_file
-      echo "fi" >>$bls_tmp_file
+      echo "if [ ! -x $bls_opt_the_command ]; then chmod u+x $bls_opt_the_command; fi" 
+      echo "if [ -x \${GLITE_LOCATION:-/opt/glite}/libexec/jobwrapper ]"
+      echo "then"
+      echo "\${GLITE_LOCATION:-/opt/glite}/libexec/jobwrapper $bls_opt_the_command $bls_arguments &" 
+      echo "elif [ -x /opt/lcg/libexec/jobwrapper ]" 
+      echo "then" 
+      echo "/opt/lcg/libexec/jobwrapper $bls_opt_the_command $bls_arguments &" 
+      echo "elif [ -x \$BLAH_AUX_JOBWRAPPER ]" 
+      echo "then" 
+      echo "\$BLAH_AUX_JOBWRAPPER $bls_opt_the_command $bls_arguments &" 
+      echo "else" 
+      echo "\$new_home/`basename $bls_opt_the_command` $bls_arguments &"
+      echo "fi" 
   else
-      echo "$bls_opt_the_command $bls_arguments &" >> $bls_tmp_file
+      echo "$bls_opt_the_command $bls_arguments &" 
   fi
   
-  echo "job_pid=\$!" >> $bls_tmp_file
+  echo "job_pid=\$!" 
   
   if [ "x$bls_opt_proxyrenew" == "xyes" ]
   then
-      echo "" >> $bls_tmp_file
-      echo "# Start the proxy renewal server" >> $bls_tmp_file
-      echo "if [ ! -x \"$remote_BPRserver\" ]; then chmod u+x \"$remote_BPRserver\"; fi" >> $bls_tmp_file
-      echo "\"$remote_BPRserver\" \$job_pid $bls_opt_prnpoll $bls_opt_prnlifetime \${$bls_job_id_for_renewal} &" >> $bls_tmp_file
-      echo "server_pid=\$!" >> $bls_tmp_file
+      echo "" 
+      echo "# Start the proxy renewal server" 
+      echo "if [ ! -x \"$remote_BPRserver\" ]; then chmod u+x \"$remote_BPRserver\"; fi" 
+      echo "\"$remote_BPRserver\" \$job_pid $bls_opt_prnpoll $bls_opt_prnlifetime \${$bls_job_id_for_renewal} &" 
+      echo "server_pid=\$!"
   fi
   
-  echo "" >> $bls_tmp_file
-  echo "# Wait for the user job to finish" >> $bls_tmp_file
-  echo "wait \$job_pid" >> $bls_tmp_file
-  echo "user_retcode=\$?" >> $bls_tmp_file
+  echo ""
+  echo "# Wait for the user job to finish"
+  echo "wait \$job_pid" 
+  echo "user_retcode=\$?"
 
   if [ "x$blah_debug_save_wn_files" != "x" ]; then
-      echo "if [ -d $blah_debug_save_wn_files ]; then" >> $bls_tmp_file
-      echo "  blw_save_dir=\"$blah_debug_save_wn_files/\`basename \$new_home\`.debug\"" >> $bls_tmp_file
-      echo "  mkdir \$blw_save_dir" >> $bls_tmp_file
-      echo "  # Saving files for debug"  >> $bls_tmp_file
-      echo "  cp \$X509_USER_PROXY \$blw_save_dir" >> $bls_tmp_file
-      [ -z ${bls_unique_stdout_name} ] || echo "  cp $bls_unique_stdout_name \$blw_save_dir" >> $bls_tmp_file
-      [ -z ${bls_unique_stderr_name} ] || echo "  cp $bls_unique_stderr_name \$blw_save_dir" >> $bls_tmp_file
-      echo "fi" >> $bls_tmp_file
+      echo "if [ -d $blah_debug_save_wn_files ]; then"
+      echo "  blw_save_dir=\"$blah_debug_save_wn_files/\`basename \$new_home\`.debug\""
+      echo "  mkdir \$blw_save_dir"
+      echo "  # Saving files for debug"
+      echo "  cp \$X509_USER_PROXY \$blw_save_dir"
+      [ -z ${bls_unique_stdout_name} ] || echo "  cp $bls_unique_stdout_name \$blw_save_dir"
+      [ -z ${bls_unique_stderr_name} ] || echo "  cp $bls_unique_stderr_name \$blw_save_dir"
+      echo "fi"
   fi
 
   if [ "x$bls_opt_proxyrenew" == "xyes" ]
   then
-      echo "# Kill the watchdog when done" >> $bls_tmp_file
-      echo "sleep 1" >> $bls_tmp_file
-      echo "kill \$server_pid 2> /dev/null" >> $bls_tmp_file
+      echo "# Kill the watchdog when done"
+      echo "sleep 1"
+      echo "kill \$server_pid 2> /dev/null"
   fi
   
-  echo ""  >> $bls_tmp_file
-  echo "# Move all relative outputsand paths out of temp home" >> $bls_tmp_file
-  echo "cd \$new_home" >> $bls_tmp_file
-  bls_fl_subst_relative_paths_and_dump outputsand "mv \"@@F_WORKNAME\" \"@@F_REMOTE\" 2> /dev/null" $bls_tmp_file "\\\$old_home" 
-  echo "# Move any remapped outputsand file to shared directories" >> $bls_tmp_file
-  bls_fl_subst_relative_paths_and_dump outputmove "mv \"@@F_REMOTE\" \"@@F_LOCAL\" 2> /dev/null" $bls_tmp_file
+  echo "" 
+  echo "# Move all relative outputsand paths out of temp home"
+  echo "cd \$new_home"
+  bls_fl_subst_relative_paths_and_dump outputsand "mv \"@@F_WORKNAME\" \"@@F_REMOTE\" 2> /dev/null" "\\\$old_home" 
+  echo "# Move any remapped outputsand file to shared directories"
+  bls_fl_subst_relative_paths_and_dump outputmove "mv \"@@F_REMOTE\" \"@@F_LOCAL\" 2> /dev/null"
   
-  echo ""  >> $bls_tmp_file
-  echo "# Remove the staged files, if any" >> $bls_tmp_file
-  bls_fl_subst_and_dump inputcopy "rm \"@@F_REMOTE\" 2> /dev/null" $bls_tmp_file
-  bls_fl_subst_relative_paths_and_dump inputsand "rm \"@@F_WORKNAME\" 2> /dev/null" $bls_tmp_file
+  echo ""
+  echo "# Remove the staged files, if any"
+  bls_fl_subst_and_dump inputcopy "rm \"@@F_REMOTE\" 2> /dev/null"
+  bls_fl_subst_relative_paths_and_dump inputsand "rm \"@@F_WORKNAME\" 2> /dev/null"
+}
 
-  echo "cd \$old_home" >> $bls_tmp_file
+function bls_finish_job_wrapper ()
+{
+  echo "cd \$old_home"
   
-  echo "" >> $bls_tmp_file
+  echo ""
   
-  echo "exit \$user_retcode" >> $bls_tmp_file
+  echo "exit \$user_retcode"
 
   # Exit if it was just a test
   if [ "x$debug" == "xyes" ]
   then
       exit 255
   fi
+}
 
+function bls_test_working_dir ()
+{
   if [ "x$bls_opt_workdir" != "x" ]; then
       cd $bls_opt_workdir
   elif [ "x$blah_set_default_workdir_to_home" == "xyes" ]; then
@@ -740,6 +742,13 @@ function bls_add_job_wrapper ()
       rm -f $bls_tmp_file
       exit 1
   fi
+}
+
+function bls_add_job_wrapper ()
+{
+  bls_start_job_wrapper >> $bls_tmp_file
+  bls_finish_job_wrapper >> $bls_tmp_file
+  bls_test_working_dir
 }
 
 function bls_set_up_local_and_extra_args ()
