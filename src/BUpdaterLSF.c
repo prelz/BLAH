@@ -266,7 +266,7 @@ int main(int argc, char *argv[]){
 		do_log(debuglogfile, debug, 1, "%s: key bupdater_use_bhist_time_constraint not found - using the default:%s\n",argv0,use_bhist_time_constraint);
 	} else {
 		use_bhist_time_constraint=strdup(ret->value);
-                if(use_bhist_for_susp == NULL){
+                if(use_bhist_time_constraint == NULL){
                         sysfatal("strdup failed for use_bhist_time_constraint in main: %r");
                 }
 	}
