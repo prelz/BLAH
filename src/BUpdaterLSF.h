@@ -65,6 +65,7 @@ int nodmn=FALSE;
 char *lsf_batch_caching_enabled="Not";
 char *batch_command_caching_filter=NULL;
 char *batch_command=NULL;
+char *use_bhist_time_constraint="yes";
 
 bupdater_active_jobs bact;
 

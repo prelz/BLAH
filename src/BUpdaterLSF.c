@@ -261,6 +261,16 @@ int main(int argc, char *argv[]){
                 }
 	}
 	
+	ret = config_get("bupdater_use_bhist_time_constraint",cha);
+	if (ret == NULL){
+		do_log(debuglogfile, debug, 1, "%s: key bupdater_use_bhist_time_constraint not found - using the default:%s\n",argv0,use_bhist_time_constraint);
+	} else {
+		use_bhist_time_constraint=strdup(ret->value);
+                if(use_bhist_for_susp == NULL){
+                        sysfatal("strdup failed for use_bhist_time_constraint in main: %r");
+                }
+	}
+	
 	ret = config_get("lsf_batch_caching_enabled",cha);
 	if (ret == NULL){
 		do_log(debuglogfile, debug, 1, "%s: key lsf_batch_caching_enabled not found using default\n",argv0,lsf_batch_caching_enabled);
@@ -401,6 +411,7 @@ int main(int argc, char *argv[]){
 
 			if((bupdater_lookup_active_jobs(&bact,en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && en->status!=REMOVED && en->status!=COMPLETED){
 
+				do_log(debuglogfile, debug, 2, "%s: FinalStateQuery needed for jobid=%s with status=%d\n",argv0,en->batch_id,en->status);
 				confirm_time=atoi(en->updater_info);
 				if(confirm_time==0){
 					confirm_time=en->mdate;
@@ -973,16 +984,21 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 	job_registry_entry *ren=NULL;
 
 	
-	if(start_date != 0){
-		localtime_r(&start_date, &start_date_tm);
-		strftime(start_date_str, sizeof(start_date_str), "%Y/%m/%d/%H:%M,", &start_date_tm);
-		start_date_flagged=make_message("-C %s",start_date_str);
+	if(strcmp(use_bhist_time_constraint,"yes")==0){
+		if(start_date != 0){
+			localtime_r(&start_date, &start_date_tm);
+			strftime(start_date_str, sizeof(start_date_str), "%Y/%m/%d/%H:%M,", &start_date_tm);
+			start_date_flagged=make_message("-C %s",start_date_str);
+		}else{
+			start_date_flagged=make_message("");
+		}
 	}else{
-		start_date_flagged=make_message("");
+			start_date_flagged=make_message("");
 	}
 
 	command_string=make_message("%s%s/bhist -u all -d -l -n %d %s",batch_command,lsf_binpath,logs_to_read,start_date_flagged);
 	free(start_date_flagged);
+	
 	fp = popen(command_string,"r");
 	
 	do_log(debuglogfile, debug, 3, "%s: command_string in FinalStateQuery is:%s\n",argv0,command_string);
