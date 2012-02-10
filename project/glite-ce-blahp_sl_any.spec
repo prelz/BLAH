@@ -7,7 +7,7 @@ Vendor: EMI
 URL: http://glite.cern.ch/
 Group: Applications/Internet
 BuildArch: %{_arch}
-BuildRequires: libtool, classads-devel, docbook-style-xsl
+BuildRequires: libtool, classads-devel, docbook-style-xsl, libxslt
 Requires(post): chkconfig
 Requires(preun): chkconfig
 Requires(preun): initscripts
