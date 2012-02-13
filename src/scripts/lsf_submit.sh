@@ -147,8 +147,8 @@ bls_set_up_local_and_extra_args
 # Write LSF directives according to command line options
 
 # File transfer directives. Input and output sandbox
-bls_fl_subst_and_dump inputsand "#BSUB -f \"@@F_LOCAL > @@F_REMOTE\"" $bls_tmp_file
-bls_fl_subst_and_dump outputsand "#BSUB -f \"@@F_LOCAL < @@F_REMOTE\"" $bls_tmp_file
+bls_fl_subst_and_dump inputsand "#BSUB -f \"@@F_LOCAL > @@F_REMOTE\"" >> $bls_tmp_file
+bls_fl_subst_and_dump outputsand "#BSUB -f \"@@F_LOCAL < @@F_REMOTE\"" >> $bls_tmp_file
 
 # Accommodate for CERN-specific job subdirectory creation.
 echo "" >> $bls_tmp_file

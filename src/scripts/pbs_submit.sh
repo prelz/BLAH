@@ -167,8 +167,8 @@ if [ "x$blah_torque_multiple_staging_directive_bug" == "xyes" ]; then
   bls_fl_subst_and_accumulate outputsand "stageout=@@F_REMOTE@`hostname -f`:@@F_LOCAL" ","
   [ -z "$bls_fl_subst_and_accumulate_result" ] || echo "#PBS -W $bls_fl_subst_and_accumulate_result" >> $bls_tmp_file
 elif [ "x$blah_torque_multiple_staging_directive_bug" == "xmultiline" ]; then
-  bls_fl_subst_and_dump inputsand "#PBS -W stagein=@@F_REMOTE@`hostname -f`:@@F_LOCAL" $bls_tmp_file
-  bls_fl_subst_and_dump outputsand "#PBS -W stageout=@@F_REMOTE@`hostname -f`:@@F_LOCAL" $bls_tmp_file
+  bls_fl_subst_and_dump inputsand "#PBS -W stagein=@@F_REMOTE@`hostname -f`:@@F_LOCAL" >> $bls_tmp_file
+  bls_fl_subst_and_dump outputsand "#PBS -W stageout=@@F_REMOTE@`hostname -f`:@@F_LOCAL" >> $bls_tmp_file
 else
   bls_fl_subst_and_accumulate inputsand "@@F_REMOTE@`hostname -f`:@@F_LOCAL" ","
   [ -z "$bls_fl_subst_and_accumulate_result" ] || echo "#PBS -W stagein=\\'$bls_fl_subst_and_accumulate_result\\'" >> $bls_tmp_file
