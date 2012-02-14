@@ -411,7 +411,6 @@ int main(int argc, char *argv[]){
 
 			if((bupdater_lookup_active_jobs(&bact,en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && en->status!=REMOVED && en->status!=COMPLETED){
 
-				do_log(debuglogfile, debug, 2, "%s: FinalStateQuery needed for jobid=%s with status=%d\n",argv0,en->batch_id,en->status);
 				confirm_time=atoi(en->updater_info);
 				if(confirm_time==0){
 					confirm_time=en->mdate;
@@ -435,6 +434,7 @@ int main(int argc, char *argv[]){
 					if (en->mdate < finalquery_start_date){
 						finalquery_start_date=en->mdate;
 					}
+					do_log(debuglogfile, debug, 2, "%s: FinalStateQuery needed for jobid=%s with status=%d\n",argv0,en->batch_id,en->status);
 					runfinal=TRUE;
 				}
 				
