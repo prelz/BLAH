@@ -431,7 +431,7 @@ int main(int argc, char *argv[]){
 					continue;
 				}
 				
-				if((now-confirm_time>finalstate_query_interval) && (now > next_finalstatequery)){
+				if((now-confirm_time>finalstate_query_interval) && (now > next_finalstatequery) && !(en->status==IDLE && strlen(en->updater_info)==0)){
 					if (en->mdate < finalquery_start_date){
 						finalquery_start_date=en->mdate;
 					}
@@ -661,6 +661,10 @@ IntStateQueryShort()
 				en.status=COMPLETED;
 				en.exitcode=0;
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+			}else if(token[2] && strcmp(token[2],"EXIT")==0){ 
+				en.status=COMPLETED;
+				en.exitcode=127;
+				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 			}
 			
 			timestamp=make_message("%s %s %s",token[7],token[8],token[9]);
@@ -742,6 +746,7 @@ IntStateQuery()
 	time_t tmstampepoch;
 	char *cp=NULL; 
 	char *wn_str=NULL; 
+	char *ex_str=NULL; 
 	char *batch_str=NULL;
 	char *command_string=NULL;
 	job_registry_entry *ren=NULL;
@@ -886,6 +891,20 @@ IntStateQuery()
 				en.status=COMPLETED;
 				free(timestamp);
 				en.exitcode=0;
+				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+				freetoken(&token,maxtok_t);
+			}else if(line && strstr(line," Exited with exit code") && en.status != REMOVED){	
+				maxtok_t = strtoken(line, ' ', &token);
+				timestamp=make_message("%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp[strlen(timestamp)-1]='\0';
+				tmstampepoch=str2epoch(timestamp,"W");
+				en.udate=tmstampepoch;
+				en.status=COMPLETED;
+				free(timestamp);
+				ex_str=strdel(token[8],".");
+				en.exitcode=atoi(ex_str);
+				free(ex_str);
+				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				freetoken(&token,maxtok_t);
 			}
