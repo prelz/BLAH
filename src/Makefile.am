@@ -2,11 +2,11 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.56 2012/01/13 11:23:44 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.57 2012/02/15 13:55:15 pandreet Exp $ 
 #
 # File:           Makefile.am
 #
-# Author(s):      Francesco Prelz ($Author: mezzadri $)
+# Author(s):      Francesco Prelz ($Author: pandreet $)
 #        e-mail: "Francesco.Prelz@mi.infn.it"
 #
 # Revision history:
@@ -31,7 +31,12 @@
 #    limitations under the License.
 #
 
-INCLUDES = -I. $(CLASSAD_CFLAGS) $(GLOBUS_NOTHR_CFLAGS)
+INCLUDES = -I. $(CLASSAD_CFLAGS) \
+           $(GLOBUS_GSI_CRED_CFLAGS) \
+           $(GLOBUS_GSI_PROXY_CFLAGS) \
+           $(GLOBUS_GSI_UTILS_CFLAGS) \
+           $(GLOBUS_GSS_ASSIST_CFLAGS) \
+           $(GLOBUS_GSI_SYSCFG_CFLAGS) 
 
 SUBDIRS = scripts
 
@@ -59,14 +64,22 @@ blahpd_daemon_LDADD = $(blahpd_LDADD)
 BPRclient_SOURCES = BPRclient.c BPRcomm.c tokens.c
 
 BPRclient_LDADD = \
-$(GLOBUS_GSS_NOTHR_LIBS) $(GLOBUS_SSL_NOTHR_LIBS)
+		$(GLOBUS_GSI_CRED_LIBS) \
+		$(GLOBUS_GSI_PROXY_LIBS) \
+		$(GLOBUS_GSI_UTILS_LIBS) \
+		$(GLOBUS_GSS_ASSIST_LIBS) \
+		$(GLOBUS_GSI_SYSCFG_LIBS)
 
 BPRserver_SOURCES = BPRserver.c BPRcomm.c tokens.c
 
 BPRserver_LDFLAGS = -static
 
 BPRserver_LDADD = \
-$(GLOBUS_GSS_NOTHR_LIBS) $(GLOBUS_SSL_NOTHR_LIBS)
+		$(GLOBUS_GSI_CRED_LIBS) \
+		$(GLOBUS_GSI_PROXY_LIBS) \
+		$(GLOBUS_GSI_UTILS_LIBS) \
+		$(GLOBUS_GSS_ASSIST_LIBS) \
+		$(GLOBUS_GSI_SYSCFG_LIBS)
 
 BLClient_SOURCES = BLClient.c blah_utils.c BLfunctions.c
 

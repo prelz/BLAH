@@ -12,11 +12,14 @@
 #       Council for the Central Laboratory of the Research Councils (CCLRC), United Kingdom
 #
 #       Authors: Francesco Prelz <francesco.prelz@mi.infn.it>
-#       Version info: $Id: configure.ac,v 1.52 2011/12/09 10:42:38 pandreet Exp $
+#       Version info: $Id: configure.ac,v 1.53 2012/02/15 13:55:15 pandreet Exp $
 #       Release: $Name:  $
 #
 #       Revision history:
 #       $Log: configure.ac,v $
+#       Revision 1.53  2012/02/15 13:55:15  pandreet
+#       Disabled build for BPR; replaced macro for globus
+#
 #       Revision 1.52  2011/12/09 10:42:38  pandreet
 #       version definition from autoconf
 #
@@ -200,16 +203,29 @@ AC_ARG_WITH(dist_location,
    [],
    with_dist_location=$WORKDIR/../dist)
 
+AC_ARG_ENABLE(bprserver,
+   [  --enable-bprserver Enable BPR server],
+   [ if test "$enableval" = "yes" ; then
+         bprserver=$enableval
+     else
+         bprserver="no"
+     fi],
+   bprserver="no")
+
 DISTTAR=$with_dist_location
 
 AC_SUBST(DISTTAR)
 
 AC_CLASSADS([], AC_MSG_RESULT(["CLASSADS ok"]), AC_MSG_ERROR(["CLASSADS not found"]))
 
-have_globus=no
-AC_GLOBUS([], have_globus=yes, have_globus=no)
+have_globus=yes
+PKG_CHECK_MODULES(GLOBUS_GSI_CRED, globus-gsi-credential, , have_globus=no)
+PKG_CHECK_MODULES(GLOBUS_GSI_PROXY, globus-gsi-proxy-core, , have_globus=no)
+PKG_CHECK_MODULES(GLOBUS_GSI_UTILS, globus-gsi-cert-utils, , have_globus=no)
+PKG_CHECK_MODULES(GLOBUS_GSS_ASSIST, globus-gss-assist, , have_globus=no)
+PKG_CHECK_MODULES(GLOBUS_GSI_SYSCFG, globus-gsi-sysconfig, , have_globus=no)
 AC_MSG_RESULT(["GLOBUS found $have_globus"])
-AM_CONDITIONAL([HAVE_GLOBUS], [test x$have_globus = xyes])
+AM_CONDITIONAL([HAVE_GLOBUS], [test "x$bprserver" == "xyes" -a "x$have_globus" == "xyes"])
 
 dnl Temporarily built with no optimisation
 
