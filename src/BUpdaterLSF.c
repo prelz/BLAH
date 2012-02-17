@@ -664,6 +664,7 @@ IntStateQueryShort()
 			}else if(token[2] && strcmp(token[2],"EXIT")==0){ 
 				en.status=IDLE;
 				en.exitcode=-1;
+				bupdater_remove_active_job(&bact, en.batch_id);
 			}
 			
 			timestamp=make_message("%s %s %s",token[7],token[8],token[9]);
@@ -896,6 +897,7 @@ IntStateQuery()
 				if(en.status == UNDEFINED){
 					en.status=IDLE;
 					en.exitcode=-1;
+					bupdater_remove_active_job(&bact, en.batch_id);
 				}
 			}
 			free(line);
