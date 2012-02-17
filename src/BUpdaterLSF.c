@@ -432,6 +432,23 @@ int main(int argc, char *argv[]){
 					continue;
 				}
 				
+				if(now-confirm_time>finalstate_query_interval){
+					do_log(debuglogfile, debug, 2, "%s: finalstate_query_interval OK");
+				}
+				if(now > next_finalstatequery){
+					do_log(debuglogfile, debug, 2, "%s: next_finalstatequery OK");
+				}
+				if(!(en->status==IDLE && strlen(en->updater_info)==0)){
+					do_log(debuglogfile, debug, 2, "%s: updater_info OK");
+				}
+				if(en->status==IDLE){
+					do_log(debuglogfile, debug, 2, "%s: IDLE OK");
+				}
+				if(strlen(en->updater_info)==0){
+					do_log(debuglogfile, debug, 2, "%s: strlen OK");
+				}
+				
+				
 				if((now-confirm_time>finalstate_query_interval) && (now > next_finalstatequery) && !(en->status==IDLE && strlen(en->updater_info)==0)){
 					if (en->mdate < finalquery_start_date){
 						finalquery_start_date=en->mdate;
@@ -664,8 +681,10 @@ IntStateQueryShort()
 				en.exitcode=0;
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 			}else if(token[2] && strcmp(token[2],"EXIT")==0){ 
-				en.status=IDLE;
-				en.exitcode=-1;
+				if(en.status == UNDEFINED){
+					en.status=IDLE;
+					en.exitcode=-1;
+				}
 				bupdater_remove_active_job(&bact, en.batch_id);
 			}
 			
@@ -899,8 +918,8 @@ IntStateQuery()
 				if(en.status == UNDEFINED){
 					en.status=IDLE;
 					en.exitcode=-1;
-					bupdater_remove_active_job(&bact, en.batch_id);
 				}
+				bupdater_remove_active_job(&bact, en.batch_id);
 			}
 			free(line);
 			free(string_now);
