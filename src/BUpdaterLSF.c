@@ -409,8 +409,10 @@ int main(int argc, char *argv[]){
 		
 		while ((en = job_registry_get_next(rha, fd)) != NULL){
 
+			do_log(debuglogfile, debug, 2, "%s: bupdater_lookup_active_jobs for %s is %d\n",argv0,en->batch_id,bupdater_lookup_active_jobs(&bact,en->batch_id));
 			if((bupdater_lookup_active_jobs(&bact,en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && en->status!=REMOVED && en->status!=COMPLETED){
 
+				do_log(debuglogfile, debug, 2, "%s: FinalStateQuery 1 needed for jobid=%s with status=%d\n",argv0,en->batch_id,en->status);
 				confirm_time=atoi(en->updater_info);
 				if(confirm_time==0){
 					confirm_time=en->mdate;
