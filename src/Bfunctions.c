@@ -586,6 +586,44 @@ bupdater_lookup_active_jobs(bupdater_active_jobs *bact,
   return BUPDATER_ACTIVE_JOBS_FAILURE;
 }
 
+int
+bupdater_remove_active_job(bupdater_active_jobs *bact, 
+                           const char *job_id)
+{
+  int left, right, cur, cmp, resize;
+  if (bact->is_sorted == 0) bupdater_sort_active_jobs(bact,0,bact->njobs-1);
+
+  /* Binary search of needed entry */
+  left = 0; right = bact->njobs-1;
+
+  while (right >= left)
+   {
+    cur = (right + left) /2;
+    cmp = strcmp(bact->jobs[cur],job_id);
+    if (cmp == 0)
+     {
+      /* Job ID found. Remove it from list. */
+      for (resize = cur+1; resize<bact->njobs; resize++)
+       {
+        bact->jobs[resize - 1] = bact->jobs[resize];
+       }
+      bact->jobs[bact->njobs-1] = "";
+      (bact->njobs)--;
+      return BUPDATER_ACTIVE_JOBS_SUCCESS;
+     }
+    else if (cmp < 0)
+     {
+      left = cur+1;
+     }
+    else
+     {
+      right = cur-1;
+     }
+   }
+
+  return BUPDATER_ACTIVE_JOBS_FAILURE;
+}
+
 void
 bupdater_free_active_jobs(bupdater_active_jobs *bact)
 {
