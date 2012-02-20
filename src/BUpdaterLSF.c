@@ -271,6 +271,26 @@ int main(int argc, char *argv[]){
                 }
 	}
 	
+	ret = config_get("bupdater_use_btools",cha);
+	if (ret == NULL){
+		do_log(debuglogfile, debug, 1, "%s: key bupdater_use_btools not found - using the default:%s\n",argv0,use_btools);
+	} else {
+		use_btools=strdup(ret->value);
+                if(use_btools == NULL){
+                        sysfatal("strdup failed for use_btools in main: %r");
+                }
+	}
+	
+	ret = config_get("bupdater_btools_path",cha);
+	if (ret == NULL){
+		do_log(debuglogfile, debug, 1, "%s: key bupdater_btools_path not found - using the default:%s\n",argv0,btools_path);
+	} else {
+		btools_path=strdup(ret->value);
+                if(btools_path == NULL){
+                        sysfatal("strdup failed for btools_path in main: %r");
+                }
+	}
+	
 	ret = config_get("lsf_batch_caching_enabled",cha);
 	if (ret == NULL){
 		do_log(debuglogfile, debug, 1, "%s: key lsf_batch_caching_enabled not found using default\n",argv0,lsf_batch_caching_enabled);
@@ -380,7 +400,9 @@ int main(int argc, char *argv[]){
 			}
 		}
 	       
-		if(bjobs_long_format && strcmp(bjobs_long_format,"yes")==0){ 
+		if(use_btools && strcmp(use_btools,"yes")==0){ 
+			IntStateQueryCustom();
+		}else if(bjobs_long_format && strcmp(bjobs_long_format,"yes")==0){
 			IntStateQuery();
 		}else{
 			IntStateQueryShort();
@@ -534,6 +556,190 @@ ReceiveUpdateFromNetwork()
 }
 
 int
+IntStateQueryCustom()
+{
+
+/*
+ IntStateQuery to use btools command bjobsinfo
+ */
+
+
+        FILE *fp;
+	char *line=NULL;
+	char **token;
+	int maxtok_l=0;
+	job_registry_entry en;
+	int ret;
+	char *timestamp;
+	time_t tmstampepoch;
+	char *tmp=NULL; 
+	char *cp=NULL; 
+	char *command_string=NULL;
+	job_registry_entry *ren=NULL;
+	int first=TRUE;
+	time_t now;
+	char *string_now=NULL;
+	int wexitcode=0;
+
+	command_string=make_message("%s/bjobsinfo",btools_path);
+	fp = popen(command_string,"r");
+	
+	do_log(debuglogfile, debug, 3, "%s: command in IntStateQueryCustom is:%s\n",argv0,command_string);
+
+	en.status=UNDEFINED;
+	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
+	JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+	JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,"\0");
+	en.exitcode=-1;
+	bupdater_free_active_jobs(&bact);
+	
+	if(fp!=NULL){
+		while(!feof(fp) && (line=get_line(fp))){
+			if(line && strlen(line)==0){
+				free(line);
+				continue;
+			}
+			if ((cp = strrchr (line, '\n')) != NULL){
+				*cp = '\0';
+			}
+			do_log(debuglogfile, debug, 3, "%s: line in IntStateQueryCustom is:%s\n",argv0,line);
+			tmp=strdup(line);
+                	if(tmp == NULL){
+                        	sysfatal("strdup failed for tmp in IntStateQueryCustom: %r");
+                	}
+			if ((cp = strchr (tmp, ' ')) != NULL){
+				*cp = '\0';
+			}
+
+			now=time(0);
+			string_now=make_message("%d",now);
+			if(!first && en.status!=UNDEFINED && ren && ren->status!=REMOVED && ren->status!=COMPLETED){
+				if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum,
+				JOB_REGISTRY_UPDATE_WN_ADDR|
+				JOB_REGISTRY_UPDATE_STATUS|
+				JOB_REGISTRY_UPDATE_UDATE|
+				JOB_REGISTRY_UPDATE_UPDATER_INFO|
+				JOB_REGISTRY_UPDATE_EXITCODE|
+				JOB_REGISTRY_UPDATE_EXITREASON)) < 0){
+					if(ret != JOB_REGISTRY_NOT_FOUND){
+						fprintf(stderr,"Update of record returns %d: ",ret);
+						perror("");
+					}
+				} else {
+					if(ret==JOB_REGISTRY_SUCCESS){
+						if (en.status == REMOVED || en.status == COMPLETED) {
+							do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQueryCustom for: jobid=%s creamjobid=%s wn=%s status=%d exitcode=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status,en.exitcode);
+							job_registry_unlink_proxy(rha, &en);
+						}else{
+							do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQueryCustom for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
+						}
+						if (remupd_conf != NULL){
+							if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
+								do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in IntStateQueryCustom\n",argv0);
+							}
+						}
+					}
+				}
+				en.status = UNDEFINED;
+				JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
+				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,"\0");
+				en.exitcode=-1;
+			}
+				
+			en.status = UNDEFINED;
+			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,tmp);
+			JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
+			en.exitcode=-1;
+			bupdater_push_active_job(&bact, en.batch_id);
+			free(tmp);
+			
+			maxtok_l = strtoken(line, ' ', &token);
+			
+			JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,token[14]);
+			
+			if(!first) free(ren);
+			if ((ren=job_registry_get(rha, en.batch_id)) == NULL){
+					fprintf(stderr,"Get of record returns error for %s ",en.batch_id);
+					perror("");
+			}
+			first=FALSE;        
+			if(token[10] && strcmp(token[10],"PEND")==0){ 
+				en.status=IDLE;
+				en.exitcode=-1;
+				en.udate=strtoul(token[4],NULL,10);
+			}else if(token[10] && ((strcmp(token[10],"USUSP")==0) || (strcmp(token[10],"PSUSP")==0) ||(strcmp(token[10],"SSUSP")==0))){ 
+				en.status=HELD;
+				en.exitcode=-1;
+			}else if(token[10] && strcmp(token[10],"RUN")==0){ 
+				en.status=RUNNING;
+				en.exitcode=-1;
+				en.udate=strtoul(token[5],NULL,10);
+			}else if(token[10] && strcmp(token[10],"DONE")==0){ 
+				en.status=COMPLETED;
+				en.exitcode=0;
+				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+				en.udate=strtoul(token[6],NULL,10);
+			}else if(token[10] && strcmp(token[10],"EXIT")==0){
+				wexitcode=WEXITSTATUS(atoi(token[12]));
+				if(wexitcode==127 || wexitcode==1 ||  wexitcode==2){
+					en.status=COMPLETED;
+					en.exitcode=wexitcode;
+				}else if(wexitcode==255){
+					en.status=REMOVED;
+					en.exitcode=-999;
+				}else{
+					en.status=COMPLETED;
+					en.exitcode=-1;
+				}
+				
+				en.udate=strtoul(token[6],NULL,10);
+			}
+		
+			freetoken(&token,maxtok_l);
+			
+			free(line);
+			free(string_now);
+		}
+		pclose(fp);
+	}
+	
+	if(en.status!=UNDEFINED && ren && ren->status!=REMOVED && ren->status!=COMPLETED){
+		if ((ret=job_registry_update_recn_select(rha, &en, ren->recnum,
+		JOB_REGISTRY_UPDATE_WN_ADDR|
+		JOB_REGISTRY_UPDATE_STATUS|
+		JOB_REGISTRY_UPDATE_UDATE|
+		JOB_REGISTRY_UPDATE_UPDATER_INFO|
+		JOB_REGISTRY_UPDATE_EXITCODE|
+		JOB_REGISTRY_UPDATE_EXITREASON)) < 0){
+			if(ret != JOB_REGISTRY_NOT_FOUND){
+				fprintf(stderr,"Update of record returns %d: ",ret);
+				perror("");
+			}
+			
+		} else {
+			if(ret==JOB_REGISTRY_SUCCESS){
+				if (en.status == REMOVED || en.status == COMPLETED) {
+					do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQueryCustom for: jobid=%s creamjobid=%s wn=%s status=%d exitcode=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status,en.exitcode);
+					job_registry_unlink_proxy(rha, &en);
+				}else{
+					do_log(debuglogfile, debug, 2, "%s: registry update in IntStateQueryCustom for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
+				}
+				if (remupd_conf != NULL){
+					if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
+						do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in IntStateQueryCustom\n",argv0);
+					}
+				}
+			}
+		}
+	}				
+
+	free(ren);
+	free(command_string);
+	return 0;
+}
+
+int
 IntStateQueryShort()
 {
 
@@ -595,12 +801,7 @@ IntStateQueryShort()
 			if ((cp = strchr (tmp, ' ')) != NULL){
 				*cp = '\0';
 			}
-			
-			if(job_registry_get_recnum(rha,tmp)==0){
-				free(line);
-				free(tmp);
-				continue;
-			}
+
 			now=time(0);
 			string_now=make_message("%d",now);
 			if(!first && en.status!=UNDEFINED && ren && ren->status!=REMOVED && ren->status!=COMPLETED){
@@ -1060,8 +1261,8 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 							do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in FinalStateQuery\n",argv0);
 						}
 					}
-					en.status = UNDEFINED;
 				}				
+				en.status = UNDEFINED;
 				maxtok_t = strtoken(line, ',', &token);
 				batch_str=strdel(token[0],"Job <>");
 				JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,batch_str);

@@ -37,6 +37,7 @@
 
 int ReceiveUpdateFromNetwork();
 int IntStateQueryShort();
+int IntStateQueryCustom();
 int IntStateQuery();
 int FinalStateQuery(time_t start_date, int logs_to_read);
 int AssignFinalState(char *batchid);
@@ -66,6 +67,8 @@ char *lsf_batch_caching_enabled="Not";
 char *batch_command_caching_filter=NULL;
 char *batch_command=NULL;
 char *use_bhist_time_constraint="no";
+char *use_btools="no";
+char *btools_path="/usr/local/bin";
 
 bupdater_active_jobs bact;
 
