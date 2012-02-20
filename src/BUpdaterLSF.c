@@ -409,10 +409,8 @@ int main(int argc, char *argv[]){
 		
 		while ((en = job_registry_get_next(rha, fd)) != NULL){
 
-			do_log(debuglogfile, debug, 2, "%s: bupdater_lookup_active_jobs for %s is %d\n",argv0,en->batch_id,bupdater_lookup_active_jobs(&bact,en->batch_id));
 			if((bupdater_lookup_active_jobs(&bact,en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && en->status!=REMOVED && en->status!=COMPLETED){
 
-				do_log(debuglogfile, debug, 2, "%s: FinalStateQuery 1 needed for jobid=%s with status=%d\n",argv0,en->batch_id,en->status);
 				confirm_time=atoi(en->updater_info);
 				if(confirm_time==0){
 					confirm_time=en->mdate;
@@ -431,25 +429,14 @@ int main(int argc, char *argv[]){
 					free(en);
 					continue;
 				}
-				
-				if(now-confirm_time>finalstate_query_interval){
-					do_log(debuglogfile, debug, 2, "%s: finalstate_query_interval OK");
-				}
-				if(now > next_finalstatequery){
-					do_log(debuglogfile, debug, 2, "%s: next_finalstatequery OK");
-				}
-				if(!(en->status==IDLE && strlen(en->updater_info)==0)){
-					do_log(debuglogfile, debug, 2, "%s: updater_info OK");
-				}
-				if(en->status==IDLE){
-					do_log(debuglogfile, debug, 2, "%s: IDLE OK");
-				}
-				if(strlen(en->updater_info)==0){
-					do_log(debuglogfile, debug, 2, "%s: strlen OK");
-				}
-				
-				
-				if((now-confirm_time>finalstate_query_interval) && (now > next_finalstatequery) && !(en->status==IDLE && strlen(en->updater_info)==0)){
+								
+				if(en->status==IDLE && strlen(en->updater_info)>0){
+					if (en->mdate < finalquery_start_date){
+						finalquery_start_date=en->mdate;
+					}
+					do_log(debuglogfile, debug, 2, "%s: FinalStateQuery needed for jobid=%s with status=%d\n",argv0,en->batch_id,en->status);
+					runfinal=TRUE;
+				}else if((now-confirm_time>finalstate_query_interval) && (now > next_finalstatequery)){
 					if (en->mdate < finalquery_start_date){
 						finalquery_start_date=en->mdate;
 					}
@@ -713,7 +700,6 @@ IntStateQueryShort()
 				fprintf(stderr,"Update of record returns %d: ",ret);
 				perror("");
 			}
-			
 			
 		} else {
 			if(ret==JOB_REGISTRY_SUCCESS){
@@ -1051,6 +1037,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 			now=time(0);
 			string_now=make_message("%d",now);
 			if(line && strstr(line,"Job <")){	
+
 				if(!first && en.status!=UNDEFINED && en.status!=IDLE && ren && ren->status!=REMOVED && ren->status!=COMPLETED){	
 					if ((ret=job_registry_update_select(rha, &en,
 					JOB_REGISTRY_UPDATE_UDATE |
@@ -1144,7 +1131,7 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 		}
 		pclose(fp);
 	}
-	
+
 	if(en.status!=UNDEFINED && en.status!=IDLE && ren && ren->status!=REMOVED && ren->status!=COMPLETED){	
 		if ((ret=job_registry_update_select(rha, &en,
 		JOB_REGISTRY_UPDATE_UDATE |
