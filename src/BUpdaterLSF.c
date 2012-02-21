@@ -291,6 +291,16 @@ int main(int argc, char *argv[]){
                 }
 	}
 	
+	ret = config_get("bupdater_use_bhist_for_killed",cha);
+	if (ret == NULL){
+		do_log(debuglogfile, debug, 1, "%s: key bupdater_use_bhist_for_killed not found - using the default:%s\n",argv0,use_bhist_for_killed);
+	} else {
+		use_bhist_for_killed=strdup(ret->value);
+                if(use_bhist_for_killed == NULL){
+                        sysfatal("strdup failed for use_bhist_for_killed in main: %r");
+                }
+	}
+	
 	ret = config_get("lsf_batch_caching_enabled",cha);
 	if (ret == NULL){
 		do_log(debuglogfile, debug, 1, "%s: key lsf_batch_caching_enabled not found using default\n",argv0,lsf_batch_caching_enabled);
@@ -681,16 +691,24 @@ IntStateQueryCustom()
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				en.udate=strtoul(token[6],NULL,10);
 			}else if(token[10] && strcmp(token[10],"EXIT")==0){
-				wexitcode=WEXITSTATUS(atoi(token[12]));
-				if(wexitcode==127 || wexitcode==1 ||  wexitcode==2){
-					en.status=COMPLETED;
-					en.exitcode=wexitcode;
-				}else if(wexitcode==255){
-					en.status=REMOVED;
-					en.exitcode=-999;
+				if(use_bhist_for_killed && strcmp(use_bhist_for_killed,"yes")==0){ 
+					if(en.status == UNDEFINED){
+						en.status=IDLE;
+						en.exitcode=-1;
+					}
+					bupdater_remove_active_job(&bact, en.batch_id);
 				}else{
-					en.status=COMPLETED;
-					en.exitcode=-1;
+					wexitcode=WEXITSTATUS(atoi(token[12]));
+					if(wexitcode==127 || wexitcode==1 ||  wexitcode==2){
+						en.status=COMPLETED;
+						en.exitcode=wexitcode;
+					}else if(wexitcode==255){
+						en.status=REMOVED;
+						en.exitcode=-999;
+					}else{
+						en.status=COMPLETED;
+						en.exitcode=-1;
+					}
 				}
 				
 				en.udate=strtoul(token[6],NULL,10);
@@ -962,6 +980,7 @@ IntStateQuery()
 	int first=TRUE;
 	time_t now;
 	char *string_now=NULL;
+	int wexitcode=0;
 
 	command_string=make_message("%s%s/bjobs -u all -l -a",batch_command,lsf_binpath);
 	fp = popen(command_string,"r");
@@ -1102,11 +1121,38 @@ IntStateQuery()
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line," Exited with exit code") && en.status != REMOVED){	
-				if(en.status == UNDEFINED){
-					en.status=IDLE;
-					en.exitcode=-1;
+				if(use_bhist_for_killed && strcmp(use_bhist_for_killed,"yes")==0){ 
+					if(en.status == UNDEFINED){
+						en.status=IDLE;
+						en.exitcode=-1;
+					}
+					bupdater_remove_active_job(&bact, en.batch_id);
+				}else{
+					maxtok_t = strtoken(line, ' ', &token);
+					timestamp=make_message("%s %s %s %s",token[0],token[1],token[2],token[3]);
+					timestamp[strlen(timestamp)-1]='\0';
+					tmstampepoch=str2epoch(timestamp,"W");
+					en.udate=tmstampepoch;
+					free(timestamp);
+					JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
+					JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+					ex_str=strdel(token[8],".");
+					wexitcode=atoi(ex_str);
+					free(ex_str);
+					freetoken(&token,maxtok_t);
+					
+					if(wexitcode==127 || wexitcode==1 ||  wexitcode==2){
+						en.status=COMPLETED;
+						en.exitcode=wexitcode;
+					}else if(wexitcode==255){
+						en.status=REMOVED;
+						en.exitcode=-999;
+					}else{
+						en.status=COMPLETED;
+						en.exitcode=-1;
+					}
+				
 				}
-				bupdater_remove_active_job(&bact, en.batch_id);
 			}
 			free(line);
 			free(string_now);
