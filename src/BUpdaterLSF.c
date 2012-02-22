@@ -54,6 +54,9 @@ int main(int argc, char *argv[]){
         static int help;
         static int short_help;
 	
+        struct stat sbuf;
+        char *s;
+	
 	bact.njobs = 0;
 	bact.jobs = NULL;
 	
@@ -291,6 +294,19 @@ int main(int argc, char *argv[]){
                 }
 	}
 	
+	if(use_btools && strcmp(use_btools,"yes")==0){ 
+		s=make_message("%s/bjobsinfo",btools_path);
+		rc=stat(s,&sbuf);
+		if(rc) {
+			do_log(debuglogfile, debug, 1, "%s not found. Fall back to normal bjobs mode.\n",s);
+			use_btools="no";
+			if( ! (sbuf.st_mode & (S_IXUSR|S_IXGRP|S_IXOTH)) ) {
+				do_log(debuglogfile, debug, 1, "%s is not executable, but mode %05o. Fall back to normal bjobs mode.\n",s,(int)sbuf.st_mode);
+				use_btools="no";
+			}
+		}
+	}
+	
 	ret = config_get("bupdater_use_bhist_for_killed",cha);
 	if (ret == NULL){
 		do_log(debuglogfile, debug, 1, "%s: key bupdater_use_bhist_for_killed not found - using the default:%s\n",argv0,use_bhist_for_killed);
@@ -409,7 +425,8 @@ int main(int argc, char *argv[]){
 				last_consistency_check=time(0);
 			}
 		}
-	       
+		
+
 		if(use_btools && strcmp(use_btools,"yes")==0){ 
 			IntStateQueryCustom();
 		}else if(bjobs_long_format && strcmp(bjobs_long_format,"yes")==0){
@@ -1114,17 +1131,6 @@ IntStateQuery()
 				JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,wn_str);
 				free(wn_str);
 				freetoken(&token,maxtok_t);
-			}else if(line && strstr(line," Done successfully")){	
-				maxtok_t = strtoken(line, ' ', &token);
-				timestamp=make_message("%s %s %s %s",token[0],token[1],token[2],token[3]);
-				timestamp[strlen(timestamp)-1]='\0';
-				tmstampepoch=str2epoch(timestamp,"W");
-				en.udate=tmstampepoch;
-				en.status=COMPLETED;
-				free(timestamp);
-				en.exitcode=0;
-				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
-				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line," Exited with exit code") && en.status != REMOVED){	
 				if(use_bhist_for_killed && strcmp(use_bhist_for_killed,"yes")==0){ 
 					if(en.status == UNDEFINED){
@@ -1162,6 +1168,31 @@ IntStateQuery()
 						}
 					}
 				}
+			}else if(line && strstr(line," Exited by signal") && en.status != REMOVED){	
+				maxtok_t = strtoken(line, ' ', &token);
+				timestamp=make_message("%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp[strlen(timestamp)-1]='\0';
+				tmstampepoch=str2epoch(timestamp,"W");
+				en.udate=tmstampepoch;
+				en.status=COMPLETED;
+				free(timestamp);
+				ex_str=strdel(token[7],".");
+				en.exitcode=atoi(ex_str);
+				free(ex_str);
+				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
+				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+				freetoken(&token,maxtok_t);
+			}else if(line && strstr(line," Done successfully")){	
+				maxtok_t = strtoken(line, ' ', &token);
+				timestamp=make_message("%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp[strlen(timestamp)-1]='\0';
+				tmstampepoch=str2epoch(timestamp,"W");
+				en.udate=tmstampepoch;
+				en.status=COMPLETED;
+				free(timestamp);
+				en.exitcode=0;
+				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+				freetoken(&token,maxtok_t);
 			}
 			free(line);
 			free(string_now);
