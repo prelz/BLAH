@@ -305,6 +305,7 @@ int main(int argc, char *argv[]){
 				use_btools="no";
 			}
 		}
+		free(s);
 	}
 	
 	ret = config_get("bupdater_use_bhist_for_killed",cha);
