@@ -1002,7 +1002,6 @@ IntStateQuery()
 	time_t now;
 	char *string_now=NULL;
 	int wexitcode=0;
-	int wexitinfo=0;
 
 	command_string=make_message("%s%s/bjobs -u all -l -a",batch_command,lsf_binpath);
 	fp = popen(command_string,"r");
@@ -1152,20 +1151,12 @@ IntStateQuery()
 					free(ex_str);
 					freetoken(&token,maxtok_t);
 					
-					wexitinfo=atoi(token[13]);
-					/*13 because (see lsbatch.h) all the signal greater than 13 are some kind of TERM signals*/
-					if(wexitinfo>13){
+					if(wexitcode==255 || wexitcode==130){
 						en.status=REMOVED;
 						en.exitcode=-999;
 					}else{
-						wexitcode=WEXITSTATUS(atoi(token[12]));
-						if(wexitcode==255 || wexitcode==130){
-							en.status=REMOVED;
-							en.exitcode=-999;
-						}else{
-							en.status=COMPLETED;
-							en.exitcode=wexitcode;
-						}
+						en.status=COMPLETED;
+						en.exitcode=wexitcode;
 					}
 				}
 			}else if(line && strstr(line," Exited by signal") && en.status != REMOVED){	
