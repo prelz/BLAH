@@ -39,6 +39,7 @@ int ReceiveUpdateFromNetwork();
 int IntStateQuery();
 int FinalStateQuery(char *query);
 int AssignFinalState(char *batchid);
+int GetCondorVersion();
 void sighup();
 int usage();
 int short_usage(); 

@@ -32,6 +32,7 @@ int main(int argc, char *argv[]){
 	time_t purge_time=0;
 	time_t last_consistency_check=0;
 	char *constraint=NULL;
+	char *tconstraint=NULL;
 	char *query=NULL;
 	char *q=NULL;
 	char *pidfile=NULL;
@@ -47,6 +48,9 @@ int main(int argc, char *argv[]){
 	int loop_interval=DEFAULT_LOOP_INTERVAL;
 	
 	int c;				
+	int condor_ver=0;
+	int max_constr_len=0;
+	char *toadd=NULL;
 	
 	pthread_t RecUpdNetThd;
 
@@ -308,6 +312,16 @@ int main(int argc, char *argv[]){
 	}
 	
 	config_free(cha);
+	
+	/* Get condor version to use or not a workaround for a bug in the max length of the constraint (-constraint) string
+	   that can be passed to condor_history. The limit is 511 byte if the version is prior 5.6.2 and 5.7.0*/
+	   
+	condor_ver=GetCondorVersion();
+	if(condor_ver>=762){
+		max_constr_len=511;
+	}else{
+		max_constr_len=-1;
+	}	
 
 	for(;;){
 		/* Purge old entries from registry */
@@ -376,17 +390,35 @@ int main(int argc, char *argv[]){
 				
 				if(now-confirm_time>finalstate_query_interval){
 					/* create the constraint that will be used in condor_history command in FinalStateQuery*/
-					if(!first) strcat(query," ||");	
+					if(first){
+						toadd=make_message("");
+					}else{
+						toadd=make_message(" || ");
+					}	
 					if(first) first=FALSE;
-					constraint=make_message(" ClusterId==%s",en->batch_id);
 					
-					if (query != NULL) qlen = strlen(query);
-					else               qlen = 0;
+					tconstraint=make_message("ClusterId==%s",en->batch_id);
+					
+					if (query != NULL){
+						qlen = strlen(query);
+					}else{
+						qlen = 0;
+					}
+					if(max_constr_len > 0 && tconstraint && ((strlen(tconstraint)+qlen)>max_constr_len)){
+						constraint=make_message(";%s",tconstraint);
+					}else{
+						constraint=make_message("%s%s",toadd,tconstraint);
+					}
+					free(tconstraint);
+					
 					q=realloc(query,qlen+strlen(constraint)+4);
 					
 					if(q != NULL){
-						if (query != NULL) strcat(q,constraint);
-						else               strcpy(q,constraint);
+						if (query != NULL){
+							strcat(q,constraint);
+						}else{
+							strcpy(q,constraint);
+						}
 						query=q;	
 					}else{
 						sysfatal("can't realloc query: %r");
@@ -612,73 +644,81 @@ FinalStateQuery(char *query)
         FILE *fp;
 	char *line=NULL;
 	char **token;
+	char **ctoken;
 	int maxtok_t=0;
+	int maxtok_c=0;
 	job_registry_entry en;
 	int ret=0;
 	char *cp=NULL; 
 	char *command_string=NULL;
 	time_t now;
 	char *string_now=NULL;
+	int k=0;
 
-	command_string=make_message("%s%s/condor_history -constraint \"%s\" -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus",batch_command,condor_binpath,query);
-	do_log(debuglogfile, debug, 2, "%s: command_string in FinalStateQuery:%s\n",argv0,command_string);
-	fp = popen(command_string,"r");
+	maxtok_c = strtoken(query, ';', &ctoken);
 
-	if(fp!=NULL){
-		while(!feof(fp) && (line=get_line(fp))){
-			do_log(debuglogfile, debug, 3, "%s: Line in FSQ:%s\n",argv0,line);
-			if(line && (strlen(line)==0 || strncmp(line,"JOBID",5)==0)){
-				free(line);
-				continue;
-			}
-			if ((cp = strrchr (line, '\n')) != NULL){
-				*cp = '\0';
-			}
+	for(k=0;k<maxtok_c;k++){
+		command_string=make_message("%s%s/condor_history -constraint \"%s\" -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus",batch_command,condor_binpath,ctoken[k]);
+		do_log(debuglogfile, debug, 2, "%s: command_string in FinalStateQuery:%s\n",argv0,command_string);
+		fp = popen(command_string,"r");
+
+		if(fp!=NULL){
+			while(!feof(fp) && (line=get_line(fp))){
+				do_log(debuglogfile, debug, 3, "%s: Line in FSQ:%s\n",argv0,line);
+				if(line && (strlen(line)==0 || strncmp(line,"JOBID",5)==0)){
+					free(line);
+					continue;
+				}
+				if ((cp = strrchr (line, '\n')) != NULL){
+					*cp = '\0';
+				}
+				
+				maxtok_t = strtoken(line, ' ', &token);
+				if (maxtok_t < 6){
+					freetoken(&token,maxtok_t);
+					free(line);
+					continue;
+				}
+				
+				now=time(0);
+				string_now=make_message("%d",now);
 			
-			maxtok_t = strtoken(line, ' ', &token);
-			if (maxtok_t < 6){
-				freetoken(&token,maxtok_t);
-				free(line);
-				continue;
-			}
+				JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,token[0]);
+				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
+				en.status=atoi(token[2]);
+				en.exitcode=atoi(token[4]);
+				en.udate=atoi(token[5]);
+		        	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
+		        	JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 			
-			now=time(0);
-			string_now=make_message("%d",now);
-		
-			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,token[0]);
-			JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
-			en.status=atoi(token[2]);
-			en.exitcode=atoi(token[4]);
-			en.udate=atoi(token[5]);
-                	JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
-                	JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
-		
-			if(en.status!=UNDEFINED && en.status!=IDLE){	
-				if ((ret=job_registry_update(rha, &en)) < 0){
-					if(ret != JOB_REGISTRY_NOT_FOUND){
-						fprintf(stderr,"Update of record returns %d: ",ret);
-						perror("");
-					}
-				} else {
-					do_log(debuglogfile, debug, 2, "%s: registry update in FinalStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
-					if (en.status == REMOVED || en.status == COMPLETED){
-						job_registry_unlink_proxy(rha, &en);
-					}
-					if (remupd_conf != NULL){
-						if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
-							do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in FinalStateQuery\n",argv0);
+				if(en.status!=UNDEFINED && en.status!=IDLE){	
+					if ((ret=job_registry_update(rha, &en)) < 0){
+						if(ret != JOB_REGISTRY_NOT_FOUND){
+							fprintf(stderr,"Update of record returns %d: ",ret);
+							perror("");
+						}
+					} else {
+						do_log(debuglogfile, debug, 2, "%s: registry update in FinalStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
+						if (en.status == REMOVED || en.status == COMPLETED){
+							job_registry_unlink_proxy(rha, &en);
+						}
+						if (remupd_conf != NULL){
+							if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
+								do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in FinalStateQuery\n",argv0);
+							}
 						}
 					}
 				}
+				freetoken(&token,maxtok_t);
+				free(string_now);
+				free(line);
 			}
-			freetoken(&token,maxtok_t);
-			free(string_now);
-			free(line);
+			pclose(fp);
 		}
-		pclose(fp);
-	}
 
-	free(command_string);
+		free(command_string);
+	}
+	freetoken(&ctoken,maxtok_c);
 	return 0;
 }
 
@@ -713,6 +753,38 @@ int AssignFinalState(char *batchid){
 	}
 	
 	return 0;
+}
+
+int GetCondorVersion(){
+
+        char *command_string=NULL;
+        FILE *fp;
+        char *line=NULL;
+        char **token;
+        int maxtok_t=0;
+        char *condor_version=NULL;
+        int c_version=0;
+        char *cp=NULL;
+
+	command_string=make_message("%s/condor_version",condor_binpath);
+        fp = popen(command_string,"r");
+
+        if(fp!=NULL){
+                while(!feof(fp) && (line=get_line(fp))){
+                        if ((cp = strrchr (line, '\n')) != NULL){
+                                *cp = '\0';
+                        }
+
+                        if(line && strstr(line,"CondorVersion")!=0){
+                                maxtok_t = strtoken(line, ' ', &token);
+                                condor_version=strdel(token[1],".");
+                                freetoken(&token,maxtok_t);
+                                break;
+                        }
+                }
+        }
+        c_version=atoi(condor_version);
+        return c_version;
 }
 
 void sighup()
