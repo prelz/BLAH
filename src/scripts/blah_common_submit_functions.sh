@@ -626,8 +626,8 @@ function bls_start_job_wrapper ()
   fi
 
   echo "mkdir \$new_home"
-  echo "trap 'cd \$old_home; rm -rf \$new_home; exit 255' 1 2 3 15 24"
-  echo "trap 'cd \$old_home; rm -rf \$new_home' 0"
+  echo "trap 'wait \$job_pid; cd \$old_home; rm -rf \$new_home; exit 255' 1 2 3 15 24"
+  echo "trap 'wait \$job_pid; cd \$old_home; rm -rf \$new_home' 0"
 
   echo "# Copy into new home any shared input sandbox file"
   bls_fl_subst_and_dump inputcopy "cp \"@@F_LOCAL\" \"\$new_home/@@F_REMOTE\" &> /dev/null" 
