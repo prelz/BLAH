@@ -294,14 +294,14 @@ job_registry_purge(const char *path, time_t oldest_creation_date,
      }
     if (ret == 0) break;
 
-    /* Sanitize sequence numbers */
-    if (cur.recnum != (last_recnum+1)) cur.recnum = last_recnum + 1;
-    last_recnum = cur.recnum;
     if (cur.cdate < oldest_creation_date)
      {
       job_registry_unlink_proxy(jra, &cur);
       continue;
      }
+    /* Sanitize sequence numbers */
+    if (cur.recnum != (last_recnum+1)) cur.recnum = last_recnum + 1;
+    last_recnum = cur.recnum;
 
     job_registry_store_hash(&hst, cur.subject_hash);
 
