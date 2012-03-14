@@ -58,13 +58,13 @@ Readline(int sockd, void *vptr, size_t maxlen)
 				switch (fds[0].revents){
 				case POLLNVAL:
 					syserror("poll() file descriptor error in Readline: %r");
-					break;
+					return -1;
 				case POLLHUP:
 					syserror("Connection closed in Readline: %r");
-					break;
+					return -1;
 				case POLLERR:
 					syserror("poll() POLLERR in Readline: %r");
-					break;
+					return -1;
 				}
 			} else {
 
