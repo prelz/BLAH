@@ -2,7 +2,7 @@
 # * BLAHP daemon * 
 # ****************
 #
-# $Id: Makefile.am,v 1.58 2012/03/20 13:29:04 mezzadri Exp $ 
+# $Id: Makefile.am,v 1.59 2012/03/20 13:36:15 mezzadri Exp $ 
 #
 # File:           Makefile.am
 #
@@ -46,9 +46,9 @@ else
 GLOBUS_EXECS =
 endif
 
-sbin_PROGRAMS = blahpd_daemon blah_job_registry_add blah_job_registry_lkup blah_job_registry_scan_by_subject blah_check_config blah_job_registry_dump
+sbin_PROGRAMS = blahpd_daemon blah_job_registry_add blah_job_registry_lkup blah_job_registry_scan_by_subject blah_check_config blah_job_registry_dump blah_job_registry_purge
 bin_PROGRAMS = blahpd
-libexec_PROGRAMS = BLClient BLParserLSF BLParserPBS BUpdaterCondor BNotifier BUpdaterLSF BUpdaterPBS BUpdaterSGE $(GLOBUS_EXECS)  blparser_master blah_job_registry_purge
+libexec_PROGRAMS = BLClient BLParserLSF BLParserPBS BUpdaterCondor BNotifier BUpdaterLSF BUpdaterPBS BUpdaterSGE $(GLOBUS_EXECS)  blparser_master
 noinst_PROGRAMS = test_job_registry_create test_job_registry_purge test_job_registry_update test_job_registry_access test_job_registry_update_from_network test_cmdbuffer
 
 common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C proxy_hashcontainer.c config.c job_registry.c blah_utils.c env_helper.c mapped_exec.c md5.c cmdbuffer.c
