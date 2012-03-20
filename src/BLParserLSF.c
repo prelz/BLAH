@@ -1260,7 +1260,7 @@ GetLogList(char *logdate)
 	} else {
 		while(n--) {
 			if( *(direntry[n]->d_name) == '.' ) continue;
-			s=make_message("%s/%s",direntry[n]->d_name);
+			s=make_message("%s/%s",ldir,direntry[n]->d_name);
 			rc=stat(s,&sbuf);
 			if(rc) {
 				syserror("Cannot stat file %s: %r", s);
