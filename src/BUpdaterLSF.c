@@ -1185,6 +1185,18 @@ IntStateQuery()
 				en.exitcode=0;
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				freetoken(&token,maxtok_t);
+			}else if(line && strstr(line," Post job process failed") && en.status == COMPLETED){	
+				maxtok_t = strtoken(line, ' ', &token);
+				timestamp=make_message("%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp[strlen(timestamp)-1]='\0';
+				tmstampepoch=str2epoch(timestamp,"W");
+				en.udate=tmstampepoch;
+				en.status=COMPLETED;
+				free(timestamp);
+				en.exitcode=-998;
+				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
+				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"LSF Postjob failed");
+				freetoken(&token,maxtok_t);
 			}
 			free(line);
 			free(string_now);
@@ -1403,6 +1415,18 @@ exitcode (=0 if Done successfully) or (from Exited with exit code 2)
 				en.exitcode=0;
 				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+				freetoken(&token,maxtok_t);
+			}else if(line && strstr(line," Post job process failed") && en.status == COMPLETED){	
+				maxtok_t = strtoken(line, ' ', &token);
+				timestamp=make_message("%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp[strlen(timestamp)-1]='\0';
+				tmstampepoch=str2epoch(timestamp,"W");
+				en.udate=tmstampepoch;
+				en.status=COMPLETED;
+				free(timestamp);
+				en.exitcode=-998;
+				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
+				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"LSF Postjob failed");
 				freetoken(&token,maxtok_t);
 			}
 			free(string_now);
