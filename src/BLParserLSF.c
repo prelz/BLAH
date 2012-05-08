@@ -839,7 +839,7 @@ LookupAndSend(int m_sock)
 		if(id>0 && j2js[id]!=NULL){
          
 			if(j2wn[id] && strcmp(j2wn[id],"\0")==0){
-				t_wnode[0]='\0';
+				t_wnode=make_message("");
 			}else{
 				t_wnode=make_message("WorkerNode=%s;",j2wn[id]);
 			}
