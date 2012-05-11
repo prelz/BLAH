@@ -1152,7 +1152,7 @@ IntStateQuery()
 					free(ex_str);
 					freetoken(&token,maxtok_t);
 					
-					if(wexitcode==255 || wexitcode==130){
+					if(wexitcode==255 || wexitcode==130 || wexitcode==143){
 						en.status=REMOVED;
 						en.exitcode=-999;
 					}else{

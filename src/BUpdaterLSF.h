@@ -69,7 +69,7 @@ char *batch_command=NULL;
 char *use_bhist_time_constraint="no";
 char *use_btools="no";
 char *btools_path="/usr/local/bin";
-char *use_bhist_for_killed="no";
+char *use_bhist_for_killed="yes";
 
 bupdater_active_jobs bact;
 
