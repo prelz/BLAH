@@ -317,7 +317,6 @@ PollDB()
 	job_registry_handle *rha;
 	job_registry_handle *rhc;
 	char *buffer=NULL;
-	char *finalbuffer=NULL;
         char *cdate=NULL;
 	time_t now;
         int  maxtok,i,maxtokl,j;
