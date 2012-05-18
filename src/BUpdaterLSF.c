@@ -1080,6 +1080,14 @@ IntStateQuery()
 					}
 				}
 				first=FALSE;
+			}else if(line && strstr(line," Submitted from host ") && (en.status == IDLE)){
+				maxtok_t = strtoken(line, ' ', &token);
+				timestamp=make_message("%s %s %s %s",token[0],token[1],token[2],token[3]);
+				timestamp[strlen(timestamp)-1]='\0';
+				tmstampepoch=str2epoch(timestamp,"W");
+				en.udate=tmstampepoch;
+				free(timestamp);
+				freetoken(&token,maxtok_t);
 			}else if(line && strstr(line," <PEND>, ")){	
 				en.status=IDLE;
 				en.exitcode=-1;
