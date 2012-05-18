@@ -316,6 +316,8 @@ str2epoch(char *str, char * f)
 		strptime(str,"%a %b %d %T %Y",&tm);
         }else if(strcmp(f,"A")==0){
                 strptime(str,"%m/%d/%Y %T",&tm);
+        }else if(strcmp(f,"N")==0){
+                strptime(str,"%Y-%m-%dT%T",&tm);
 	}else if(strcmp(f,"W")==0){
 		
 	/* If do not have the year in the date we compare day and month and set the year */
