@@ -587,6 +587,8 @@ IntStateQuery()
 						en.status=HELD;
 						en.exitcode=-1;
 						JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
+					}else if(token_l[1] && strstr(token_l[1],"COMPLETING")){
+						bupdater_remove_active_job(&bact, en.batch_id);
 					}
 					freetoken(&token_l,maxtok_l);
 				}
