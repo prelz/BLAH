@@ -606,7 +606,8 @@ IntStateQueryCustom()
 	char *string_now=NULL;
 	int wexitcode=0;
 	int wexitinfo=0;
-	command_string=make_message("%s/bjobsinfo",btools_path);
+
+	command_string=make_message("%s%s/bjobsinfo",batch_command,btools_path);
 	fp = popen(command_string,"r");
 	
 	do_log(debuglogfile, debug, 3, "%s: command in IntStateQueryCustom is:%s\n",argv0,command_string);
