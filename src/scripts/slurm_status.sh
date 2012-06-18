@@ -35,6 +35,6 @@ if [ "x$job_registry" != "x" ] ; then
    ${blah_sbin_directory}/blah_job_registry_lkup $@
    exit 0
 else
-   echo "job regitry not enabled (required for SLURM support)" >&2
+   echo "job registry not enabled (required for SLURM support)" >&2
    exit 1
 fi
