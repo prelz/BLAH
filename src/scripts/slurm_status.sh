@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#  File:     pbs_status.sh
+#  File:     slurm_status.sh
 #
 #  Author:   David Rebatto
 #  e-mail:   David.Rebatto@mi.infn.it

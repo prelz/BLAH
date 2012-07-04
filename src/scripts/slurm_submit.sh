@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# File:     pbs_submit.sh
+# File:     slurm_submit.sh
 # Author:   David Rebatto (david.rebatto@mi.infn.it)
 #
 # Revision history:
