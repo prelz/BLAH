@@ -7,6 +7,7 @@
  *  Revision history :
  *   5-May-2009 Original release
  *  16-Jul-2012 Added statistics count of jobs. Allow empty hash.
+ *  16-Jul-2012 Added job user prefix filter.
  *
  *  Description:
  *   Executable to look up for entries in the BLAH job registry
@@ -289,7 +290,7 @@ get_format_type(char *fmt, int which, int *totfmts)
   return result;
 }
 
-#define USAGE_STRING "ERROR Usage: %s [-total] (<-s (proxy subject)>|<-h (proxy subject hash>) [-j job_status[\\|job_status]] \"Optional arg1 format\" arg1 \"Optional arg2 format\" arg2, etc.\n"
+#define USAGE_STRING "ERROR Usage: %s [-total] [<-s (proxy subject)>|<-h (proxy subject hash>] [-p (user prefix)] [-j job_status[\\|job_status]] \"Optional arg1 format\" arg1 \"Optional arg2 format\" arg2, etc.\n"
 
 static void 
 print_usage(char *name)
@@ -331,6 +332,8 @@ main(int argc, char *argv[])
   format_type first_fmt;
   int nfmts;
   int total_only = 0;
+  char *test_user_prefix = NULL;
+  int test_user_prefix_len = 0;
  
   if (argc > 1)
    {
@@ -388,6 +391,10 @@ main(int argc, char *argv[])
           break;
         case 't':
           total_only = 1;
+          break;
+        case 'p':
+          test_user_prefix = arg;
+          test_user_prefix_len = strlen(arg);
           break;
         default:
           print_usage(argv[0]);
@@ -491,10 +498,24 @@ main(int argc, char *argv[])
     /* Is the current entry in the requested job status ? */
     if ((select_by_job_status != 0) && 
         (!check_job_state_condition(select_by_job_status, ren->status)))
+     {
+      free(ren);
       continue;
+     }
+
+    if ((test_user_prefix != NULL) &&
+        (strncmp(ren->user_prefix, test_user_prefix, test_user_prefix_len) != 0))
+     {
+      free(ren);
+      continue;
+     }
 
     njobs++;
-    if (total_only != 0) continue;
+    if (total_only != 0)
+     {
+      free(ren);
+      continue;
+     }
 
     cad = job_registry_entry_as_classad(rha, ren);
     if (cad != NULL)
