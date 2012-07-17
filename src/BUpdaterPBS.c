@@ -39,9 +39,6 @@ int main(int argc, char *argv[]){
 	
 	char *first_duplicate=NULL;
 	
-	struct pollfd *remupd_pollset = NULL;
-	int remupd_nfds;
-	
 	int version=0;
 	int first=TRUE;
 	int tmptim;
@@ -465,7 +462,7 @@ int
 ReceiveUpdateFromNetwork()
 {
 	char *proxy_path, *proxy_subject;
-	int timeout_ms = 0;
+	int timeout_ms = -1;
 	int ret, prret, rhret;
 	job_registry_entry *nen;
 	job_registry_entry *ren;
@@ -473,13 +470,16 @@ ReceiveUpdateFromNetwork()
 	proxy_path = NULL;
 	proxy_subject = NULL;
 	
+	do_log(debuglogfile, debug, 1, "%s: ReceiveUpdateFromNetwork() thread started\n", argv0);
 	while ((nen = job_registry_receive_update(remupd_pollset, remupd_nfds,timeout_ms, &proxy_subject, &proxy_path))){
+		do_log(debuglogfile, debug, 2, "%s: ReceiveUpdateFromNetwork() received an update for job %s\n", argv0, nen->batch_id);
 	
 		JOB_REGISTRY_ASSIGN_ENTRY(nen->subject_hash,"\0");
 		JOB_REGISTRY_ASSIGN_ENTRY(nen->proxy_link,"\0");
 		
 		if ((ren=job_registry_get(rha, nen->batch_id)) == NULL){
 			if ((ret=job_registry_append(rha, nen)) < 0){
+				do_log(debuglogfile, debug, 1, "%s: Warning: job_registry_append returns %d: ",argv0,ret);
 				fprintf(stderr,"%s: Warning: job_registry_append returns %d: ",argv0,ret);
 				perror("");
 			} 
