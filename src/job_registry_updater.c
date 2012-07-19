@@ -8,6 +8,7 @@
  *  Revision history :
  *  13-Jul-2011 Original release
  *  19-Jul-2011 Added transfer of full proxy subject and path.
+ *  19-Jul-2012 Exclude local addresses from possible destinations.
  *
  *  Description:
  *    Protocol to distribute network updates to the BLAH registry.
@@ -41,6 +42,7 @@
 #include <poll.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -189,6 +191,12 @@ job_registry_updater_setup_sender(char **destinations, int n_destinations,
   int n_added = 0;
   int is_multicast;
   struct ip_mreqn mreq4;
+  struct ifconf ifc; /* holds IOCTL return value for SIOCGIFCONF */
+  int iofd = -1;
+  int ifconf_ret, numreqs = 30, n;
+  struct ifreq *ifr; /* points to one interface returned from ioctl */
+  struct sockaddr_in *sin, *lin;
+  struct sockaddr_in6 *sin6, *lin6;
 
   if (endpoints == NULL)
    {
@@ -203,6 +211,36 @@ job_registry_updater_setup_sender(char **destinations, int n_destinations,
     last = cur;
    }
 
+  /* Get local interface data via SIOCGIFCONF ioctl */
+  iofd = socket (PF_INET, SOCK_DGRAM, 0);
+  if (iofd >= 0)
+   {
+    memset (&ifc, 0, sizeof(ifc));
+
+    ifc.ifc_buf = NULL;
+    ifc.ifc_len =  sizeof(struct ifreq) * numreqs;
+    ifc.ifc_buf = malloc(ifc.ifc_len);
+
+    for (;;)
+     {
+      ifc.ifc_len = sizeof(struct ifreq) * numreqs;
+      ifc.ifc_buf = realloc(ifc.ifc_buf, ifc.ifc_len);
+  
+      if ((ifconf_ret = ioctl(iofd, SIOCGIFCONF, &ifc)) < 0)
+       {
+        break;
+       }
+      if (ifc.ifc_len == sizeof(struct ifreq) * numreqs)
+       {
+        /* assume it overflowed and try again */
+        numreqs += 10;
+        continue;
+       }
+      break;
+     }
+   }
+ 
+
   for (i=0; i<n_destinations; ++i)
    {
     if ((pretcod = job_registry_updater_parse_address(destinations[i], &ai_ans, &ifindex)) >= 0)
@@ -210,12 +248,53 @@ job_registry_updater_setup_sender(char **destinations, int n_destinations,
       /* Look for a workable address */
       for (cur_ans = ai_ans; cur_ans != NULL; cur_ans = cur_ans->ai_next)
        {
+        /* Exclude local addresses */
+        if ((iofd >= 0) && (ifconf_ret >= 0))
+         {
+          /* loop through interfaces returned from SIOCGIFCONF */
+          ifr=ifc.ifc_req;
+          for (n=0; n < ifc.ifc_len; n+=sizeof(struct ifreq))
+           {
+            /* Get the interface address */
+            if (ioctl(iofd,SIOCGIFADDR, ifr) == 0 )
+             {
+              if (ifr->ifr_ifru.ifru_addr.sa_family == cur_ans->ai_family)
+               {
+                switch(cur_ans->ai_family)
+                 {
+                  case AF_INET:
+                    /* IPV4 case */
+                    lin = (struct sockaddr_in *)&ifr->ifr_ifru.ifru_addr;
+                    sin = (struct sockaddr_in *)(cur_ans->ai_addr);
+                    if ((lin->sin_addr.s_addr) == (sin->sin_addr.s_addr))
+                      continue;
+                    break;
+                  case AF_INET6:
+                    /* IPV6 case */
+                    lin6 = (struct sockaddr_in6 *)&ifr->ifr_ifru.ifru_addr;
+                    sin6 = (struct sockaddr_in6 *)(cur_ans->ai_addr);
+                    if (memcmp(lin6->sin6_addr.s6_addr, sin6->sin6_addr.s6_addr, 16) == 0)
+                      continue;
+                    break;
+                  default:
+                    /* Unknown family */
+                 }
+               }
+             }
+           }
+         }
+
         tfd = socket(cur_ans->ai_family, cur_ans->ai_socktype, cur_ans->ai_protocol);
         if (tfd < 0)
          {
           if (n_destinations == 1)
            {
             freeaddrinfo(ai_ans);
+            if (iofd >= 0)
+             {
+              free(ifc.ifc_buf);
+              close(iofd);
+             }
             return JOB_REGISTRY_SOCKET_FAIL;
            }
           else continue; 
@@ -241,6 +320,11 @@ job_registry_updater_setup_sender(char **destinations, int n_destinations,
                 if (n_destinations == 1)
                  {
                   freeaddrinfo(ai_ans);
+                  if (iofd >= 0)
+                   {
+                    free(ifc.ifc_buf);
+                    close(iofd);
+                   }
                   return JOB_REGISTRY_MCAST_FAIL;
                  }
                 else continue; 
@@ -256,6 +340,11 @@ job_registry_updater_setup_sender(char **destinations, int n_destinations,
                 if (n_destinations == 1)
                  {
                   freeaddrinfo(ai_ans);
+                  if (iofd >= 0)
+                   {
+                    free(ifc.ifc_buf);
+                    close(iofd);
+                   }
                   return JOB_REGISTRY_MCAST_FAIL;
                  }
                 else continue; 
@@ -274,6 +363,11 @@ job_registry_updater_setup_sender(char **destinations, int n_destinations,
           if (n_destinations == 1)
            {
             freeaddrinfo(ai_ans);
+            if (iofd >= 0)
+             {
+              free(ifc.ifc_buf);
+              close(iofd);
+             }
             return JOB_REGISTRY_MALLOC_FAIL;
            }
           else continue;
@@ -289,6 +383,11 @@ job_registry_updater_setup_sender(char **destinations, int n_destinations,
           if (n_destinations == 1)
            {
             freeaddrinfo(ai_ans);
+            if (iofd >= 0)
+             {
+              free(ifc.ifc_buf);
+              close(iofd);
+             }
             return JOB_REGISTRY_TTL_FAIL;
            }
           else continue;
@@ -300,6 +399,11 @@ job_registry_updater_setup_sender(char **destinations, int n_destinations,
           if (n_destinations == 1)
            {
             freeaddrinfo(ai_ans);
+            if (iofd >= 0)
+             {
+              free(ifc.ifc_buf);
+              close(iofd);
+             }
             return JOB_REGISTRY_CONNECT_FAIL;
            }
           else continue;
@@ -320,6 +424,11 @@ job_registry_updater_setup_sender(char **destinations, int n_destinations,
      {
       return pretcod;
      }
+   }
+  if (iofd >= 0)
+   {
+    free(ifc.ifc_buf);
+    close(iofd);
    }
   return n_added;
 }
