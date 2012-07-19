@@ -2,7 +2,7 @@
  *  File :     job_registry_updater.c
  *
  *
- *  Author :   Francesco Prelz ($Author: fprelz $)
+ *  Author :   Francesco Prelz ($Author: drebatto $)
  *  e-mail :   "francesco.prelz@mi.infn.it"
  *
  *  Revision history :
@@ -218,8 +218,6 @@ job_registry_updater_setup_sender(char **destinations, int n_destinations,
     memset (&ifc, 0, sizeof(ifc));
 
     ifc.ifc_buf = NULL;
-    ifc.ifc_len =  sizeof(struct ifreq) * numreqs;
-    ifc.ifc_buf = malloc(ifc.ifc_len);
 
     for (;;)
      {
@@ -252,7 +250,7 @@ job_registry_updater_setup_sender(char **destinations, int n_destinations,
         if ((iofd >= 0) && (ifconf_ret >= 0))
          {
           /* loop through interfaces returned from SIOCGIFCONF */
-          ifr=ifc.ifc_req;
+          ifr = ifc.ifc_req;
           for (n=0; n < ifc.ifc_len; n+=sizeof(struct ifreq))
            {
             /* Get the interface address */
@@ -278,6 +276,7 @@ job_registry_updater_setup_sender(char **destinations, int n_destinations,
                     break;
                   default:
                     /* Unknown family */
+                    break;
                  }
                }
              }
