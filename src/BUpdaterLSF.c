@@ -24,6 +24,8 @@
 
 #include "BUpdaterLSF.h"
 
+time_t last_network_update;
+
 int main(int argc, char *argv[]){
 
 	FILE *fd;
@@ -422,7 +424,13 @@ int main(int argc, char *argv[]){
 				last_consistency_check=time(0);
 			}
 		}
-		
+
+		if (now - last_network_update < loop_interval) {
+			do_log(debuglogfile, debug, 2, "%s: skipping iteration as registry was updated %d seconds ago via network\n", argv0, now - last_network_update);
+			sleep(loop_interval);
+			continue;
+		}
+			
 
 		if(use_btools && strcmp(use_btools,"yes")==0){ 
 			IntStateQueryCustom();
@@ -431,7 +439,7 @@ int main(int argc, char *argv[]){
 		}else{
 			IntStateQueryShort();
 		}
-		
+
 		fd = job_registry_open(rha, "r");
 		if (fd == NULL){
 			do_log(debuglogfile, debug, 1, "%s: Error opening job registry %s\n",argv0,registry_file);
@@ -571,8 +579,11 @@ ReceiveUpdateFromNetwork()
 			}
 			if(job_registry_need_update(ren,nen,JOB_REGISTRY_UPDATE_ALL)){
 				if ((ret=job_registry_update(rha, nen)) < 0){
+					do_log(debuglogfile, debug, 1, "%s: Warning: job_registry_update returns %d: ",argv0,ret);
 					fprintf(stderr,"%s: Warning: job_registry_update returns %d: ",argv0,ret);
 					perror("");
+				} else {
+					last_network_update = time(0);
 				}
 			} 
 		}
