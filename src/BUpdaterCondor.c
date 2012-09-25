@@ -329,20 +329,18 @@ int main(int argc, char *argv[]){
                         	fprintf(stderr,"%s: Error purging job registry %s :",argv0,registry_file);
                         	perror("");
 
-			}else{
-				purge_time=time(0);
 			}
+			purge_time=time(0);
 		}	       
 		
 		now=time(0);
 		if(now - last_consistency_check > bupdater_consistency_check_interval){
 			if(job_registry_check_index_key_uniqueness(rha,&first_duplicate)==JOB_REGISTRY_FAIL){
-				do_log(debuglogfile, debug, 1, "%s: Found job registry duplicate entry. The first one is:%s\n",argv0,first_duplicate);
-               	        	fprintf(stderr,"%s: Found job registry duplicate entry. The first one is:%s",argv0,first_duplicate);
+				do_log(debuglogfile, debug, 1, "%s: Found job registry duplicate entry. The first one is:%s\nJobid should be removed or registry directory should be removed.\n",argv0,first_duplicate);
+               	        	fprintf(stderr,"%s: Found job registry duplicate entry. The first one is:%s\nJobid should be removed or registry directory should be removed.",argv0,first_duplicate);
  
-			}else{
-				last_consistency_check=time(0);
 			}
+			last_consistency_check=time(0);
 		}
 
 		IntStateQuery();
