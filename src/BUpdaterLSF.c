@@ -306,6 +306,16 @@ int main(int argc, char *argv[]){
 		free(s);
 	}
 	
+	ret = config_get("bupdater_use_bhist_for_idle",cha);
+	if (ret == NULL){
+		do_log(debuglogfile, debug, 1, "%s: key bupdater_use_bhist_for_idle not found - using the default:%s\n",argv0,use_bhist_for_idle);
+	} else {
+		use_bhist_for_idle=strdup(ret->value);
+                if(use_bhist_for_idle == NULL){
+                        sysfatal("strdup failed for use_bhist_for_idle in main: %r");
+                }
+	}
+	
 	ret = config_get("bupdater_use_bhist_for_killed",cha);
 	if (ret == NULL){
 		do_log(debuglogfile, debug, 1, "%s: key bupdater_use_bhist_for_killed not found - using the default:%s\n",argv0,use_bhist_for_killed);
@@ -409,20 +419,18 @@ int main(int argc, char *argv[]){
                 	        fprintf(stderr,"%s: Error purging job registry %s :",argv0,registry_file);
                 	        perror("");
 
-			}else{
-				purge_time=time(0);
 			}
+			purge_time=time(0);
 		}
 		
 		now=time(0);
 		if(now - last_consistency_check > bupdater_consistency_check_interval){
 			if(job_registry_check_index_key_uniqueness(rha,&first_duplicate)==JOB_REGISTRY_FAIL){
-				do_log(debuglogfile, debug, 1, "%s: Found job registry duplicate entry. The first one is:%s\n",argv0,first_duplicate);
-               	        	fprintf(stderr,"%s: Found job registry duplicate entry. The first one is:%s",argv0,first_duplicate);
+				do_log(debuglogfile, debug, 1, "%s: Found job registry duplicate entry. The first one is:%s\nJobid should be removed or registry directory should be removed.\n",argv0,first_duplicate);
+               	        	fprintf(stderr,"%s: Found job registry duplicate entry. The first one is:%s\nJobid should be removed or registry directory should be removed.",argv0,first_duplicate);
  
-			}else{
-				last_consistency_check=time(0);
 			}
+			last_consistency_check=time(0);
 		}
 
 		if (now - last_network_update < loop_interval) {
@@ -484,17 +492,17 @@ int main(int argc, char *argv[]){
 					continue;
 				}
 								
-				if(en->status==IDLE && strlen(en->updater_info)>0){
+				if(en->status==IDLE && strlen(en->updater_info)>0 && use_bhist_for_idle && strcmp(use_bhist_for_idle,"yes")==0){
 					if (en->mdate < finalquery_start_date){
 						finalquery_start_date=en->mdate;
 					}
-					do_log(debuglogfile, debug, 2, "%s: FinalStateQuery needed for jobid=%s with status=%d\n",argv0,en->batch_id,en->status);
+					do_log(debuglogfile, debug, 2, "%s: FinalStateQuery needed for jobid=%s with status=%d v1\n",argv0,en->batch_id,en->status);
 					runfinal=TRUE;
-				}else if((now-confirm_time>finalstate_query_interval) && (now > next_finalstatequery)){
+				}else if((now-confirm_time>finalstate_query_interval) && (now > next_finalstatequery) && use_bhist_for_idle && strcmp(use_bhist_for_idle,"yes")==0){
 					if (en->mdate < finalquery_start_date){
 						finalquery_start_date=en->mdate;
 					}
-					do_log(debuglogfile, debug, 2, "%s: FinalStateQuery needed for jobid=%s with status=%d\n",argv0,en->batch_id,en->status);
+					do_log(debuglogfile, debug, 2, "%s: FinalStateQuery needed for jobid=%s with status=%d v2\n",argv0,en->batch_id,en->status);
 					runfinal=TRUE;
 				}
 				

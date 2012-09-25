@@ -70,6 +70,7 @@ char *use_bhist_time_constraint="no";
 char *use_btools="no";
 char *btools_path="/usr/local/bin";
 char *use_bhist_for_killed="yes";
+char *use_bhist_for_idle="yes";
 
 bupdater_active_jobs bact;
 
