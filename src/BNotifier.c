@@ -42,8 +42,6 @@ char *debuglogname;
 
 int  c_sock;
 
-config_entry *remupd_conf;
-
 /* moved to per-thread structure
 int startnotify=FALSE;
 int startnotifyjob=FALSE;
@@ -228,11 +226,6 @@ main(int argc, char *argv[])
                 }
 	}
 	
-	remupd_conf = config_get("job_registry_add_remote",cha);
-	if (remupd_conf == NULL){
-		do_log(debuglogfile, debug, 1, "%s: key job_registry_add_remote not found\n",argv0);
-	}
-		
 	/* create listening socket for Cream */
     
 	if ( !async_notif_port ) {
@@ -324,6 +317,7 @@ PollDB()
 	job_registry_handle *rha;
 	job_registry_handle *rhc;
 	char *buffer=NULL;
+	char *finalbuffer=NULL;
         char *cdate=NULL;
 	time_t now;
         int  maxtok,i,maxtokl,j;
@@ -336,8 +330,7 @@ PollDB()
         char *cp=NULL;
 	int to_sleep=FALSE;
 	int skip_reg_open=FALSE;
-	int ret;
-
+	
 	rha=job_registry_init(registry_file, BY_BATCH_ID);
 	if (rha == NULL){
 		do_log(debuglogfile, debug, 1, "%s: Error initialising job registry %s\n",argv0,registry_file);
@@ -372,37 +365,19 @@ PollDB()
         	 	   	  	if ((en=job_registry_get(rhc, tbuf[j])) != NULL){
 						buffer=ComposeClassad(en);
 		 	   	  	}else{
-						if(remupd_conf == NULL){
-		 	   	  			cdate=iepoch2str(now);
-		 	   	  			maxtokl=strtoken(tbuf[j],'_',&lbuf);
-		 	   	  			if(lbuf[1]){
-		 	   	  				if ((cp = strrchr (lbuf[1], '\n')) != NULL){
-		 	   	  					*cp = '\0';
-		 	   	  				}
-		 	   	  				if ((cp = strrchr (lbuf[1], '\r')) != NULL){
-		 	   	  					*cp = '\0';
-		 	   	  				}
-		 	   	  				buffer=make_message("[BlahJobName=\"%s\"; ClientJobId=\"%s\"; JobStatus=4; JwExitCode=999; ExitReason=\"BUpdater is not able to find the job anymore\"; Reason=\"BUpdater is not able to find the job anymore\"; ChangeTime=\"%s\"; ]\n",tbuf[j],lbuf[1],cdate);
+		 	   	  		cdate=iepoch2str(now);
+		 	   	  		maxtokl=strtoken(tbuf[j],'_',&lbuf);
+		 	   	  		if(lbuf[1]){
+		 	   	  			if ((cp = strrchr (lbuf[1], '\n')) != NULL){
+		 	   	  				*cp = '\0';
 		 	   	  			}
-		 	   	  			freetoken(&lbuf,maxtokl);
-		 	   	  			free(cdate);
-						}else{
-		 	   	  			maxtokl=strtoken(tbuf[j],':',&lbuf);
-							JOB_REGISTRY_ASSIGN_ENTRY(en->batch_id,lbuf[0]);
-							JOB_REGISTRY_ASSIGN_ENTRY(en->blah_id,lbuf[1]);
-		 	   	  			freetoken(&lbuf,maxtokl);
-							en->status = 0;
-							if ((ret=job_registry_append(rhc, en))<0){
-								if(ret != JOB_REGISTRY_NOT_FOUND){
-									fprintf(stderr,"Update of record returns %d: ",ret);
-									perror("");
-								}
-							}else{
-								if(ret==JOB_REGISTRY_SUCCESS){
-									do_log(debuglogfile, debug, 2, "%s: registry append in PollDB for: jobid=%s blahjobid=%s\n",argv0,en->batch_id,en->blah_id);
-								}
-							}
-						}
+		 	   	  			if ((cp = strrchr (lbuf[1], '\r')) != NULL){
+		 	   	  				*cp = '\0';
+		 	   	  			}
+		 	   	  			buffer=make_message("[BlahJobName=\"%s\"; ClientJobId=\"%s\"; JobStatus=4; JwExitCode=999; ExitReason=\"BUpdater is not able to find the job anymore\"; Reason=\"BUpdater is not able to find the job anymore\"; ChangeTime=\"%s\"; ]\n",tbuf[j],lbuf[1],cdate);
+		 	   	  		}
+		 	   	  		freetoken(&lbuf,maxtokl);
+		 	   	  		free(cdate);
 		 	   	  	}
 		 	   	  	free(en);
 		 	   	  	len=strlen(buffer);
@@ -640,10 +615,6 @@ STARTNOTIFYJOBEND
 				connection->startnotify=TRUE;
 				connection->firstnotify=TRUE;
 			} else if (strstr(buffer,"STARTNOTIFYJOBLIST/") != NULL) {
-				GetJobList(buffer, &(connection->joblist_string));
-				connection->startnotifyjob = TRUE;
-				connection->startnotify = FALSE;
-			} else if (strstr(buffer,"STARTNETWORKSYNC/") != NULL) {
 				GetJobList(buffer, &(connection->joblist_string));
 				connection->startnotifyjob = TRUE;
 				connection->startnotify = FALSE;

@@ -39,6 +39,9 @@ int main(int argc, char *argv[]){
 	
 	char *first_duplicate=NULL;
 	
+	struct pollfd *remupd_pollset = NULL;
+	int remupd_nfds;
+	
 	int version=0;
 	int first=TRUE;
 	int tmptim;
@@ -293,7 +296,7 @@ int main(int argc, char *argv[]){
 	if (ret == NULL){
 		do_log(debuglogfile, debug, 1, "%s: key tracejob_max_output not found using default\n",argv0,tracejob_max_output);
 	} else {
-		tracejob_max_output=atoi(ret->value);
+		tracejob_max_output==atoi(ret->value);
 	}
 	
 	remupd_conf = config_get("job_registry_add_remote",cha);
@@ -360,18 +363,20 @@ int main(int argc, char *argv[]){
                 	        fprintf(stderr,"%s: Error purging job registry %s :",argv0,registry_file);
                 	        perror("");
 
+			}else{
+				purge_time=time(0);
 			}
-			purge_time=time(0);
 		}
 		
 		now=time(0);
 		if(now - last_consistency_check > bupdater_consistency_check_interval){
 			if(job_registry_check_index_key_uniqueness(rha,&first_duplicate)==JOB_REGISTRY_FAIL){
-				do_log(debuglogfile, debug, 1, "%s: Found job registry duplicate entry. The first one is:%s\n.Jobid should be removed or registry directory should be removed.\n",argv0,first_duplicate);
-               	        	fprintf(stderr,"%s: Found job registry duplicate entry. The first one is:%s\nJobid should be removed or registry directory should be removed.",argv0,first_duplicate);
+				do_log(debuglogfile, debug, 1, "%s: Found job registry duplicate entry. The first one is:%s\n",argv0,first_duplicate);
+               	        	fprintf(stderr,"%s: Found job registry duplicate entry. The first one is:%s",argv0,first_duplicate);
  
+			}else{
+				last_consistency_check=time(0);
 			}
-			last_consistency_check=time(0);
 		}
 	       
 		IntStateQuery();
@@ -460,24 +465,21 @@ int
 ReceiveUpdateFromNetwork()
 {
 	char *proxy_path, *proxy_subject;
-	int timeout_ms = -1;
-	int ret, prret, rhret;
+	int timeout_ms = 0;
+	int ent, ret, prret, rhret;
 	job_registry_entry *nen;
 	job_registry_entry *ren;
   
 	proxy_path = NULL;
 	proxy_subject = NULL;
 	
-	do_log(debuglogfile, debug, 1, "%s: ReceiveUpdateFromNetwork() thread started\n", argv0);
-	while ((nen = job_registry_receive_update(remupd_pollset, remupd_nfds,timeout_ms, &proxy_subject, &proxy_path))){
-		do_log(debuglogfile, debug, 2, "%s: ReceiveUpdateFromNetwork() received an update for job %s\n", argv0, nen->batch_id);
+	while (nen = job_registry_receive_update(remupd_pollset, remupd_nfds,timeout_ms, &proxy_subject, &proxy_path)){
 	
 		JOB_REGISTRY_ASSIGN_ENTRY(nen->subject_hash,"\0");
 		JOB_REGISTRY_ASSIGN_ENTRY(nen->proxy_link,"\0");
 		
 		if ((ren=job_registry_get(rha, nen->batch_id)) == NULL){
 			if ((ret=job_registry_append(rha, nen)) < 0){
-				do_log(debuglogfile, debug, 1, "%s: Warning: job_registry_append returns %d: ",argv0,ret);
 				fprintf(stderr,"%s: Warning: job_registry_append returns %d: ",argv0,ret);
 				perror("");
 			} 
@@ -619,7 +621,7 @@ Job Id: 11.cream-12.pd.infn.it
 							}
 						}
 						if (remupd_conf != NULL){
-							if ((ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL))<=0){
+							if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
 								do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in IntStateQuery\n",argv0);
 							}
 						}
@@ -734,7 +736,7 @@ Job Id: 11.cream-12.pd.infn.it
 				}
 			}
 			if (remupd_conf != NULL){
-				if ((ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL))<=0){
+				if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
 					do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in IntStateQuery\n",argv0);
 				}
 			}
@@ -912,7 +914,7 @@ Job: 13.cream-12.pd.infn.it
 					job_registry_unlink_proxy(rha, &en);
 				}
 				if (remupd_conf != NULL){
-					if ((ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL))<=0){
+					if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
 						do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in FinalStateQuery\n",argv0);
 					}
 				}
@@ -959,7 +961,7 @@ int AssignFinalState(char *batchid){
 		do_log(debuglogfile, debug, 2, "%s: registry update in AssignStateQuery for: jobid=%s creamjobid=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.status);
 		job_registry_unlink_proxy(rha, &en);
 		if (remupd_conf != NULL){
-			if ((ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL))<=0){
+			if (ret=job_registry_send_update(remupd_head_send,&en,NULL,NULL)<=0){
 				do_log(debuglogfile, debug, 2, "%s: Error creating endpoint in AssignFinalState\n",argv0);
 			}
 		}

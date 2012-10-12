@@ -1,13 +1,11 @@
 /*
  *  File :     blah_job_registry_scan_by_subject.c
  *
- *  Author :   Francesco Prelz ($Author: fprelz $)
+ *  Author :   Francesco Prelz ($Author: mezzadri $)
  *  e-mail :   "francesco.prelz@mi.infn.it"
  *
  *  Revision history :
  *   5-May-2009 Original release
- *  16-Jul-2012 Added statistics count of jobs. Allow empty hash.
- *  16-Jul-2012 Added job user prefix filter.
  *
  *  Description:
  *   Executable to look up for entries in the BLAH job registry
@@ -290,7 +288,7 @@ get_format_type(char *fmt, int which, int *totfmts)
   return result;
 }
 
-#define USAGE_STRING "ERROR Usage: %s [-total] [<-s (proxy subject)>|<-h (proxy subject hash>] [-p (user prefix)] [-j job_status[\\|job_status]] \"Optional arg1 format\" arg1 \"Optional arg2 format\" arg2, etc.\n"
+#define USAGE_STRING "ERROR Usage: %s (<-s (proxy subject)>|<-h (proxy subject hash>) [-j job_status[\\|job_status]] \"Optional arg1 format\" arg1 \"Optional arg2 format\" arg2, etc.\n"
 
 static void 
 print_usage(char *name)
@@ -325,86 +323,85 @@ main(int argc, char *argv[])
   char *lookup_subject = NULL;
   char *lookup_hash = NULL;
   int cur_arg;
-  int format_args = -1;
+  int format_args;
   int select_by_job_status = 0;
   int ifr;
   int njobs = 0;
   format_type first_fmt;
   int nfmts;
-  int total_only = 0;
-  char *test_user_prefix = NULL;
-  int test_user_prefix_len = 0;
  
-  if (argc > 1)
+  if (argc < 2)
    {
-    cur_arg = 1;
-  
-    while (argv[cur_arg][0] == '-')
+    print_usage(argv[0]);
+    return 1;
+   }
+
+  cur_arg = 1;
+
+  while (argv[cur_arg][0] == '-')
+   {
+    format_args = -1;
+    /* Look up for command line switches */
+    if (strlen(argv[cur_arg]) > 2)
      {
-      format_args = -1;
-      /* Look up for command line switches */
-      if (strlen(argv[cur_arg]) > 2)
+      arg = argv[cur_arg] + 2;
+      if (argc > (cur_arg+1))
        {
-        arg = argv[cur_arg] + 2;
-        if (argc > (cur_arg+1))
+        format_args = cur_arg+1;
+       }
+     }
+    else if (argc > (cur_arg+1))
+     {
+      arg = argv[cur_arg+1]; 
+       if (argc > (cur_arg+2))
+        {
+         format_args = cur_arg+2;
+        }
+     }
+
+    if (strlen(arg) <= 0)
+     {
+      print_usage(argv[0]);
+      return 1;
+     }
+
+    switch (argv[cur_arg][1])
+     {
+      case 'h':
+        if (lookup_hash != NULL)
          {
-          format_args = cur_arg+1;
-         }
-       }
-      else if (argc > (cur_arg+1))
-       {
-        arg = argv[cur_arg+1]; 
-         if (argc > (cur_arg+2))
-          {
-           format_args = cur_arg+2;
-          }
-       }
-  
-      if (strlen(arg) <= 0)
-       {
-        print_usage(argv[0]);
-        return 1;
-       }
-  
-      switch (argv[cur_arg][1])
-       {
-        case 'h':
-          if (lookup_hash != NULL)
-           {
-            print_usage(argv[0]);
-            return 1;
-           }
-          lookup_hash = arg;
-          break;
-        case 's':
-          if (lookup_hash != NULL)
-           {
-            print_usage(argv[0]);
-            return 1;
-           }
-          job_registry_compute_subject_hash(&hen, arg);
-          lookup_subject = arg;
-          lookup_hash = hen.subject_hash;
-          break;
-        case 'j':
-          select_by_job_status = parse_job_state_condition(arg);
-          break;
-        case 't':
-          total_only = 1;
-          break;
-        case 'p':
-          test_user_prefix = arg;
-          test_user_prefix_len = strlen(arg);
-          break;
-        default:
           print_usage(argv[0]);
           return 1;
-       }
-      if ((format_args > 0) && (format_args < argc)) cur_arg = format_args;
-      else break;
+         }
+        lookup_hash = arg;
+        break;
+      case 's':
+        if (lookup_hash != NULL)
+         {
+          print_usage(argv[0]);
+          return 1;
+         }
+        job_registry_compute_subject_hash(&hen, arg);
+        lookup_subject = arg;
+        lookup_hash = hen.subject_hash;
+        break;
+      case 'j':
+        select_by_job_status = parse_job_state_condition(arg);
+        break;
+      default:
+        print_usage(argv[0]);
+        return 1;
      }
+    if ((format_args > 0) && (format_args < argc)) cur_arg = format_args;
+    else break;
    }
     
+  if (lookup_hash == NULL)
+   {
+    print_usage(argv[0]);
+    return 1;
+   }
+
   cha = config_read(NULL); /* Read config from default locations. */
   if (cha != NULL)
    {
@@ -449,23 +446,20 @@ main(int argc, char *argv[])
   if (cha != NULL) config_free(cha);
   if (need_to_free_registry_file) free(registry_file);
 
-  if (lookup_hash != NULL)
+  looked_up_subject = job_registry_lookup_subject_hash(rha, lookup_hash);
+  if (looked_up_subject == NULL)
    {
-    looked_up_subject = job_registry_lookup_subject_hash(rha, lookup_hash);
-    if (looked_up_subject == NULL)
+    fprintf(stderr,"%s: Hash %s is not found in registry %s.\n",argv[0],
+            lookup_hash, rha->path);
+    job_registry_destroy(rha);
+    return 5;
+   } else {
+    if ((lookup_subject != NULL) && 
+        (strcmp(looked_up_subject, lookup_subject) != 0))
      {
-      fprintf(stderr,"%s: Hash %s is not found in registry %s.\n",argv[0],
-              lookup_hash, rha->path);
-      job_registry_destroy(rha);
-      return 5;
-     } else {
-      if ((lookup_subject != NULL) && 
-          (strcmp(looked_up_subject, lookup_subject) != 0))
-       {
-        fprintf(stderr, "%s: Warning: cached subject (%s) differs from the requested subject (%s)\n", argv[0], looked_up_subject, lookup_subject);
-       }
-      free(looked_up_subject);
+      fprintf(stderr, "%s: Warning: cached subject (%s) differs from the requested subject (%s)\n", argv[0], looked_up_subject, lookup_subject);
      }
+    free(looked_up_subject);
    }
 
   fd = job_registry_open(rha, "r");
@@ -491,31 +485,14 @@ main(int argc, char *argv[])
     for (ifr = format_args; ifr < argc; ifr+=2) undo_escapes(argv[ifr]);
    }
 
-  if (lookup_hash == NULL) lookup_hash = "";
-
   while ((ren = job_registry_get_next_hash_match(rha, fd, lookup_hash)) != NULL)
    {
     /* Is the current entry in the requested job status ? */
     if ((select_by_job_status != 0) && 
         (!check_job_state_condition(select_by_job_status, ren->status)))
-     {
-      free(ren);
       continue;
-     }
-
-    if ((test_user_prefix != NULL) &&
-        (strncmp(ren->user_prefix, test_user_prefix, test_user_prefix_len) != 0))
-     {
-      free(ren);
-      continue;
-     }
 
     njobs++;
-    if (total_only != 0)
-     {
-      free(ren);
-      continue;
-     }
 
     cad = job_registry_entry_as_classad(rha, ren);
     if (cad != NULL)
@@ -583,8 +560,5 @@ main(int argc, char *argv[])
   fclose(fd);
 
   job_registry_destroy(rha);
-  if (total_only != 0) printf("%s: Matched entries: %d\n", argv[0], njobs);
-
-  if (total_only && (njobs>0)) return ((njobs%127)+1);
   return 0;
 }

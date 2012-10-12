@@ -12,12 +12,12 @@
 #       Council for the Central Laboratory of the Research Councils (CCLRC), United Kingdom
 #
 #       Authors: Francesco Prelz <francesco.prelz@mi.infn.it>
-#       Version info: $Id: configure.ac,v 1.54 2012/03/01 13:26:54 pandreet Exp $
-#       Release: $Name:  $
+#       Version info: $Id: configure.ac,v 1.53.2.1 2012/06/08 13:09:09 pandreet Exp $
+#       Release: $Name: glite-ce-blahp_B_1_18 $
 #
 #       Revision history:
 #       $Log: configure.ac,v $
-#       Revision 1.54  2012/03/01 13:26:54  pandreet
+#       Revision 1.53.2.1  2012/06/08 13:09:09  pandreet
 #       Changed version number
 #
 #       Revision 1.53  2012/02/15 13:55:15  pandreet
@@ -163,7 +163,7 @@
 #
 
 AC_PREREQ(2.57)
-AC_INIT([GLite CE blahp], [1.19.0])
+AC_INIT([GLite CE blahp], [1.18.1])
 AC_CONFIG_AUX_DIR([./project])
 AM_INIT_AUTOMAKE([1.6.3 subdir-objects])
 AC_CONFIG_SRCDIR([src/main.c])

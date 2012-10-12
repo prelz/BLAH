@@ -1,3 +1,4 @@
+#!/bin/bash
 #  File:     blah_common_submit_functions.sh 
 #
 #  Author:   Francesco Prelz 

@@ -1,3 +1,4 @@
+#!/bin/bash
 #  File:     blah_load_config.sh 
 #
 #  Author:   Francesco Prelz 
