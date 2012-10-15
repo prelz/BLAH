@@ -12,12 +12,12 @@
 #       Council for the Central Laboratory of the Research Councils (CCLRC), United Kingdom
 #
 #       Authors: Francesco Prelz <francesco.prelz@mi.infn.it>
-#       Version info: $Id: configure.ac,v 1.53.2.1 2012/06/08 13:09:09 pandreet Exp $
-#       Release: $Name: glite-ce-blahp_B_1_18 $
+#       Version info: $Id: configure.ac,v 1.54 2012/03/01 13:26:54 pandreet Exp $
+#       Release: $Name:  $
 #
 #       Revision history:
 #       $Log: configure.ac,v $
-#       Revision 1.53.2.1  2012/06/08 13:09:09  pandreet
+#       Revision 1.54  2012/03/01 13:26:54  pandreet
 #       Changed version number
 #
 #       Revision 1.53  2012/02/15 13:55:15  pandreet
@@ -163,7 +163,7 @@
 #
 
 AC_PREREQ(2.57)
-AC_INIT([GLite CE blahp], [1.18.1])
+AC_INIT([GLite CE blahp], [1.19.0])
 AC_CONFIG_AUX_DIR([./project])
 AM_INIT_AUTOMAKE([1.6.3 subdir-objects])
 AC_CONFIG_SRCDIR([src/main.c])
@@ -197,9 +197,23 @@ AC_HEADER_TIME
 dnl Checks for library functions.
 AC_CHECK_FUNCS(select socket strdup strerror bsearch vsnprintf mmap munmap)
 
-GLITE_CHECK_LIBDIR
-GLITE_CHECK_INITDIR
-AC_GLITE_DOCBOOK
+dnl GLITE_CHECK_LIBDIR
+dnl GLITE_CHECK_INITDIR
+dnl AC_GLITE_DOCBOOK
+
+GLITE_DB_MANPAGES_STYLESHEET="/usr/share/sgml/docbook/xsl-stylesheets/manpages/docbook.xsl"
+
+AC_ARG_WITH(manpage_stylesheet,
+   [  --with-manpage-stylesheet=PATH     (path to the docbook stylesheet for man pages ($GLITE_DB_MANPAGES_STYLESHEET)],
+   [],
+   with_manpage_stylesheet=$GLITE_DB_MANPAGES_STYLESHEET)
+
+if ! test -r "$with_manpage_stylesheet" ; then
+  AC_MSG_ERROR("$with_manpage_stylesheet not found. Try setting --with-manpage-stylesheet.")
+fi
+
+GLITE_DB_MANPAGES_STYLESHEET=$with_manpage_stylesheet
+AC_SUBST(GLITE_DB_MANPAGES_STYLESHEET)
 
 AC_ARG_WITH(dist_location,
    [  --with-dist-location=PFX     prefix where DIST location is. (pwd)],
@@ -221,13 +235,17 @@ AC_SUBST(DISTTAR)
 
 AC_CLASSADS([], AC_MSG_RESULT(["CLASSADS ok"]), AC_MSG_ERROR(["CLASSADS not found"]))
 
-have_globus=yes
-PKG_CHECK_MODULES(GLOBUS_GSI_CRED, globus-gsi-credential, , have_globus=no)
-PKG_CHECK_MODULES(GLOBUS_GSI_PROXY, globus-gsi-proxy-core, , have_globus=no)
-PKG_CHECK_MODULES(GLOBUS_GSI_UTILS, globus-gsi-cert-utils, , have_globus=no)
-PKG_CHECK_MODULES(GLOBUS_GSS_ASSIST, globus-gss-assist, , have_globus=no)
-PKG_CHECK_MODULES(GLOBUS_GSI_SYSCFG, globus-gsi-sysconfig, , have_globus=no)
-AC_MSG_RESULT(["GLOBUS found $have_globus"])
+AC_GLOBUS([], have_globus=yes, have_globus=no)
+
+if test $have_globus = no; then
+  have_globus=yes
+  PKG_CHECK_MODULES(GLOBUS_GSI_CRED, globus-gsi-credential, , have_globus=no)
+  PKG_CHECK_MODULES(GLOBUS_GSI_PROXY, globus-gsi-proxy-core, , have_globus=no)
+  PKG_CHECK_MODULES(GLOBUS_GSI_UTILS, globus-gsi-cert-utils, , have_globus=no)
+  PKG_CHECK_MODULES(GLOBUS_GSS_ASSIST, globus-gss-assist, , have_globus=no)
+  PKG_CHECK_MODULES(GLOBUS_GSI_SYSCFG, globus-gsi-sysconfig, , have_globus=no)
+fi
+AC_MSG_RESULT(["GLOBUS found: $have_globus"])
 AM_CONDITIONAL([HAVE_GLOBUS], [test "x$bprserver" == "xyes" -a "x$have_globus" == "xyes"])
 
 dnl Temporarily built with no optimisation

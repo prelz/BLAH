@@ -25,7 +25,7 @@ doc_DATA = LICENSE
 SUBDIRS = src config doc
 
 ## Default flags to run aclocal
-ACLOCAL_AMFLAGS = -I project -I ../org.glite/project
+ACLOCAL_AMFLAGS = -I project 
 
 stage:
 	@set fnord $(MAKEFLAGS); amf=$$2; \
