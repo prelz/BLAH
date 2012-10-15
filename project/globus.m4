@@ -24,9 +24,9 @@ dnl - GLOBUS_LDAP_THR_LIBS
 AC_DEFUN([AC_GLOBUS],
 [
     AC_ARG_WITH(globus_prefix,
-	[  --with-globus-prefix=PFX     prefix where GLOBUS is installed. ($GLOBUS_LOCATION or /usr or pkg-config)],
+	[  --with-globus-prefix=PFX     prefix where GLOBUS is installed. ($GLOBUS_LOCATION or /opt/globus or pkg-config)],
 	[],
-        with_globus_prefix=${GLOBUS_LOCATION:-/usr})
+        with_globus_prefix=${GLOBUS_LOCATION:-/opt/globus})
 
     AC_ARG_WITH(globus_nothr_flavor,
 	[  --with-globus-nothr-flavor=flavor [default=gcc32dbg]],
