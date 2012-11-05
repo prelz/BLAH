@@ -15,8 +15,6 @@
 
 cmake_minimum_required(VERSION 2.6)
 
-project(BLAH)
-
 include(FindClassAd.cmake)
 include_directories(${ClassAd_INCLUDE_DIR})
 include(FindPkgConfig)
@@ -115,3 +113,35 @@ add_executable(test_job_registry_update_from_network
 add_executable(test_cmdbuffer cmdbuffer.c)
 set_target_properties(test_cmdbuffer PROPERTIES COMPILE_FLAGS "-DCMDBUF_DEBUG") 
 
+# CPack info
+
+install(TARGETS blahpd RUNTIME DESTINATION bin)
+install(TARGETS
+    blahpd_daemon blah_job_registry_add blah_job_registry_lkup
+    blah_job_registry_scan_by_subject blah_check_config 
+    blah_job_registry_dump blah_job_registry_purge
+    RUNTIME DESTINATION sbin)
+install(TARGETS 
+    BLClient BLParserLSF BLParserPBS BUpdaterCondor BNotifier 
+    BUpdaterLSF BUpdaterPBS BUpdaterSGE BUpdaterSLURM 
+    blparser_master
+    RUNTIME DESTINATION libexec)
+install(FILES
+    scripts/blah_load_config.sh scripts/blah_common_submit_functions.sh
+    scripts/pbs_cancel.sh scripts/pbs_status.sh scripts/pbs_submit.sh 
+    scripts/pbs_hold.sh scripts/pbs_resume.sh scripts/lsf_cancel.sh
+    scripts/lsf_status.sh scripts/lsf_submit.sh scripts/lsf_hold.sh
+    scripts/lsf_resume.sh scripts/condor_cancel.sh scripts/condor_status.sh
+    scripts/condor_submit.sh scripts/condor_hold.sh scripts/condor_resume.sh
+    scripts/sge_cancel.sh scripts/sge_helper scripts/sge_resume.sh 
+    scripts/sge_submit.sh scripts/sge_filestaging scripts/sge_hold.sh 
+    scripts/sge_status.sh scripts/runcmd.pl.template
+    scripts/sge_local_submit_attributes.sh scripts/slurm_submit.sh
+    scripts/slurm_status.sh scripts/slurm_cancel.sh
+    DESTINATION libexec)
+
+if (${GLOBUS_COMMON_FOUND} AND ${GLOBUS_IO_FOUND})
+install(TARGETS BPRclient BPRserver RUNTIME DESTINATION libexec)
+endif (${GLOBUS_COMMON_FOUND} AND ${GLOBUS_IO_FOUND})
+
+include(CPack)
