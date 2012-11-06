@@ -486,11 +486,12 @@ int main(int argc, char *argv[]){
 				}
 				
 				/* Try to run FinalStateQuery reading older log files*/
-				if(now-confirm_time>bhist_finalstate_interval){
-					runfinal_oldlogs=TRUE;
-					free(en);
-					continue;
-				}
+                                if(now-confirm_time>bhist_finalstate_interval && use_bhist_for_idle && strcmp(use_bhist_for_idle,"yes")==0){
+                                        do_log(debuglogfile, debug, 2, "%s: FinalStateQuery needed for jobid=%s with status=%d from old logs\n",argv0,en->batch_id,en->status);
+                                        runfinal_oldlogs=TRUE;
+                                        free(en);
+                                        continue;
+                                }
 								
 				if(en->status==IDLE && strlen(en->updater_info)>0 && use_bhist_for_idle && strcmp(use_bhist_for_idle,"yes")==0){
 					if (en->mdate < finalquery_start_date){
