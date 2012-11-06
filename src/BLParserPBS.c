@@ -304,11 +304,11 @@ main(int argc, char *argv[])
 	}
     
 	for(i=0;i<NUMTHRDS;i++){
-		pthread_create(&ReadThd[i], NULL, (void *(*)(void *))LookupAndSend, (void *)list_s);
+		pthread_create(&ReadThd[i], NULL, (void *(*)(void *))LookupAndSend, (void *)&list_s);
 	}
 
 	if(usecream>0){
-		pthread_create(&CreamThd, NULL, (void *(*)(void *))CreamConnection, (void *)list_c);
+		pthread_create(&CreamThd, NULL, (void *(*)(void *))CreamConnection, (void *)&list_c);
 	}
     
 	pthread_create(&UpdateThd, NULL, mytail, (void *)eventsfile);
@@ -770,7 +770,7 @@ GetAllEvents(char *file)
 }
 
 void *
-LookupAndSend(int m_sock)
+LookupAndSend(void *arg)
 { 
     
 	char      *buffer=NULL;
@@ -789,6 +789,9 @@ LookupAndSend(int m_sock)
 	int       listcnt=0;
 	int       listbeg=0;
 	char      *buftmp=NULL;
+	int       m_sock;
+
+	if (arg != NULL) m_sock = *((int *)arg);
     
 	while ( 1 ) {
 
@@ -1145,12 +1148,15 @@ GetLogList(char *logdate)
 
 }
 
-void
-CreamConnection(int c_sock)
+void *
+CreamConnection(void *arg)
 { 
 
 	char      *buffer;
 	char     *buftmp;
+	int      c_sock;
+
+	if (arg != NULL) c_sock = *((int *)arg);
 
 	if((buffer=calloc(STR_CHARS,1)) == 0){
 		sysfatal("can't malloc buffer in CreamConnection: %r");

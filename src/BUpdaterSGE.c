@@ -28,8 +28,8 @@ int main(int argc, char *argv[]){
     job_registry_entry *en;
     time_t now;
     time_t purge_time=0;
-    char *constraint[11];
-    char *constraint2[5];
+    char constraint[JOBID_MAX_LEN+1];
+    char constraint2[5];
     char *query=NULL;
     char *queryStates=NULL;
     char *query_err=NULL;
@@ -366,11 +366,11 @@ int main(int argc, char *argv[]){
 	    if(((now - en->mdate) > finalstate_query_interval) && en->status!=3 && en->status!=4)
 	    {
 		/* create the constraint that will be used in condor_history command in FinalStateQuery*/
-		sprintf(constraint," %s",en->batch_id);
-		if (en->status==0) sprintf(constraint2," u");
-		if (en->status==1) sprintf(constraint2," q");
-		if (en->status==2) sprintf(constraint2," r");
-		if (en->status==5) sprintf(constraint2," h");
+		snprintf(constraint, sizeof(constraint), " %s",en->batch_id);
+		if (en->status==0) snprintf(constraint2, sizeof(constraint2), " u");
+		if (en->status==1) snprintf(constraint2, sizeof(constraint2), " q");
+		if (en->status==2) snprintf(constraint2, sizeof(constraint2), " r");
+		if (en->status==5) snprintf(constraint2, sizeof(constraint2), " h");
 		query=realloc(query,strlen(query)+strlen(constraint)+1);
 		queryStates=realloc(queryStates,strlen(queryStates)+strlen(constraint2)+1);
 		strcat(query,constraint);
@@ -417,6 +417,7 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
     time_t now;
     char string_now[11];
     job_registry_entry en;
+    int iret;
     
     numQuery=strtoken(query,' ',&list_query);
     nq=numQuery;
@@ -445,8 +446,8 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"0");
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now)
 			    en.udate=now;
-			    if ((ret=job_registry_update(rha, &en)) < 0){
-				fprintf(stderr,"Update of record returns %d: \nJobId: %d", ret,en.batch_id);
+			    if ((iret=job_registry_update(rha, &en)) < 0){
+				fprintf(stderr,"Update of record returns %d: \nJobId: %d", iret,en.batch_id);
 				perror("");
 			    }
 			}
@@ -458,8 +459,8 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"0");
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now)
 			    en.udate=now;
-			    if ((ret=job_registry_update(rha, &en)) < 0){
-				fprintf(stderr,"Update of record returns %d: \nJobId: %d", ret,en.batch_id);
+			    if ((iret=job_registry_update(rha, &en)) < 0){
+				fprintf(stderr,"Update of record returns %d: \nJobId: %d", iret,en.batch_id);
 				perror("");
 			    }
 			}
@@ -472,8 +473,8 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"0");
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now)
 			    en.udate=now;
-			    if ((ret=job_registry_update(rha, &en)) < 0){
-				fprintf(stderr,"Update of record returns %d: \nJobId: %d", ret,en.batch_id);
+			    if ((iret=job_registry_update(rha, &en)) < 0){
+				fprintf(stderr,"Update of record returns %d: \nJobId: %d", iret,en.batch_id);
 				perror("");
 			    }
 			    freetoken(&saveptr2,cont2);
@@ -486,8 +487,8 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"0");
 			    JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now)
 			    en.udate=now;
-			    if ((ret=job_registry_update(rha, &en)) < 0){
-				fprintf(stderr,"Update of record returns %d: \nJobId: %d", ret,en.batch_id);
+			    if ((iret=job_registry_update(rha, &en)) < 0){
+				fprintf(stderr,"Update of record returns %d: \nJobId: %d", iret,en.batch_id);
 				perror("");
 			    }
 			}
@@ -544,8 +545,8 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 	    JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"");
 	    JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now)
 	    en.udate=now;
-	    if ((ret=job_registry_update(rha, &en)) < 0){
-		fprintf(stderr,"Update of record returns %d: \nJobId: %d", ret,en.batch_id);
+	    if ((iret=job_registry_update(rha, &en)) < 0){
+		fprintf(stderr,"Update of record returns %d: \nJobId: %d", iret,en.batch_id);
 		perror("");
 	    }else job_registry_unlink_proxy(rha, &en);
 	}else{
@@ -556,8 +557,8 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 	    JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,qFailed);
 	    JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now)
 	    en.udate=now;
-	    if ((ret=job_registry_update(rha, &en)) < 0){
-		fprintf(stderr,"Update of record returns %d: \nJobId: %d", ret,en.batch_id);
+	    if ((iret=job_registry_update(rha, &en)) < 0){
+		fprintf(stderr,"Update of record returns %d: \nJobId: %d", iret,en.batch_id);
 		perror("");
 	    }else job_registry_unlink_proxy(rha, &en);
 	}
@@ -594,8 +595,8 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 		sprintf(string_now,"%d",now);
 		JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now)
 		en.udate=now;
-		if ((ret=job_registry_update(rha, &en)) < 0){
-		    fprintf(stderr,"Update of record returns %d: \nJobId: %d", ret,en.batch_id);
+		if ((iret=job_registry_update(rha, &en)) < 0){
+		    fprintf(stderr,"Update of record returns %d: \nJobId: %d", iret,en.batch_id);
 		    perror("");
 		}else job_registry_unlink_proxy(rha, &en);
 		pclose( file_output );
@@ -622,8 +623,8 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 		JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"");
 		JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now)
 		en.udate=now;
-		if ((ret=job_registry_update(rha, &en)) < 0){
-		    fprintf(stderr,"Update of record returns %d: \nJobId: %d", ret,en.batch_id);
+		if ((iret=job_registry_update(rha, &en)) < 0){
+		    fprintf(stderr,"Update of record returns %d: \nJobId: %d", iret,en.batch_id);
 		    perror("");
 		}else job_registry_unlink_proxy(rha, &en);
 	    }else{
@@ -634,8 +635,8 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 		JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,qFailed);
 		JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now)
 		en.udate=now;
-		if ((ret=job_registry_update(rha, &en)) < 0){
-		    fprintf(stderr,"Update of record returns %d: \nJobId: %d", ret,en.batch_id);
+		if ((iret=job_registry_update(rha, &en)) < 0){
+		    fprintf(stderr,"Update of record returns %d: \nJobId: %d", iret,en.batch_id);
 		    perror("");
 		}else job_registry_unlink_proxy(rha, &en);
 	    }
@@ -653,6 +654,7 @@ int AssignState (char *element, char *status, char *exit, char *reason, char *wn
     char *string_now=NULL;
     int i=0;
     int n=strtoken(element, '.', &id_element);
+    int iret;
     
     if(id_element[0]){
 	JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,id_element[0]);
@@ -670,8 +672,8 @@ int AssignState (char *element, char *status, char *exit, char *reason, char *wn
 	    sysfatal("can't malloc cmd in GetAndSend: %r");
 	}
     }
-    if ((ret=job_registry_update(rha, &en)) < 0){
-	fprintf(stderr,"Update of record returns %d: \nJobId: %d", ret,en.batch_id);
+    if ((iret=job_registry_update(rha, &en)) < 0){
+	fprintf(stderr,"Update of record returns %d: \nJobId: %d", iret,en.batch_id);
 	perror("");
     }else{
 	if (en.status == REMOVED || en.status == COMPLETED){

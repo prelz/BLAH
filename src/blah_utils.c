@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 #include "blah_utils.h"
 
 const char *blah_omem_msg = "out\\ of\\ memory";
