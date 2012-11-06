@@ -64,7 +64,7 @@ cat > $bls_tmp_file << end_of_preamble
 end_of_preamble
 
 #local batch system-specific file output must be added to the submit file
-local_submit_attributes_file=${GLITE_LOCATION:-/opt/glite}/bin/sge_local_submit_attributes.sh
+local_submit_attributes_file=${GLITE_LOCATION:-/usr}/libexec/sge_local_submit_attributes.sh
 if [ -r $local_submit_attributes_file ] ; then
     echo \#\!/bin/sh > $bls_opt_tmp_req_file
     if [ ! -z $bls_opt_req_file ] ; then
@@ -84,6 +84,10 @@ fi
 # handle queue overriding
 [ -z "$bls_opt_queue" ] || grep -q "^#\$ -q" $bls_tmp_file || echo "#\$ -q $bls_opt_queue" >> $bls_tmp_file
 [ -z "$bls_opt_mpinodes" -o "x${bls_opt_mpinodes}" = "x1" ] || grep -q"^#\$ -pe *\\*" $bls_tmp_file || echo "#\$ -pe * $bls_opt_mpinodes" >>$bls_tmp_file
+
+# Extended MPI support must be added
+
+# end extended MPI support
 
 # Input and output sandbox setup.
 bls_fl_subst_and_accumulate inputsand "@@F_REMOTE@`hostname -f`:@@F_LOCAL" "@@@"
