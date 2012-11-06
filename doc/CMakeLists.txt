@@ -40,6 +40,14 @@ foreach (manpage ${MAN1PAGES_TO_CREATE})
   set_source_files_properties(${manpage} PROPERTIES GENERATED TRUE)
 endforeach()
 
+add_custom_command(OUTPUT  blahpd_daemon.1
+                   COMMAND ${CMAKE_COMMAND} -E copy
+                           blahpd.1 blahpd_daemon.1
+                   DEPENDS blahpd.1)
+set_source_files_properties(blahpd_daemon.1 PROPERTIES GENERATED TRUE)
+
+set(MAN1PAGES_TO_CREATE ${MAN1PAGES_TO_CREATE} blahpd_daemon.1)
+
 add_custom_target(all_manpages ALL
     DEPENDS ${MAN1PAGES_TO_CREATE} )
 
