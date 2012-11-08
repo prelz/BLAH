@@ -19,12 +19,16 @@ project(BLAH)
 
 # CPack info
 
+set(CPACK_RPM_PACKAGE_RELEASE "1")
+
 if (UNIX AND NOT APPLE)
 set(CPACK_GENERATOR "STGZ;DEB;RPM")
 execute_process(COMMAND uname -i 
     OUTPUT_VARIABLE local_arch OUTPUT_STRIP_TRAILING_WHITESPACE)
-set(CPACK_SYSTEM_NAME ${local_arch})
+set(CPACK_SYSTEM_NAME "${CPACK_RPM_PACKAGE_RELEASE}.${local_arch}")
 endif (UNIX AND NOT APPLE)
+
+set(CMAKE_INSTALL_PREFIX "/usr")
 
 set(CPACK_PACKAGE_VENDOR "EMI")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Batch Local ASCII Helper Protocol suite")
@@ -34,9 +38,13 @@ set(CPACK_PACKAGE_VERSION_PATCH "0")
 set(CPACK_PACKAGE_VERSION 
    "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
 
+# For the following setting, see CMAKE manual, page 155
+# or http://public.kitware.com/Bug/view.php?id=7000
+set(CPACK_SET_DESTDIR ON)
+set(CPACK_PACKAGE_RELOCATABLE "false")
+
 set(CPACK_PACKAGE_CONTACT "blah@mi.infn.it")
 set(CPACK_RPM_PACKAGE_LICENSE "Apache Software License")
-set(CPACK_RPM_PACKAGE_RELEASE "0")
 set(CPACK_RPM_PACKAGE_GROUP "Applications/Internet")
 
 set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE 
