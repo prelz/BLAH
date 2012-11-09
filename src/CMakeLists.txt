@@ -124,7 +124,8 @@ install(TARGETS
     BUpdaterLSF BUpdaterPBS BUpdaterSGE
     blparser_master
     RUNTIME DESTINATION libexec)
-install(FILES
+
+set(blah_scripts
     scripts/blah_load_config.sh scripts/blah_common_submit_functions.sh
     scripts/pbs_cancel.sh scripts/pbs_status.sh scripts/pbs_submit.sh 
     scripts/pbs_hold.sh scripts/pbs_resume.sh scripts/lsf_cancel.sh
@@ -135,6 +136,13 @@ install(FILES
     scripts/sge_submit.sh scripts/sge_filestaging scripts/sge_hold.sh 
     scripts/sge_status.sh scripts/runcmd.pl.template
     scripts/sge_local_submit_attributes.sh
+   )
+
+install(FILES
+    ${blah_scripts}
+    PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE
+                GROUP_READ GROUP_EXECUTE
+                WORLD_READ WORLD_EXECUTE
     DESTINATION libexec)
 
 if (${GLOBUS_COMMON_FOUND} AND ${GLOBUS_IO_FOUND})
