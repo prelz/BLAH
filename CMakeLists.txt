@@ -47,6 +47,7 @@ set(CPACK_PACKAGE_RELOCATABLE "false")
 set(CPACK_PACKAGE_CONTACT "blah@mi.infn.it")
 set(CPACK_RPM_PACKAGE_LICENSE "Apache Software License")
 set(CPACK_RPM_PACKAGE_GROUP "Applications/Internet")
+set(CPACK_RPM_USER_BINARY_SPECFILE "${CMAKE_CURRENT_SOURCE_DIR}/project/cmake_spec_template")
 
 set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE 
     ${CMAKE_CURRENT_SOURCE_DIR}/project/glite-ce-blahp.post)

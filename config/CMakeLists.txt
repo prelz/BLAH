@@ -22,9 +22,15 @@ install(FILES
 
 install(FILES 
     glite-ce-blah-parser
-    glite-ce-check-blparser
     PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE
                 GROUP_READ GROUP_EXECUTE
                 WORLD_READ WORLD_EXECUTE
     DESTINATION /etc/rc.d/init.d)
+
+install(FILES 
+    glite-ce-check-blparser
+    PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE
+                GROUP_READ GROUP_EXECUTE
+                WORLD_READ WORLD_EXECUTE
+    DESTINATION sbin)
 

@@ -134,7 +134,6 @@ install(TARGETS
     RUNTIME DESTINATION libexec)
 
 set(blah_scripts
-    scripts/blah_load_config.sh scripts/blah_common_submit_functions.sh
     scripts/pbs_cancel.sh scripts/pbs_status.sh scripts/pbs_submit.sh 
     scripts/pbs_hold.sh scripts/pbs_resume.sh scripts/lsf_cancel.sh
     scripts/lsf_status.sh scripts/lsf_submit.sh scripts/lsf_hold.sh
@@ -152,6 +151,14 @@ install(FILES
     PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE
                 GROUP_READ GROUP_EXECUTE
                 WORLD_READ WORLD_EXECUTE
+    DESTINATION libexec)
+
+# Non-executable script helpers
+install(FILES
+    scripts/blah_load_config.sh
+    scripts/blah_common_submit_functions.sh
+    PERMISSIONS OWNER_WRITE OWNER_READ 
+                GROUP_READ WORLD_READ
     DESTINATION libexec)
 
 if (${GLOBUS_COMMON_FOUND} AND ${GLOBUS_IO_FOUND})
