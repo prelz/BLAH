@@ -132,6 +132,32 @@ fi
               RETVAL=$?
 	      ;;
 
+  reload)
+              if [ "x${use_registry}" == "xyes" ]; then
+               echo -n $"Reloading `basename ${GLITE_CE_BUPDATER}`: "
+               if [ -n "`pidfileofproc ${GLITE_CE_BUPDATER}`" ] ; then
+                killproc ${GLITE_CE_BUPDATER} -HUP
+               else
+                failure $"Reloading `basename ${GLITE_CE_BUPDATER}`"
+               fi
+               echo -n $"Reloading `basename ${GLITE_CE_BNOTIFIER}`: "
+               if [ -n "`pidfileofproc ${GLITE_CE_BNOTIFIER}`" ] ; then
+                killproc ${GLITE_CE_BNOTIFIER} -HUP
+               else
+                failure $"Reloading `basename ${GLITE_CE_BNOTIFIER}`"
+               fi
+              else
+               echo -n $"Reloading `basename ${GLITE_CE_PARSER_MASTER}: "
+               if [ -n "`pidfileofproc ${GLITE_CE_PARSER_MASTER}`" ] ; then
+                killproc ${GLITE_CE_PARSER_MASTER} -HUP
+               else
+                failure $"Reloading ${GLITE_CE_PARSER_MASTER}"
+               fi
+              fi
+              RETVAL=$?
+              echo
+              ;;
+
   restart)
             $0 stop
             if [ "x${use_registry}" != "xyes" ]; then
@@ -141,7 +167,7 @@ fi
             ;;
 
   *)
-        echo "Usage: $0 {start|stop|restart|status}"
+        echo "Usage: $0 {start|stop|restart|reload|status}"
         exit 1
 esac
 
