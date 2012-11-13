@@ -98,6 +98,7 @@ fi
                daemon $GLITE_CE_PARSER_MASTER
 	      fi
               RETVAL=$?
+	      [ "$RETVAL" = 0 ] && touch /var/lock/subsys/glite-ce-blah-parser
               echo
               ;;
 
@@ -117,6 +118,7 @@ fi
                killproc ${GLITE_CE_PARSER_MASTER}
 	      fi
               RETVAL=$?
+              [ "$RETVAL" = 0 ] && rm -f /var/lock/subsys/glite-ce-blah-parser
               echo
               ;;
 
