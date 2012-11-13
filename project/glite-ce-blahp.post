@@ -16,6 +16,21 @@
 #    limitations under the License.
 #
 
+if [ $1 -eq 1 ] ; then
+    /sbin/chkconfig --add glite-ce-blah-parser
+
+    if [ ! "x`grep tomcat /etc/passwd`" == "x" ] ; then
+        mkdir -p /var/log/cream/accounting
+        chown root.tomcat /var/log/cream/accounting
+        chmod 0730 /var/log/cream/accounting
+
+        mkdir -p /var/blah
+        chown tomcat.tomcat /var/blah
+        chmod 771 /var/blah
+
+    fi
+fi
+
 blah_install_prefix="${RPM_INSTALL_PREFIX}"
 if [ -z "$blah_install_prefix" -o "$blah_install_prefix" == "/" ]; then
   blah_install_prefix="/usr"

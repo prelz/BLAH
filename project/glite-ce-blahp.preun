@@ -18,6 +18,19 @@
 #    limitations under the License.
 #
 
+if [ $1 -eq 0 ] ; then
+    /sbin/service glite-ce-blah-parser stop >/dev/null 2>&1
+    /sbin/chkconfig --del glite-ce-blah-parser
+
+    if [ -d /var/log/cream/accounting ] ; then
+        rm -rf /var/log/cream/accounting
+    fi
+
+    if [ -d /var/blah ] ; then
+        rm -rf /var/blah
+    fi
+fi
+
 escaped_prefix=$(echo "$RPM_INSTALL_PREFIX"|sed 's/\//\\\//g')
 if [ -z "$escaped_prefix" -o "$RPM_INSTALL_PREFIX" == "/" ]; then
   escaped_prefix="\\/usr"
