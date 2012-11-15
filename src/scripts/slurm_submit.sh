@@ -77,7 +77,7 @@ fi
 ###############################################################
 
 datenow=`date +%Y%m%d`
-jobID=`sbatch $bls_tmp_file | sed 's/Submitted batch job //'`
+jobID=`${slurm_binpath}/sbatch $bls_tmp_file | sed 's/Submitted batch job //'`
 retcode=$?
 if [ "$retcode" != "0" ] ; then
   rm -f $bls_tmp_file
