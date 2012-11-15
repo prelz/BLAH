@@ -603,6 +603,7 @@ bupdater_remove_active_job(bupdater_active_jobs *bact,
     if (cmp == 0)
      {
       /* Job ID found. Remove it from list. */
+      free(bact->jobs[cur]);
       for (resize = cur+1; resize<bact->njobs; resize++)
        {
         bact->jobs[resize - 1] = bact->jobs[resize];
