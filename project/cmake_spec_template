@@ -119,6 +119,8 @@ mv "@CPACK_TOPLEVEL_DIRECTORY@/tmpBBroot" $RPM_BUILD_ROOT
 "/usr/libexec/BLParserLSF"
 "/usr/libexec/condor_hold.sh"
 "/usr/libexec/slurm_cancel.sh"
+"/usr/libexec/slurm_hold.sh"
+"/usr/libexec/slurm_resume.sh"
 "/usr/libexec/BUpdaterPBS"
 "/usr/bin/blahpd"
 "/etc/rc.d/init.d/glite-ce-blah-parser"
