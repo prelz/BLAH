@@ -62,8 +62,8 @@ mv "@CPACK_TOPLEVEL_DIRECTORY@/tmpBBroot" $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root,-)
 %dir "/etc/rc.d/init.d"
-%dir "/usr/share/doc/BLAH-1.19.0"
-"/usr/share/doc/BLAH-1.19.0/LICENSE"
+%dir "/usr/share/doc/@CPACK_PACKAGE_NAME@-@CPACK_PACKAGE_VERSION@"
+"/usr/share/doc/@CPACK_PACKAGE_NAME@-@CPACK_PACKAGE_VERSION@/LICENSE"
 "/usr/man/man1/blahpd_daemon.1*"
 "/usr/man/man1/blah_job_registry_add.1*"
 "/usr/man/man1/blah_check_config.1*"
