@@ -546,7 +546,7 @@ IntStateQuery()
 	time_t now;
 	char *string_now=NULL;
 
-	command_string=make_message("%s%s/condor_q -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus|grep -v condorc-",batch_command,condor_binpath);
+	command_string=make_message("%s%s/condor_q -global -format \"%%s \" GlobalJobId -format \"%%s \" JobStatus -format \"%%s \" ExitStatus -format \"%%s \" EnteredCurrentStatus -format \"%%s\\n\" \"(JobStatus == 2) ? RemoteHost : ((JobStatus == 3 || JobStatus == 4) ? LastRemoteHost : \\\"N/A\\\")\"",batch_command,condor_binpath);
 	do_log(debuglogfile, debug, 2, "%s: command_string in IntStateQuery:%s\n",argv0,command_string);
 	fp = popen(command_string,"r");
 
@@ -572,9 +572,9 @@ IntStateQuery()
 		
 			JOB_REGISTRY_ASSIGN_ENTRY(en.batch_id,token[0]);
 			JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
-			en.status=atoi(token[2]);
-			en.exitcode=atoi(token[4]);
-			en.udate=atoi(token[5]);
+			en.status=atoi(token[1]);
+			en.exitcode=atoi(token[2]);
+			en.udate=atoi(token[3]);
 			JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
 			JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 			
