@@ -575,7 +575,7 @@ IntStateQuery()
 			en.status=atoi(token[1]);
 			en.exitcode=atoi(token[2]);
 			en.udate=atoi(token[3]);
-			JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,"\0");
+			JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,token[4]);
 			JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 			
 			if ((ren=job_registry_get(rha, en.batch_id)) == NULL){
