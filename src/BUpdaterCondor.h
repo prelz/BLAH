@@ -54,6 +54,7 @@ int bupdater_consistency_check_interval=3600;
 int debug=FALSE;
 int nodmn=FALSE;
 char *condor_batch_caching_enabled="Not";
+char *use_condor_history="No";
 char *batch_command_caching_filter=NULL;
 char *batch_command=NULL;
 

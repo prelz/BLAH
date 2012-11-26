@@ -226,6 +226,16 @@ int main(int argc, char *argv[]){
                 }
 	}
 	
+        ret = config_get("bupdater_use_condor_history",cha);
+        if (ret == NULL){
+                do_log(debuglogfile, debug, 1, "%s: key bupdater_use_condor_history not found - using the default:%s\n",argv0,use_condor_history);
+        } else {
+                use_condor_history=strdup(ret->value);
+                if(use_condor_history == NULL){
+                        sysfatal("strdup failed for use_condor_history in main: %r");
+                }
+        }
+	
 	ret = config_get("condor_batch_caching_enabled",cha);
 	if (ret == NULL){
 		do_log(debuglogfile, debug, 1, "%s: key condor_batch_caching_enabled not found using default\n",argv0,condor_batch_caching_enabled);
@@ -345,96 +355,101 @@ int main(int argc, char *argv[]){
 
 		IntStateQuery();
 		
-		fd = job_registry_open(rha, "r");
-		if (fd == NULL)
-		{
-			do_log(debuglogfile, debug, 1, "%s: Error opening job registry %s\n",argv0,registry_file);
-			fprintf(stderr,"%s: Error opening job registry %s :",argv0,registry_file);
-			perror("");
-			sleep(loop_interval);
-			continue;
-		}
-		if (job_registry_rdlock(rha, fd) < 0)
-		{
-			do_log(debuglogfile, debug, 1, "%s: Error read locking job registry %s\n",argv0,registry_file);
-			fprintf(stderr,"%s: Error read locking job registry %s :",argv0,registry_file);
-			perror("");
-			sleep(loop_interval);
-			continue;
-		}
-		job_registry_firstrec(rha,fd);
-		fseek(fd,0L,SEEK_SET);
-
-		first=TRUE;
+		if(use_condor_history && strcmp(use_condor_history,"yes")==0){
 		
-		while ((en = job_registry_get_next(rha, fd)) != NULL){
-
-			if(en->status!=REMOVED && en->status!=COMPLETED){
-			
-				confirm_time=atoi(en->updater_info);
-				if(confirm_time==0){
-					confirm_time=en->mdate;
-				}
-				
-				/* Assign Status=4 and ExitStatus=999 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
-				if(now-confirm_time>alldone_interval){
-					AssignFinalState(en->batch_id);	
-					free(en);
-					continue;
-				}
-				
-				if(now-confirm_time>finalstate_query_interval){
-					/* create the constraint that will be used in condor_history command in FinalStateQuery*/
-					if(first){
-						toadd=make_message("");
-					}else{
-						toadd=make_message(" || ");
-					}	
-					if(first) first=FALSE;
-					
-					tconstraint=make_message("ClusterId==%s",en->batch_id);
-					
-					if (query != NULL){
-						qlen = strlen(query);
-					}else{
-						qlen = 0;
-					}
-					if(max_constr_len > 0 && tconstraint && ((strlen(tconstraint)+qlen)>max_constr_len)){
-						constraint=make_message(";%s",tconstraint);
-					}else{
-						constraint=make_message("%s%s",toadd,tconstraint);
-					}
-					free(tconstraint);
-					
-					q=realloc(query,qlen+strlen(constraint)+4);
-					
-					if(q != NULL){
-						if (query != NULL){
-							strcat(q,constraint);
-						}else{
-							strcpy(q,constraint);
-						}
-						query=q;	
-					}else{
-						sysfatal("can't realloc query: %r");
-					}
-					free(constraint);
-					runfinal=TRUE;
-				}
+			fd = job_registry_open(rha, "r");
+			if (fd == NULL)
+			{
+				do_log(debuglogfile, debug, 1, "%s: Error opening job registry %s\n",argv0,registry_file);
+				fprintf(stderr,"%s: Error opening job registry %s :",argv0,registry_file);
+				perror("");
+				sleep(loop_interval);
+				continue;
 			}
-			free(en);
-		}
+			if (job_registry_rdlock(rha, fd) < 0)
+			{
+				do_log(debuglogfile, debug, 1, "%s: Error read locking job registry %s\n",argv0,registry_file);
+				fprintf(stderr,"%s: Error read locking job registry %s :",argv0,registry_file);
+				perror("");
+				sleep(loop_interval);
+				continue;
+			}
+			job_registry_firstrec(rha,fd);
+			fseek(fd,0L,SEEK_SET);
+
+			first=TRUE;
 		
-		if(runfinal){
-			FinalStateQuery(query);
-			runfinal=FALSE;
+			while ((en = job_registry_get_next(rha, fd)) != NULL){
+
+				if(en->status!=REMOVED && en->status!=COMPLETED){
+			
+					confirm_time=atoi(en->updater_info);
+					if(confirm_time==0){
+						confirm_time=en->mdate;
+					}
+				
+					/* Assign Status=4 and ExitStatus=999 to all entries that after alldone_interval are still not in a final state(3 or 4)*/
+					if(now-confirm_time>alldone_interval){
+						AssignFinalState(en->batch_id);	
+						free(en);
+						continue;
+					}
+				
+					if(now-confirm_time>finalstate_query_interval){
+						/* create the constraint that will be used in condor_history command in FinalStateQuery*/
+						if(first){
+							toadd=make_message("");
+						}else{
+							toadd=make_message(" || ");
+						}	
+						if(first) first=FALSE;
+					
+						tconstraint=make_message("ClusterId==%s",en->batch_id);
+					
+						if (query != NULL){
+							qlen = strlen(query);
+						}else{
+							qlen = 0;
+						}
+						if(max_constr_len > 0 && tconstraint && ((strlen(tconstraint)+qlen)>max_constr_len)){
+							constraint=make_message(";%s",tconstraint);
+						}else{
+							constraint=make_message("%s%s",toadd,tconstraint);
+						}
+						free(tconstraint);
+						free(toadd);
+					
+						q=realloc(query,qlen+strlen(constraint)+4);
+					
+						if(q != NULL){
+							if (query != NULL){
+								strcat(q,constraint);
+							}else{
+								strcpy(q,constraint);
+							}
+							query=q;	
+						}else{
+							sysfatal("can't realloc query: %r");
+						}
+						free(constraint);
+						free(q);
+						runfinal=TRUE;
+					}
+				}
+				free(en);
+			}
+		
+			if(runfinal){
+				FinalStateQuery(query);
+				runfinal=FALSE;
+			}
+			if (query != NULL){
+				free(query);
+				query = NULL;
+			}
+			fclose(fd);		
+			sleep(loop_interval);
 		}
-		if (query != NULL){
-			free(query);
-			query = NULL;
-		}
-		fclose(fd);		
-		sleep(loop_interval);
 	}
 	
 	job_registry_destroy(rha);
@@ -552,7 +567,7 @@ IntStateQuery()
 
 	if(fp!=NULL){
 		while(!feof(fp) && (line=get_line(fp))){
-			do_log(debuglogfile, debug, 3, "%s: Line in ISQ:%s\n",argv0,line);
+			do_log(debuglogfile, debug, 3, "%s: Line in ISQ:%s",argv0,line);
 			if(line && (strlen(line)==0 || strncmp(line,"JOBID",5)==0)){
 				free(line);
 				continue;
@@ -562,7 +577,7 @@ IntStateQuery()
 			}
 	
 			maxtok_t = strtoken(line, ' ', &token);
-			if (maxtok_t < 6){
+			if (maxtok_t < 5){
 				freetoken(&token,maxtok_t);
 				free(line);
 				continue;
@@ -782,6 +797,9 @@ int GetCondorVersion(){
                 }
         }
         c_version=atoi(condor_version);
+        pclose(fp);
+        free(command_string);
+        free(condor_version);
         return c_version;
 }
 
