@@ -792,8 +792,10 @@ int GetCondorVersion(){
                                 maxtok_t = strtoken(line, ' ', &token);
                                 condor_version=strdel(token[1],".");
                                 freetoken(&token,maxtok_t);
+        			free(line);
                                 break;
                         }
+        		free(line);
                 }
         }
         c_version=atoi(condor_version);
