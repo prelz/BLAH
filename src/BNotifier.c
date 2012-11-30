@@ -167,6 +167,7 @@ main(int argc, char *argv[])
 		perror("");
 		exit(EXIT_FAILURE);
 	}
+        config_setenv(NULL);
 	
 	ret = config_get("bnotifier_debug_level",cha);
 	if (ret != NULL){

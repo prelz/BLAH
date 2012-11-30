@@ -129,6 +129,7 @@ int main(int argc, char *argv[]){
 		perror("");
 		return -1;
 	}
+        config_setenv(NULL);
 
 	ret = config_get("bupdater_child_poll_timeout",cha);
 	if (ret != NULL){
@@ -337,6 +338,8 @@ int main(int argc, char *argv[]){
 		while ((en = job_registry_get_next(rha, fd)) != NULL){
 
 			if((bupdater_lookup_active_jobs(&bact,en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && en->status!=REMOVED && en->status!=COMPLETED){
+			
+				do_log(debuglogfile, debug, 2, "%s: bupdater_lookup_active_jobs returned: %d for jobid: %s\n",argv0,bupdater_lookup_active_jobs(&bact,en->batch_id),en->batch_id);
 
 				confirm_time=atoi(en->updater_info);
 				if(confirm_time==0){
@@ -542,6 +545,7 @@ IntStateQuery()
 				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 				en.exitcode=-1;
 				bupdater_push_active_job(&bact, en.batch_id);
+				do_log(debuglogfile, debug, 2, "%s: bupdater_push_active_job done for %s\n",argv0,en.batch_id);
 				free(batch_str);
 				freetoken(&token_l,maxtok_l);
 				if(!first) free(ren);
