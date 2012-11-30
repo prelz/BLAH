@@ -8,6 +8,8 @@
  *  Revision history :
  *  23-Nov-2007 Original release
  *  13-Jan-2012 Added sbin and libexec install dirs.
+ *  30-Nov-2012 Added ability to locally setenv the env variables
+ *              that are exported in the config file.
  *
  *  Description:
  *    Prototypes of functions defined in config.c
@@ -55,6 +57,8 @@ typedef struct config_handle_s
  } config_handle;
 
 config_handle *config_read(const char *path);
+config_handle *config_read_cmd(const char *path, const char *cmd);
+int config_setenv(const char *ipath);
 config_entry *config_get(const char *key, config_handle *handle);
 int config_test_boolean(const config_entry *entry);
 void config_free(config_handle *handle);
