@@ -9,6 +9,8 @@
  *  23-Nov-2007 Original release
  *  24-Apr-2009 Added parsing of shell arrays.
  *  13-Jan-2012 Added sbin and libexec install dirs.
+ *  30-Nov-2012 Added ability to locally setenv the env variables
+ *              that are exported in the config file.
  *
  *  Description:
  *    Small library for access to the BLAH configuration file.
@@ -77,8 +79,47 @@ config_parse_array_values(config_entry *en)
    }
  }
 
+int
+config_setenv(const char *ipath)
+ {
+  const char *printenv_command_before = "printenv";
+  const char *printenv_command_after = ". %s;printenv";
+  config_handle *envs_before;
+  config_handle *envs_after;
+  config_entry *cur;
+  int n_added = 0;
+
+  envs_before = config_read_cmd(ipath, printenv_command_before);
+  envs_after  = config_read_cmd(ipath, printenv_command_after);
+
+
+  /* Set in the local environment all env variables that were exported in */
+  /* the config file. */
+
+  for (cur = envs_after->list; cur != NULL; cur=cur->next)
+   {
+    if (config_get(cur->key, envs_before) == NULL)
+     {
+      setenv(cur->key, cur->value, 1);
+      n_added++;
+     }
+   }
+  
+  config_free(envs_before);
+  config_free(envs_after);
+
+  return n_added;
+ }
+
 config_handle *
 config_read(const char *ipath)
+ {
+  const char *set_command_format = ". %s; set";
+  return config_read_cmd(ipath, set_command_format);
+ }
+
+config_handle *
+config_read_cmd(const char *ipath, const char *set_command_format)
  {
   char *path;
   char *install_location=NULL;
@@ -91,7 +132,6 @@ config_read(const char *ipath)
   config_entry *c_tail = NULL;
   config_entry *found,*new_entry=NULL;
   char *set_command=NULL;
-  const char *set_command_format = ". %s; set";
   int set_command_size;
   int line_len = 0;
   int line_alloc = 0;
@@ -434,6 +474,8 @@ int
 main(int argc, char *argv[])
 {
   int tcf;
+  int n_env;
+  char *test_env;
   char *path;
   const char *test_config =
     "\n"
@@ -451,6 +493,7 @@ main(int argc, char *argv[])
     "b4=0\n"
     "b4=\"   Junk\"\n"
     "b5=\" False\"\n"
+    "export e1=\" My Env Variable \"\n"
     "file=/tmp/test_`whoami`.bjr\n"
     "arr[0]=value_0\n"
     "arr[3]=value_3\n"
@@ -488,12 +531,26 @@ main(int argc, char *argv[])
 
   setenv("BLAHPD_CONFIG_LOCATION",path,1);
   cha = config_read(NULL);
+  n_env = config_setenv(NULL);
   unlink(path);
   if (cha == NULL)
    {
     fprintf(stderr,"%s: Error reading config from %s: ",argv[0],path);
+    perror("");
     return 4;
    }
+
+  if (n_env <= 0)
+   {
+    fprintf(stderr,"%s: No new env variables found in %s.\n",argv[0],path);
+    r=30;
+   }
+  if ((test_env = getenv("e1")) == NULL)
+   {
+    fprintf(stderr,"%s: Env variable e1 not found in %s.\n",argv[0],path);
+    r=31;
+   }
+  else printf("e1 env == <%s>\n", test_env);
 
   ret = config_get("a",cha);
   if (ret == NULL) fprintf(stderr,"%s: key a not found\n",argv[0]),r=5;
