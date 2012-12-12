@@ -23,6 +23,8 @@
 #[ -f ${GLITE_LOCATION:-/opt/glite}/etc/blah.config ] && . ${GLITE_LOCATION:-/opt/glite}/etc/blah.config
 . `dirname $0`/blah_load_config.sh
 
+sge_helper_path=${GLITE_LOCATION:-/opt/glite}/bin
+
 usage_string="Usage: $0 [-w] [-n]"
 
 #get worker node info
@@ -63,7 +65,7 @@ fi
 tmpid=`echo "$@"|sed 's/.*\/.*\///g'`
 
 # ASG Keith way
-jobid=${tmpid}.default
+jobid=${tmpid}.${sge_cellname:-default}
 
 
 blahp_status=`exec ${sge_helper_path:-/opt/glite/bin}/sge_helper --status $getwn $jobid`
