@@ -189,7 +189,7 @@ bupdater_path=
 bupdater_pidfile=/var/tmp/cream_tomcat_bupdater.pid
 
 #Registry file location
-job_registry=/var/tmp/cream_tomcat_registry.db
+job_registry=
 
 #Set the following variable to 'yes' to have multiple BLAHPD instances
 #share the job registry -index- via mmap:
