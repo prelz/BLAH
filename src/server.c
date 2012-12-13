@@ -1031,6 +1031,7 @@ cmd_submit_job(void *args)
 	char *error_string;
 	int res = 1;
 	char *proxyname = NULL;
+	char *iwd = NULL;
 	char *proxysubject = NULL;
 	char *proxyfqan = NULL;
 	char *proxynameNew   = NULL;
@@ -1089,6 +1090,30 @@ cmd_submit_job(void *args)
 			goto cleanup_lrms;
 		} else {
 			proxyname = NULL;
+		}
+	}
+	/* If the proxy is a relative path, we must prepend the Iwd to make it absolute */
+	if (proxyname && proxyname[0] != '/') {
+		if (classad_get_dstring_attribute(cad, "Iwd", &iwd) == C_CLASSAD_NO_ERROR) {
+			size_t iwdlen = strlen(iwd);
+			size_t proxylen = iwdlen + strlen(proxyname) + 1;
+			char *proxynameTmp;
+			proxynameTmp = malloc(proxylen + 1);
+			if (!proxynameTmp) {
+				resultLine = make_message("%s 1 Malloc\\ failure N/A", reqId);
+				goto cleanup_lrms;
+			}
+			memcpy(proxynameTmp, iwd, iwdlen);
+			proxynameTmp[iwdlen] = '/';
+			strcpy(proxynameTmp+iwdlen+1, proxyname);
+			free(proxyname);
+			free(iwd);
+			iwd = NULL;
+			proxyname = proxynameTmp;
+			proxynameTmp = NULL;
+		} else {
+			resultLine = make_message("%s 1 Relative\\ x509UserProxy\\ specified\\ without\\ Iwd N/A", reqId);
+			goto cleanup_lrms;
 		}
 	}
 
