@@ -34,7 +34,9 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <syslog.h>
+#ifdef MTRACE_ON
 #include <mcheck.h>
+#endif
 #include <pthread.h>
 #include <wordexp.h>
 #include <signal.h>
