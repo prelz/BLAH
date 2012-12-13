@@ -40,7 +40,7 @@
 */
 
 #include <string.h>
-#include "classad_distribution.h"
+#include "classad/classad_distribution.h"
 #include "classad_binary_op_unwind.h"
 
 #ifdef WANT_NAMESPACES

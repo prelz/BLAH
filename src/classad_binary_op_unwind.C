@@ -39,10 +39,10 @@
 
 #include <strings.h> // strcasecmp
 
-#include "classad_distribution.h"
+#include "classad/classad_distribution.h"
 #include "classad_binary_op_unwind.h"
 
-#ifdef WANT_NAMESPACES
+#ifdef 1
 namespace classad {
 #endif
 
@@ -221,6 +221,6 @@ UnparseAux( std::string &buffer, std::string &fnName, std::vector<ExprTree*>& ar
   return;
 }
 
-#ifdef WANT_NAMESPACES
+#ifdef 1
 } // end of classad namespace
 #endif

@@ -33,16 +33,14 @@
 #
 */
 
-#include "classad_distribution.h"
+#include "classad/classad_distribution.h"
 
 #ifndef __CLASSAD_BINARY_OP_UNWIND_H__
 #define __CLASSAD_BINARY_OP_UNWIND_H__
 
-#ifdef WANT_NAMESPACES
 using namespace classad;
 
 namespace classad {
-#endif
 
 class BinaryOpUnwind : public ClassAdUnParser
 {
@@ -64,8 +62,6 @@ class BinaryOpUnwind : public ClassAdUnParser
         std::vector<std::string> m_unwind_output;
 };
 
-#ifdef WANT_NAMESPACES
 } // end of classad namespace
-#endif
 
 #endif // defined __CLASSAD_BINARY_OP_UNWIND_H__
