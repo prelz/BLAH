@@ -1,4 +1,4 @@
-#!/bin/bash -l
+#!/bin/bash
 #
 # File:     pbs_submit.sh
 # Author:   David Rebatto (david.rebatto@mi.infn.it)

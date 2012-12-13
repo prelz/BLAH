@@ -1,4 +1,4 @@
-#!/bin/bash -l
+#!/bin/bash
 #
 # 	File:     condor_submit.sh
 # 	Author:   Giuseppe Fiorentino (giuseppe.fiorentino@mi.infn.it)
