@@ -53,7 +53,7 @@ mpinodes=0
 # Name of local requirements file: currently unused
 req_file=""
 
-while getopts "a:i:o:de:j:n:v:V:c:w:x:u:q:r:s:T:I:O:R:C:" arg 
+while getopts "a:i:o:de:j:n:v:V:c:w:x:u:q:r:s:T:I:O:R:C:D:" arg 
 do
     case "$arg" in
     a) xtra_args="$OPTARG" ;;
@@ -77,6 +77,7 @@ do
     O) outputflstring="$OPTARG" ;;
     R) remaps="$OPTARG" ;;
     C) req_file="$OPTARG" ;;
+    D) run_dir="$OPTARG" ;;
     -) break ;;
     ?) echo $usage_string
        exit 1 ;;
