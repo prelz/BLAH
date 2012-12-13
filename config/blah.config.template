@@ -71,7 +71,7 @@ blah_children_restart_interval=
 blah_require_proxy_on_submit=
 
 #disable proxy user copy (default no)
-blah_disable_proxy_user_copy=
+#blah_disable_proxy_user_copy=yes
 
 ##PBS common variables
 
