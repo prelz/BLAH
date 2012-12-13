@@ -289,7 +289,7 @@ extern "C"
     ExprList *et_value;
     et_value = ExprList::MakeExprList(et_ads);
 
-    if (ad->Insert (name, et_value)) return C_CLASSAD_NO_ERROR; 
+    if (ad->Insert (name, (ExprTree* &)et_value)) return C_CLASSAD_NO_ERROR; 
     else                             return C_CLASSAD_INSERT_FAILED;
    }
 
