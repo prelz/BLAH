@@ -372,6 +372,13 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 		tmp_dir  = DEFAULT_TEMP_DIR;
 	}
 
+/* In the Condor build of the blahp, we can find all the libraries we need
+ * via the RUNPATH. Setting LD_LIBRARY_PATH can muck up the command line
+ * tools for the local batch system.
+ *
+ * Similarly, in OSG, all Globus libraries are in the expected location.
+ */
+#if 0
 	needed_libs = make_message("%s/lib:%s/externals/lib:%s/lib:/opt/lcg/lib", result, result, getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus");
 	old_ld_lib=getenv("LD_LIBRARY_PATH");
 	if(old_ld_lib)
@@ -387,7 +394,7 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	}
 	else
 	 	 setenv("LD_LIBRARY_PATH",needed_libs,1);
-	
+#endif	
 	blah_script_location = strdup(blah_config_handle->libexec_path);
 	blah_version = make_message(RCSID_VERSION, VERSION, "poly,new_esc_format");
 	require_proxy_on_submit = config_test_boolean(config_get("blah_require_proxy_on_submit",blah_config_handle));
