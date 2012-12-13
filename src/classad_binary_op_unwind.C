@@ -42,7 +42,7 @@
 #include "classad/classad_distribution.h"
 #include "classad_binary_op_unwind.h"
 
-#ifdef 1
+#if 1
 namespace classad {
 #endif
 
@@ -221,6 +221,6 @@ UnparseAux( std::string &buffer, std::string &fnName, std::vector<ExprTree*>& ar
   return;
 }
 
-#ifdef 1
+#if 1
 } // end of classad namespace
 #endif
