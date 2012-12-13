@@ -25,7 +25,7 @@ blah_delegate_renewed_proxies=
 
 #Colon-separated list of paths that are shared among batch system
 #head and worker nodes.
-#blah_shared_directories=/home:/users
+blah_shared_directories=/
 
 #By default the job temporary work directory is created as a subdirectory
 #of wherever the batch system is configured to land the job. 
