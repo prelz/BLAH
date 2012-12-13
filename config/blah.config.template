@@ -76,17 +76,18 @@ blah_disable_proxy_user_copy=
 ##PBS common variables
 
 #Path where PBS executables are located 
-pbs_binpath=
+# NOTE: this path is computed many times; I worry about the overhead here.  -BB, 12-13-2012
+pbs_binpath=`which qsub 2>/dev/null|sed 's|/[^/]*$||'`
 
 #Path where the PBS logs are located ($pbs_spoolpath/server_logs)
-pbs_spoolpath=
+#pbs_spoolpath=
 
 #If it is set to yes blah does not check the jobid in the logfiles
 pbs_nochecksubmission=
 
 #If it is set to yes blah does NOT use log files to get job status, 
 #but uses only standard LRMS query (qstat)  
-pbs_nologaccess=
+pbs_nologaccess=yes
 
 #If it is set to no blah scripts for PBS will not try to read 
 #locally from the logs if BLParser is not present
@@ -96,7 +97,7 @@ pbs_fallback=no
 ##LSF common variables
 
 #Path where LSF executables are located 
-lsf_binpath=
+lsf_binpath=`which bsub 2>/dev/null|sed 's|/[^/]*$||'`
 
 #Path where the LSF conf file is located ($lsf_confpath/lsf.conf)
 lsf_confpath=
@@ -276,10 +277,10 @@ tracejob_max_output=
 ##Condor
 
 #condor bin location
-condor_binpath=/opt/condor-c/bin
+condor_binpath=`which condor_submit 2>/dev/null|sed 's|/[^/]*$||'`
 
 #path to condor_config
-export CONDOR_CONFIG="/opt/condor-c/etc/condor_config"
+#export CONDOR_CONFIG="/etc/condor/condor_config"
 
 #Enable the use of the caching for the batch system commands
 #(the command is specified by batch_command_caching_filter)
