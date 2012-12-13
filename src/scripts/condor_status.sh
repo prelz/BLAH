@@ -258,9 +258,12 @@ for job in $* ; do
     ### the history of an unexpected queue.
 
     # We can possibly get the location of the history file and check it.
+    # NOTE: In Condor 7.7.6-7.8.1, the -f option to condor_history was
+    #   broken. To work around that, we set HISTORY via the environment
+    #   instead of using -f.
     history_file=$($condor_binpath/condor_config_val $target -schedd history)
     if [ "$?" == "0" ]; then
-	line=$(echo $FORMAT | xargs $condor_binpath/condor_history -f $history_file -backwards $id)
+	line=$(echo $FORMAT | _condor_HISTORY="$history_file" xargs $condor_binpath/condor_history -f $history_file -backwards $id)
 	if  [ ! -z "$line" ] ; then
 	    echo "0$(make_ad $job "$line")"
 	    exit 0
