@@ -39,7 +39,7 @@ else
     blparser_bin_directory="${GLITE_LOCATION}/bin"
   else
 #   Default value when everything else fails.
-    blparser_bin_directory="/usr/libexec"
+    blparser_bin_directory="/usr/libexec/blahp"
   fi
 fi
 
