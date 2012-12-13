@@ -143,7 +143,7 @@ int set_cmd_list_option(char **command, classad_context cad, const char *attribu
 int set_cmd_string_option(char **command, classad_context cad, const char *attribute, const char *option, const int quote_style);
 int set_cmd_int_option(char **command, classad_context cad, const char *attribute, const char *option, const int quote_style);
 int set_cmd_bool_option(char **command, classad_context cad, const char *attribute, const char *option, const int quote_style);
-char *limit_proxy(char* proxy_name, char *requested_name);
+static char *limit_proxy(char* proxy_name, char *requested_name, char **error_message);
 int getProxyInfo(char* proxname, char** subject, char** fqan);
 int logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char* userDN, char** environment);
 int CEReq_parse(classad_context cad, char* filename, char *proxysubject, char *proxyfqan);
@@ -961,7 +961,7 @@ cmd_set_glexec_dn(void *args)
 		/* proxt4 must be limited for subsequent submission */		
 		if(argv[3][0]=='0')
 		{
-			if((proxynameNew = limit_proxy(proxt4, NULL)) == NULL)
+			if((proxynameNew = limit_proxy(proxt4, NULL, NULL)) == NULL)
 			{
 				free(mapping_parameter[MEXEC_PARAM_DELEGCRED]);
 				mapping_parameter[MEXEC_PARAM_DELEGCRED] = NULL;
@@ -1153,10 +1153,14 @@ cmd_submit_job(void *args)
 	else if (proxyname != NULL)
 	{
 		/* not in glexec mode: need to limit the proxy */
-		if((proxynameNew = limit_proxy(proxyname, NULL)) == NULL)
+		char *errmsg;
+		if((proxynameNew = limit_proxy(proxyname, NULL, &errmsg)) == NULL)
 		{
 			/* PUSH A FAILURE */
-			resultLine = make_message("%s 1 Unable\\ to\\ limit\\ the\\ proxy N/A", reqId);
+			char * escaped_errmsg = (errmsg) ? escape_spaces(errmsg) : NULL;
+			if (escaped_errmsg) resultLine = make_message("%s 1 Unable\\ to\\ limit\\ the\\ proxy\\ (%s) N/A", reqId, escaped_errmsg);
+			else resultLine = make_message("%s 1 Unable\\ to\\ limit\\ the\\ proxy N/A", reqId);
+			if (errmsg) free(errmsg);
 			goto cleanup_proxyname;
 		}
 		free(proxyname);
@@ -1988,7 +1992,7 @@ cmd_renew_proxy(void *args)
 			case 1: /* job queued: copy the proxy locally */
 				if (!use_mapping)
 				{
-					limit_proxy(proxyFileName, old_proxy); /*FIXME: should check if limited proxies are enabled? */ 
+					limit_proxy(proxyFileName, old_proxy, NULL); /*FIXME: should check if limited proxies are enabled? */ 
 					resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
 				}
 				else
@@ -1999,7 +2003,7 @@ cmd_renew_proxy(void *args)
 					{
 						exe_command.source_proxy = argv[CMD_RENEW_PROXY_ARGS + 1 + MEXEC_PARAM_SRCPROXY];
 					} else {
-						limited_proxy_name = limit_proxy(proxyFileName, NULL);
+						limited_proxy_name = limit_proxy(proxyFileName, NULL, NULL);
 						exe_command.source_proxy = limited_proxy_name;
 					}
 					exe_command.dest_proxy = old_proxy;
@@ -2115,7 +2119,7 @@ cmd_send_proxy_to_worker_node(void *args)
 	{
 		if(!use_glexec)
 		{
-			proxyFileNameNew = limit_proxy(proxyFileName, NULL);
+			proxyFileNameNew = limit_proxy(proxyFileName, NULL, NULL);
 		}
 		else
 			proxyFileNameNew = strdup(argv[CMD_SEND_PROXY_TO_WORKER_NODE_ARGS + MEXEC_PARAM_SRCPROXY + 1]);
@@ -2588,8 +2592,8 @@ set_cmd_list_option(char **command, classad_context cad, const char *attribute, 
 	return(result);
 }
 
-char *
-limit_proxy(char* proxy_name, char *limited_proxy_name)
+static char *
+limit_proxy(char* proxy_name, char *limited_proxy_name, char **error_message)
 {
 	int seconds_left, hours_left, minutes_left;
 	char *limcommand;
@@ -2611,6 +2615,31 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 		limited_proxy_name = limited_proxy_made_up_name;
 	}
 
+	/* Sanity check - make sure the destination is writable and the source exists */
+	tmpfd = open(limited_proxy_name, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
+	if (tmpfd == -1)
+	{
+		char * errmsg = make_message("Unable to create limited proxy file (%s):"
+		    " errno=%d, %s", limited_proxy_name, errno, strerror(errno));
+		if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+		if (!errmsg) return(NULL);
+		if (error_message) *error_message = errmsg; else free(errmsg);
+		return NULL;
+	}
+	else
+	{
+		close(tmpfd);
+	}
+	if ((tmpfd = open(proxy_name, O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR)) == -1)
+	{
+		char * errmsg = make_message("Unable to read proxy file (%s):" 
+		    " errno=%d, %s", proxy_name, errno, strerror(errno));
+		if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+		if (!errmsg) return(NULL);
+		if (error_message) *error_message = errmsg; else if (errmsg) free(errmsg);
+		return NULL;
+	}
+
 	globuslocation = (getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus");
 	exe_command.command = make_message("%s/bin/grid-proxy-info -timeleft -file %s",
 	                          globuslocation, proxy_name);
@@ -2625,7 +2654,10 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 	if (res != 0)
 	{
 		perror("blahpd error invoking grid-proxy-info");
+		char * errmsg = make_message("blahpd error invoking grid-proxy-info; "
+		    "exit code %d from grid-proxy-info");
 		if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+		if (error_message && errmsg) *error_message = errmsg; else if (errmsg) free(errmsg);
 		return(NULL);
 	}
 	else
@@ -2675,7 +2707,9 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 		if (fpr == NULL)
 		{
 			fprintf(stderr, "blahpd limit_proxy: Cannot open %s in append mode to obtain file lock: %s\n", limited_proxy_name, strerror(errno));
+			char * errmsg = make_message("Cannot open %s in append mode to obtain file lock: %s", limited_proxy_name, strerror(errno));
 			if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+			if (error_message && errmsg) *error_message= errmsg; else if (errmsg) free(errmsg);
 			return(NULL);
 		}
 		/* Acquire lock on limited proxy */
@@ -2687,7 +2721,9 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 		{
 			fclose(fpr);
 			fprintf(stderr, "blahpd limit_proxy: Cannot obtain write file lock on %s: %s\n", limited_proxy_name, strerror(errno));
+			char * errmsg = make_message("Cannot obtain write file lock on %s: %s", limited_proxy_name, strerror(errno));
 			if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+			if (error_message && errmsg) *error_message= errmsg; else if (errmsg) free(errmsg);
 			return(NULL);
 		}
 	} 
@@ -2714,15 +2750,19 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 	/* the call may have been successful. We just check the temporary proxy  */
 	if (exe_command.exit_code != 0)
 	{
+		int orig_exit_code = exe_command.exit_code;
 		cleanup_cmd(&exe_command);
 		exe_command.command = make_message("%s/bin/grid-proxy-info -f %s", globuslocation, limit_command_output);
 		res = execute_cmd(&exe_command);
 		free(exe_command.command);
 		if (res != 0 || exe_command.exit_code != 0) 
 		{
+			char * errmsg = make_message("Failed to create limited proxy %s (grid-proxy-init "
+			    "exit_code = %d; grid-proxy-info exit code %d)", limit_command_output, orig_exit_code, res != 0 ? res : exe_command.exit_code);
 			if (limit_command_output != limited_proxy_name)
 				free(limit_command_output);
 			if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+			if (error_message && errmsg) *error_message= errmsg; else if(errmsg) free(errmsg);
 			return(NULL);
 		}
 	}
@@ -2738,8 +2778,10 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 			{
 				fprintf(stderr, "blahpd limit_proxy: Cannot open %s in append mode to obtain file lock: %s\n", limited_proxy_name, strerror(errno));
 				unlink(limit_command_output);
+				char * errmsg = make_message("Cannot open %s in append mode to obtain file lock: %s", limited_proxy_name, strerror(errno));
 				free(limit_command_output);
 				if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+				if (error_message && errmsg) *error_message= errmsg; else if (errmsg) free(errmsg);
 				return(NULL);
 			}	
 			/* Acquire lock on limited proxy */
@@ -2751,9 +2793,11 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 			{
 				fclose(fpr);
 				fprintf(stderr, "blahpd limit_proxy: Cannot obtain write file lock on %s: %s\n", limited_proxy_name, strerror(errno));
+				char * errmsg = make_message("Cannot obtain write file lock on %s: %s", limited_proxy_name, strerror(errno));
 				unlink(limit_command_output);
 				free(limit_command_output);
 				if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+				if (error_message && errmsg) *error_message= errmsg; else free(errmsg);
 				return(NULL);
 			}
 		}
