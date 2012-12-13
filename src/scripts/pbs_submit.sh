@@ -197,6 +197,9 @@ if [ "$retcode" != "0" ] ; then
 	exit 1
 fi
 
+# The job id is actually the first numbers in the string (slurm support)
+jobID=`echo $jobID | awk 'match($0,/[0-9]+/){print substr($0, RSTART, RLENGTH)}'`
+
 if [ "x$pbs_nologaccess" != "xyes" -a "x$pbs_nochecksubmission" != "xyes" ]; then
 
 # Don't trust qsub retcode, it could have crashed
