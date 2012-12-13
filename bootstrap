@@ -24,7 +24,7 @@ set -x
 if [ -d ../org.glite/project ]; then
   aclocal -I project -I ../org.glite/project
 else
-  aclocal -I project
+  aclocal -I project -I /usr/share/glite-build-common-cpp/m4
 fi
 
 libtoolize --force
