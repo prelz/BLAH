@@ -19,7 +19,7 @@
 #
 
 # description: gLite CE blah parser
-# chkconfig: 345 94 15
+# chkconfig: - 94 15
 
 # Source function library
 . /etc/rc.d/init.d/functions
