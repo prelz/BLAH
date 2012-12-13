@@ -3457,6 +3457,11 @@ ConvertArgs(char* original, char separator)
 			memcpy(result + j, CONVARG_DBLQUOTESC, CONVARG_DBLQUOTESC_LEN);
 			j += CONVARG_DBLQUOTESC_LEN;
 		}
+		else if ((original[i] == '(') || (original[i] == ')') || (original[i] == '&'))
+		{	/* Must escape a few meta-characters for wordexp */
+			result[j++] = '\\';
+			result[j++] = original[i];
+		}
 		else
 		{	/* plain copy from the original */
 			result[j++] = original[i];
