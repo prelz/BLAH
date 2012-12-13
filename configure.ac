@@ -196,6 +196,7 @@ AC_HEADER_TIME
 
 dnl Checks for library functions.
 AC_CHECK_FUNCS(select socket strdup strerror bsearch vsnprintf mmap munmap)
+AC_CHECK_FUNCS(dlopen, ,AC_CHECK_LIB(dl, dlopen))
 
 dnl GLITE_CHECK_LIBDIR
 dnl GLITE_CHECK_INITDIR
