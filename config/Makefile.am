@@ -26,6 +26,7 @@ EXTRA_DIST = blah.config.template \
              glite-ce-blah-parser \
              glite-ce-check-blparser 
 
+initdir = rc.d/init.d
 bldir = $(sysconfdir)/$(initdir)
 bl_SCRIPTS = glite-ce-blah-parser glite-ce-check-blparser
 
