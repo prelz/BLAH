@@ -2631,14 +2631,14 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 	if (seconds_left <= 0)
 	{
 		/* Something's wrong with the current proxy - use defaults */
-		exe_command.command = make_message("%s/bin/grid-proxy-init -old -limited -cert %s -key %s -out %s",
+		exe_command.command = make_message("%s/bin/grid-proxy-init -limited -cert %s -key %s -out %s",
 	                          globuslocation, proxy_name, proxy_name, limit_command_output);
 	} 
 	else
 	{
 		hours_left = (int)(seconds_left/3600);
 		minutes_left = (int)((seconds_left%3600)/60) + 1;
-		exe_command.command = make_message("%s/bin/grid-proxy-init -old -limited -valid %d:%d -cert %s -key %s -out %s",
+		exe_command.command = make_message("%s/bin/grid-proxy-init -limited -valid %d:%d -cert %s -key %s -out %s",
 	                          globuslocation, hours_left, minutes_left, proxy_name, proxy_name, limit_command_output);
 	}
 
