@@ -33,6 +33,7 @@ set(CMAKE_INSTALL_PREFIX "/usr")
 set(CPACK_PACKAGE_VENDOR "EMI")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Batch Local ASCII Helper Protocol suite")
 set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/blah_description.txt")
+file(READ ${CPACK_PACKAGE_DESCRIPTION_FILE} CPACK_PACKAGE_DESCRIPTION)
 set(CPACK_PACKAGE_VERSION_MAJOR "1")
 set(CPACK_PACKAGE_VERSION_MINOR "19")
 set(CPACK_PACKAGE_VERSION_PATCH "0")
@@ -44,6 +45,12 @@ set(CPACK_PACKAGE_VERSION
 set(CPACK_SET_DESTDIR ON)
 set(CPACK_PACKAGE_RELOCATABLE "false")
 
+# Pre-definition of variables for the UseRPMTools spec template
+set(CPACK_RPM_PACKAGE_SUMMARY ${CPACK_PACKAGE_DESCRIPTION_SUMMARY})
+set(CPACK_RPM_PACKAGE_NAME ${CMAKE_PROJECT_NAME})
+set(CPACK_RPM_PACKAGE_VERSION ${CPACK_PACKAGE_VERSION})
+set(CPACK_RPM_PACKAGE_VENDOR ${CPACK_PACKAGE_VENDOR})
+
 set(CPACK_PACKAGE_CONTACT "blah@mi.infn.it")
 set(CPACK_RPM_PACKAGE_LICENSE "Apache Software License")
 set(CPACK_RPM_PACKAGE_GROUP "Applications/Internet")
@@ -51,12 +58,25 @@ set(CPACK_RPM_USER_BINARY_SPECFILE "${CMAKE_CURRENT_SOURCE_DIR}/project/cmake_sp
 
 set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE 
     ${CMAKE_CURRENT_SOURCE_DIR}/project/glite-ce-blahp.post)
+file(READ ${CPACK_RPM_POST_INSTALL_SCRIPT_FILE} CPACK_RPM_SPEC_POSTINSTALL)
 set(CPACK_RPM_PRE_UNINSTALL_SCRIPT_FILE 
     ${CMAKE_CURRENT_SOURCE_DIR}/project/glite-ce-blahp.preun)
+file(READ ${CPACK_RPM_PRE_UNINSTALL_SCRIPT_FILE} CPACK_RPM_SPEC_PREUNINSTALL)
+
+set(CPACK_SOURCE_IGNORE_FILES
+  "Makefile;CMakeCache.txt;/RPM/;/autom4te.cache/;/CMakeFiles/;/build/;/\\\\.git/;/\\\\.deps/;\\\\.tar\\\\.gz$;\\\\.o$;\\\\.rpm$;\\\\.deb$;${CPACK_SOURCE_IGNORE_FILES}")
 
 add_subdirectory(src build)
 add_subdirectory(config)
 add_subdirectory(doc)
+
+include(CPack)
+include(UseRPMTools.cmake)
+
+if(RPMTools_FOUND)
+   RPMTools_ADD_RPM_TARGETS(${CMAKE_PROJECT_NAME}
+                            "${CMAKE_CURRENT_SOURCE_DIR}/project/BLAH.spec.in")
+endif(RPMTools_FOUND)
 
 install(FILES LICENSE 
     DESTINATION share/doc/${CMAKE_PROJECT_NAME}-${CPACK_PACKAGE_VERSION})
