@@ -58,7 +58,10 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/project/cpack_spec_templat
                               -D OUTPUT=${CMAKE_CURRENT_SOURCE_DIR}/project/cpack_spec_template
                               -D CUSTOM=${CMAKE_CURRENT_SOURCE_DIR}/project/cmake_spec_cpack_build
                               -P ${CMAKE_CURRENT_SOURCE_DIR}/create_spec_templates.cmake
-                   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/project/cmake_spec_cpack_build)
+                   DEPENDS 
+                     ${CMAKE_CURRENT_SOURCE_DIR}/project/cmake_spec_prologue
+                     ${CMAKE_CURRENT_SOURCE_DIR}/project/cmake_spec_epilogue
+                     ${CMAKE_CURRENT_SOURCE_DIR}/project/cmake_spec_cpack_build)
 
 execute_process(COMMAND ${CMAKE_COMMAND} 
                   -D OUTPUT=${CMAKE_CURRENT_SOURCE_DIR}/project/${CPACK_RPM_PACKAGE_NAME}.spec.in
