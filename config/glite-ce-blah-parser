@@ -147,7 +147,7 @@ fi
                 failure $"Reloading `basename ${GLITE_CE_BNOTIFIER}`"
                fi
               else
-               echo -n $"Reloading `basename ${GLITE_CE_PARSER_MASTER}: "
+               echo -n $"Reloading `basename ${GLITE_CE_PARSER_MASTER}`: "
                if [ -n "`pidfileofproc ${GLITE_CE_PARSER_MASTER}`" ] ; then
                 killproc ${GLITE_CE_PARSER_MASTER} -HUP
                else
