@@ -285,7 +285,7 @@ def get_qstat_location():
     _qstat_location_cache = location
     return location
 
-job_id_re = re.compile("\s*Job Id: ([0-9]+[\.\w\-]+)")
+job_id_re = re.compile("\s*Job Id: ([0-9]+)[\.\w\-]+")
 exec_host_re = re.compile("\s*exec_host = ([\w\-\/.]+)")
 status_re = re.compile("\s*job_state = ([QRECH])")
 exit_status_re = re.compile("\s*exit_status = (-?[0-9]+)")
