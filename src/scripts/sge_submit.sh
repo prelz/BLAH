@@ -64,7 +64,7 @@ cat > $bls_tmp_file << end_of_preamble
 end_of_preamble
 
 #local batch system-specific file output must be added to the submit file
-local_submit_attributes_file=${GLITE_LOCATION:-/usr}/libexec/sge_local_submit_attributes.sh
+local_submit_attributes_file=${blah_libexec_directory}/sge_local_submit_attributes.sh
 if [ -r $local_submit_attributes_file ] ; then
     echo \#\!/bin/sh > $bls_opt_tmp_req_file
     if [ ! -z $bls_opt_req_file ] ; then
