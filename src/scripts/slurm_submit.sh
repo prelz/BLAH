@@ -58,14 +58,22 @@ bls_set_up_local_and_extra_args
   echo "#$slurm_opt_prefix -p $bls_opt_queue" >> $bls_tmp_file
 
 # Input sandbox setup
-bls_fl_subst_and_dump  inputsand "scp `hostname -f`:@@F_LOCAL @@F_REMOTE" >> $bls_tmp_file
+if [[ bls_inputsand_counter -gt 0 ]] ; then
+  echo "# Use scp for files not belonging to any of the shared areas" >> $bls_tmp_file
+  echo "# (blah_shared_directories = $blah_shared_directories)" >> $bls_tmp_file
+  bls_fl_subst_and_dump inputsand "scp `hostname -f`:@@F_LOCAL @@F_REMOTE" >> $bls_tmp_file
+fi
 
 # The wrapper's body...
-bls_add_job_wrapper
+bls_start_job_wrapper >> $bls_tmp_file
 
 # Output sandbox setup
 echo "# Copy the output file back..." >> $bls_tmp_file
 bls_fl_subst_and_dump outputsand "scp @@F_REMOTE `hostname -f`:@@F_LOCAL" >> $bls_tmp_file
+
+# Finish the wrapper
+bls_finish_job_wrapper >> $bls_tmp_file 
+bls_test_working_dir
 
 if [ "x$bls_opt_debug" = "xyes" ]; then
   echo "Submit file written to $bls_tmp_file"
