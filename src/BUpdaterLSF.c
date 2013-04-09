@@ -1504,7 +1504,7 @@ get_susp_timestamp(char *jobid)
 	char *cp=NULL; 
 	char *command_string=NULL;
 	
-	command_string=make_message("%s/bhist -u all -l %s",lsf_binpath,jobid);
+	command_string=make_message("%s/bhist -u all -l '%s'",lsf_binpath,jobid);
 
 	fp = popen(command_string,"r");
 		
@@ -1548,7 +1548,7 @@ get_resume_timestamp(char *jobid)
 	char *cp=NULL; 
 	char *command_string=NULL;
 	
-	command_string=make_message("%s/bhist -u all -l %s",lsf_binpath,jobid);
+	command_string=make_message("%s/bhist -u all -l '%s'",lsf_binpath,jobid);
 
 	fp = popen(command_string,"r");
 		
@@ -1592,7 +1592,7 @@ get_pend_timestamp(char *jobid)
 	char *cp=NULL; 
 	char *command_string=NULL;
 	
-	command_string=make_message("%s/bhist -u all -l %s",lsf_binpath,jobid);
+	command_string=make_message("%s/bhist -u all -l '%s'",lsf_binpath,jobid);
 
 	fp = popen(command_string,"r");
 		

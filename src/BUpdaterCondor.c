@@ -397,7 +397,7 @@ int main(int argc, char *argv[]){
 					}	
 					if(first) first=FALSE;
 					
-					tconstraint=make_message("ClusterId==%s",en->batch_id);
+					tconstraint=make_message("ClusterId=='%s'",en->batch_id);
 					
 					if (query != NULL){
 						qlen = strlen(query);

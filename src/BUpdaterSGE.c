@@ -510,7 +510,7 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
     //now we have check in list_query only states that not change status 
     //because they're not in qstat result
     for (l=0; l<nq; l++){
-	sprintf(command_string,"%s/qacct -j %s",sge_binpath,list_query[l]);
+	sprintf(command_string,"%s/qacct -j '%s'",sge_binpath,list_query[l]);
 	if (debug) do_log(debuglogfile, debug, 1, "+-+line 520,command_string:%s\n",command_string);
 	file_output = popen(command_string,"r");
 	if (file_output == NULL) return 1;
@@ -577,7 +577,7 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
 	while (n < cont){
 	    if(list_query[n]) strcpy(cmd,list_query[n]);
 	    else return 1;
-	    sprintf(command_string,"%s/qacct -j %s",sge_binpath,cmd);
+	    sprintf(command_string,"%s/qacct -j '%s'",sge_binpath,cmd);
 	    if (debug) do_log(debuglogfile, debug, 1, "+-+line 587 error, command_string:%s\n",command_string);
 	    file_output = popen(command_string,"r");
 	    if (file_output == NULL) return 1;
