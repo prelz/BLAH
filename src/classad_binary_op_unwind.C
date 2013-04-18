@@ -42,9 +42,7 @@
 #include "classad_distribution.h"
 #include "classad_binary_op_unwind.h"
 
-#ifdef WANT_NAMESPACES
-namespace classad {
-#endif
+BEGIN_NAMESPACE( classad )
 
 // BinaryOpUnwind object implementation
 BinaryOpUnwind::
@@ -221,6 +219,4 @@ UnparseAux( std::string &buffer, std::string &fnName, std::vector<ExprTree*>& ar
   return;
 }
 
-#ifdef WANT_NAMESPACES
-} // end of classad namespace
-#endif
+END_NAMESPACE // classad

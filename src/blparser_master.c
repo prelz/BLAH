@@ -34,7 +34,6 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <syslog.h>
-#include <mcheck.h>
 #include <pthread.h>
 #include <wordexp.h>
 #include <signal.h>

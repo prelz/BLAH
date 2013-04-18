@@ -307,9 +307,11 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	char **argv;
 	command_t *command;
 	int bc=0;
+#ifdef GLOBUS_TOOLS_NEED_LIBRARY_PATH
 	char *needed_libs=NULL;
 	char *old_ld_lib=NULL;
 	char *new_ld_lib=NULL;
+#endif
 	config_entry *suplrms, *jre;
 	char *next_lrms_s, *next_lrms_e;
 	int lrms_len;
@@ -372,6 +374,7 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 		tmp_dir  = DEFAULT_TEMP_DIR;
 	}
 
+#ifdef GLOBUS_TOOLS_NEED_LIBRARY_PATH
 	needed_libs = make_message("%s/lib:%s/externals/lib:%s/lib:/opt/lcg/lib", result, result, getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus");
 	old_ld_lib=getenv("LD_LIBRARY_PATH");
 	if(old_ld_lib)
@@ -387,6 +390,7 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	}
 	else
 	 	 setenv("LD_LIBRARY_PATH",needed_libs,1);
+#endif
 	
 	blah_script_location = strdup(blah_config_handle->libexec_path);
 	blah_version = make_message(RCSID_VERSION, VERSION, "poly,new_esc_format");
@@ -1268,6 +1272,7 @@ cmd_submit_job(void *args)
 	    (set_cmd_int_option   (&command, cad, "HostSMPSize", "-N", INT_NOQUOTE)  == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_bool_option  (&command, cad, "StageCmd",   "-s", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "ClientJobId","-j", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_string_option(&command, cad, "JobDirectory","-D", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "BatchExtraSubmitArgs", "-a", SINGLE_QUOTE) == C_CLASSAD_OUT_OF_MEMORY))
 //	    (set_cmd_string_option(&command, cad, "Args",      	"--", SINGLE_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY))
 	{
@@ -2062,7 +2067,9 @@ cmd_send_proxy_to_worker_node(void *args)
 	char *jobDescr = argv[2];
 	char *proxyFileName = argv[3];
 	char *workernode = argv[4];
+#ifdef GLOBUS_TOOLS_NEED_LIBRARY_PATH
 	char *ld_path = NULL;
+#endif
 	int retcod;
 	
 	char *error_string = NULL;
@@ -2087,11 +2094,13 @@ cmd_send_proxy_to_worker_node(void *args)
 		else
 			proxyFileNameNew = strdup(argv[CMD_SEND_PROXY_TO_WORKER_NODE_ARGS + MEXEC_PARAM_SRCPROXY + 1]);
 
+#ifdef GLOBUS_TOOLS_NEED_LIBRARY_PATH
 		/* Add the globus library path */
 		ld_path = make_message("LD_LIBRARY_PATH=%s/lib",
 		                           getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus");
 		push_env(&exe_command.environment, ld_path);
 		free(ld_path);
+#endif
 
 		delegate_switch = "";
 		if (config_test_boolean(config_get("blah_delegate_renewed_proxies",blah_config_handle)))
@@ -3456,6 +3465,12 @@ ConvertArgs(char* original, char separator)
 		{	/* double quotes need to be triple-escaped to make it to the submit file */
 			memcpy(result + j, CONVARG_DBLQUOTESC, CONVARG_DBLQUOTESC_LEN);
 			j += CONVARG_DBLQUOTESC_LEN;
+		}
+		/* Must escape a few meta-characters for wordexp */
+		else if ((original[i] == '(') || (original[i] == ')') || (original[i] == '&'))
+		{
+			result[j++] = '\\';
+			result[j++] = original[i];
 		}
 		else
 		{	/* plain copy from the original */
