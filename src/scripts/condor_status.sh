@@ -2,8 +2,7 @@
 
 #  File:     condor_status.sh
 #
-#  Author:   Francesco Prelz
-#  e-mail:   Francesco.Prelz@mi.infn.it
+#  Author:   Matt Farrellee (Condor) - received on March 28, 2007
 #
 #
 # Copyright (c) Members of the EGEE Collaboration. 2004. 

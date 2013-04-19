@@ -6,6 +6,7 @@
 #
 # 	Revision history:
 # 	08-Aug-2006: Original release
+#       03-Apr-2007: Merged changes by Matt Farrellee (Condor) 
 #       27-Oct-2009: Added support for 'local' requirements file.
 #
 # 	Description:
