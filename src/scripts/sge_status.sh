@@ -63,11 +63,43 @@ fi
 tmpid=`echo "$@"|sed 's/.*\/.*\///g'`
 
 # ASG Keith way
-jobid=${tmpid}.default
+jobid=${tmpid}.${sge_cellname:-default}
 
 
 blahp_status=`exec ${sge_helper_path:-/opt/glite/bin}/sge_helper --status $getwn $jobid`
 retcode=$?
+
+# Now see if we need to run qstat 'manually'
+if [ $retcode -ne 0 ]; then
+
+   qstat_out=`qstat`
+
+   # First, find the column with the State information:
+   state_col=`echo "$qstat_out" | head -n 1 | awk '{ for (i = 1; i<=NF; i++) if ($i == "state") print i;}'`
+   job_state=`echo "$qstat_out" | awk -v "STATE_COL=$state_col" -v "JOBID=$tmpid" '{ if ($1 == JOBID) print $STATE_COL; }'`
+  
+   if [[ "$job_state" =~  q ]]; then
+      jobstatus=1
+   elif [[ "$job_state" =~ [rt] ]]; then
+      jobstatus=2
+   elif [[ "$job_state" =~ h ]]; then
+      jobstatus=5
+   elif [[ "$job_state" =~ E ]]; then
+      jobstatus=4
+   elif [[ "$job_state" =~ d ]]; then
+      jobstatus=3
+   elif [ "x$job_state" == "x" ]; then
+      jobstatus=4
+   fi
+
+   if [ $jobstatus -eq 4 ]; then
+      blahp_status="[BatchJobId=\"$tmpid\";JobStatus=$jobstatus;ExitCode=0]"
+   else
+      blahp_status="[BatchJobId=\"$tmpid\";JobStatus=$jobstatus]"
+   fi
+   retcode=0
+
+fi
 
 echo ${retcode}${blahp_status}
 #exit $retcode
