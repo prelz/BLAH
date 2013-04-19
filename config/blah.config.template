@@ -77,6 +77,8 @@ blah_disable_proxy_user_copy=
 
 #Path where PBS executables are located 
 pbs_binpath=
+#Uncomment for automatic detection:
+#pbs_binpath=`which qsub 2>/dev/null|sed 's|/[^/]*$||'
 
 #Path where the PBS logs are located ($pbs_spoolpath/server_logs)
 pbs_spoolpath=
@@ -97,9 +99,14 @@ pbs_fallback=no
 
 #Path where LSF executables are located 
 lsf_binpath=
+#Uncomment for automatic detection:
+#lsf_binpath=`which bsub 2>/dev/null|sed 's|/[^/]*$||'`
 
 #Path where the LSF conf file is located ($lsf_confpath/lsf.conf)
 lsf_confpath=
+#Uncomment for automatic detection:
+#lsf_confpath=${LSF_ENVDIR:-/etc}
+
 
 #If it is set to yes blah does not check the jobid in the logfiles
 lsf_nochecksubmission=
@@ -276,10 +283,12 @@ tracejob_max_output=
 ##Condor
 
 #condor bin location
-condor_binpath=/opt/condor-c/bin
+condor_binpath=
+#Uncomment for automatic detection:
+#condor_binpath=`which condor_submit 2>/dev/null|sed 's|/[^/]*$||'`
 
 #path to condor_config
-export CONDOR_CONFIG="/opt/condor-c/etc/condor_config"
+#export CONDOR_CONFIG="/opt/condor-c/etc/condor_config"
 
 #Enable the use of the caching for the batch system commands
 #(the command is specified by batch_command_caching_filter)
