@@ -59,6 +59,17 @@ blahpd_daemon_SOURCES = main_daemon.c $(common_sources)
 
 blahpd_LDADD = $(CLASSAD_LIBS)
 
+if HAVE_GLOBUS
+blahpd_CFLAGS = -DHAVE_GLOBUS
+blahpd_daemon_CFLAGS = $(blahpd_CFLAGS)
+blahpd_LDADD = $(blahpd_LDADD) \
+		$(GLOBUS_GSI_CRED_LIBS) \
+		$(GLOBUS_GSI_PROXY_LIBS) \
+		$(GLOBUS_GSI_UTILS_LIBS) \
+		$(GLOBUS_GSS_ASSIST_LIBS) \
+		$(GLOBUS_GSI_SYSCFG_LIBS)
+endif
+
 blahpd_daemon_LDADD = $(blahpd_LDADD)
 
 BPRclient_SOURCES = BPRclient.c BPRcomm.c tokens.c

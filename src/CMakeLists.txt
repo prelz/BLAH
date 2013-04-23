@@ -40,16 +40,47 @@ set (main_common_sources
     console.c job_status.c resbuffer.c server.c commands.c
     classad_binary_op_unwind.C classad_c_helper.C proxy_hashcontainer.c 
     config.c job_registry.c blah_utils.c env_helper.c mapped_exec.c md5.c 
-    cmdbuffer.c)
+    cmdbuffer.c globus_utils.c)
 
 set (bupdater_common_sources 
     Bfunctions.c job_registry.c md5.c config.c blah_utils.c
     job_registry_updater.c)
 
+# Globus available at build time ?
+set(Globus_CXX_FLAGS ""
+  CACHE STRING "C++ compiler flags for use of the Globus libraries")
+set(Globus_LIBRARY ""
+  CACHE STRING "Globus libraries")
+
+if (${GLOBUS_COMMON_FOUND} AND ${GLOBUS_IO_FOUND})
+
+set(Globus_LIBRARY
+    ${GLOBUS_GSI_PROXY_CORE_LDFLAGS}
+    ${GLOBUS_GSI_CREDENTIALS_LDFLAGS}
+    ${GLOBUS_GSS_ASSIST_LDFLAGS})
+
+add_executable(BPRclient BPRclient.c BPRcomm.c tokens.c)
+target_link_libraries(BPRclient ${Globus_LIBRARY})
+add_executable(BPRserver BPRserver.c BPRcomm.c tokens.c)
+target_link_libraries(BPRserver ${Globus_LIBRARY})
+set_target_properties(BPRserver PROPERTIES COMPILE_FLAGS "-static") 
+
+set(Globus_CXX_FLAGS "-DHAVE_GLOBUS")
+endif (${GLOBUS_COMMON_FOUND} AND ${GLOBUS_IO_FOUND})
+
+message(STATUS "Globus_CXX_FLAGS == " "${Globus_CXX_FLAGS}")
+message(STATUS "Globus_LIBRARY == " "${Globus_LIBRARY}")
+mark_as_advanced(
+  Globus_CXX_FLAGS
+  Globus_LIBRARY
+)
+
 # programs for 'sbin'
 add_executable(blahpd_daemon main_daemon.c ${main_common_sources})
-set_target_properties(blahpd_daemon PROPERTIES COMPILE_FLAGS ${ClassAd_CXX_FLAGS}) 
-target_link_libraries(blahpd_daemon -lpthread ${ClassAd_LIBRARY})
+set_target_properties(blahpd_daemon PROPERTIES COMPILE_FLAGS 
+                      "${ClassAd_CXX_FLAGS} ${Globus_CXX_FLAGS}") 
+target_link_libraries(blahpd_daemon -lpthread 
+                      ${ClassAd_LIBRARY} ${Globus_LIBRARY})
 add_executable(blah_job_registry_add 
     blah_job_registry_add.c job_registry.c 
     job_registry_updater.c md5.c config.c)
@@ -69,8 +100,10 @@ add_executable(blah_job_registry_purge
 
 # programs for 'bin'
 add_executable(blahpd main.c ${main_common_sources})
-set_target_properties(blahpd PROPERTIES COMPILE_FLAGS ${ClassAd_CXX_FLAGS}) 
-target_link_libraries(blahpd -lpthread ${ClassAd_LIBRARY})
+set_target_properties(blahpd PROPERTIES COMPILE_FLAGS 
+                      "${ClassAd_CXX_FLAGS} ${Globus_CXX_FLAGS}") 
+target_link_libraries(blahpd -lpthread 
+                      ${ClassAd_LIBRARY} ${Globus_LIBRARY})
 
 # programs for 'libexec'
 add_executable(BLClient BLClient.c blah_utils.c BLfunctions.c)
@@ -94,19 +127,6 @@ add_executable(BUpdaterSLURM BUpdaterSLURM.c ${bupdater_common_sources})
 target_link_libraries(BUpdaterSLURM -lpthread)
 add_executable(blparser_master blparser_master.c config.c blah_utils.c)
 
-if (${GLOBUS_COMMON_FOUND} AND ${GLOBUS_IO_FOUND})
-add_executable(BPRclient BPRclient.c BPRcomm.c tokens.c)
-target_link_libraries(BPRclient 
-  ${GLOBUS_GSI_PROXY_CORE_LDFLAGS}
-  ${GLOBUS_GSI_CREDENTIALS_LDFLAGS}
-  ${GLOBUS_GSS_ASSIST_LDFLAGS})
-add_executable(BPRserver BPRserver.c BPRcomm.c tokens.c)
-target_link_libraries(BPRserver
-  ${GLOBUS_GSI_PROXY_CORE_LDFLAGS}
-  ${GLOBUS_GSI_CREDENTIALS_LDFLAGS}
-  ${GLOBUS_GSS_ASSIST_LDFLAGS})
-set_target_properties(BPRserver PROPERTIES COMPILE_FLAGS "-static") 
-endif (${GLOBUS_COMMON_FOUND} AND ${GLOBUS_IO_FOUND})
 
 # test programs
 add_executable(test_job_registry_create test_job_registry_create.c job_registry.c md5.c)

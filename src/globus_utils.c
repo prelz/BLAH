@@ -5,6 +5,7 @@
 #
 #  Revision history:
 #   19 Apr 2013 - Original release.
+#   23 Apr 2013 - Choose pthread model in Globus as blahpd generates pthreads.
 #
 #  Description:
 #   Direct callouts for Globus proxy handling.
@@ -29,6 +30,8 @@
 #
 */
 
+#ifdef HAVE_GLOBUS
+
 #include "globus_gsi_credential.h"
 #include "globus_gsi_proxy.h"
 
@@ -40,6 +43,11 @@ int activate_globus()
 
 	if (active) {
 		return 0;
+	}
+
+	if ( globus_thread_set_model("pthread") ) {
+		grid_proxy_errmsg = "failed to set Globus threading model";
+		return -1;
 	}
 
 	if ( globus_module_activate(GLOBUS_GSI_CREDENTIAL_MODULE) ) {
@@ -215,3 +223,5 @@ main(int argc, char *argv[])
 	return rc;
 }
 #endif /* defined GLOBUS_UTILS_TEST_CODE */
+
+#endif /* defined HAVE_GLOBUS */
