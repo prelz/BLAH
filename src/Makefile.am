@@ -51,7 +51,7 @@ bin_PROGRAMS = blahpd
 libexec_PROGRAMS = BLClient BLParserLSF BLParserPBS BUpdaterCondor BNotifier BUpdaterLSF BUpdaterPBS BUpdaterSGE BUpdaterSLURM $(GLOBUS_EXECS)  blparser_master
 noinst_PROGRAMS = test_job_registry_create test_job_registry_purge test_job_registry_update test_job_registry_access test_job_registry_update_from_network test_cmdbuffer
 
-common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C proxy_hashcontainer.c config.c job_registry.c blah_utils.c env_helper.c mapped_exec.c md5.c cmdbuffer.c
+common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C proxy_hashcontainer.c config.c job_registry.c blah_utils.c env_helper.c mapped_exec.c md5.c cmdbuffer.c globus_utils.c
 
 blahpd_SOURCES = main.c $(common_sources)
 
