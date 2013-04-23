@@ -46,13 +46,11 @@ set (bupdater_common_sources
     Bfunctions.c job_registry.c md5.c config.c blah_utils.c
     job_registry_updater.c)
 
-# Globus available at build time ?
-set(Globus_CXX_FLAGS ""
-  CACHE STRING "C++ compiler flags for use of the Globus libraries")
-set(Globus_LIBRARY ""
-  CACHE STRING "Globus libraries")
+set (DISABLE_GLOBUS "FALSE" CACHE STRING "Disable Globus even when available at build time")
+mark_as_advanced(DISABLE_GLOBUS)
 
-if (${GLOBUS_COMMON_FOUND} AND ${GLOBUS_IO_FOUND})
+# Globus available at build time ?
+if (${GLOBUS_COMMON_FOUND} AND ${GLOBUS_IO_FOUND} AND NOT ${DISABLE_GLOBUS} )
 
 set(Globus_LIBRARY
     ${GLOBUS_GSI_PROXY_CORE_LDFLAGS}
@@ -66,14 +64,10 @@ target_link_libraries(BPRserver ${Globus_LIBRARY})
 set_target_properties(BPRserver PROPERTIES COMPILE_FLAGS "-static") 
 
 set(Globus_CXX_FLAGS "-DHAVE_GLOBUS")
-endif (${GLOBUS_COMMON_FOUND} AND ${GLOBUS_IO_FOUND})
+endif (${GLOBUS_COMMON_FOUND} AND ${GLOBUS_IO_FOUND} AND NOT ${DISABLE_GLOBUS} )
 
 message(STATUS "Globus_CXX_FLAGS == " "${Globus_CXX_FLAGS}")
 message(STATUS "Globus_LIBRARY == " "${Globus_LIBRARY}")
-mark_as_advanced(
-  Globus_CXX_FLAGS
-  Globus_LIBRARY
-)
 
 # programs for 'sbin'
 add_executable(blahpd_daemon main_daemon.c ${main_common_sources})
@@ -182,8 +176,8 @@ install(FILES
                 GROUP_READ WORLD_READ
     DESTINATION libexec)
 
-if (${GLOBUS_COMMON_FOUND} AND ${GLOBUS_IO_FOUND})
+if (${GLOBUS_COMMON_FOUND} AND ${GLOBUS_IO_FOUND} AND NOT ${DISABLE_GLOBUS} )
 install(TARGETS BPRclient BPRserver RUNTIME DESTINATION libexec)
-endif (${GLOBUS_COMMON_FOUND} AND ${GLOBUS_IO_FOUND})
+endif (${GLOBUS_COMMON_FOUND} AND ${GLOBUS_IO_FOUND} AND NOT ${DISABLE_GLOBUS} )
 
 include(CPack)
