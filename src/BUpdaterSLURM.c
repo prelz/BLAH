@@ -305,7 +305,7 @@ int main(int argc, char *argv[]){
 		now=time(0);
 		if(now - last_consistency_check > bupdater_consistency_check_interval){
 			if(job_registry_check_index_key_uniqueness(rha,&first_duplicate)==JOB_REGISTRY_FAIL){
-				do_log(debuglogfile, debug, 1, "%s: Found job registry duplicate entry. The first one is:%s\n.Jobid should be removed or registry directory should be removed.\n",argv0,first_duplicate);
+				do_log(debuglogfile, debug, 1, "%s: Found job registry duplicate entry. The first one is:%s.\nJobid should be removed or registry directory should be removed.\n",argv0,first_duplicate);
                	        	fprintf(stderr,"%s: Found job registry duplicate entry. The first one is:%s.\nJobid should be removed or registry directory should be removed.",argv0,first_duplicate);
  
 			}
@@ -339,7 +339,7 @@ int main(int argc, char *argv[]){
 
 			if((bupdater_lookup_active_jobs(&bact,en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && en->status!=REMOVED && en->status!=COMPLETED){
 			
-				do_log(debuglogfile, debug, 2, "%s: bupdater_lookup_active_jobs returned: %d for jobid: %s\n",argv0,bupdater_lookup_active_jobs(&bact,en->batch_id),en->batch_id);
+				do_log(debuglogfile, debug, 3, "%s: bupdater_lookup_active_jobs returned: %d for jobid: %s\n",argv0,bupdater_lookup_active_jobs(&bact,en->batch_id),en->batch_id);
 
 				confirm_time=atoi(en->updater_info);
 				if(confirm_time==0){
