@@ -203,6 +203,7 @@ foreach my $i ( 0 .. $#results ) {
 	    print "[ ", map( "$_ = $results[$i]->{$_}; ", keys %{$results[$i]} ), "]\n";
 	} else {
 	    print "Error\n";
+	    exit ( 1 );
 	}
     } elsif ( $jobstatus ) {
 	printf( "%s %d %d %s %s OK\n", 
