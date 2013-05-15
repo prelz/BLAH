@@ -252,6 +252,15 @@ for job in $* ; do
 	fi
     fi
 
+    # Caching of condor_q output doesn't appear to work properly in
+    # HTCondor builds of the blahp. So do an explicit condor_q for
+    # this job before trying condor_history, which can take a long time.
+    line=$(echo $FORMAT | xargs $condor_binpath/condor_q $target $id)
+    if  [ -n "$line" ] ; then
+	echo "0$(make_ad $job "$line")"
+	exit 0
+    fi
+
     ### WARNING: This is troubling because the remote history file
     ### might just happen to be in the same place as a local history
     ### file, in which case condor_history is going to be looking at
@@ -263,7 +272,7 @@ for job in $* ; do
     #   instead of using -f.
     history_file=$($condor_binpath/condor_config_val $target -schedd history)
     if [ "$?" == "0" ]; then
-	line=$(echo $FORMAT | _condor_HISTORY="$history_file" xargs $condor_binpath/condor_history -f $history_file -backwards $id)
+	line=$(echo $FORMAT | _condor_HISTORY="$history_file" xargs $condor_binpath/condor_history -f $history_file -backwards -match 1 $id)
 	if  [ ! -z "$line" ] ; then
 	    echo "0$(make_ad $job "$line")"
 	    exit 0
