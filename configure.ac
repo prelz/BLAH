@@ -245,6 +245,7 @@ if test $have_globus = no; then
   PKG_CHECK_MODULES(GLOBUS_GSI_UTILS, globus-gsi-cert-utils, , have_globus=no)
   PKG_CHECK_MODULES(GLOBUS_GSS_ASSIST, globus-gss-assist, , have_globus=no)
   PKG_CHECK_MODULES(GLOBUS_GSI_SYSCFG, globus-gsi-sysconfig, , have_globus=no)
+  PKG_CHECK_MODULES(GLOBUS_GSSAPI_GSI, globus-gssapi-gsi, , have_globus=no)
 fi
 AC_MSG_RESULT(["GLOBUS found: $have_globus"])
 AM_CONDITIONAL([HAVE_GLOBUS], [test "x$bprserver" == "xyes" -a "x$have_globus" == "xyes"])
