@@ -53,7 +53,7 @@ mpinodes=0
 # Name of local requirements file: currently unused
 req_file=""
 
-while getopts "a:i:o:de:j:n:v:V:c:w:x:u:q:r:s:T:I:O:R:C:D:" arg 
+while getopts "a:i:o:de:j:n:v:V:c:w:x:u:q:r:s:T:I:O:R:C:D:m:" arg 
 do
     case "$arg" in
     a) xtra_args="$OPTARG" ;;
@@ -78,6 +78,7 @@ do
     R) remaps="$OPTARG" ;;
     C) req_file="$OPTARG" ;;
     D) run_dir="$OPTARG" ;;
+    m) req_mem="$OPTARG" ;;
     -) break ;;
     ?) echo $usage_string
        exit 1 ;;
@@ -238,6 +239,11 @@ fi
 if [ "x$xtra_args" != "x" ]
 then
   echo -e $xtra_args >> $submit_file
+fi
+
+if [ "x$req_mem" != "x"]
+then
+  echo "request_memory = $req_mem" >> $submit_file
 fi
 
 cat >> $submit_file << EOF

@@ -111,6 +111,14 @@ fi
 #local batch system-specific file output must be added to the submit file
 bls_local_submit_attributes_file=${blah_libexec_directory}/pbs_local_submit_attributes.sh
 
+if [ "x$bls_opt_req_mem" != "x" ]
+then
+  # Different schedulers require different memory checks
+  echo "#PBS -l mem=${bls_opt_req_mem}mb" >> $bls_tmp_file
+  echo "#PBS -l pmem=${bls_opt_req_mem}mb" >> $bls_tmp_file
+  echo "#PBS -l pvmem=${bls_opt_req_mem}mb" >> $bls_tmp_file
+fi
+
 bls_set_up_local_and_extra_args
 
 # Write PBS directives according to command line options
