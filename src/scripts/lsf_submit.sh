@@ -178,6 +178,9 @@ fi
 
 jobID=`echo "$bsub_out" | awk -F" " '{ print $2 }' | sed "s/>//" |sed "s/<//"`
 
+# Remove an empty line in the string
+jobID=`echo $jobID`
+
 if [ "x$jobID" == "x" ] ; then
         rm -f $bls_tmp_file
         exit 1
