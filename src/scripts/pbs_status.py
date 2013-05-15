@@ -21,6 +21,13 @@
 # limitations under the License.
 #
 
+"""
+Query PBS (or SLURM with the PBS emulation layer) for the status of a given job
+
+Internally, it creates a cache of the PBS qstat response and will reuse this
+for subsequent queries.
+"""
+
 import os
 import re
 import pwd
@@ -28,90 +35,50 @@ import sys
 import time
 import errno
 import fcntl
+import random
 import struct
+import signal
 import tempfile
 
 cache_timeout = 60
 
 launchtime = time.time()
 
-# This function was written by me for an older project, the OSG-GIP
-def pbsOutputFilter(fp):
+def log(msg):
     """
-    PBS can be a pain to work with because it automatically cuts 
-    lines off at 80 chars and continues the line on the next line.  For
-    example::
-
-        Server: red
-        server_state = Active
-        server_host = red.unl.edu
-        scheduling = True
-        total_jobs = 2996
-        state_count = Transit:0 Queued:2568 Held:0 Waiting:0 Running:428 Exiting 
-         :0 Begun:0 
-        acl_roots = t3
-        managers = mfurukaw@red.unl.edu,root@t3
-
-    This function puts the line ":0 Begun:0" with the above line.  It's meant
-    to filter the output, so you should "scrub" PBS output like this::
-
-        fp = runCommand(<pbs command>)
-        for line in pbsOutputFilter(fp):
-           ... parse line ...
-
-    This function uses iterators
+    A very lightweight log - not meant to be used in production, but helps
+    when debugging scale tests
     """
-    class PBSIter:
-        """
-        An iterator for PBS output; this allows us to easily parse over 
-        PBS-style line continuations.
-        """
+    print >> sys.stderr, time.strftime("%x %X"), os.getpid(), msg
 
-        def __init__(self, fp):
-            self.fp = fp
-            self.fp_iter = fp.__iter__()
-            self.prevline = None
-            self.done = False
+def createCacheDir():
+    uid = os.geteuid()
+    username = pwd.getpwuid(uid).pw_name
+    cache_dir = os.path.join("/var/tmp", "qstat_cache_%s" % username)
+    
+    try:
+        os.mkdir(cache_dir, 0755)
+    except OSError, oe:
+        if oe.errno != errno.EEXIST:
+            raise
+        s = os.stat(cache_dir)
+        if s.st_uid != uid:
+            raise Exception("Unable to check cache because it is owned by UID %d" % s.st_uid)
 
-        def next(self):
-            """
-            Return the next full line of output for the iterator.
-            """
-            if self.prevline == None:
-                line = self.fp_iter.next()
-                if line.startswith('\t'):
-                    # Bad! The output shouldn't start with a 
-                    # partial line
-                    raise ValueError("PBS output contained bad data.")
-                self.prevline = line
-                return self.next()
-            if self.done:
-                raise StopIteration()
-            try:
-                line = self.fp_iter.next()
-                if line.startswith('\t'):
-                    self.prevline = self.prevline[:-1] + line[1:-1]
-                    return self.next()
-                else:
-                    old_line = self.prevline
-                    self.prevline = line
-                    return old_line
-            except StopIteration:
-                self.done = True
-                return self.prevline
+    return cache_dir
 
-    class PBSFilter:
-        """
-        An iterable object based upon the PBSIter iterator.
-        """
-        
-        def __init__(self, myiter):
-            self.iter = myiter
-
-        def __iter__(self):
-            return self.iter
-
-    return PBSFilter(PBSIter(fp))
+def initLog():
+    """
+    Determine whether to create a logfile based on the presence of a file
+    in the user's qstat cache directory.  If so, make the logfile there.
+    """
+    cache_dir = createCacheDir()
+    if os.path.exists(os.path.join(cache_dir, "pbs_status.debug")):
+        filename = os.path.join(cache_dir, "pbs_status.log")
+    else:
+        filename = "/dev/null"
+    fd = open(filename, "a")
+    os.dup2(fd.fileno(), 2)
 
 # Something else from a prior life - see gratia-probe-common's GratiaWrapper.py
 def ExclusiveLock(fd, timeout=120):
@@ -135,8 +102,10 @@ def ExclusiveLock(fd, timeout=120):
     # An alternate would be to block on the lock, and use signals to interupt.
     # This would mess up Gratia's flawed use of signals already, and not be
     # able to report on who has the lock.  I don't like indefinite waits!
-    max_tries = 5
-    for tries in range(1, max_tries+1):
+    max_time = 30
+    starttime = time.time()
+    tries = 1
+    while time.time() - starttime < max_time:
         try:
             fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
             return
@@ -156,10 +125,13 @@ def ExclusiveLock(fd, timeout=120):
                 except IOError, ie:
                     if not ((ie.errno == errno.EACCES) or (ie.errno == errno.EAGAIN)):
                         raise
-        print >> sys.stderr, "Unable to acquire lock, try %i; will sleep for %i " \
-            "seconds and try %i more times." % (tries, tries, max_tries-tries)
-        time.sleep(tries)
+        sleeptime = random.random()
+        log("Unable to acquire lock, try %i; will sleep for %.2f " \
+            "seconds and try for %.2f more seconds." % (tries, sleeptime, max_time - time.time()-starttime))
+        tries += 1
+        time.sleep(sleeptime)
 
+    log("Fatal exception - Unable to acquire lock")
     raise Exception("Unable to acquire lock")
 
 def check_lock(fd, timeout):
@@ -176,19 +148,17 @@ def check_lock(fd, timeout):
         return True
 
     if timeout < 0:
-        print >> sys.stderr, "Another process, %d, holds the cache lock." % pid
+        log("Another process, %d, holds the cache lock." % pid)
         return False
 
     try:
         age = get_pid_age(pid)
     except:
-        print >> sys.stderr, "Another process, %d, holds the cache lock." % pid
-        print >> sys.stderr, "Unable to get the other process's age; will not time " \
-            "it out."
+        log("Another process, %d, holds the cache lock." % pid)
+        log("Unable to get the other process's age; will not time it out.")
         return False
 
-    print >> sys.stderr, "Another process, %d (age %d seconds), holds the cache " \
-        "lock." % (pid, age)
+    log("Another process, %d (age %d seconds), holds the cache lock." % (pid, age))
 
     if age > timeout:
         os.kill(pid, signal.SIGKILL)
@@ -227,9 +197,9 @@ def get_lock_pid(fd):
     except IOError, ie:
         if ie.errno != errno.EINVAL:
             raise
-        print >> sys.stderr, "Unable to determine which PID has the lock due to a " \
+        log("Unable to determine which PID has the lock due to a " \
             "python portability failure.  Contact the developers with your" \
-            " platform information for support."
+            " platform information for support.")
         return False
     if sys.platform == "darwin":
         _, _, pid, _, _ = struct.unpack("QQihh", result)
@@ -250,9 +220,12 @@ def qstat(jobid=""):
     Returns a python dictionary with the job info.
     """
     qstat = get_qstat_location()
-    child_stdout = os.popen("%s -f %s" % (qstat, jobid))
+    starttime = time.time()
+    log("Starting qstat.")
+    child_stdout = os.popen("%s -f -1 %s" % (qstat, jobid))
     result = parse_qstat_fd(child_stdout)
     exit_status = child_stdout.close()
+    log("Finished qstat (time=%f)." % (time.time()-starttime))
     if exit_status:
         exit_code = 0
         if os.WIFEXITED(exit_status):
@@ -285,7 +258,7 @@ def get_qstat_location():
     _qstat_location_cache = location
     return location
 
-job_id_re = re.compile("\s*Job Id: ([0-9]+[\.\w\-]+)")
+job_id_re = re.compile("\s*Job Id:\s([0-9]+)([\w\-\/.]*)")
 exec_host_re = re.compile("\s*exec_host = ([\w\-\/.]+)")
 status_re = re.compile("\s*job_state = ([QRECH])")
 exit_status_re = re.compile("\s*exit_status = (-?[0-9]+)")
@@ -298,13 +271,14 @@ def parse_qstat_fd(fd):
     job_info = {}
     cur_job_id = None
     cur_job_info = {}
-    for line in pbsOutputFilter(fd):
+    for line in fd:
         line = line.strip()
         m = job_id_re.match(line)
         if m:
             if cur_job_id:
                 job_info[cur_job_id] = cur_job_info
             cur_job_id = m.group(1)
+            #print cur_job_id, line
             cur_job_info = {"BatchJobId": '"%s"' % cur_job_id.split(".")[0]}
             continue
         if cur_job_id == None:
@@ -332,11 +306,13 @@ def job_dict_to_string(info):
     return "[" + " ".join(result) + " ]"
 
 def fill_cache(cache_location):
+    log("Starting query to fill cache.")
     results = qstat()
+    log("Finished query to fill cache.")
     (fd, filename) = tempfile.mkstemp()
     try:
         for key, val in results.items():
-            key.split(".")[0]
+            key = key.split(".")[0]
             os.write(fd, "%s: %s\n" % (key, job_dict_to_string(val)))
         os.fsync(fd)
         os.close(fd)
@@ -358,18 +334,18 @@ def cache_to_status(jobid, fd):
 def check_cache(jobid, recurse=True):
     uid = os.geteuid()
     username = pwd.getpwuid(uid).pw_name
-    cache_dir = os.path.join("/tmp", "qstat_cache_%s" % username)
+    cache_dir = os.path.join("/var/tmp", "qstat_cache_%s" % username)
     if recurse:
         try:
             s = os.stat(cache_dir)
         except OSError, oe:
             if oe.errno != 2:
                 raise
-            os.mkdir(cache_dir)
+            os.mkdir(cache_dir, 0755)
             s = os.stat(cache_dir)
         if s.st_uid != uid:
             raise Exception("Unable to check cache because it is owned by UID %d" % s.st_uid)
-    cache_location = os.path.join(cache_dir, "results_cache")
+    cache_location = os.path.join(cache_dir, "blahp_results_cache")
     try:
         fd = open(cache_location, "a+")
     except IOError, ie:
@@ -404,22 +380,32 @@ def check_cache(jobid, recurse=True):
     return cache_to_status(jobid, fd)
 
 def main():
-    # To debug, uncommenting these lines is useful.
-    fd = open("/dev/null", "w")
-    old_stderr = os.dup(2)
-    os.dup2(fd.fileno(), 2)
+    initLog()
+
     if len(sys.argv) != 2:
         print "1Usage: pbs_status.sh pbs/<date>/<jobid>"
         return 1
     jobid = sys.argv[1].split("/")[-1].split(".")[0]
-    cache_contents = check_cache(jobid)
+    log("Checking cache for jobid %s" % jobid)
+    try:
+        cache_contents = check_cache(jobid)
+    except Exception, e:
+        msg = "1ERROR: Internal exception, %s" % str(e)
+        log(msg)
+        print msg
     if not cache_contents:
+        log("Jobid %s not in cache; querying PBS" % jobid)
         results = qstat(jobid)
+        log("Finished querying PBS for jobid %s" % jobid)
         if not results or jobid not in results:
+            log("1ERROR: Unable to find job %s" % jobid)
             print "1ERROR: Unable to find job %s" % jobid
         else:
+            log("0%s" % job_dict_to_string(results[jobid]))
             print "0%s" % job_dict_to_string(results[jobid])
     else:
+        log("Jobid %s in cache." % jobid)
+        log("0%s" % cache_contents)
         print "0%s" % cache_contents
     return 0
 
