@@ -55,6 +55,8 @@ int loop_interval=DEFAULT_LOOP_INTERVAL;
 
 creamConnection_t connections[MAX_CONNECTIONS] = { EMPTY_CONNECTION };
 
+static pthread_mutex_t notifier_lock  = PTHREAD_MUTEX_INITIALIZER;
+
 int
 main(int argc, char *argv[])
 {
@@ -331,7 +333,7 @@ PollDB()
 	int to_sleep=FALSE;
 	int skip_reg_open=FALSE;
 	
-	rha=job_registry_init(registry_file, BY_BATCH_ID);
+	rha=job_registry_init(registry_file, NO_INDEX);
 	if (rha == NULL){
 		do_log(debuglogfile, debug, 1, "%s: Error initialising job registry %s\n",argv0,registry_file);
 		fprintf(stderr,"%s: Error initialising job registry %s :",argv0,registry_file);
@@ -348,9 +350,17 @@ PollDB()
 		*/ 
 		for(i=0; i<MAX_CONNECTIONS; i++){
 		
-			if(!connections[i].startnotify && !connections[i].startnotifyjob && !(connections[i].firstnotify && connections[i].sentendonce)) continue;
-			if(connections[i].startnotify) to_sleep=FALSE;
+			pthread_mutex_lock(&notifier_lock);
 			
+			if(i%5 == 0){
+				pthread_yield(NULL);
+			}
+			
+			if(!connections[i].startnotify && !connections[i].startnotifyjob && !(connections[i].firstnotify && connections[i].sentendonce)){
+				pthread_mutex_unlock(&notifier_lock);
+				continue;
+			}
+			if(connections[i].startnotify) to_sleep=FALSE;			
 			if(connections[i].startnotifyjob){
 				to_sleep=FALSE;
 				rhc=job_registry_init(registry_file, BY_USER_PREFIX);
@@ -397,6 +407,7 @@ PollDB()
 		 	   	  	free(buffer);
 		 	   	}
 		 	   	freetoken(&tbuf,maxtok);
+				free(connections[i].joblist_string);
 		 	   
 		 	   	if(connections[i].finalbuffer != NULL){
 		 	   	  	if(NotifyCream(connections[i].finalbuffer,&connections[i])!=-1){
@@ -419,6 +430,7 @@ PollDB()
 				}
 			}
 			
+			pthread_mutex_unlock(&notifier_lock);
 		}
 		
 		if(to_sleep){
@@ -432,10 +444,13 @@ PollDB()
 		
 		skip_reg_open=TRUE;
 		for(i=0; i<MAX_CONNECTIONS; i++){
+			pthread_mutex_lock(&notifier_lock);
 			if(sbuf.st_mtime>=connections[i].lastnotiftime){
 				skip_reg_open=FALSE;
+				pthread_mutex_unlock(&notifier_lock);
 				break;
 			}
+			pthread_mutex_unlock(&notifier_lock);
 		}
 		if(skip_reg_open){
 			do_log(debuglogfile, debug, 3, "Skip registry opening: mtime:%d lastn:%d\n",sbuf.st_mtime,connections[i].lastnotiftime);
@@ -459,6 +474,7 @@ PollDB()
 			do_log(debuglogfile, debug, 1, "%s: Error read locking registry %s\n",argv0,registry_file);
 			fprintf(stderr,"%s: Error read locking registry %s :",argv0,registry_file);
 			perror("");
+			fclose(fd);
 			sleep(loop_interval);
 			continue;
 		}
@@ -466,7 +482,16 @@ PollDB()
 		{
 		
 			for(i=0; i<MAX_CONNECTIONS; i++){
-				if(connections[i].creamfilter==NULL) continue;
+				pthread_mutex_lock(&notifier_lock);
+			
+				if(i%5 == 0){
+					pthread_yield(NULL);
+				}
+				
+				if(connections[i].creamfilter==NULL){
+					pthread_mutex_unlock(&notifier_lock);
+					continue;
+				}
 				if(en->mdate >= connections[i].lastnotiftime && en->mdate < now && en->user_prefix && strstr(en->user_prefix,connections[i].creamfilter)!=NULL && strlen(en->updater_info)>0)
 				{
 					buffer=ComposeClassad(en);
@@ -486,11 +511,18 @@ PollDB()
 					strcat(connections[i].finalbuffer,buffer);
 					free(buffer);
 				}
+				pthread_mutex_unlock(&notifier_lock);
 			}
 			free(en);
 		}
 
 		for(i=0; i<MAX_CONNECTIONS; i++){
+			pthread_mutex_lock(&notifier_lock);
+			
+			if(i%5 == 0){
+				pthread_yield(NULL);
+			}
+			
 			if(connections[i].finalbuffer != NULL){
 				if(NotifyCream(connections[i].finalbuffer,&connections[i])!=-1){
 	        			/* change last notification time */
@@ -499,6 +531,7 @@ PollDB()
 				free(connections[i].finalbuffer);
 				connections[i].finalbuffer=NULL;
 			}
+			pthread_mutex_unlock(&notifier_lock);
 		}
 		
 		fclose(fd);
@@ -526,28 +559,22 @@ ComposeClassad(job_registry_entry *en)
         char **tbuf;
 	char *cp=NULL;
 			
-	if((buffer=calloc(STR_CHARS,1)) == 0){
-		sysfatal("can't malloc buffer in PollDB: %r");
-	}
-		
 	strudate=iepoch2str(en->udate);
-	sprintf(buffer,"[BatchJobId=\"%s\"; JobStatus=%d; ChangeTime=\"%s\";",en->batch_id, en->status, strudate);
-	free(strudate);
 
 	if (strlen(en->wn_addr) > 0){
 		wn=make_message(" WorkerNode=\"%s\";",en->wn_addr);
-		strcat(buffer,wn);
-		free(wn);
-		}
+	}else{
+		wn=make_message("");
+	}
 	if (en->status == 3 || en->status == 4){
 		excode=make_message(" JwExitCode=%d; Reason=\"reason=%d\";", en->exitcode, en->exitcode);
-		strcat(buffer,excode);
-		free(excode);
+	}else{
+		excode=make_message("");
 	}
 	if (strlen(en->exitreason) > 0){
 		exreas=make_message(" ExitReason=\"%s\";", en->exitreason);
-		strcat(buffer,exreas);
-		free(exreas);
+	}else{
+		exreas=make_message("");
 	}
 	if (strlen(en->user_prefix) > 0){
 		maxtok=strtoken(en->user_prefix,'_',&tbuf);
@@ -558,16 +585,25 @@ ComposeClassad(job_registry_entry *en)
 			if ((cp = strrchr (tbuf[1], '\r')) != NULL){
 				*cp = '\0';
 			}
-			 clientid=make_message(" ClientJobId=\"%s\";",tbuf[1]);
+			clientid=make_message(" ClientJobId=\"%s\";",tbuf[1]);
+		}else{
+			clientid=make_message("");
 		}
 		blahid=make_message("%s BlahJobName=\"%s\";",clientid, en->user_prefix);
-		strcat(buffer,blahid);
-		free(blahid);
-		freetoken(&tbuf,maxtok);
 		free(clientid);
-	}
-	strcat(buffer,"]\n");
+		freetoken(&tbuf,maxtok);
+	}else{
+		blahid=make_message("");
+	}	
+	
+	buffer=make_message("[BatchJobId=\"%s\"; JobStatus=%d; ChangeTime=\"%s\";%s%s%s%s]\n",en->batch_id, en->status, strudate, wn, excode, exreas, blahid);
 		
+	free(strudate);
+	free(wn);
+	free(excode);
+	free(exreas);
+	free(blahid);
+	
 	return buffer;
 		
 }
@@ -609,6 +645,7 @@ STARTNOTIFYJOBEND
 	while (Readline(conn_c, buffer, LISTBUFFER-1) > 0) {
 		if(strlen(buffer) > 0)
 		{
+			pthread_mutex_lock(&notifier_lock);
 			do_log(debuglogfile, debug, 1, "Received for Cream:%s\n", buffer);
 			if (strstr(buffer,"STARTNOTIFY/") != NULL) {
 				NotifyStart(buffer, &(connection->lastnotiftime));
@@ -628,6 +665,7 @@ STARTNOTIFYJOBEND
 			} else if (strstr(buffer,"PARSERVERSION/") != NULL) {
 				GetVersion(connection->socket_fd);
 			}
+			pthread_mutex_unlock(&notifier_lock);
 		}
 	}
 	connection->creamisconn=FALSE;
@@ -832,6 +870,7 @@ add_cream_connection(const int socket_fd)
 
 	if (i<MAX_CONNECTIONS)
 	{
+		do_log(debuglogfile, debug, 1, "Connection added\n");
 		connections[i].socket_fd = socket_fd;
 		pthread_create(&(connections[i].serving_thread), NULL, (void *(*)(void *))CreamConnection, (void *)(connections+i));
 		return 0;
