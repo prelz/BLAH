@@ -407,7 +407,6 @@ PollDB()
 		 	   	  	free(buffer);
 		 	   	}
 		 	   	freetoken(&tbuf,maxtok);
-				free(connections[i].joblist_string);
 		 	   
 		 	   	if(connections[i].finalbuffer != NULL){
 		 	   	  	if(NotifyCream(connections[i].finalbuffer,&connections[i])!=-1){
@@ -652,13 +651,15 @@ STARTNOTIFYJOBEND
 				connection->startnotify=TRUE;
 				connection->firstnotify=TRUE;
 			} else if (strstr(buffer,"STARTNOTIFYJOBLIST/") != NULL) {
-				GetJobList(buffer, &(connection->joblist_string));
+                               if (connection->joblist_string) free (connection->joblist_string);
+ 				GetJobList(buffer, &(connection->joblist_string));
 				connection->startnotifyjob = TRUE;
 				connection->startnotify = FALSE;
 			} else if (strstr(buffer,"STARTNOTIFYJOBEND/") != NULL) {
 				connection->firstnotify=TRUE;
 				connection->lastnotiftime = time(NULL);
 			} else if (strstr(buffer,"CREAMFILTER/") != NULL) {
+                                if (connection->creamfilter) free (connection->creamfilter);
 				GetFilter(buffer, connection->socket_fd, &(connection->creamfilter));
 				connection->creamisconn=TRUE;
 				connection->sentendonce=TRUE;
