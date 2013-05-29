@@ -433,7 +433,6 @@ PollDB()
 		 	   	  	free(buffer);
 		 	   	}
 		 	   	freetoken(&tbuf,maxtok);
-				free(connections[i].joblist_string);
 		 	   
 		 	   	if(connections[i].finalbuffer != NULL){
 		 	   	  	if(NotifyCream(connections[i].finalbuffer,&connections[i])!=-1){
@@ -457,6 +456,7 @@ PollDB()
 			}
 			
 			pthread_mutex_unlock(&notifier_lock);
+			
 		}
 		
 		if(to_sleep){
@@ -678,10 +678,12 @@ STARTNOTIFYJOBEND
 				connection->startnotify=TRUE;
 				connection->firstnotify=TRUE;
 			} else if (strstr(buffer,"STARTNOTIFYJOBLIST/") != NULL) {
+				if (connection->joblist_string) free (connection->joblist_string);
 				GetJobList(buffer, &(connection->joblist_string));
 				connection->startnotifyjob = TRUE;
 				connection->startnotify = FALSE;
 			} else if (strstr(buffer,"STARTNETWORKSYNC/") != NULL) {
+				if (connection->joblist_string) free (connection->joblist_string);
 				GetJobList(buffer, &(connection->joblist_string));
 				connection->startnotifyjob = TRUE;
 				connection->startnotify = FALSE;
