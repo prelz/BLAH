@@ -133,6 +133,7 @@ int main(int argc, char *argv[]){
 		perror("");
 		return -1;
 	}
+       config_setenv(NULL);
 
 	ret = config_get("bupdater_child_poll_timeout",cha);
 	if (ret != NULL){
