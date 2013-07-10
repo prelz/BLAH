@@ -46,7 +46,7 @@ fi
 # or some string. It must be a number but let's make sure by using
 # the test below.
 if [ $memmin -gt 0 ]; then
-    echo "#$ -l s_vmem=${memmin}"
+    echo "#$ -l s_vmem=${memmin}M"
 fi
 
 # Part 2: Wall clock time requirement.
