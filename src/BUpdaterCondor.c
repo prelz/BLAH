@@ -449,8 +449,8 @@ int main(int argc, char *argv[]){
 				query = NULL;
 			}
 			fclose(fd);		
-			sleep(loop_interval);
 		}
+		sleep(loop_interval);
 	}
 	
 	job_registry_destroy(rha);
