@@ -819,7 +819,7 @@ Job: 13.cream-12.pd.infn.it
 		if(jobid[k] && strlen(jobid[k])==0) continue;
 
 		pbs_spool=(pbs_spoolpath?make_message("-p %s ",pbs_spoolpath):make_message(""));
-		command_string=make_message("%s%s/tracejob %s-m -l -a -n %d %s",batch_command,pbs_binpath,pbs_spool,logs_to_read,jobid[k]);
+		command_string=make_message("%s%s/tracejob %s-m -l -a -n %d '%s'",batch_command,pbs_binpath,pbs_spool,logs_to_read,jobid[k]);
 		free(pbs_spool);
 		
 		fp = popen(command_string,"r");
