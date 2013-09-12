@@ -170,6 +170,10 @@ if [ ${#output_files[@]} -gt 0 ] ; then
     for ((i=1; i < ${#output_files[@]}; i=$((i+1)))) ; do
 	transfer_output_files="$transfer_output_files,${output_files[$i]}"
     done
+else
+#   Note: an empty transfer_output_files clause is ineffective. See
+#   https://htcondor-wiki.cs.wisc.edu/index.cgi/tktview?tn=2311
+    transfer_output_files="+TransferOutput=\"\""
 fi
 
 if [ ${#remap_files[@]} -gt 0 ] ; then
