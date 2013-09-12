@@ -83,7 +83,7 @@ add_executable(blah_job_registry_lkup
 add_executable(blah_job_registry_scan_by_subject 
     blah_job_registry_scan_by_subject.c classad_c_helper.C
     classad_binary_op_unwind.C job_registry.c md5.c config.c)
-set_target_properties(blah_job_registry_scan_by_subject PROPERTIES COMPILE_FLAGS ${ClassAd_CXX_FLAGS}) 
+set_target_properties(blah_job_registry_scan_by_subject PROPERTIES COMPILE_FLAGS "${ClassAd_CXX_FLAGS}") 
 target_link_libraries(blah_job_registry_scan_by_subject ${ClassAd_LIBRARY})
 add_executable(blah_check_config
     blah_check_config.c Bfunctions.c config.c blah_utils.c)
