@@ -78,7 +78,7 @@ def initLog():
     else:
         filename = "/dev/null"
     fd = open(filename, "a")
-    os.dup2(fd.fileno(), 2)
+    #os.dup2(fd.fileno(), 2)
 
 # Something else from a prior life - see gratia-probe-common's GratiaWrapper.py
 def ExclusiveLock(fd, timeout=120):
