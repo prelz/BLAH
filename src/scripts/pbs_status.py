@@ -78,6 +78,9 @@ def initLog():
     else:
         filename = "/dev/null"
     fd = open(filename, "a")
+    # Do NOT close the file descriptor blahp originally hands us for stderr.
+    # This causes blahp to lose all status updates.
+    os.dup(2)
     os.dup2(fd.fileno(), 2)
 
 # Something else from a prior life - see gratia-probe-common's GratiaWrapper.py
