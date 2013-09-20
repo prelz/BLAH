@@ -130,7 +130,7 @@ def ExclusiveLock(fd, timeout=120):
                         raise
         sleeptime = random.random()
         log("Unable to acquire lock, try %i; will sleep for %.2f " \
-            "seconds and try for %.2f more seconds." % (tries, sleeptime, max_time - time.time()-starttime))
+            "seconds and try for %.2f more seconds." % (tries, sleeptime, max_time - (time.time()-starttime)))
         tries += 1
         time.sleep(sleeptime)
 
