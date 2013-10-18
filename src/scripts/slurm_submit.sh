@@ -5,6 +5,7 @@
 #
 # Revision history:
 #    14-Mar-2012: Original release
+#    18-Oct-2013: Added MPI support (courtesy of ICM, Poland)
 #
 #
 # Copyright (c) Members of the EGEE Collaboration. 2004.
@@ -43,7 +44,7 @@ cat >$bls_tmp_file << end_of_preamble
 # proxy_string = $bls_opt_proxy_string
 # proxy_local_file = $bls_proxy_local_file
 #
-# SLURM directives:
+# Start of SLURM directives:
 #$slurm_opt_prefix -o $slurm_std_storage
 #$slurm_opt_prefix -e $slurm_std_storage
 end_of_preamble
@@ -56,6 +57,46 @@ bls_set_up_local_and_extra_args
 # handle queue overriding
 [ -z "$bls_opt_queue" ] || grep -q "^#$slurm_opt_prefix -p" $bls_tmp_file ||
   echo "#$slurm_opt_prefix -p $bls_opt_queue" >> $bls_tmp_file
+
+# Extended support for MPI attributes
+if [ "x$bls_opt_wholenodes" == "xyes" ] ; then
+  bls_opt_hostsmpsize=${bls_opt_hostsmpsize:-1}
+  if [[ ! -z "$bls_opt_smpgranularity" ]] ; then
+    if [[ -z "$bls_opt_hostnumber" ]] ; then
+      echo "#$slurm_opt_prefix -N 1" >> $bls_tmp_file
+      echo "#$slurm_opt_prefix --ntasks-per-node $bls_opt_smpgranularity" >> $bls_tmp_file
+    else
+      echo "#$slurm_opt_prefix -N $bls_opt_hostnumber" >> $bls_tmp_file
+      echo "#$slurm_opt_prefix --ntasks-per-node $bls_opt_smpgranularity" >> $bls_tmp_file
+    fi
+    echo "#$slurm_opt_prefix --exclusive" >> $bls_tmp_file
+  else
+    if [[ ! -z "$bls_opt_hostnumber" ]] ; then
+      if [[ $bls_opt_mpinodes -gt 0 ]] ; then
+        echo "#$slurm_opt_prefix -N $bls_opt_hostnumber" >> $bls_tmp_file
+        echo "#$slurm_opt_prefix -n $bls_opt_mpinodes" >> $bls_tmp_file
+      else
+        echo "#$slurm_opt_prefix -N $bls_opt_hostnumber" >> $bls_tmp_file
+      fi
+      echo "#$slurm_opt_prefix --exclusive" >> $bls_tmp_file
+    fi
+  fi
+else
+  if [[ ! -z "$bls_opt_smpgranularity" ]] ; then
+    echo "#$slurm_opt_prefix -N $bls_opt_mpinodes" >> $bls_tmp_file
+    echo "#$slurm_opt_prefix --ntasks-per-node $bls_opt_smpgranularity" >> $bls_tmp_file
+  else
+    if [[ ! -z "$bls_opt_hostnumber" ]] ; then
+      echo "#$slurm_opt_prefix -N $bls_opt_hostnumber" >> $bls_tmp_file
+    elif [[ $bls_opt_mpinodes -gt 0 ]] ; then
+      echo "#$slurm_opt_prefix -n $bls_opt_mpinodes" >> $bls_tmp_file
+    fi
+  fi
+fi
+# --- End of MPI directives
+
+echo "# End of SLURM directives" >> $bls_tmp_file
+echo "" >> $bls_tmp_file
 
 # Input sandbox setup
 if [[ bls_inputsand_counter -gt 0 ]] ; then
