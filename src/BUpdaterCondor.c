@@ -449,8 +449,8 @@ int main(int argc, char *argv[]){
 				query = NULL;
 			}
 			fclose(fd);		
-			sleep(loop_interval);
 		}
+		sleep(loop_interval);
 	}
 	
 	job_registry_destroy(rha);
@@ -593,13 +593,20 @@ IntStateQuery()
 			en.udate=atoi(token[3]);
 			JOB_REGISTRY_ASSIGN_ENTRY(en.wn_addr,token[4]);
 			JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
-			
+
 			if ((ren=job_registry_get(rha, en.batch_id)) == NULL){
 					fprintf(stderr,"Get of record returns error for %s ",en.batch_id);
 					perror("");
 			}
-				
-			if(en.status!=UNDEFINED && ren && ren->status!=REMOVED && ren->status!=COMPLETED){
+			
+			if(ren==NULL){
+				if ((ret=job_registry_append(rha, &en)) < 0){
+					if(ret != JOB_REGISTRY_NOT_FOUND){
+						fprintf(stderr,"Error on job_registry_append %d: ",ret);
+						perror("");
+					}					
+				}
+			}else if(en.status!=UNDEFINED && ren && ren->status!=REMOVED && ren->status!=COMPLETED){
 
 				if ((ret=job_registry_update_recn(rha, &en, ren->recnum)) < 0){
 					if(ret != JOB_REGISTRY_NOT_FOUND){
