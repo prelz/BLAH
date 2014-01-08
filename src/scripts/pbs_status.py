@@ -390,12 +390,13 @@ def main():
         return 1
     jobid = sys.argv[1].split("/")[-1].split(".")[0]
     log("Checking cache for jobid %s" % jobid)
+    cache_contents = None
     try:
         cache_contents = check_cache(jobid)
     except Exception, e:
         msg = "1ERROR: Internal exception, %s" % str(e)
         log(msg)
-        print msg
+        #print msg
     if not cache_contents:
         log("Jobid %s not in cache; querying PBS" % jobid)
         results = qstat(jobid)
