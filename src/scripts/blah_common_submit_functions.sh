@@ -717,7 +717,11 @@ function bls_start_job_wrapper ()
 function bls_finish_job_wrapper ()
 {
   echo "cd \$old_home"
-  
+  if [ "x$bls_opt_proxy_string" != "x" ]
+  then
+    echo "rm -f $bls_opt_proxy_string"
+  fi
+
   echo ""
   
   echo "exit \$user_retcode"
