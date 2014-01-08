@@ -3573,10 +3573,10 @@ char*  outputfileRemaps(char *sb,char *sbrmp)
 
 #define SINGLE_QUOTE_CHAR '\''
 #define DOUBLE_QUOTE_CHAR '\"'
-#define CONVARG_OPENING        "'\""
-#define CONVARG_OPENING_LEN    2
-#define CONVARG_CLOSING        "\"'\000"
-#define CONVARG_CLOSING_LEN    3
+#define CONVARG_OPENING        "\"\\\""
+#define CONVARG_OPENING_LEN    3
+#define CONVARG_CLOSING        "\\\"\"\000"
+#define CONVARG_CLOSING_LEN    4
 #define CONVARG_QUOTSEP        "\\\"%c\\\""
 #define CONVARG_QUOTSEP_LEN    5
 #define CONVARG_DBLQUOTESC     "\\\\\\\""
