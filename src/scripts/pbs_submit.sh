@@ -46,8 +46,14 @@
 
 logpath=${pbs_spoolpath}/server_logs
 if [ ! -d $logpath -o ! -x $logpath ]; then
- pbs_spoolpath=`${pbs_binpath}/tracejob | grep 'default prefix path'|awk -F" " '{ print $5 }'`
- logpath=${pbs_spoolpath}/server_logs
+  if [ -x "${pbs_binpath}/tracejob" ]; then
+    pbs_spoolpath=`${pbs_binpath}/tracejob | grep 'default prefix path'|awk -F" " '{ print $5 }'`
+    logpath=${pbs_spoolpath}/server_logs
+  else
+    # EPEL defaults for torque
+    pbs_spoolpath=/var/lib/torque/spool
+    logpath=/var/lib/torque/server_logs
+  fi
 fi
 
 bls_job_id_for_renewal=PBS_JOBID
