@@ -1766,7 +1766,7 @@ wrap_up:
 }
 
 int
-get_status_and_old_proxy(int use_glexec, char *jobDescr, 
+get_status_and_old_proxy(int use_glexec, char *jobDescr, const char *proxyFileName,
 			char **status_argv, char **old_proxy,
 			char **workernode, char **error_string)
 {
@@ -1857,6 +1857,21 @@ get_status_and_old_proxy(int use_glexec, char *jobDescr,
 				free(proxy_link);
 				job_registry_free_split_id(spid);
 				return 1; /* 'local' state */
+			}
+			// Look for the limited proxy next to the new proxy - this is a common case for HTCondor-based submission.
+			free(proxy_link);
+			if ((proxy_link = make_message("%s.lmt", proxyFileName)) == NULL)
+			{
+				fprintf(stderr, "Out of memory.\n");
+				exit(MALLOC_ERROR);
+			}
+			if (access(proxy_link, R_OK) == 0)
+			{
+				*old_proxy = proxy_link;
+				// do not free proxy_link in this case.
+				free(r_old_proxy);
+				job_registry_free_split_id(spid);
+				return 1;
 			}
 			free(proxy_link);
 			free(r_old_proxy);
@@ -1978,7 +1993,7 @@ cmd_renew_proxy(void *args)
 
 	if (blah_children_count>0) check_on_children(blah_children, blah_children_count);
 
-	jobStatus=get_status_and_old_proxy(use_mapping, jobDescr, argv + CMD_RENEW_PROXY_ARGS + 1, &old_proxy, &workernode, &error_string);
+	jobStatus=get_status_and_old_proxy(use_mapping, jobDescr, proxyFileName, argv + CMD_RENEW_PROXY_ARGS + 1, &old_proxy, &workernode, &error_string);
 	old_proxy_len = -1;
 	if (old_proxy != NULL) old_proxy_len = strlen(old_proxy);
 	if ((jobStatus < 0) || (old_proxy == NULL) || (old_proxy_len <= 0))
