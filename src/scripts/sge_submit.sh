@@ -102,8 +102,9 @@ bls_add_job_wrapper
 # Submit the script
 ###############################################################
 #Your job 3236842 ("run") has been submitted
-jobID=`qsub $bls_tmp_file 2> /dev/null | perl -ne 'print $1 if /^Your job (\d+) /;'` # actual submission
+qsub_out=`qsub $bls_tmp_file`
 retcode=$?
+jobID=`echo $qsub_out | perl -ne 'print $1 if /^Your job (\d+) /;'` # actual submission
 if [ "$retcode" != "0" -o -z "$jobID" ] ; then
 	rm -f $bls_tmp_file
 	exit 1
