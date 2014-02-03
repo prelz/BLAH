@@ -305,7 +305,7 @@ int main(int argc, char *argv[]){
 		now=time(0);
 		if(now - last_consistency_check > bupdater_consistency_check_interval){
 			if(job_registry_check_index_key_uniqueness(rha,&first_duplicate)==JOB_REGISTRY_FAIL){
-				do_log(debuglogfile, debug, 1, "%s: Found job registry duplicate entry. The first one is:%s\n.Jobid should be removed or registry directory should be removed.\n",argv0,first_duplicate);
+				do_log(debuglogfile, debug, 1, "%s: Found job registry duplicate entry. The first one is:%s.\nJobid should be removed or registry directory should be removed.\n",argv0,first_duplicate);
                	        	fprintf(stderr,"%s: Found job registry duplicate entry. The first one is:%s.\nJobid should be removed or registry directory should be removed.",argv0,first_duplicate);
  
 			}
@@ -339,7 +339,7 @@ int main(int argc, char *argv[]){
 
 			if((bupdater_lookup_active_jobs(&bact,en->batch_id) != BUPDATER_ACTIVE_JOBS_SUCCESS) && en->status!=REMOVED && en->status!=COMPLETED){
 			
-				do_log(debuglogfile, debug, 2, "%s: bupdater_lookup_active_jobs returned: %d for jobid: %s\n",argv0,bupdater_lookup_active_jobs(&bact,en->batch_id),en->batch_id);
+				do_log(debuglogfile, debug, 3, "%s: bupdater_lookup_active_jobs returned: %d for jobid: %s\n",argv0,bupdater_lookup_active_jobs(&bact,en->batch_id),en->batch_id);
 
 				confirm_time=atoi(en->updater_info);
 				if(confirm_time==0){
@@ -545,7 +545,7 @@ IntStateQuery()
 				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 				en.exitcode=-1;
 				bupdater_push_active_job(&bact, en.batch_id);
-				do_log(debuglogfile, debug, 2, "%s: bupdater_push_active_job done for %s\n",argv0,en.batch_id);
+				do_log(debuglogfile, debug, 4, "%s: bupdater_push_active_job done for %s\n",argv0,en.batch_id);
 				free(batch_str);
 				freetoken(&token_l,maxtok_l);
 				if(!first) free(ren);
@@ -728,6 +728,7 @@ FinalStateQuery(time_t start_date, int logs_to_read)
 			if ((cp = strrchr (line, '\n')) != NULL){
 				*cp = '\0';
 			}
+			en.status=UNDEFINED;
 			do_log(debuglogfile, debug, 3, "%s: line in FinalStateQuery is:%s\n",argv0,line);
 			now=time(0);
 			string_now=make_message("%d",now);
@@ -746,8 +747,10 @@ FinalStateQuery(time_t start_date, int logs_to_read)
 				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 			}
 			
-			tmstampepoch=str2epoch(token[6],"N");
-			en.udate=tmstampepoch;
+			if(!(token[6] && strstr(token[6],"Unknown"))){
+				tmstampepoch=str2epoch(token[6],"N");
+				en.udate=tmstampepoch;
+			}
 			if(en.status==COMPLETED){
 				maxtok_l = strtoken(token[3], ':', &token_l);
 				en.exitcode=atoi(token_l[0]);
