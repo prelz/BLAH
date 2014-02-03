@@ -545,7 +545,7 @@ IntStateQuery()
 				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 				en.exitcode=-1;
 				bupdater_push_active_job(&bact, en.batch_id);
-				do_log(debuglogfile, debug, 2, "%s: bupdater_push_active_job done for %s\n",argv0,en.batch_id);
+				do_log(debuglogfile, debug, 4, "%s: bupdater_push_active_job done for %s\n",argv0,en.batch_id);
 				free(batch_str);
 				freetoken(&token_l,maxtok_l);
 				if(!first) free(ren);
@@ -728,6 +728,7 @@ FinalStateQuery(time_t start_date, int logs_to_read)
 			if ((cp = strrchr (line, '\n')) != NULL){
 				*cp = '\0';
 			}
+			en.status=UNDEFINED;
 			do_log(debuglogfile, debug, 3, "%s: line in FinalStateQuery is:%s\n",argv0,line);
 			now=time(0);
 			string_now=make_message("%d",now);
@@ -746,8 +747,10 @@ FinalStateQuery(time_t start_date, int logs_to_read)
 				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 			}
 			
-			tmstampepoch=str2epoch(token[6],"N");
-			en.udate=tmstampepoch;
+			if(!(token[6] && strstr(token[6],"Unknown"))){
+				tmstampepoch=str2epoch(token[6],"N");
+				en.udate=tmstampepoch;
+			}
 			if(en.status==COMPLETED){
 				maxtok_l = strtoken(token[3], ':', &token_l);
 				en.exitcode=atoi(token_l[0]);
