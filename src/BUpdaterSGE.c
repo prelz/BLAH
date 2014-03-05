@@ -383,9 +383,8 @@ int main(int argc, char *argv[]){
 	    {
 		time_t now;
 		now=time(0);
-		sprintf(string_now,"%d",now);
+		snprintf(string_now,sizeof(string_now),"%d",now);
 		AssignState(en->batch_id,"4" ,"-1","\0","\0",string_now);
-		free(string_now);
 	    }
 	   free(en);
 	}

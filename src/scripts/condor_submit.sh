@@ -6,6 +6,7 @@
 #
 # 	Revision history:
 # 	08-Aug-2006: Original release
+#       03-Apr-2007: Merged changes by Matt Farrellee (Condor) 
 #       27-Oct-2009: Added support for 'local' requirements file.
 #
 # 	Description:
@@ -53,7 +54,7 @@ mpinodes=0
 # Name of local requirements file: currently unused
 req_file=""
 
-while getopts "a:i:o:de:j:n:v:V:c:w:x:u:q:r:s:T:I:O:R:C:" arg 
+while getopts "a:i:o:de:j:n:v:V:c:w:x:u:q:r:s:T:I:O:R:C:D:" arg 
 do
     case "$arg" in
     a) xtra_args="$OPTARG" ;;
@@ -77,6 +78,7 @@ do
     O) outputflstring="$OPTARG" ;;
     R) remaps="$OPTARG" ;;
     C) req_file="$OPTARG" ;;
+    D) run_dir="$OPTARG" ;;
     -) break ;;
     ?) echo $usage_string
        exit 1 ;;
@@ -168,6 +170,10 @@ if [ ${#output_files[@]} -gt 0 ] ; then
     for ((i=1; i < ${#output_files[@]}; i=$((i+1)))) ; do
 	transfer_output_files="$transfer_output_files,${output_files[$i]}"
     done
+else
+#   Note: an empty transfer_output_files clause is ineffective. See
+#   https://htcondor-wiki.cs.wisc.edu/index.cgi/tktview?tn=2311
+    transfer_output_files="+TransferOutput=\"\""
 fi
 
 if [ ${#remap_files[@]} -gt 0 ] ; then

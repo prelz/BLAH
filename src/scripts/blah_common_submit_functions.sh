@@ -267,7 +267,7 @@ function bls_parse_submit_options ()
   ###############################################################
   # Parse parameters
   ###############################################################
-  while getopts "a:i:o:e:c:s:v:V:dw:q:n:N:z:h:S:r:p:l:x:u:j:T:I:O:R:C:" arg 
+  while getopts "a:i:o:e:c:s:v:V:dw:q:n:N:z:h:S:r:p:l:x:u:j:T:I:O:R:C:D:" arg 
   do
       case "$arg" in
       a) bls_opt_xtra_args="$OPTARG" ;;
@@ -297,6 +297,7 @@ function bls_parse_submit_options ()
       O) bls_opt_outputflstring="$OPTARG" ;;
       R) bls_opt_outputflstringremap="$OPTARG" ;;
       C) bls_opt_req_file="$OPTARG";;
+      D) bls_opt_run_dir="$OPTARG";;
       -) break ;;
       ?) echo $usage_string
          exit 1 ;;
@@ -493,6 +494,7 @@ function bls_setup_all_files ()
   
   # Setup stdin, stdout & stderr
   if [ ! -z "$bls_opt_stdin" ] ; then
+      if [ "${bls_opt_stdin:0:1}" != "/" ] ; then bls_opt_stdin=${bls_opt_workdir}/${bls_opt_stdin} ; fi
       if [ -f "$bls_opt_stdin" ] ; then
           bls_test_shared_dir "$bls_opt_stdin"
           if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
@@ -507,22 +509,22 @@ function bls_setup_all_files ()
       fi
   fi
   if [ ! -z "$bls_opt_stdout" ] ; then
+      if [ "${bls_opt_stdout:0:1}" != "/" ] ; then bls_opt_stdout=${bls_opt_workdir}/${bls_opt_stdout} ; fi
       bls_test_shared_dir "$bls_opt_stdout"
       if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
           bls_arguments="$bls_arguments > \"$bls_opt_stdout\""
       else
-          if [ "${bls_opt_stdout:0:1}" != "/" ] ; then bls_opt_stdout=${bls_opt_workdir}/${bls_opt_stdout} ; fi
           bls_unique_stdout_name="${blah_wn_outputsandbox}out_${bls_tmp_name}_`basename $bls_opt_stdout`"
           bls_arguments="$bls_arguments > \"$bls_unique_stdout_name\""
           bls_fl_add_value outputsand "$bls_opt_stdout" "$bls_unique_stdout_name"
       fi
   fi
   if [ ! -z "$bls_opt_stderr" ] ; then
+      if [ "${bls_opt_stderr:0:1}" != "/" ] ; then bls_opt_stderr=${bls_opt_workdir}/${bls_opt_stderr} ; fi
       bls_test_shared_dir "$bls_opt_stderr"
       if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
           bls_arguments="$bls_arguments 2> \"$bls_opt_stderr\""
       else
-          if [ "${bls_opt_stderr:0:1}" != "/" ] ; then bls_opt_stderr=${bls_opt_workdir}/${bls_opt_stderr} ; fi
           if [ "$bls_opt_stderr" == "$bls_opt_stdout" ]; then
               bls_arguments="$bls_arguments 2>&1"
           else
@@ -542,6 +544,7 @@ function bls_setup_all_files ()
       exec 4< "$bls_opt_inputflstring"
       while read xfile <&4 ; do
           if [ ! -z $xfile  ] ; then
+               if [ "${xfile:0:1}" != "/" ] ; then xfile=${bls_opt_workdir}/${xfile} ; fi
                bls_test_shared_dir "$xfile"
                if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
                    bls_fl_add_value inputcopy "$xfile" "./`basename ${xfile}`"
@@ -569,28 +572,20 @@ function bls_setup_all_files ()
                   read xfileremap <&6
               fi
 
-              bls_test_shared_dir "$xfile"
+              if [ -z $xfileremap ] ; then
+                xfileremap="$xfile"
+              fi
+              if [ "${xfileremap:0:1}" != "/" ] ; then
+                xfileremap=${bls_opt_workdir}/${xfileremap}
+              fi
+              bls_test_shared_dir "$xfileremap"
+
               if [ "x$bls_is_in_shared_dir" != "xyes" ] ; then
-                  if [ "${xfile:0:1}" != "/" ] ; then
-                       xfile_base="`basename ${xfile}`"
-                       xfile_transfer="${blah_wn_outputsandbox}${xfile_base}.$uni_ext"
-                  else
-                       xfile_transfer="$xfile"
-                  fi
-                  if [ ! -z $xfileremap ] ; then
-                      if [ "${xfileremap:0:1}" != "/" ] ; then
-                          bls_fl_add_value outputsand "${bls_opt_workdir}/${xfileremap}" "$xfile_transfer" "$xfile"
-                      else
-                          bls_test_shared_dir "$xfileremap"
-                          if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
-                              bls_fl_add_value outputmove "${xfileremap}" "$xfile"
-                          else
-                              bls_fl_add_value outputsand "${xfileremap}" "$xfile_transfer" "$xfile"
-                          fi
-                      fi
-                  else
-                      bls_fl_add_value outputsand "${bls_opt_workdir}/${xfile}" "$xfile_transfer" "$xfile"
-                  fi
+                  xfile_base="`basename ${xfile}`"
+                  xfile_transfer="${blah_wn_outputsandbox}${xfile_base}.$uni_ext"
+                  bls_fl_add_value outputsand "$xfileremap" "$xfile_transfer" "$xfile"
+              else
+                  bls_fl_add_value outputmove "$xfileremap" "$xfile"
               fi
           fi
       done
@@ -618,11 +613,18 @@ function bls_start_job_wrapper ()
   fi
   
   echo "old_home=\`pwd\`"
+
   # Set the temporary home (including cd'ing into it)
-  if [ -n "$blah_wn_temporary_home_dir" ] ; then
-    echo "new_home=${blah_wn_temporary_home_dir}/home_$bls_tmp_name"
+  if [ "x$bls_opt_run_dir" != "x" ] ; then
+    run_dir="$bls_opt_run_dir"
   else
-    echo "new_home=\${old_home}/home_$bls_tmp_name"
+    run_dir="home_$bls_tmp_name"
+  fi
+
+  if [ -n "$blah_wn_temporary_home_dir" ] ; then
+    echo "new_home=${blah_wn_temporary_home_dir}/$run_dir"
+  else
+    echo "new_home=\${old_home}/$run_dir"
   fi
 
   echo "mkdir \$new_home"

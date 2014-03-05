@@ -76,7 +76,7 @@ main(int argc, char *argv[])
 
 set(ClassAd_CXX_FLAG_CANDIDATES
   "-DWANT_NAMESPACES"
-  "-DWANT_NAMESPACES -DWANT_CLASSAD_NAMESPACE"
+  "-DWANT_CLASSAD_NAMESPACE"
 )
 
 # check cxx compiler

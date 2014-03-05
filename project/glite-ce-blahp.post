@@ -38,11 +38,14 @@ fi
 
 if [ -e ${blah_install_prefix}/libexec/condor_status.sh ]; then
   /bin/mv ${blah_install_prefix}/libexec/condor_status.sh ${blah_install_prefix}/libexec/condor_status.sh.save
+  if [ -e ${blah_install_prefix}/libexec/blah_job_registry_lkup ]; then
+    /bin/cp ${blah_install_prefix}/libexec/blah_job_registry_lkup ${blah_install_prefix}/libexec/condor_status.sh
+  elif [ -e ${blah_install_prefix}/sbin/blah_job_registry_lkup ]; then
+    /bin/cp ${blah_install_prefix}/sbin/blah_job_registry_lkup ${blah_install_prefix}/libexec/condor_status.sh
+  fi
 elif [ -e ${blah_install_prefix}/bin/condor_status.sh ]; then
   /bin/mv ${blah_install_prefix}/bin/condor_status.sh ${blah_install_prefix}/bin/condor_status.sh.save
-fi
-if [ -e ${blah_install_prefix}/libexec/blah_job_registry_lkup ]; then
-  /bin/cp ${blah_install_prefix}/libexec/blah_job_registry_lkup ${blah_install_prefix}/libexec/condor_status.sh
-elif [ -e ${blah_install_prefix}/bin/blah_job_registry_lkup ]; then
-  /bin/cp ${blah_install_prefix}/bin/blah_job_registry_lkup ${blah_install_prefix}/bin/condor_status.sh
+  if [ -e ${blah_install_prefix}/bin/blah_job_registry_lkup ]; then
+    /bin/cp ${blah_install_prefix}/bin/blah_job_registry_lkup ${blah_install_prefix}/bin/condor_status.sh
+  fi
 fi

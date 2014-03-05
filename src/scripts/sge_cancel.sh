@@ -19,7 +19,12 @@
 # limitations under the License.
 #
 
+<<<<<<< HEAD
 . `dirname $0`/blah_load_config.sh
+=======
+
+. `dirname $0`/blah_load_config.sh 
+>>>>>>> upstream/master
 
 if [ -z "$sge_rootpath" ]; then sge_rootpath="/usr/local/sge/pro"; fi
 if [ -r "$sge_rootpath/${sge_cellname:-default}/common/settings.sh" ]

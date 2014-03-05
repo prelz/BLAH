@@ -43,10 +43,6 @@
 #include "classad_distribution.h"
 #include "classad_binary_op_unwind.h"
 
-#ifdef WANT_NAMESPACES
-using namespace classad;
-#endif
-
 extern "C"
  {
 
@@ -289,7 +285,7 @@ extern "C"
     ExprList *et_value;
     et_value = ExprList::MakeExprList(et_ads);
 
-    if (ad->Insert (name, et_value)) return C_CLASSAD_NO_ERROR; 
+    if (ad->Insert (name, (ExprTree* &)et_value)) return C_CLASSAD_NO_ERROR; 
     else                             return C_CLASSAD_INSERT_FAILED;
    }
 

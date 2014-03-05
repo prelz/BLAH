@@ -51,13 +51,25 @@ bin_PROGRAMS = blahpd
 libexec_PROGRAMS = BLClient BLParserLSF BLParserPBS BUpdaterCondor BNotifier BUpdaterLSF BUpdaterPBS BUpdaterSGE BUpdaterSLURM $(GLOBUS_EXECS)  blparser_master
 noinst_PROGRAMS = test_job_registry_create test_job_registry_purge test_job_registry_update test_job_registry_access test_job_registry_update_from_network test_cmdbuffer
 
-common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C proxy_hashcontainer.c config.c job_registry.c blah_utils.c env_helper.c mapped_exec.c md5.c cmdbuffer.c
+common_sources = console.c job_status.c resbuffer.c server.c commands.c classad_binary_op_unwind.C classad_c_helper.C proxy_hashcontainer.c config.c job_registry.c blah_utils.c env_helper.c mapped_exec.c md5.c cmdbuffer.c globus_utils.c
 
 blahpd_SOURCES = main.c $(common_sources)
 
 blahpd_daemon_SOURCES = main_daemon.c $(common_sources)
 
+
+if HAVE_GLOBUS
+blahpd_CFLAGS = -DHAVE_GLOBUS
+blahpd_daemon_CFLAGS = $(blahpd_CFLAGS)
+blahpd_LDADD = $(CLASSAD_LIBS) \
+		$(GLOBUS_GSI_CRED_LIBS) \
+		$(GLOBUS_GSI_PROXY_LIBS) \
+		$(GLOBUS_GSI_UTILS_LIBS) \
+		$(GLOBUS_GSS_ASSIST_LIBS) \
+		$(GLOBUS_GSI_SYSCFG_LIBS)
+else
 blahpd_LDADD = $(CLASSAD_LIBS)
+endif
 
 blahpd_daemon_LDADD = $(blahpd_LDADD)
 

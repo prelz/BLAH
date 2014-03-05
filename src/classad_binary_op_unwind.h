@@ -38,11 +38,11 @@
 #ifndef __CLASSAD_BINARY_OP_UNWIND_H__
 #define __CLASSAD_BINARY_OP_UNWIND_H__
 
-#ifdef WANT_NAMESPACES
+#if defined(WANT_NAMESPACES) || defined (WANT_CLASSAD_NAMESPACE)
 using namespace classad;
-
-namespace classad {
 #endif
+
+BEGIN_NAMESPACE( classad )
 
 class BinaryOpUnwind : public ClassAdUnParser
 {
@@ -64,8 +64,6 @@ class BinaryOpUnwind : public ClassAdUnParser
         std::vector<std::string> m_unwind_output;
 };
 
-#ifdef WANT_NAMESPACES
-} // end of classad namespace
-#endif
+END_NAMESPACE // classad
 
 #endif // defined __CLASSAD_BINARY_OP_UNWIND_H__

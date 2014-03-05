@@ -642,6 +642,8 @@ job_registry_init(const char *path,
           job_registry_destroy(rha);
           return NULL; /* keep the rename errno */
          }
+        free(old_path);
+        old_path = NULL;
        }
      }
    }
