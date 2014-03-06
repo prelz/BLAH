@@ -19,10 +19,6 @@
 # limitations under the License.
 #
 
-<<<<<<< HEAD
-
-=======
->>>>>>> upstream/master
 . `dirname $0`/blah_load_config.sh
 
 if [ -z "$sge_rootpath" ]; then sge_rootpath="/usr/local/sge/pro"; fi
