@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 # File: sge_status.sh
