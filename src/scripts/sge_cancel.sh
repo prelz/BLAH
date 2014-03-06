@@ -53,3 +53,4 @@ echo .$jc" 1 Error"
 fi
 jc=$(($jc+1))
 done
+
