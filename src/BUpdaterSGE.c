@@ -399,8 +399,8 @@ int main(int argc, char *argv[]){
 	fclose(fd);
 	if (runfinal){
 	    runfinal=FALSE;
-	    sleep (5);
-	}else sleep (60);
+	}
+	sleep (loop_interval);
     } //for
 
     job_registry_destroy(rha);
