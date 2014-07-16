@@ -23,7 +23,7 @@ if [ $1 -eq 0 ] ; then
     /sbin/chkconfig --del glite-ce-blah-parser
 
     if [ -d /var/log/cream/accounting ] ; then
-        rm -rf /var/log/cream/accounting
+        rmdir /var/log/cream/accounting || echo "It might contain useful accounting information" >&2
     fi
 
     if [ -d /var/blah ] ; then
