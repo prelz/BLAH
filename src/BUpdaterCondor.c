@@ -433,7 +433,6 @@ int main(int argc, char *argv[]){
 							sysfatal("can't realloc query: %r");
 						}
 						free(constraint);
-						free(q);
 						runfinal=TRUE;
 					}
 				}
