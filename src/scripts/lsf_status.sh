@@ -229,7 +229,7 @@ END {
 		touch $datefile;chmod 600 $datefile
 
 		if [ $? -ne 0 ]; then
-   			echo 'Error creating temporary file'
+   			echo '1ERROR: Could not create temporary file'
    			datefile=""
 			echo "1ERROR: Job not found"
 			break
