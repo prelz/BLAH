@@ -249,7 +249,8 @@ def get_qstat_location():
     global _qstat_location_cache
     if _qstat_location_cache != None:
         return _qstat_location_cache
-    if os.path.exists("blah_load_config.sh") and os.access("blah_load_config.sh", os.R_OK):
+    load_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'blah_load_config.sh')
+    if os.path.exists(load_config_path) and os.access(load_config_path, os.R_OK):
         cmd = 'source blah_load_config.sh && echo "$pbs_binpath/qstat"'
     else:
         cmd = 'which qstat'
