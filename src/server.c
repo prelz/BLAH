@@ -335,6 +335,8 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	int virtualorg_found;
 	char **attr;
 	int n_attrs;
+	FILE *rfd;
+	int mret;
 
 	blah_config_handle = config_read(NULL);
 	if (blah_config_handle == NULL)
@@ -570,6 +572,25 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 		if (get_cmd_res == CMDBUF_TIMEOUT)
 		{
 			if (blah_children_count>0) check_on_children(blah_children, blah_children_count);
+			/* Make sure that idle blaphds don't hold on */
+			/* to outdated mmapped registries. */
+			if (blah_jr_handle->mode == BY_BLAH_ID_MMAP || 
+                            blah_jr_handle->mode == BY_BATCH_ID_MMAP ||
+                            blah_jr_handle->mode == BY_USER_PREFIX_MMAP)
+   			{
+				if ((rfd = job_registry_open(blah_jr_handle, "r")) != NULL)
+				{
+					if (job_registry_rdlock(blah_jr_handle, rfd) >= 0)
+					{
+						if ((mret = job_registry_resync_mmap(blah_jr_handle, rfd)) < 0)
+						{
+							fprintf(stderr,"Periodic mmapped registry resync failed. job_registry_resync_mmap returns %d.\n.", mret); 
+						}
+					}
+					fclose(rfd);
+				}
+				else fprintf(stderr, "Error opening registry %s for read.\n", blah_jr_handle->path);
+   			}
 		}
 		else if (get_cmd_res == CMDBUF_OK)
 		{
