@@ -405,7 +405,7 @@ int main(int argc, char *argv[]){
 						}	
 						if(first) first=FALSE;
 					
-						tconstraint=make_message("ClusterId=='%s'",en->batch_id);
+						tconstraint=make_message("GlobalJobId==\"%s\"",en->batch_id);
 					
 						if (query != NULL){
 							qlen = strlen(query);
@@ -678,7 +678,7 @@ FinalStateQuery(char *query)
 	maxtok_c = strtoken(query, ';', &ctoken);
 
 	for(k=0;k<maxtok_c;k++){
-		command_string=make_message("%s%s/condor_history -constraint \"%s\" -format \"%%d \" ClusterId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus",batch_command,condor_binpath,ctoken[k]);
+		command_string=make_message("%s%s/condor_history -constraint '%s' -format \"%%s \" GlobalJobId -format \"%%s \" Owner -format \"%%d \" JobStatus -format \"%%s \" Cmd -format \"%%s \" ExitStatus -format \"%%s\\n\" EnteredCurrentStatus",batch_command,condor_binpath,ctoken[k]);
 		do_log(debuglogfile, debug, 2, "%s: command_string in FinalStateQuery:%s\n",argv0,command_string);
 		fp = popen(command_string,"r");
 
