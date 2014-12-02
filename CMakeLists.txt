@@ -13,7 +13,7 @@
 #
 # 5-Nov-2012  Created 
 
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8.11)
 
 project(BLAH)
 
@@ -39,6 +39,18 @@ set(CPACK_PACKAGE_VERSION_MINOR "21")
 set(CPACK_PACKAGE_VERSION_PATCH "0")
 set(CPACK_PACKAGE_VERSION 
    "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
+
+add_definitions(-DBLAH_VERSION=${CPACK_PACKAGE_VERSION})
+
+set(MONTH_LIST "Jan" "Feb" "Mar" "Apr" "May" "Jun" 
+               "Jul" "Aug" "Sep" "Oct" "Nov" "Dec")
+file(TIMESTAMP "${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists.txt" 
+     BLAH_BUILD_MONTH "%m")
+math(EXPR BLAH_BUILD_MONTH "${BLAH_BUILD_MONTH}-1")
+list(GET MONTH_LIST ${BLAH_BUILD_MONTH} BLAH_BUILD_MONTH_TXT)
+file(TIMESTAMP "${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists.txt" 
+     BLAH_BUILD_TIMESTAMP "${BLAH_BUILD_MONTH_TXT} %d %Y")
+add_definitions(-DBLAH_BUILD_TIMESTAMP=${BLAH_BUILD_TIMESTAMP})
 
 # For the following setting, see CMAKE manual, page 155
 # or http://public.kitware.com/Bug/view.php?id=7000
