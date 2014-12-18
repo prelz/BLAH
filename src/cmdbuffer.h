@@ -27,6 +27,9 @@
 #
 */
 
+#ifndef __CMDBUFFER_H__
+#define __CMDBUFFER_H__
+
 #define CMDBUF_OK               0
 #define CMDBUF_TIMEOUT          1
 #define CMDBUF_ERROR_NOMEM      2
@@ -38,3 +41,5 @@
 int cmd_buffer_init(const int fd, const size_t bufsize, const int timeout);
 int cmd_buffer_get_command(char **command);
 int cmd_buffer_free(void);
+
+#endif /* defined __CMDBUFFER_H__ */
