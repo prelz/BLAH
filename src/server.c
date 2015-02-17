@@ -98,6 +98,7 @@
 #include "proxy_hashcontainer.h"
 #include "blah_utils.h"
 #include "cmdbuffer.h"
+#include "blah_version.h"
 
 #define COMMAND_PREFIX "-c"
 #define JOBID_REGEXP            "(^|\n)BLAHP_JOBID_PREFIX([^\n]*)"
@@ -119,10 +120,6 @@
 #endif
 #ifndef TRUE
 #define TRUE  1
-#endif
-
-#ifndef VERSION
-#define VERSION            "1.8.0"
 #endif
 
 const char *opt_format[] = {
@@ -178,7 +175,6 @@ pthread_attr_t cmd_threads_attr;
 sem_t sem_total_commands;
 
 char *blah_script_location;
-char *blah_version;
 static char lrmslist[MAX_LRMS_NUMBER][MAX_LRMS_NAME_SIZE];
 static int  lrms_counter = 0;
 static mapping_t current_mapping_mode = MEXEC_NO_MAPPING;
@@ -398,7 +394,6 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 #endif
 	
 	blah_script_location = strdup(blah_config_handle->libexec_path);
-	blah_version = make_message(RCSID_VERSION, VERSION, "poly,new_esc_format");
 	require_proxy_on_submit = config_test_boolean(config_get("blah_require_proxy_on_submit",blah_config_handle));
 	enable_condor_glexec = config_test_boolean(config_get("blah_enable_glexec_from_condor",blah_config_handle));
 	disable_wn_proxy_renewal = config_test_boolean(config_get("blah_disable_wn_proxy_renewal",blah_config_handle));
@@ -564,7 +559,7 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 
 	sem_init(&sem_total_commands, 0, max_threaded_cmds);
 	
-	write(server_socket, blah_version, strlen(blah_version));
+	write(server_socket, GAHP_VERSION_STRING, sizeof(GAHP_VERSION_STRING));
 	write(server_socket, "\r\n", 2);
 	while(!exit_program)
 	{
@@ -712,7 +707,6 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	}
 
 	free(blah_script_location);
-	free(blah_version);
 	cmd_buffer_free();
 
 	exit(exitcode);
@@ -895,7 +889,7 @@ cmd_version(void *args)
 {
 	char *result;
 
-	result = make_message("S %s",blah_version);
+	result = make_message("S %s", GAHP_VERSION_STRING);
 	return(result);	
 }
 
