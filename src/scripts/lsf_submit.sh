@@ -51,6 +51,9 @@ conffile=$lsf_confpath/lsf.conf
 
 lsf_base_path=`cat $conffile|grep LSB_SHAREDIR| awk -F"=" '{ print $2 }'`
 
+lsf_confdir=`cat $conffile|grep LSF_CONFDIR| awk -F"=" '{ print $2 }'`
+[ -f ${lsf_confdir}/profile.lsf ] && . ${lsf_confdir}/profile.lsf
+
 lsf_clustername=`${lsf_binpath}/lsid | grep 'My cluster name is'|awk -F" " '{ print $5 }'`
 logpath=$lsf_base_path/$lsf_clustername/logdir
 
