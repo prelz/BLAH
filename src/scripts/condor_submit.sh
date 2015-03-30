@@ -183,7 +183,7 @@ if [ ${#remap_files[@]} -gt 0 ] ; then
 	if [ ! -z "${remap_files[0]}" ] ; then
 	    map=${remap_files[$i]}
 	else
-	    map=${output_files$i]}
+	    map=${output_files[$i]}
 	fi
 	transfer_output_remaps="$transfer_output_remaps;${output_files[$i]}=$map"
     done
