@@ -35,8 +35,8 @@ foreach (manpage ${MAN1PAGES_TO_CREATE})
   add_custom_command(OUTPUT  ${manpage}
                      COMMAND ${XSLTPROC_EXECUTABLE}
                              ${XSLTPROC_MANPAGE_STYLESHEET} 
-                             ${manpage_src}
-                     DEPENDS ${manpage_src})
+                             ${CMAKE_CURRENT_SOURCE_DIR}/${manpage_src}
+                     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${manpage_src})
   set_source_files_properties(${manpage} PROPERTIES GENERATED TRUE)
 endforeach()
 

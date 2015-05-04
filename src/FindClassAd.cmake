@@ -87,7 +87,8 @@ else()
     "-DWANT_NAMESPACES"
     "-DWANT_CLASSAD_NAMESPACE"
   )
-  set(ClassAd_CXX_FLAG_CANDIDATES "")
+  set(ClassAd_CXX_FLAG_CANDIDATES ";") # Cannot represent a list with one
+                                       # empty element... These are two.
 endif()
 
 get_filename_component(ClassAd_LIBRARY_DIR ${ClassAd_LIBRARY} PATH)
@@ -108,8 +109,8 @@ main(int argc, char *argv[])
 
 
 # check cxx compiler
-foreach(CPP_FLAG IN LISTS ClassAd_CPP_FLAG_CANDIDATES)
-  foreach(CXX_FLAG IN LISTS ClassAd_CXX_FLAG_CANDIDATES)
+foreach(CXX_FLAG IN LISTS ClassAd_CXX_FLAG_CANDIDATES)
+  foreach(CPP_FLAG IN LISTS ClassAd_CPP_FLAG_CANDIDATES)
     set(SAFE_CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS}")
     set(SAFE_CMAKE_REQUIRED_LIBRARIES "${CMAKE_REQUIRED_LIBRARIES}")
     set(SAFE_CMAKE_REQUIRED_INCLUDES "${CMAKE_REQUIRED_INCLUDES}")
@@ -127,8 +128,11 @@ foreach(CPP_FLAG IN LISTS ClassAd_CPP_FLAG_CANDIDATES)
       set(ClassAd_CXX_FLAGS_INTERNAL "${CXX_FLAG}")
       break()
     endif(ClassAd_FLAG_DETECTED)
-  endforeach(CXX_FLAG IN LISTS ClassAd_CXX_FLAG_CANDIDATES)
-endforeach(CPP_FLAG IN LISTS ClassAd_CPP_FLAG_CANDIDATES)
+  endforeach(CPP_FLAG IN LISTS ClassAd_CPP_FLAG_CANDIDATES)
+  if(ClassAd_FLAG_DETECTED)
+    break()
+  endif(ClassAd_FLAG_DETECTED)
+endforeach(CXX_FLAG IN LISTS ClassAd_CXX_FLAG_CANDIDATES)
 
 set(ClassAd_CPP_FLAGS "${ClassAd_CPP_FLAGS_INTERNAL}"
   CACHE STRING "C preprocessor compiler flags for use of the Condor Classad  library")

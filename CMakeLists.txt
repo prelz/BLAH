@@ -65,41 +65,43 @@ set(CPACK_RPM_PACKAGE_VENDOR ${CPACK_PACKAGE_VENDOR})
 
 # Contruct two spec file templates: one for UseRPMTools and one for 
 # the CPack RPM module (that we hope we'll be able to actually use some day)
-add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/project/cpack_spec_template
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cpack_spec_template
                    COMMAND ${CMAKE_COMMAND} 
-                              -D OUTPUT=${CMAKE_CURRENT_SOURCE_DIR}/project/cpack_spec_template
-                              -D CUSTOM=${CMAKE_CURRENT_SOURCE_DIR}/project/cmake_spec_cpack_build
-                              -P ${CMAKE_CURRENT_SOURCE_DIR}/create_spec_templates.cmake
+                              -D OUTPUT=${CMAKE_CURRENT_BINARY_DIR}/cpack_spec_template
+                              -D CUSTOM=${CMAKE_SOURCE_DIR}/project/cmake_spec_cpack_build
+                              -D SCRIPLET_DIR=${CMAKE_SOURCE_DIR}/project
+                              -P ${CMAKE_SOURCE_DIR}/create_spec_templates.cmake
                    DEPENDS 
-                     ${CMAKE_CURRENT_SOURCE_DIR}/project/cmake_spec_prologue
-                     ${CMAKE_CURRENT_SOURCE_DIR}/project/cmake_spec_epilogue
-                     ${CMAKE_CURRENT_SOURCE_DIR}/project/cmake_spec_cpack_build)
+                     ${CMAKE_SOURCE_DIR}/project/cmake_spec_prologue
+                     ${CMAKE_SOURCE_DIR}/project/cmake_spec_epilogue
+                     ${CMAKE_SOURCE_DIR}/project/cmake_spec_cpack_build)
 
 execute_process(COMMAND ${CMAKE_COMMAND} 
-                  -D OUTPUT=${CMAKE_CURRENT_SOURCE_DIR}/project/${CPACK_RPM_PACKAGE_NAME}.spec.in
-                  -D CUSTOM=${CMAKE_CURRENT_SOURCE_DIR}/project/cmake_spec_userpmtools_build
-                  -P ${CMAKE_CURRENT_SOURCE_DIR}/create_spec_templates.cmake)
+                  -D OUTPUT=${CMAKE_CURRENT_BINARY_DIR}/${CPACK_RPM_PACKAGE_NAME}.spec.in
+                  -D CUSTOM=${CMAKE_SOURCE_DIR}/project/cmake_spec_userpmtools_build
+                  -D SCRIPLET_DIR=${CMAKE_SOURCE_DIR}/project
+                  -P ${CMAKE_SOURCE_DIR}/create_spec_templates.cmake)
 
 add_custom_target(all_spec_files ALL DEPENDS
-    ${CMAKE_CURRENT_SOURCE_DIR}/project/cpack_spec_template
-    ${CMAKE_CURRENT_SOURCE_DIR}/project/${CPACK_RPM_PACKAGE_NAME}.spec.in
+    ${CMAKE_CURRENT_BINARY_DIR}/cpack_spec_template
+    ${CMAKE_CURRENT_BINARY_DIR}/${CPACK_RPM_PACKAGE_NAME}.spec.in
    )
 
 
 set(CPACK_PACKAGE_CONTACT "blah@mi.infn.it")
 set(CPACK_RPM_PACKAGE_LICENSE "Apache Software License")
 set(CPACK_RPM_PACKAGE_GROUP "Applications/Internet")
-set(CPACK_RPM_USER_BINARY_SPECFILE "${CMAKE_CURRENT_SOURCE_DIR}/project/cpack_spec_template")
+set(CPACK_RPM_USER_BINARY_SPECFILE "${CMAKE_CURRENT_SOURCE_DIR}/cpack_spec_template")
 
 set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE 
-    ${CMAKE_CURRENT_SOURCE_DIR}/project/glite-ce-blahp.post)
+    ${CMAKE_SOURCE_DIR}/project/glite-ce-blahp.post)
 set(CPACK_RPM_PRE_UNINSTALL_SCRIPT_FILE 
-    ${CMAKE_CURRENT_SOURCE_DIR}/project/glite-ce-blahp.preun)
+    ${CMAKE_SOURCE_DIR}/project/glite-ce-blahp.preun)
 
 set(CPACK_SOURCE_IGNORE_FILES
   "Makefile;CMakeCache.txt;/RPM/;/autom4te.cache/;/CMakeFiles/;/build/;/\\\\.git/;/\\\\.deps/;\\\\.tar\\\\.gz$;\\\\.o$;\\\\.rpm$;\\\\.deb$;${CPACK_SOURCE_IGNORE_FILES}")
 
-add_subdirectory(src build)
+add_subdirectory(src)
 add_subdirectory(config)
 add_subdirectory(doc)
 
@@ -109,8 +111,9 @@ include(UseRPMTools.cmake)
 if(RPMTools_FOUND)
    file(READ ${CPACK_RPM_POST_INSTALL_SCRIPT_FILE} CPACK_RPM_SPEC_POSTINSTALL)
    file(READ ${CPACK_RPM_PRE_UNINSTALL_SCRIPT_FILE} CPACK_RPM_SPEC_PREUNINSTALL)
+   message(STATUS "DEBUG: spec file == ${CMAKE_CURRENT_BINARY_DIR}/${CPACK_RPM_PACKAGE_NAME}.spec.in")
    RPMTools_ADD_RPM_TARGETS(${CPACK_RPM_PACKAGE_NAME}
-                            "${CMAKE_CURRENT_SOURCE_DIR}/project/${CPACK_RPM_PACKAGE_NAME}.spec.in")
+                            "${CMAKE_CURRENT_BINARY_DIR}/${CPACK_RPM_PACKAGE_NAME}.spec.in")
    unset(CPACK_RPM_SPEC_POSTINSTALL)
    unset(CPACK_RPM_SPEC_PREUNINSTALL)
 endif(RPMTools_FOUND)
