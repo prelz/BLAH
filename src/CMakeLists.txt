@@ -33,6 +33,7 @@ pkg_check_modules(GLOBUS_GSSAPI_GSI globus-gssapi-gsi)
 pkg_check_modules(GLOBUS_GSS_ASSIST globus-gss-assist)
 pkg_check_modules(GLOBUS_GSI_CREDENTIAL globus-gsi-credential)
 pkg_check_modules(GLOBUS_GSI_PROXY_CORE globus-gsi-proxy-core)
+pkg_check_modules(GLOBUS_GSI_SYSCFG globus-gsi-sysconfig)
 
 include_directories(.)
 
@@ -54,7 +55,10 @@ if (${GLOBUS_COMMON_FOUND} AND ${GLOBUS_IO_FOUND} AND NOT ${DISABLE_GLOBUS} )
 
 set(Globus_LIBRARY
     ${GLOBUS_GSI_PROXY_CORE_LDFLAGS}
-    ${GLOBUS_GSI_CREDENTIALS_LDFLAGS}
+    ${GLOBUS_GSI_CREDENTIAL_LDFLAGS}
+    ${GLOBUS_GSSAPI_GSI_LDFLAGS}
+    ${GLOBUS_COMMON_LDFLAGS}
+    ${GLOBUS_GSI_SYSCFG_LDFLAGS}
     ${GLOBUS_GSS_ASSIST_LDFLAGS})
 
 add_executable(BPRclient BPRclient.c BPRcomm.c tokens.c)
@@ -63,16 +67,18 @@ add_executable(BPRserver BPRserver.c BPRcomm.c tokens.c)
 target_link_libraries(BPRserver ${Globus_LIBRARY})
 set_target_properties(BPRserver PROPERTIES COMPILE_FLAGS "-static") 
 
-set(Globus_CXX_FLAGS "-DHAVE_GLOBUS")
+set(Globus_CPP_FLAGS "-DHAVE_GLOBUS")
 endif (${GLOBUS_COMMON_FOUND} AND ${GLOBUS_IO_FOUND} AND NOT ${DISABLE_GLOBUS} )
 
-message(STATUS "Globus_CXX_FLAGS == " "${Globus_CXX_FLAGS}")
+message(STATUS "Globus_CPP_FLAGS == " "${Globus_CPP_FLAGS}")
 message(STATUS "Globus_LIBRARY == " "${Globus_LIBRARY}")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ClassAd_CXX_FLAGS}")
 
 # programs for 'sbin'
 add_executable(blahpd_daemon main_daemon.c ${main_common_sources})
 set_target_properties(blahpd_daemon PROPERTIES COMPILE_FLAGS 
-                      "${ClassAd_CXX_FLAGS} ${Globus_CXX_FLAGS}") 
+                      "${ClassAd_CPP_FLAGS} ${Globus_CPP_FLAGS}") 
 target_link_libraries(blahpd_daemon -lpthread 
                       ${ClassAd_LIBRARY} ${Globus_LIBRARY})
 add_executable(blah_job_registry_add 
@@ -83,7 +89,7 @@ add_executable(blah_job_registry_lkup
 add_executable(blah_job_registry_scan_by_subject 
     blah_job_registry_scan_by_subject.c classad_c_helper.C
     classad_binary_op_unwind.C job_registry.c md5.c config.c)
-set_target_properties(blah_job_registry_scan_by_subject PROPERTIES COMPILE_FLAGS "${ClassAd_CXX_FLAGS}") 
+set_target_properties(blah_job_registry_scan_by_subject PROPERTIES COMPILE_FLAGS "${ClassAd_CPP_FLAGS}") 
 target_link_libraries(blah_job_registry_scan_by_subject ${ClassAd_LIBRARY})
 add_executable(blah_check_config
     blah_check_config.c Bfunctions.c config.c blah_utils.c)
@@ -95,7 +101,7 @@ add_executable(blah_job_registry_purge
 # programs for 'bin'
 add_executable(blahpd main.c ${main_common_sources})
 set_target_properties(blahpd PROPERTIES COMPILE_FLAGS 
-                      "${ClassAd_CXX_FLAGS} ${Globus_CXX_FLAGS}") 
+                      "${ClassAd_CPP_FLAGS} ${Globus_CPP_FLAGS}") 
 target_link_libraries(blahpd -lpthread 
                       ${ClassAd_LIBRARY} ${Globus_LIBRARY})
 

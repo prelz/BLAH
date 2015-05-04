@@ -78,15 +78,16 @@ if ( ClassAd_LIBRARY STREQUAL "ClassAd_LIBRARY-NOTFOUND" )
    PATH_SUFFIXES
      lib
   )
-  set(ClassAd_CXX_FLAG_CANDIDATES 
-    "-D'BEGIN_NAMESPACE(x)=namespace x{' -D'END_NAMESPACE=}' "
-    "-D'BEGIN_NAMESPACE(x)=namespace x{' -D'END_NAMESPACE=}' -std=c++11"
+  set(ClassAd_CPP_FLAG_CANDIDATES 
+    "-DWANT_CLASSAD_NAMESPACE -D'BEGIN_NAMESPACE(x)=namespace x{' -D'END_NAMESPACE=}' "
   )
+  set(ClassAd_CXX_FLAG_CANDIDATES "" "-std=c++11")
 else()
-  set(ClassAd_CXX_FLAG_CANDIDATES
+  set(ClassAd_CPP_FLAG_CANDIDATES
     "-DWANT_NAMESPACES"
     "-DWANT_CLASSAD_NAMESPACE"
   )
+  set(ClassAd_CXX_FLAG_CANDIDATES "")
 endif()
 
 get_filename_component(ClassAd_LIBRARY_DIR ${ClassAd_LIBRARY} PATH)
@@ -107,33 +108,40 @@ main(int argc, char *argv[])
 
 
 # check cxx compiler
-foreach(FLAG IN LISTS ClassAd_CXX_FLAG_CANDIDATES)
-  set(SAFE_CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS}")
-  set(SAFE_CMAKE_REQUIRED_LIBRARIES "${CMAKE_REQUIRED_LIBRARIES}")
-  set(SAFE_CMAKE_REQUIRED_INCLUDES "${CMAKE_REQUIRED_INCLUDES}")
-  set(CMAKE_REQUIRED_FLAGS "${FLAG}")
-  set(CMAKE_REQUIRED_LIBRARIES "${ClassAd_LIBRARY}")
-  set(CMAKE_REQUIRED_INCLUDES "${ClassAd_INCLUDE_DIR}")
-  unset(ClassAd_FLAG_DETECTED CACHE)
-  message(STATUS "Try Classad CXX flag = [${FLAG}] (library = [${ClassAd_LIBRARY}])")
-  check_cxx_source_compiles("${ClassAd_CXX_TEST_SOURCE}" ClassAd_FLAG_DETECTED)
-  set(CMAKE_REQUIRED_FLAGS "${SAFE_CMAKE_REQUIRED_FLAGS}")
-  set(CMAKE_REQUIRED_LIBRARIES "${SAFE_CMAKE_REQUIRED_LIBRARIES}")
-  set(CMAKE_REQUIRED_INCLUDES "${SAFE_CMAKE_REQUIRED_INCLUDES}")
-  if(ClassAd_FLAG_DETECTED)
-    set(ClassAd_CXX_FLAGS_INTERNAL "${FLAG}")
-    break()
-  endif(ClassAd_FLAG_DETECTED)
-endforeach(FLAG IN LISTS ClassAd_CXX_FLAG_CANDIDATES)
+foreach(CPP_FLAG IN LISTS ClassAd_CPP_FLAG_CANDIDATES)
+  foreach(CXX_FLAG IN LISTS ClassAd_CXX_FLAG_CANDIDATES)
+    set(SAFE_CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS}")
+    set(SAFE_CMAKE_REQUIRED_LIBRARIES "${CMAKE_REQUIRED_LIBRARIES}")
+    set(SAFE_CMAKE_REQUIRED_INCLUDES "${CMAKE_REQUIRED_INCLUDES}")
+    set(CMAKE_REQUIRED_FLAGS "${CPP_FLAG} ${CXX_FLAG}")
+    set(CMAKE_REQUIRED_LIBRARIES "${ClassAd_LIBRARY}")
+    set(CMAKE_REQUIRED_INCLUDES "${ClassAd_INCLUDE_DIR}")
+    unset(ClassAd_FLAG_DETECTED CACHE)
+    message(STATUS "Try Classad CPP flag = [${CPP_FLAG}] CXX flag = [${CXX_FLAG}] (library = [${ClassAd_LIBRARY}])")
+    check_cxx_source_compiles("${ClassAd_CXX_TEST_SOURCE}" ClassAd_FLAG_DETECTED)
+    set(CMAKE_REQUIRED_FLAGS "${SAFE_CMAKE_REQUIRED_FLAGS}")
+    set(CMAKE_REQUIRED_LIBRARIES "${SAFE_CMAKE_REQUIRED_LIBRARIES}")
+    set(CMAKE_REQUIRED_INCLUDES "${SAFE_CMAKE_REQUIRED_INCLUDES}")
+    if(ClassAd_FLAG_DETECTED)
+      set(ClassAd_CPP_FLAGS_INTERNAL "${CPP_FLAG}")
+      set(ClassAd_CXX_FLAGS_INTERNAL "${CXX_FLAG}")
+      break()
+    endif(ClassAd_FLAG_DETECTED)
+  endforeach(CXX_FLAG IN LISTS ClassAd_CXX_FLAG_CANDIDATES)
+endforeach(CPP_FLAG IN LISTS ClassAd_CPP_FLAG_CANDIDATES)
 
+set(ClassAd_CPP_FLAGS "${ClassAd_CPP_FLAGS_INTERNAL}"
+  CACHE STRING "C preprocessor compiler flags for use of the Condor Classad  library")
 set(ClassAd_CXX_FLAGS "${ClassAd_CXX_FLAGS_INTERNAL}"
   CACHE STRING "C++ compiler flags for use of the Condor Classad  library")
+message(STATUS "ClassAd_CPP_FLAGS == " ${ClassAd_CPP_FLAGS})
 message(STATUS "ClassAd_CXX_FLAGS == " ${ClassAd_CXX_FLAGS})
 # handle the standard arguments for find_package
 find_package_handle_standard_args(ClassAd DEFAULT_MSG 
   ClassAd_LIBRARY ClassAd_INCLUDE_DIR)
 
 mark_as_advanced(
+  ClassAd_CPP_FLAGS
   ClassAd_CXX_FLAGS
   ClassAd_LIBRARY
 )
