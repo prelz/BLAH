@@ -79,8 +79,8 @@ if ( ClassAd_LIBRARY STREQUAL "ClassAd_LIBRARY-NOTFOUND" )
      lib
   )
   set(ClassAd_CXX_FLAG_CANDIDATES 
-    ""
-    "-std=c++11"
+    "-D'BEGIN_NAMESPACE(x)=namespace x{' -D'END_NAMESPACE=}' "
+    "-D'BEGIN_NAMESPACE(x)=namespace x{' -D'END_NAMESPACE=}' -std=c++11"
   )
 else()
   set(ClassAd_CXX_FLAG_CANDIDATES
