@@ -40,7 +40,8 @@ find_path(ClassAd_INCLUDE_DIR
 
 message(STATUS "ClassAd_INCLUDE_DIR == " ${ClassAd_INCLUDE_DIR})
 
-# The ClassAd library (should have namespaces enabled).
+# The ClassAd library (try the namespaces-enabled version first for
+#                      backwards compatibility).
 set (ClassAd_LIBRARY_TO_FIND classad_ns)
 
 # Setting some more prefixes for the library
@@ -58,6 +59,36 @@ find_library( ClassAd_LIBRARY
    lib
 )
 
+if ( ClassAd_LIBRARY STREQUAL "ClassAd_LIBRARY-NOTFOUND" )
+# Use the non-decorated library name then - it must have the classad 
+# namespaces enabled.
+  set (ClassAd_LIBRARY_TO_FIND classad)
+
+# Setting some more prefixes for the library
+  set (ClassAd_LIB_PREFIX "")
+  if ( WIN32 )
+    set (ClassAd_LIB_PREFIX ${ClassAd_LIB_PREFIX} "lib")
+    set ( ClassAd_LIBRARY_TO_FIND ${ClassAd_LIB_PREFIX}${ClassAd_LIBRARY_TO_FIND})
+  endif()
+
+  find_library( ClassAd_LIBRARY
+   NAMES ${ClassAd_LIBRARY_TO_FIND}
+   PATHS
+     ${ClassAd_LIBRARY_DIR}
+   PATH_SUFFIXES
+     lib
+  )
+  set(ClassAd_CXX_FLAG_CANDIDATES 
+    ""
+    "-std=c++11"
+  )
+else()
+  set(ClassAd_CXX_FLAG_CANDIDATES
+    "-DWANT_NAMESPACES"
+    "-DWANT_CLASSAD_NAMESPACE"
+  )
+endif()
+
 get_filename_component(ClassAd_LIBRARY_DIR ${ClassAd_LIBRARY} PATH)
 message(STATUS "ClassAd_LIBRARY == " ${ClassAd_LIBRARY})
 
@@ -74,13 +105,9 @@ main(int argc, char *argv[])
 }
 ")
 
-set(ClassAd_CXX_FLAG_CANDIDATES
-  "-DWANT_NAMESPACES"
-  "-DWANT_CLASSAD_NAMESPACE"
-)
 
 # check cxx compiler
-foreach(FLAG ${ClassAd_CXX_FLAG_CANDIDATES})
+foreach(FLAG IN LISTS ClassAd_CXX_FLAG_CANDIDATES)
   set(SAFE_CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS}")
   set(SAFE_CMAKE_REQUIRED_LIBRARIES "${CMAKE_REQUIRED_LIBRARIES}")
   set(SAFE_CMAKE_REQUIRED_INCLUDES "${CMAKE_REQUIRED_INCLUDES}")
@@ -97,7 +124,7 @@ foreach(FLAG ${ClassAd_CXX_FLAG_CANDIDATES})
     set(ClassAd_CXX_FLAGS_INTERNAL "${FLAG}")
     break()
   endif(ClassAd_FLAG_DETECTED)
-endforeach(FLAG ${ClassAd_CXX_FLAG_CANDIDATES})
+endforeach(FLAG IN LISTS ClassAd_CXX_FLAG_CANDIDATES)
 
 set(ClassAd_CXX_FLAGS "${ClassAd_CXX_FLAGS_INTERNAL}"
   CACHE STRING "C++ compiler flags for use of the Condor Classad  library")
