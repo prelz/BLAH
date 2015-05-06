@@ -65,4 +65,5 @@ void *cmd_uncache_proxy(void *args);
 command_t *find_command(const char *cmd);
 char *known_commands(void);
 int parse_command(const char *cmd, int *argc, char ***argv);
+void free_args(char **arg_array);
 

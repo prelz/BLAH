@@ -274,20 +274,7 @@ check_on_children(struct blah_managed_child *children, const int count)
 	pthread_mutex_unlock(&bfork_lock);
 }
 
-/* Free all tokens of a command
- * */
-void
-free_args(char **arg_array)
-{
-	char **arg_ptr;
-	
-	if (arg_array)
-	{
-		for (arg_ptr = arg_array; (*arg_ptr) != NULL; arg_ptr++)
-			free(*arg_ptr);
-		free(arg_array);
-	}
-}	
+
 /* Main server function 
  * */
 int
