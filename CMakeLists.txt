@@ -34,14 +34,34 @@ set(CPACK_PACKAGE_VENDOR "EMI")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Batch Local ASCII Helper Protocol suite")
 set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/blah_description.txt")
 file(READ ${CPACK_PACKAGE_DESCRIPTION_FILE} CPACK_PACKAGE_DESCRIPTION)
+execute_process(COMMAND git describe
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                OUTPUT_VARIABLE GIT_TAG
+                ERROR_QUIET)
+STRING(REGEX MATCH "[0-9]+\\.[0-9]+\\.[0-9]+"
+       CPACK_PACKAGE_VERSION "${GIT_TAG}")
+if (CPACK_PACKAGE_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+")
+message(STATUS "CPACK_PACKAGE_VERSION = ${CPACK_PACKAGE_VERSION} (from latest git tag on this branch)")
+else()
 set(CPACK_PACKAGE_VERSION_MAJOR "1")
 set(CPACK_PACKAGE_VERSION_MINOR "21")
 set(CPACK_PACKAGE_VERSION_PATCH "0")
 set(CPACK_PACKAGE_VERSION 
    "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
+message(STATUS "CPACK_PACKAGE_VERSION = ${CPACK_PACKAGE_VERSION} (no git tag, using hardcoded values)")
+endif (CPACK_PACKAGE_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+")
 
 add_definitions(-DBLAH_VERSION="${CPACK_PACKAGE_VERSION}")
 
+execute_process(COMMAND git "show" "-s" "--format=%cd"
+                COMMAND cut "-d " "-f2,3,5"
+                OUTPUT_VARIABLE BLAH_BUILD_TIMESTAMP
+                RESULT_VARIABLE GIT_DATE_ERROR
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET)
+if (NOT GIT_DATE_ERROR)
+message(STATUS "BLAH_BUILD_TIMESTAMP = ${BLAH_BUILD_TIMESTAMP} (from latest commit on this branch)")
+else()
 set(MONTH_LIST "Jan" "Feb" "Mar" "Apr" "May" "Jun" 
                "Jul" "Aug" "Sep" "Oct" "Nov" "Dec")
 file(TIMESTAMP "${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists.txt" 
@@ -50,6 +70,8 @@ math(EXPR BLAH_BUILD_MONTH "${BLAH_BUILD_MONTH}-1")
 list(GET MONTH_LIST ${BLAH_BUILD_MONTH} BLAH_BUILD_MONTH_TXT)
 file(TIMESTAMP "${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists.txt" 
      BLAH_BUILD_TIMESTAMP "${BLAH_BUILD_MONTH_TXT} %d %Y")
+message(STATUS "BLAH_BUILD_TIMESTAMP = ${BLAH_BUILD_TIMESTAMP} (no git date, using last CMakeLists.txt update)")
+endif (NOT GIT_DATE_ERROR)
 add_definitions(-DBLAH_BUILD_TIMESTAMP="${BLAH_BUILD_TIMESTAMP}")
 
 # For the following setting, see CMAKE manual, page 155
