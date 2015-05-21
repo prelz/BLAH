@@ -213,6 +213,12 @@ fi
 
 # The job id is actually the first numbers in the string (slurm support)
 jobID=`echo $jobID | awk 'match($0,/[0-9]+/){print substr($0, RSTART, RLENGTH)}'`
+if [ "X$jobID" == "X" ]; then
+	rm -f $bls_tmp_file
+	echo "Error: job id missing" >&2
+	echo Error # for the sake of waiting fgets in blahpd
+	exit 1
+fi
 
 if [ "x$pbs_nologaccess" != "xyes" -a "x$pbs_nochecksubmission" != "xyes" ]; then
 
