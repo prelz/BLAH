@@ -44,6 +44,9 @@
 
 . `dirname $0`/blah_common_submit_functions.sh
 
+qstat --version 2>&1 | grep PBSPro > /dev/null 2>&1
+is_pbs_pro=$?
+
 logpath=${pbs_spoolpath}/server_logs
 if [ ! -d $logpath -o ! -x $logpath ]; then
   if [ -x "${pbs_binpath}/tracejob" ]; then
@@ -117,7 +120,7 @@ fi
 #local batch system-specific file output must be added to the submit file
 bls_local_submit_attributes_file=${blah_libexec_directory}/pbs_local_submit_attributes.sh
 
-if [ "x$bls_opt_req_mem" != "x" ]
+if [ "x$bls_opt_req_mem" != "x" ] && [ "$is_pbs_pro" -neq "0" ]
 then
   # Different schedulers require different memory checks
   echo "#PBS -l mem=${bls_opt_req_mem}mb" >> $bls_tmp_file
@@ -132,7 +135,7 @@ bls_set_up_local_and_extra_args
 [ -z "$bls_opt_queue" ] || grep -q "^#PBS -q" $bls_tmp_file || echo "#PBS -q $bls_opt_queue" >> $bls_tmp_file
 
 # Extended support for MPI attributes
-if [ "x$bls_opt_wholenodes" == "xyes" ] ; then
+if [ "x$bls_opt_wholenodes" == "xyes" ] && [ "$is_pbs_pro" -neq "0" ]; then
   bls_opt_hostsmpsize=${bls_opt_hostsmpsize:-1}
   if [[ ! -z "$bls_opt_smpgranularity" ]] ; then
     if [[ -z "$bls_opt_hostnumber" ]] ; then
@@ -171,8 +174,6 @@ else
   fi
 fi
 # --- End of MPI directives
-
-
 
 # Input and output sandbox setup.
 if [ "x$blah_torque_multiple_staging_directive_bug" == "xyes" ]; then

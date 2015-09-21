@@ -37,6 +37,7 @@ import errno
 import fcntl
 import random
 import struct
+import subprocess
 import signal
 import tempfile
 
@@ -223,9 +224,16 @@ def qstat(jobid=""):
     Returns a python dictionary with the job info.
     """
     qstat = get_qstat_location()
+    command = (qstat, '--version')
+    qstat_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    qstat_version, _ = qstat_process.communicate()
+
     starttime = time.time()
     log("Starting qstat.")
-    child_stdout = os.popen("%s -f -1 %s" % (qstat, jobid))
+    if re.search(r'PBSPro', qstat_version)
+        child_stdout = os.popen("%s -f %s" % (qstat, jobid)) # -1 conflicts with -f in PBS Pro
+    else:
+        child_stdout = os.popen("%s -f -1 %s" % (qstat, jobid))
     result = parse_qstat_fd(child_stdout)
     exit_status = child_stdout.close()
     log("Finished qstat (time=%f)." % (time.time()-starttime))
@@ -233,7 +241,7 @@ def qstat(jobid=""):
         exit_code = 0
         if os.WIFEXITED(exit_status):
             exit_code = os.WEXITSTATUS(exit_status)
-        if exit_code == 153: # Completed
+        if exit_code == 153 or exit_code == 35: # Completed
             result = {jobid: {'BatchJobId': '"%s"' % jobid, "JobStatus": "4", "ExitCode": ' 0'}}
         elif exit_code == 271: # Removed
             result = {jobid: {'BatchJobId': '"%s"' % jobid, 'JobStatus': '3', 'ExitCode': ' 0'}}
@@ -264,9 +272,10 @@ def get_qstat_location():
 
 job_id_re = re.compile("\s*Job Id:\s([0-9]+)([\w\-\/.]*)")
 exec_host_re = re.compile("\s*exec_host = ([\w\-\/.]+)")
-status_re = re.compile("\s*job_state = ([QRECH])")
-exit_status_re = re.compile("\s*exit_status = (-?[0-9]+)")
-status_mapping = {"Q": 1, "R": 2, "E": 2, "C": 4, "H": 5}
+status_re = re.compile("\s*job_state = ([QREFCH])")
+exit_status_re = re.compile("\s*[Ee]xit_status = (-?[0-9]+)")
+status_mapping = {"Q": 1, "R": 2, "E": 2, "F": 4, "C": 4, "H": 5}
+
 def parse_qstat_fd(fd):
     """
     Parse the stdout fd of "qstat -f" into a python dictionary containing
