@@ -21,7 +21,7 @@ blah_disable_wn_proxy_renewal=
 blah_delegate_renewed_proxies=
 
 #max number of concurrent threads to serve commands (default = 500)
-#blah_max_threaded_cmds=100
+blah_max_threaded_cmds=50
 
 #Colon-separated list of paths that are shared among batch system
 #head and worker nodes.
