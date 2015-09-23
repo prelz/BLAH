@@ -188,6 +188,7 @@ int enable_condor_glexec = FALSE;
 int require_proxy_on_submit = FALSE;
 int disable_wn_proxy_renewal = FALSE;
 int disable_proxy_user_copy = FALSE;
+int disable_limited_proxy = FALSE;
 int synchronous_termination = FALSE;
 
 static char *mapping_parameter[MEXEC_PARAM_COUNT];
@@ -404,6 +405,7 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	enable_condor_glexec = config_test_boolean(config_get("blah_enable_glexec_from_condor",blah_config_handle));
 	disable_wn_proxy_renewal = config_test_boolean(config_get("blah_disable_wn_proxy_renewal",blah_config_handle));
 	disable_proxy_user_copy = config_test_boolean(config_get("blah_disable_proxy_user_copy",blah_config_handle));
+        disable_limited_proxy = config_test_boolean(config_get("blah_disable_limited_proxy",blah_config_handle));
 
 	/* Scan configuration for submit attributes to pass to local script */
 	pass_all_submit_attributes = config_test_boolean(config_get("blah_pass_all_submit_attributes",blah_config_handle));
@@ -1153,7 +1155,7 @@ cmd_submit_job(void *args)
 			}
 		}
 	}
-	else if (proxyname != NULL)
+	else if (proxyname != NULL) && (disable_limited_proxy)
 	{
 		/* not in glexec mode: need to limit the proxy */
 		char *errmsg;
@@ -2009,9 +2011,9 @@ cmd_renew_proxy(void *args)
 		switch(jobStatus)
 		{
 			case 1: /* job queued: copy the proxy locally */
-				if (!use_mapping)
+                               if (!use_mapping) && (!disable_limited_proxy)
 				{
-					limit_proxy(proxyFileName, old_proxy, NULL); /*FIXME: should check if limited proxies are enabled? */ 
+					limit_proxy(proxyFileName, old_proxy, NULL);
 					resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
 				}
 				else
@@ -2136,7 +2138,7 @@ cmd_send_proxy_to_worker_node(void *args)
 
 	if (workernode != NULL && strcmp(workernode, ""))
 	{
-		if(!use_glexec)
+               if(!use_glexec) && (!disable_limited_proxy)
 		{
 			proxyFileNameNew = limit_proxy(proxyFileName, NULL, NULL);
 		}
