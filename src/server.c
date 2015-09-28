@@ -1155,7 +1155,7 @@ cmd_submit_job(void *args)
 			}
 		}
 	}
-	else if (proxyname != NULL) && (disable_limited_proxy)
+	else if (proxyname != NULL) && (!disable_limited_proxy)
 	{
 		/* not in glexec mode: need to limit the proxy */
 		char *errmsg;
