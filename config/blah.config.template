@@ -20,6 +20,9 @@ blah_disable_wn_proxy_renewal=
 #be enabled only if non-limited proxies are used for proxy renewal. (default = no)
 blah_delegate_renewed_proxies=
 
+#Set to yes to disable creation of a limited proxy. (default = no)
+blah_disable_limited_proxy=
+
 #max number of concurrent threads to serve commands (default = 500)
 blah_max_threaded_cmds=50
 
