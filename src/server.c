@@ -1155,7 +1155,7 @@ cmd_submit_job(void *args)
 			}
 		}
 	}
-	else if (proxyname != NULL) && (!disable_limited_proxy)
+	else if ((proxyname) != NULL && (!disable_limited_proxy))
 	{
 		/* not in glexec mode: need to limit the proxy */
 		char *errmsg;
@@ -2011,8 +2011,8 @@ cmd_renew_proxy(void *args)
 		switch(jobStatus)
 		{
 			case 1: /* job queued: copy the proxy locally */
-                               if (!use_mapping) && (!disable_limited_proxy)
-				{
+                               if ((!use_mapping) && (!disable_limited_proxy)
+				){
 					limit_proxy(proxyFileName, old_proxy, NULL);
 					resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
 				}
@@ -2138,7 +2138,7 @@ cmd_send_proxy_to_worker_node(void *args)
 
 	if (workernode != NULL && strcmp(workernode, ""))
 	{
-               if(!use_glexec) && (!disable_limited_proxy)
+               if((!use_glexec) && (!disable_limited_proxy))
 		{
 			proxyFileNameNew = limit_proxy(proxyFileName, NULL, NULL);
 		}
