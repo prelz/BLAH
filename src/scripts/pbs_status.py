@@ -230,7 +230,7 @@ def qstat(jobid=""):
 
     starttime = time.time()
     log("Starting qstat.")
-    if re.search(r'PBSPro', qstat_version)
+    if re.search(r'PBSPro', qstat_version):
         child_stdout = os.popen("%s -f %s" % (qstat, jobid)) # -1 conflicts with -f in PBS Pro
     else:
         child_stdout = os.popen("%s -f -1 %s" % (qstat, jobid))
