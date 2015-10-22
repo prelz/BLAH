@@ -215,8 +215,8 @@ jobID=`${pbs_binpath}/qsub $bls_tmp_file` # actual submission
 retcode=$?
 if [ "$retcode" != "0" ] ; then
 	rm -f $bls_tmp_file
-  # Echo the output from qsub onto stderr, which is captured by HTCondor
-  echo "Error from qsub: $jobID" >&2
+	# Echo the output from qsub onto stderr, which is captured by HTCondor
+	echo "Error from qsub: $jobID" >&2
 	exit 1
 fi
 
@@ -224,8 +224,7 @@ fi
 jobID=`echo $jobID | awk 'match($0,/[0-9]+/){print substr($0, RSTART, RLENGTH)}'`
 if [ "X$jobID" == "X" ]; then
 	rm -f $bls_tmp_file
-	echo "Error: job id missing" >&2
-  echo "Error from qsub: $jobID" >&2
+	echo "Error from qsub: $jobID" >&2
 	echo Error # for the sake of waiting fgets in blahpd
 	exit 1
 fi
