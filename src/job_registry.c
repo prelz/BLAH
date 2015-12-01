@@ -2313,6 +2313,33 @@ job_registry_get(job_registry_handle *rha,
    }
 
   firstrec = job_registry_firstrec(rha,fd);
+
+  /* Determine if the job registry index must be resync'd.
+   * The record numbers are monotonically increasing through the lifetime
+   * of the registry; the firstrec we read from the data file above must
+   * match the firstrec in our in-memory index.  The firstrec on the index
+   * is guaranteed to change if a purge operation occurred.
+   */
+  if (firstrec != rha->firstrec)
+   {
+    int retval = job_registry_resync(rha, fd);
+    if (retval < 0)  // Registry failed to update.
+     {
+      fclose(fd);
+      return NULL;
+     }
+    if (retval > 0)  // Registry has been updated; our lookup was invalid.
+     {
+      found = job_registry_lookup(rha, id);
+      if (found == 0)
+       {
+        errno = ENOENT;
+        fclose(fd);
+        return NULL;
+       }
+     }
+   }
+
   /* Was this record just purged ? */
   if ((firstrec > rha->firstrec) && (found >= rha->firstrec) && (found < firstrec))
    {
