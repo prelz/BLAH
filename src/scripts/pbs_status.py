@@ -322,16 +322,18 @@ def fill_cache(cache_location):
     log("Starting query to fill cache.")
     results = qstat()
     log("Finished query to fill cache.")
-    (fd, filename) = tempfile.mkstemp()
+    (fd, filename) = tempfile.mkstemp(dir = "/var/tmp")
     try:
-        for key, val in results.items():
-            key = key.split(".")[0]
-            os.write(fd, "%s: %s\n" % (key, job_dict_to_string(val)))
-        os.fsync(fd)
+        try:
+            for key, val in results.items():
+                key = key.split(".")[0]
+                os.write(fd, "%s: %s\n" % (key, job_dict_to_string(val)))
+            os.fsync(fd)
+        except:
+            os.unlink(filename)
+            raise
+    finally:
         os.close(fd)
-    except:
-        os.unlink(filename)
-        raise
     os.rename(filename, cache_location)
     global launchtime
     launchtime = time.time()
