@@ -966,11 +966,12 @@ cmd_set_glexec_dn(void *args)
 		/* proxt4 must be limited for subsequent submission */		
 		if(argv[3][0]=='0')
 		{
-			if((proxynameNew = limit_proxy(proxt4, NULL, NULL)) == NULL)
+                  if (((proxynameNew = limit_proxy(proxt4, NULL, NULL)) == NULL) ||
+                      (disable_limited_proxy))
 			{
 				free(mapping_parameter[MEXEC_PARAM_DELEGCRED]);
 				mapping_parameter[MEXEC_PARAM_DELEGCRED] = NULL;
-				result = strdup("F Cannot\\ limit\\ proxy\\ file");
+				result = strdup("F Not\\ limiting\\ proxy\\ file");
 			}
 			else
 				mapping_parameter[MEXEC_PARAM_SRCPROXY] = proxynameNew;
@@ -2020,7 +2021,7 @@ cmd_renew_proxy(void *args)
 				{
 					exe_command.delegation_type = atoi(argv[CMD_RENEW_PROXY_ARGS + 1 + MEXEC_PARAM_DELEGTYPE]);
 					exe_command.delegation_cred = argv[CMD_RENEW_PROXY_ARGS + 1 + MEXEC_PARAM_DELEGCRED];
-					if (use_glexec)
+					if ((use_glexec) && (disable_limited_proxy))
 					{
 						exe_command.source_proxy = argv[CMD_RENEW_PROXY_ARGS + 1 + MEXEC_PARAM_SRCPROXY];
 					} else {
