@@ -8,6 +8,7 @@
 # 	08-Aug-2006: Original release
 #       03-Apr-2007: Merged changes by Matt Farrellee (Condor) 
 #       27-Oct-2009: Added support for 'local' requirements file.
+#       09-Jul-2015: Add support for SMPGranularity
 #
 # 	Description:
 #   	Submission script for Condor, to be invoked by blahpd server.
@@ -54,7 +55,7 @@ mpinodes=0
 # Name of local requirements file: currently unused
 req_file=""
 
-while getopts "a:i:o:de:j:n:v:V:c:w:x:u:q:r:s:T:I:O:R:C:D:" arg 
+while getopts "a:i:o:de:j:n:v:V:c:w:x:u:q:r:s:T:I:O:R:C:D:S:" arg 
 do
     case "$arg" in
     a) xtra_args="$OPTARG" ;;
@@ -79,6 +80,7 @@ do
     R) remaps="$OPTARG" ;;
     C) req_file="$OPTARG" ;;
     D) run_dir="$OPTARG" ;;
+    S) smp_core="$OPTARG" ;;
     -) break ;;
     ?) echo $usage_string
        exit 1 ;;
@@ -245,6 +247,10 @@ then
   echo -e $xtra_args >> $submit_file
 fi
 
+if [ "x$mpinodes" != "x" ]
+then
+  echo "RequestCPUs = $mpinodes" >> $submit_file
+fi
 cat >> $submit_file << EOF
 # We insist on new style quoting in Condor
 arguments = $arguments
