@@ -29,6 +29,7 @@
  *              case is guaranteed by the invoking service).
  *              Added job_registry_check_index_key_uniqueness.
  *  21-Jul-2011 Added job_registry_need_update function.
+ *  11-Sep-2015 Always return most recent job in job_registry_get_recnum.
  *
  *  Description:
  *    File-based container to cache job IDs and statuses to implement
@@ -2137,7 +2138,8 @@ job_registry_need_update(const job_registry_entry *olde,
  * Binary search for an entry in the indexed, sorted job registry pointed to by
  * rha. The record number in the current JR cache is returned.
  * No file access is required.
- * In case multiple entries are found, the lowest recnum is returned.
+ * In case multiple entries are found, the highest (most recent) recnum 
+ * is returned.
  *
  * @param rha Pointer to a job registry handle returned by job_registry_init.
  * @param id Job id key to be looked up 
@@ -2167,12 +2169,12 @@ job_registry_get_recnum(const job_registry_handle *rha,
       /* Check for duplicates. */
       for (tcur=cur-1; tcur >=0 && strcmp(rha->entries[tcur].id,id)==0; tcur--)
        {
-        if (rha->entries[tcur].recnum < found) found = rha->entries[tcur].recnum;
+        if (rha->entries[tcur].recnum > found) found = rha->entries[tcur].recnum;
        }
       for (tcur=cur+1;tcur < rha->n_entries && 
                              strcmp(rha->entries[tcur].id,id)==0; tcur++)
        {
-        if (rha->entries[tcur].recnum < found) found = rha->entries[tcur].recnum;
+        if (rha->entries[tcur].recnum > found) found = rha->entries[tcur].recnum;
        }
       break;
      }
