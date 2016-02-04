@@ -2286,13 +2286,6 @@ job_registry_get(job_registry_handle *rha,
     return NULL;
    }
 
-  found = job_registry_lookup(rha, id);
-  if (found == 0)
-   {
-    errno = ENOENT;
-    return NULL;
-   }
-
   /* Open file, readlock it and fetch entry */
 
   fd = job_registry_open(rha,"r");
@@ -2301,6 +2294,14 @@ job_registry_get(job_registry_handle *rha,
   if (job_registry_rdlock(rha,fd) < 0)
    {
     fclose(fd);
+    return NULL;
+   }
+
+  found = job_registry_lookup_op(rha, id, fd);
+  if (found == 0)
+   {
+    fclose(fd);
+    errno = ENOENT;
     return NULL;
    }
 
