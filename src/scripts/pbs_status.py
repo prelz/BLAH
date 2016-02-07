@@ -40,6 +40,8 @@ import struct
 import subprocess
 import signal
 import tempfile
+import pickle
+import csv
 
 cache_timeout = 60
 
@@ -247,7 +249,97 @@ def qstat(jobid=""):
             result = {jobid: {'BatchJobId': '"%s"' % jobid, 'JobStatus': '3', 'ExitCode': ' 0'}}
         else:
             raise Exception("qstat failed with exit code %s" % str(exit_status))
+    
+    # If the job has completed...
+    if jobid is not "" and "JobStatus" in result[jobid] and (result[jobid]["JobStatus"] == '4' or result[jobid]["JobStatus"] == '3'):
+        # Get the finished job stats and update the result
+        finished_job_stats = get_finished_job_stats(jobid)
+        result[jobid].update(finished_job_stats)
+    
     return result
+
+
+def which(program):
+    """
+    Determine if the program is in the path.
+    
+    arg program: name of the program to search
+    returns: full path to executable, or None if executable is not found
+    """
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+
+    return None
+
+def convert_cpu_to_seconds(cpu_string):
+    import re
+    h,m,s = re.split(':',cpu_string)
+    return int(h) * 3600 + int(m) * 60 + int(s)
+
+_cluster_type_cache = None
+def get_finished_job_stats(jobid):
+    """
+    Get a completed job's statistics such as used RAM and cpu usage.
+    """
+    
+    # List the attributes that we want
+    return_dict = { "ImageSize": 0, "ExitCode": 0, "RemoteUserCpu": 0 }
+    # First, determine if this is a pbs or slurm machine.
+    uid = os.geteuid()
+    username = pwd.getpwuid(uid).pw_name
+    cache_dir = os.path.join("/var/tmp", "qstat_cache_%s" % username)
+    cluster_type_file = os.path.join(cache_dir, "cluster_type")
+    global _cluster_type_cache
+    if not _cluster_type_cache:
+        # Look for the special file, cluster_type
+        if os.path.exists(cluster_type_file):
+            _cluster_type_cache = open(cluster_type_file).read()
+        else:  
+            # No idea what type of cluster is running, not set, so give up
+            log("cluster_type file is not present, not checking for completed job statistics")
+            return return_dict
+    
+    # Slurm completion 
+    if _cluster_type_cache == "slurm":
+    
+        # Next, query the appropriate interfaces for the completed job information
+        # TODO: fix for pbs
+        log("Querying sacct for completed job for jobid: %s" % (str(jobid)))
+        child_stdout = os.popen("sacct -j %s -l --noconvert -P" % (str(jobid)))
+
+        try:
+            reader = csv.DictReader(child_stdout, delimiter="|")
+        except Exception, e:
+            log("Unable to read in CSV output from sacct: %s" str(e))
+            
+        # Slurm can return more than 1 row, for some odd reason.
+        # so sum up relevant values
+        for row in reader:
+            if row["AveCPU"] is not "":
+                return_dict['RemoteUserCpu'] += convert_cpu_to_seconds(row["AveCPU"]) * int(row["AllocCPUS"])
+            if row["MaxRSS"] is not "":
+                # Remove the trailing 'K'
+                return_dict["ImageSize"] += int(row["MaxRSS"].replace('K', ''))
+            if row["ExitCode"] is not "":
+                return_dict["ExitCode"] = int(row["ExitCode"].split(":")[0])
+    
+    # PBS completion        
+    elif _cluster_type_cache == "pbs":
+        pass
+
+    return return_dict
+    
 
 _qstat_location_cache = None
 def get_qstat_location():
@@ -323,11 +415,14 @@ def fill_cache(cache_location):
     results = qstat()
     log("Finished query to fill cache.")
     (fd, filename) = tempfile.mkstemp(dir = "/var/tmp")
+    # Open the file with a proper python file object
+    f = os.fdopen(fd, "w")
+    writer = csv.writer(f, delimiter='\t')
     try:
         try:
             for key, val in results.items():
                 key = key.split(".")[0]
-                os.write(fd, "%s: %s\n" % (key, job_dict_to_string(val)))
+                writer.writerow([key, pickle.dumps(val)])
             os.fsync(fd)
         except:
             os.unlink(filename)
@@ -335,16 +430,31 @@ def fill_cache(cache_location):
     finally:
         os.close(fd)
     os.rename(filename, cache_location)
+    
+    # Create the cluster_type file
+    uid = os.geteuid()
+    username = pwd.getpwuid(uid).pw_name
+    cache_dir = os.path.join("/var/tmp", "qstat_cache_%s" % username)
+    cluster_type_file = os.path.join(cache_dir, "cluster_type")
+    (fd, filename) = tempfile.mkstemp(dir = "/var/tmp")
+    global _cluster_type_cache
+    if which("sacct"):
+        os.write(fd, "slurm")
+        _cluster_type_cache = "slurm"
+    else:
+        log("Unable to find cluster type")
+    os.close(fd)
+    os.rename(filename, cluster_type_file)
+    
     global launchtime
     launchtime = time.time()
 
 cache_line_re = re.compile("([0-9]+[\.\w\-]+):\s+(.+)")
 def cache_to_status(jobid, fd):
-    for line in fd.readlines():
-        line = line.strip()
-        m = cache_line_re.match(line)
-        if m and m.group(1) == jobid:
-            return m.group(2)
+    reader = csv.reader(fd, delimiter='\t')
+    for row in reader:
+        if row[0] == jobid:
+            return pickle.loads(row[1])
 
 def check_cache(jobid, recurse=True):
     uid = os.geteuid()
@@ -394,6 +504,8 @@ def check_cache(jobid, recurse=True):
             return None
     return cache_to_status(jobid, fd)
 
+job_status_re = re.compile(".*JobStatus=(\d+);.*")
+
 def main():
     initLog()
 
@@ -421,8 +533,13 @@ def main():
             print "0%s" % job_dict_to_string(results[jobid])
     else:
         log("Jobid %s in cache." % jobid)
-        log("0%s" % cache_contents)
-        print "0%s" % cache_contents
+        log("0%s" % job_dict_to_string(cache_contents))
+        
+        if cache_contents["JobStatus"] == '4' or cache_contents["JobStatus"] == '3':
+            finished_job_stats = get_finished_job_stats(jobid)
+            cache_contents.update(finished_job_stats)
+            
+        print "0%s" % job_dict_to_string(cache_contents)
     return 0
 
 if __name__ == "__main__":
@@ -433,4 +550,3 @@ if __name__ == "__main__":
     except Exception, e:
         print "1ERROR: %s" % str(e).replace("\n", "\\n")
         sys.exit(0)
-
