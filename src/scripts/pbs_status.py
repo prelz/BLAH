@@ -321,7 +321,8 @@ def get_finished_job_stats(jobid):
         try:
             reader = csv.DictReader(child_stdout, delimiter="|")
         except Exception, e:
-            log("Unable to read in CSV output from sacct: %s" str(e))
+            log("Unable to read in CSV output from sacct: %s" % str(e))
+            return return_dict
             
         # Slurm can return more than 1 row, for some odd reason.
         # so sum up relevant values
