@@ -319,15 +319,15 @@ $0 ~ rex_finished {
 }
 
 $0 ~ rex_uhold {
-	jobstatus = 5
+	jobstatus = 7
 }
 
 $0 ~ rex_phold {
-	jobstatus = 5
+	jobstatus = 1
 }
 
 $0 ~ rex_shold {
-	jobstatus = 5
+	jobstatus = 7
 }
 
 END {
