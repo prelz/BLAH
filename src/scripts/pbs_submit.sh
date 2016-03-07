@@ -44,9 +44,6 @@
 
 . `dirname $0`/blah_common_submit_functions.sh
 
-qstat --version 2>&1 | grep PBSPro > /dev/null 2>&1
-is_pbs_pro=$?
-
 logpath=${pbs_spoolpath}/server_logs
 if [ ! -d $logpath -o ! -x $logpath ]; then
   if [ -x "${pbs_binpath}/tracejob" ]; then
@@ -120,6 +117,8 @@ fi
 #local batch system-specific file output must be added to the submit file
 bls_local_submit_attributes_file=${blah_libexec_directory}/pbs_local_submit_attributes.sh
 
+${pbs_binpath}/qstat --version | grep PBSPro
+is_pbs_pro=$?
 if [ "x$bls_opt_req_mem" != "x" ]
 then
   # Different schedulers require different memory checks
