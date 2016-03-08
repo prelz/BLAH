@@ -119,16 +119,20 @@ bls_local_submit_attributes_file=${blah_libexec_directory}/pbs_local_submit_attr
 
 ${pbs_binpath}/qstat --version | grep PBSPro
 is_pbs_pro=$?
+# Begin building the select statement: select=x where x is the number of 'chunks'
+# to request. Chunk requests should precede any resource requests (resource
+# requests are order independent). An example from the PBS Pro manual:
+# #PBS -l  select=2:ncpus=8:mpiprocs=8:mem=6gb:interconnect=10g,walltime=16:00:00
+# Only one chunk is required for OSG needs at this time.
+pbs_select="#PBS -l select=1"
+
 if [ "x$bls_opt_req_mem" != "x" ]
 then
   # Different schedulers require different memory checks
   echo "#PBS -l pmem=${bls_opt_req_mem}mb" >> $bls_tmp_file
   echo "#PBS -l pvmem=${bls_opt_req_mem}mb" >> $bls_tmp_file
-  if [ "$is_pbs_pro" -eq "0" ]
-  then
-      # PBS Pro requires mem to be requested within a select statement
-      echo "#PBS -l select=1:mem=${bls_opt_req_mem}mb" >> $bls_tmp_file
-  else
+  pbs_select="$pbs_select:mem=${bls_opt_req_mem}mb"
+  if [ "$is_pbs_pro" -neq "0" ]; then
       echo "#PBS -l mem=${bls_opt_req_mem}mb" >> $bls_tmp_file
   fi
 fi
@@ -140,43 +144,47 @@ bls_set_up_local_and_extra_args
 [ -z "$bls_opt_queue" ] || grep -q "^#PBS -q" $bls_tmp_file || echo "#PBS -q $bls_opt_queue" >> $bls_tmp_file
 
 # Extended support for MPI attributes
-if [ "x$bls_opt_wholenodes" == "xyes" ] && [ "$is_pbs_pro" -neq "0" ]; then
-  bls_opt_hostsmpsize=${bls_opt_hostsmpsize:-1}
-  if [[ ! -z "$bls_opt_smpgranularity" ]] ; then
-    if [[ -z "$bls_opt_hostnumber" ]] ; then
-      echo "#PBS -l nodes=1:ppn=$bls_opt_hostsmpsize" >> $bls_tmp_file
-    else
-      echo "#PBS -l nodes=$bls_opt_hostnumber:ppn=$bls_opt_hostsmpsize" >> $bls_tmp_file
-    fi
-    echo "#PBS -W x=NACCESSPOLICY:SINGLEJOB" >> $bls_tmp_file
-  else
-    if [[ ! -z "$bls_opt_hostnumber" ]] ; then
-      if [[ $bls_opt_mpinodes -gt 0 ]] ; then
-        r=$((bls_opt_mpinodes % bls_opt_hostnumber))
-        (( r )) && mpireminder="+$r:ppn=$bls_opt_hostsmpsize"
-        echo "#PBS -l nodes=$((bls_opt_hostnumber-r)):ppn=${bls_opt_hostsmpsize}${mpireminder}" >> $bls_tmp_file
-      else
-        echo "#PBS -l nodes=$bls_opt_hostnumber:ppn=$bls_opt_hostsmpsize" >> $bls_tmp_file
-      fi
-      echo "#PBS -W x=NACCESSPOLICY:SINGLEJOB" >> $bls_tmp_file
-    fi
-  fi
+if [ "$is_pbs_pro" -eq "0" ]; then
+    pbs_select="$pbs_select:ncpus=1"
 else
-  if [[ ! -z "$bls_opt_smpgranularity" ]] ; then
-    n=$((bls_opt_mpinodes / bls_opt_smpgranularity))
-    r=$((bls_opt_mpinodes % bls_opt_smpgranularity))
-    (( r )) && mpireminder="+1:ppn=$r"
-    echo "#PBS -l nodes=$n:ppn=${bls_opt_smpgranularity}${mpireminder}" >> $bls_tmp_file
-  else
-    if [[ ! -z "$bls_opt_hostnumber" ]] ; then
-      n=$((bls_opt_mpinodes / bls_opt_hostnumber))
-      r=$((bls_opt_mpinodes % bls_opt_hostnumber))
-      (( r )) && mpireminder="+$r:ppn=$((n+1))"
-      echo "#PBS -l nodes=$((bls_opt_hostnumber-r)):ppn=$n$mpireminder" >> $bls_tmp_file
-    elif [[ $bls_opt_mpinodes -gt 0 ]] ; then
-      echo "#PBS -l nodes=$bls_opt_mpinodes" >> $bls_tmp_file
+    if [ "x$bls_opt_wholenodes" == "xyes" ]; then
+        bls_opt_hostsmpsize=${bls_opt_hostsmpsize:-1}
+        if [[ ! -z "$bls_opt_smpgranularity" ]] ; then
+            if [[ -z "$bls_opt_hostnumber" ]] ; then
+                echo "#PBS -l nodes=1:ppn=$bls_opt_hostsmpsize" >> $bls_tmp_file
+            else
+                echo "#PBS -l nodes=$bls_opt_hostnumber:ppn=$bls_opt_hostsmpsize" >> $bls_tmp_file
+            fi
+            echo "#PBS -W x=NACCESSPOLICY:SINGLEJOB" >> $bls_tmp_file
+        else
+            if [[ ! -z "$bls_opt_hostnumber" ]] ; then
+                if [[ $bls_opt_mpinodes -gt 0 ]] ; then
+                    r=$((bls_opt_mpinodes % bls_opt_hostnumber))
+                    (( r )) && mpireminder="+$r:ppn=$bls_opt_hostsmpsize"
+                    echo "#PBS -l nodes=$((bls_opt_hostnumber-r)):ppn=${bls_opt_hostsmpsize}${mpireminder}" >> $bls_tmp_file
+                else
+                    echo "#PBS -l nodes=$bls_opt_hostnumber:ppn=$bls_opt_hostsmpsize" >> $bls_tmp_file
+                fi
+                echo "#PBS -W x=NACCESSPOLICY:SINGLEJOB" >> $bls_tmp_file
+            fi
+        fi
+    else
+        if [[ ! -z "$bls_opt_smpgranularity" ]] ; then
+            n=$((bls_opt_mpinodes / bls_opt_smpgranularity))
+            r=$((bls_opt_mpinodes % bls_opt_smpgranularity))
+            (( r )) && mpireminder="+1:ppn=$r"
+            echo "#PBS -l nodes=$n:ppn=${bls_opt_smpgranularity}${mpireminder}" >> $bls_tmp_file
+        else
+            if [[ ! -z "$bls_opt_hostnumber" ]] ; then
+                n=$((bls_opt_mpinodes / bls_opt_hostnumber))
+                r=$((bls_opt_mpinodes % bls_opt_hostnumber))
+                (( r )) && mpireminder="+$r:ppn=$((n+1))"
+                echo "#PBS -l nodes=$((bls_opt_hostnumber-r)):ppn=$n$mpireminder" >> $bls_tmp_file
+            elif [[ $bls_opt_mpinodes -gt 0 ]] ; then
+                echo "#PBS -l nodes=$bls_opt_mpinodes" >> $bls_tmp_file
+            fi
+        fi
     fi
-  fi
 fi
 # --- End of MPI directives
 
@@ -194,6 +202,10 @@ else
   [ -z "$bls_fl_subst_and_accumulate_result" ] || echo "#PBS -W stagein=\\'$bls_fl_subst_and_accumulate_result\\'" >> $bls_tmp_file
   bls_fl_subst_and_accumulate outputsand "@@F_REMOTE@`hostname -f`:@@F_LOCAL" ","
   [ -z "$bls_fl_subst_and_accumulate_result" ] || echo "#PBS -W stageout=\\'$bls_fl_subst_and_accumulate_result\\'" >> $bls_tmp_file
+fi
+
+if [ "$is_pbs_pro" -eq "0" ]; then
+    echo $pbs_select >> $bls_tmp_file
 fi
 
 echo "#PBS -m n"  >> $bls_tmp_file
