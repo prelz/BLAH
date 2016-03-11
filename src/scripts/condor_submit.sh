@@ -249,7 +249,7 @@ fi
 
 if [ "x$mpinodes" != "x" ]
 then
-  echo "RequestCPUs = $mpinodes" >> $submit_file
+  echo "request_cpus = $mpinodes" >> $submit_file
 fi
 cat >> $submit_file << EOF
 # We insist on new style quoting in Condor
