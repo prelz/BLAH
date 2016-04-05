@@ -93,6 +93,9 @@ main(int argc, char *argv[])
 		{ "Here's a tab <\t> and a backslash <\\>",
 		  "Here's\\ a\\ tab\\ <\\ >\\ and\\ a\\ backslash\\ <\\\\>",
 		  0 },
+		{ "", /* zero lenght string */
+		  "",
+		  0 },
 
 		/* terminate */
 		{ NULL, NULL, 0 }
