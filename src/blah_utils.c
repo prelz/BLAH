@@ -233,8 +233,7 @@ convert_newstyle(const char* original, const char separator)
 			{	/* opening quote, don't copy it */
 				inside_quotes = 1;
 			}
-			else if ((i+1) < orig_len && 
-			     original[i+1] == SINGLE_QUOTE_CHAR) 
+			else if (original[i+1] == SINGLE_QUOTE_CHAR) 
 			{	/* two quotes: is a literal quote */
 				memcpy(result + j, CONVARG_SNGQUOTESC, 
 				       CONVARG_SNGQUOTESC_LEN);
