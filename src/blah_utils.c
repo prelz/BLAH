@@ -35,16 +35,27 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <errno.h>
 #include "blah_utils.h"
 
 const char *blah_omem_msg = "out\\ of\\ memory";
 
+/* 
+ * make message
+ *
+ * Dynamically allocate a string of proper length
+ * and initialize it with the provided parameters
+ * N.B. glibc 2.1 needed.
+ *
+ * @param fmt   Specifies the format to apply (see snprintf(3))
+ * @param ...   The arguments to be formatted
+ *
+ * @return      Dynamically allocated string containing the formatting
+ *              result. Needs to be free'd.
+ */
 char *
 make_message(const char *fmt, ...)
 {
-	/* Dynamically allocate a string of proper length
-	   and initialize it with the provided parameters. 
-	*/
 	int n;
 	char *result = NULL;
 	va_list ap;
@@ -64,13 +75,22 @@ make_message(const char *fmt, ...)
 	return(result);
 }
 
+/*
+ * escape_espaces
+ *
+ * Makes message strings compatible with blah protocol:
+ * escape white spaces and backslashes with a backslash,
+ * replace tabs with (escaped) spaces, replace CR and LF 
+ * with '-'.
+ *
+ * @param str  The string to convert
+ *
+ * @return     Dynamically allocated string containing the formatting
+ *             result. Needs to be free'd.
+ */
 char *
 escape_spaces(const char *str)
 {
-	/* Makes message strings compatible with blah protocol:
-	   escape white spaces with a backslash,
-	   replace tabs with spaces, CR and LF with '-'.
-	*/
 	char *result = NULL;
 	char cur;
 	int i, j;
@@ -81,11 +101,20 @@ escape_spaces(const char *str)
 		for (i = 0, j = 0; i <= strlen(str); i++, j++)
 		{
 			cur = str[i];
-			if (cur == '\r') cur = '-';
-			else if (cur == '\n') cur = '-';
-			else if (cur == '\t') cur = ' ';
-
-			if (cur == ' ') result[j++] = '\\';
+			switch (cur)
+			{
+			case '\r':
+			case '\n':
+				cur = '-';
+				break;
+			case '\t':
+				cur = ' ';
+				/* intentionally no break */
+			case ' ':
+			case '\\':
+				result[j++] = '\\';
+				break;
+			}
 			result[j] = cur;
 		}
 	}
@@ -94,3 +123,155 @@ escape_spaces(const char *str)
 	return(result);
 }
 
+/*
+ * convert_newstyle
+ *
+ * Convert arguments and environment strings formatted according to 
+ * Condor "new syntax" into a single string to be passed on the command
+ * line. Each element of the original string is enclosed in double quotes
+ * and separated by the caller specified 'separator' char.
+ * Quotes, double quotes and special chars are escaped according to bash rules. 
+ * 
+ * @param original   The original string as extracted from the job classad
+ * @param separator  The character to use as separator
+ *
+ * @return           Dynamically allocated string containing the formatting
+ *                   result. Needs to be free'd.
+ *
+ */
+
+#define SINGLE_QUOTE_CHAR '\''
+#define DOUBLE_QUOTE_CHAR '\"'
+#define CONVARG_OPENING        "'\""
+#define CONVARG_OPENING_LEN    2
+#define CONVARG_CLOSING        "\"'\000"
+#define CONVARG_CLOSING_LEN    3
+#define CONVARG_QUOTSEP        "\"%c\""
+#define CONVARG_QUOTSEP_LEN    3
+#define CONVARG_DBLQUOTESC     "\\\\\\\""
+#define CONVARG_DBLQUOTESC_LEN 4
+#define CONVARG_SNGQUOTESC     "'\\''"
+#define CONVARG_SNGQUOTESC_LEN 4
+/* set this to the length of the longest escape sequence */
+#define CONVARG_OVERCOMMIT     4
+
+char *
+convert_newstyle(const char* original, const char separator)
+{
+
+	int inside_quotes = 0;
+	char *result;
+	char *tmp_realloc;
+	int i, j;
+	size_t orig_len;
+	size_t max_len;
+	char quoted_sep[CONVARG_QUOTSEP_LEN];
+
+	orig_len = strlen(original);
+	if (orig_len == 0)
+	{
+		errno = EINVAL;
+		return NULL;
+	}
+
+	sprintf(quoted_sep, CONVARG_QUOTSEP, separator);
+
+	/* assume longest escape sequence for all chars in original string */
+	max_len = orig_len * CONVARG_OVERCOMMIT;
+	result = (char *)malloc(max_len);
+	if (result == NULL)
+	{
+		errno = ENOMEM;
+		return NULL;
+	}
+
+	memcpy(result, CONVARG_OPENING, CONVARG_OPENING_LEN);
+	j = CONVARG_OPENING_LEN;
+
+	for(i=0; i < orig_len; i++)
+	{
+		/* were we too optimistic wih overcommit? */
+		if (j > max_len - 5)
+		{
+			if (tmp_realloc = (char *)realloc(result, 
+			    max_len + orig_len))
+			{
+				result = tmp_realloc;
+				max_len += orig_len;
+			} else {
+				free(result);	
+				errno = ENOMEM;
+				return NULL;
+			}
+		}
+
+		/* examine the current character */
+		switch (original[i])
+		{
+		case SINGLE_QUOTE_CHAR:
+			if (!inside_quotes)
+			{	/* opening quote, don't copy it */
+				inside_quotes = 1;
+			}
+			else if ((i+1) < orig_len && 
+			     original[i+1] == SINGLE_QUOTE_CHAR) 
+			{	/* two quotes: is a literal quote */
+				memcpy(result + j, CONVARG_SNGQUOTESC, 
+				       CONVARG_SNGQUOTESC_LEN);
+				j += CONVARG_SNGQUOTESC_LEN;
+				++i;
+			}
+			else
+			{	/* closing quote, don't copy it */
+				inside_quotes = 0;
+			}
+			break;
+		case ' ':
+			if (inside_quotes)
+			{	/* the blank is a literal, copy */
+				result[j++] = original[i];
+			}
+			else
+			{	/* the blank is a separator */
+				memcpy(result + j, quoted_sep,
+				       CONVARG_QUOTSEP_LEN);
+				j += CONVARG_QUOTSEP_LEN;
+			}
+			break;
+		case DOUBLE_QUOTE_CHAR:
+			/* double quotes need to be triple-escaped to make it
+			   to the submit file */
+			memcpy(result + j, CONVARG_DBLQUOTESC,
+			       CONVARG_DBLQUOTESC_LEN);
+			j += CONVARG_DBLQUOTESC_LEN;
+			break;
+#if 0
+		/* Must escape a few meta-characters for wordexp */
+			/* Not really needed: the result string is enclosed in single
+			 * quotes so it is not susceptible to any expansion.
+			 * Left as example if we ever need to escape some chars.
+			 * DR 4 Apr 2016 */
+		case '(':
+		case ')':
+		case '|':
+		case '$':
+			result[j++] = '\\';
+			result[j++] = original[i];
+			break;
+#endif
+		default:
+			/* plain copy from the original */
+			result[j++] = original[i];
+		} /* switch */
+	} /* for */
+
+	if (inside_quotes)
+	{	/* bad string: unmatched quote */
+		free(result);
+		errno = EINVAL;
+		return NULL;
+	}
+
+	memcpy(result + j, CONVARG_CLOSING, CONVARG_CLOSING_LEN);
+	return(result);
+}
