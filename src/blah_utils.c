@@ -92,31 +92,51 @@ char *
 escape_spaces(const char *str)
 {
 	char *result = NULL;
-	char cur;
-	int i, j;
+	const char *cur;
+	char *dest;
+	size_t new_len = 0;
 
-	result = (char *) malloc (strlen(str) * 2 + 1);
+	if (str == NULL)
+	{
+		errno = EINVAL;
+		return NULL;
+	}
+
+	/* At the cost of iterating one more time on the string we can predict
+	 * the real length. Actually we spare a call to strlen(), which also
+	 * iterates on the string...    */
+	for (cur = str; *cur != '\000'; ++cur)
+		if (*cur == ' ' || *cur == '\t' || *cur == '\\') new_len++;
+	new_len += (cur - str);
+
+	result = (char *) malloc (sizeof (char) * new_len + 1);
 	if (result)
 	{
-		for (i = 0, j = 0; i <= strlen(str); i++, j++)
+		cur = str;
+		dest = result;
+		do
 		{
-			cur = str[i];
-			switch (cur)
+			switch (*cur)
 			{
+			/* replaced chars */
 			case '\r':
 			case '\n':
-				cur = '-';
+				*(dest++) = '-';
 				break;
+			/* replaced and escaped chars */
 			case '\t':
-				cur = ' ';
-				/* intentionally no break */
+				*(dest++) = '\\';
+				*(dest++) = ' ';
+				break;
+			/* just escaped chars */
 			case ' ':
 			case '\\':
-				result[j++] = '\\';
-				break;
+				*(dest++) = '\\';
+				/* intentionally no break */
+			default:
+				*(dest++) = *cur;
 			}
-			result[j] = cur;
-		}
+		} while (*(cur++) != '\000');
 	}
 	else
 		result = (char *)blah_omem_msg;
