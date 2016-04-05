@@ -651,6 +651,14 @@ function bls_start_job_wrapper ()
   if [ "x$bls_opt_stgcmd" == "xyes" ] 
   then
       bls_opt_the_command="./`basename $bls_opt_the_command`"
+      # Massage the arguments, in case they where specified using new syntax
+      # (no harm to old syntax)
+      eval "arg_array=($bls_arguments)"
+      bls_arguments=""
+      for arg in "${arg_array[@]}"
+      do
+          bls_arguments="$bls_arguments \"$arg\""
+      done
       echo "if [ ! -x $bls_opt_the_command ]; then chmod u+x $bls_opt_the_command; fi" 
       echo "if [ -x \${GLITE_LOCATION:-/opt/glite}/libexec/jobwrapper ]"
       echo "then"
