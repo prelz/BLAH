@@ -190,8 +190,8 @@ convert_newstyle(const char* original, const char separator)
 
 	for(i=0; i < orig_len; i++)
 	{
-		/* were we too optimistic wih overcommit? */
-		if (j > max_len - 5)
+		/* were we too optimistic with overcommit? */
+		if (j > max_len - CONVARG_OVERCOMMIT)
 		{
 			if (tmp_realloc = (char *)realloc(result, 
 			    max_len + orig_len))
