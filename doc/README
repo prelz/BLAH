@@ -214,7 +214,7 @@ BLAHPD README and command documentation : Version 0.4 - 20080123
 
 	+ Return Line:
 
-		S <SP> $GahpVesion: <SP> <major>.<minor>.<subminor> <SP> 
+		S <SP> $GahpVersion: <SP> <major>.<minor>.<subminor> <SP> 
 		    <build-month> <SP> <build-day-of-month> <SP>
 		    <build-year> <SP> <general-descrip> <SP>$ <CRLF>
 
@@ -1161,7 +1161,7 @@ BLAHPD README and command documentation : Version 0.4 - 20080123
 	to be uncached is the one currently 'active' (by a previous
 	invocation of the USE_CACHED_PROXY command), this command has
 	the side effect of disabling GLEXEC mode for further commands
-	(as if the BLAH_SET_GLEXEC_OFF commandi had been invoked).
+	(as if the BLAH_SET_GLEXEC_OFF command had been invoked).
 
 	+ Request Line:
 
