@@ -198,7 +198,7 @@ convert_newstyle(const char* original, const char separator)
 
 	/* assume longest escape sequence for all chars in original string */
 	max_len = orig_len * CONVARG_OVERCOMMIT;
-	result = (char *)malloc(max_len);
+	result = (char *)malloc(sizeof (char) * max_len);
 	if (result == NULL)
 	{
 		errno = ENOMEM;
@@ -214,7 +214,7 @@ convert_newstyle(const char* original, const char separator)
 		if (j > max_len - CONVARG_OVERCOMMIT)
 		{
 			if (tmp_realloc = (char *)realloc(result, 
-			    max_len + orig_len))
+			    sizeof (char) * max_len + orig_len))
 			{
 				result = tmp_realloc;
 				max_len += orig_len;
