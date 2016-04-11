@@ -325,6 +325,7 @@ function bls_parse_submit_options ()
 
   shift `expr $OPTIND - 1`
   bls_arguments=$*
+  bls_redirections=
 }
 
 function bls_test_shared_dir ()
@@ -498,24 +499,24 @@ function bls_setup_all_files ()
       if [ -f "$bls_opt_stdin" ] ; then
           bls_test_shared_dir "$bls_opt_stdin"
           if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
-              bls_arguments="$bls_arguments < \"$bls_opt_stdin\""
+              bls_redirections="$bls_redirections < \"$bls_opt_stdin\""
           else
               bls_unique_stdin_name=`basename $bls_opt_stdin`.$uni_ext
               bls_fl_add_value inputsand "$bls_opt_stdin" "${blah_wn_inputsandbox}${bls_unique_stdin_name}" "$bls_unique_stdin_name"
-              bls_arguments="$bls_arguments < \"$bls_unique_stdin_name\""
+              bls_redirections="$bls_redirections < \"$bls_unique_stdin_name\""
           fi
       else
-          bls_arguments="$bls_arguments < \"$bls_opt_stdin\""
+          bls_redirections="$bls_redirections < \"$bls_opt_stdin\""
       fi
   fi
   if [ ! -z "$bls_opt_stdout" ] ; then
       if [ "${bls_opt_stdout:0:1}" != "/" ] ; then bls_opt_stdout=${bls_opt_workdir}/${bls_opt_stdout} ; fi
       bls_test_shared_dir "$bls_opt_stdout"
       if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
-          bls_arguments="$bls_arguments > \"$bls_opt_stdout\""
+          bls_redirections="$bls_redirections > \"$bls_opt_stdout\""
       else
           bls_unique_stdout_name="${blah_wn_outputsandbox}out_${bls_tmp_name}_`basename $bls_opt_stdout`"
-          bls_arguments="$bls_arguments > \"$bls_unique_stdout_name\""
+          bls_redirections="$bls_redirections > \"$bls_unique_stdout_name\""
           bls_fl_add_value outputsand "$bls_opt_stdout" "$bls_unique_stdout_name"
       fi
   fi
@@ -523,13 +524,13 @@ function bls_setup_all_files ()
       if [ "${bls_opt_stderr:0:1}" != "/" ] ; then bls_opt_stderr=${bls_opt_workdir}/${bls_opt_stderr} ; fi
       bls_test_shared_dir "$bls_opt_stderr"
       if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
-          bls_arguments="$bls_arguments 2> \"$bls_opt_stderr\""
+          bls_redirections="$bls_redirections 2> \"$bls_opt_stderr\""
       else
           if [ "$bls_opt_stderr" == "$bls_opt_stdout" ]; then
-              bls_arguments="$bls_arguments 2>&1"
+              bls_redirections="$bls_redirections 2>&1"
           else
               bls_unique_stderr_name="${blah_wn_outputsandbox}err_${bls_tmp_name}_`basename $bls_opt_stderr`"
-              bls_arguments="$bls_arguments 2> \"$bls_unique_stderr_name\""
+              bls_redirections="$bls_redirections 2> \"$bls_unique_stderr_name\""
               bls_fl_add_value outputsand "$bls_opt_stderr" "$bls_unique_stderr_name"
           fi
       fi
@@ -659,6 +660,7 @@ function bls_start_job_wrapper ()
       do
           bls_arguments="$bls_arguments \"$arg\""
       done
+      bls_arguments="$bls_arguments $bls_redirections"
       echo "if [ ! -x $bls_opt_the_command ]; then chmod u+x $bls_opt_the_command; fi" 
       echo "if [ -x \${GLITE_LOCATION:-/opt/glite}/libexec/jobwrapper ]"
       echo "then"
