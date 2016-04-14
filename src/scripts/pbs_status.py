@@ -437,7 +437,7 @@ def fill_cache(cache_location):
             os.unlink(filename)
             raise
     finally:
-        os.close(fd)
+        f.close()
     os.rename(filename, cache_location)
     
     # Create the cluster_type file
