@@ -9,7 +9,7 @@
  *  5-Apr-2016 Original release
  *
  *  Description:
- *   Collect contents statistics from a test job registry.
+ *   Test functions in blah_utils.c.
  *
  *  Copyright (c) Members of the EGEE Collaboration. 2007-2010. 
  *
