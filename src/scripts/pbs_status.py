@@ -317,9 +317,17 @@ def get_finished_job_stats(jobid):
         # TODO: fix for pbs
         log("Querying sacct for completed job for jobid: %s" % (str(jobid)))
         child_stdout = os.popen("sacct -j %s -l --noconvert -P" % (str(jobid)))
+        sacct_data = child_stdout.readlines()
+        ret = child_stdout.close()
+
+        if ret:
+            # retry without --noconvert for slurm < 15.8
+            child_stdout = os.popen("sacct -j %s -l -P" % (str(jobid)))
+            sacct_data = child_stdout.readlines()
+            child_stdout.close()
 
         try:
-            reader = csv.DictReader(child_stdout, delimiter="|")
+            reader = csv.DictReader(sacct_data, delimiter="|")
         except Exception, e:
             log("Unable to read in CSV output from sacct: %s" % str(e))
             return return_dict
@@ -429,7 +437,7 @@ def fill_cache(cache_location):
             os.unlink(filename)
             raise
     finally:
-        os.close(fd)
+        f.close()
     os.rename(filename, cache_location)
     
     # Create the cluster_type file
