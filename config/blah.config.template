@@ -303,7 +303,11 @@ sge_rootpath=$SGE_ROOT
 ##SLURM
 
 #path to the slurm executables
-slurm_binpath=
+#default: /usr/bin
+slurm_binpath=/usr/bin
+
+#default: /dev/null
+slurm_std_storage=/dev/null
 
 ##
 #####BNotifier subsection
