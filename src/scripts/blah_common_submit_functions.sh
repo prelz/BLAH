@@ -613,6 +613,12 @@ function bls_start_job_wrapper ()
           fi
   fi
   
+  JOB_ENV="/var/lib/osg/osg-job-environment.conf"
+  LOCAL_JOB_ENV="/var/lib/osg/osg-local-job-environment.conf"
+  for fname in $JOB_ENV $LOCAL_JOB_ENV; do
+    test -r $fname && echo "`grep -G \"^[^# ]\" $fname`"
+  done
+
   echo "old_home=\`pwd\`"
   # Set the temporary home (including cd'ing into it)
   if [ "x$bls_opt_run_dir" != "x" ] ; then
