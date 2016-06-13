@@ -29,8 +29,6 @@ fi
 
 usage_string="Usage: $0 [-w] [-n]"
 
-#echo $0 "$@" >>~/slurm.debug
-
 ###############################################################
 # Parse parameters
 ###############################################################
@@ -57,10 +55,8 @@ for  reqfull in $pars ; do
 
   staterr=/tmp/${reqjob}_staterr
 
-#echo "running: ${slurm_binpath}/scontrol show job $reqjob" >>~/slurm.debug
   result=`${slurm_binpath}/scontrol show job $reqjob 2>$staterr`
   stat_exit_code=$?
-#echo "stat_exit_code=$stat_exit_code" >>~/slurm.debug
   result=`echo "$result" | awk -v job_id=$reqjob -v proxy_dir=$proxy_dir '
 BEGIN {
     blah_status = 4
@@ -104,7 +100,7 @@ END {
 }
 '
 `
-#echo result=$result >>~/slurm.debug
+
   errout=`cat $staterr`
   rm -f $staterr 2>/dev/null
 
@@ -113,10 +109,8 @@ END {
   fi
   if [ $stat_exit_code -eq 0 ] ; then
     echo 0${result}
-#echo 0${result} >>~/slurm.debug
   else
     echo 1Error: ${errout}
-#echo 1Error: ${errout} >>~/slurm.debug
   fi
 
 done
