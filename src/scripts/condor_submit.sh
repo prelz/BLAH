@@ -245,7 +245,7 @@ then
   echo -e $xtra_args >> $submit_file
 fi
 
-if [ "x$req_mem" != "x"]
+if [ "x$req_mem" != "x" ]
 then
   echo "request_memory = $req_mem" >> $submit_file
 fi
