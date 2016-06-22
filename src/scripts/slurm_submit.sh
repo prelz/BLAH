@@ -84,6 +84,7 @@ retcode=$?
 
 if [ "$retcode" != "0" ] ; then
 	rm -f $bls_tmp_file
+	echo "Error from sbatch: $jobID" >&2
 	exit 1
 fi
 
