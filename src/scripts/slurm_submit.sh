@@ -63,6 +63,11 @@ then
   echo "#SBATCH --mem=${bls_opt_req_mem}" >> $bls_tmp_file
 fi
 
+# Write SLURM directives according to command line options
+# Map the queue option to slurm's partition option
+# handle queue/partition overriding
+[ -z "$bls_opt_queue" ] || grep -q "^#SBATCH -p" $bls_tmp_file || echo "#SBATCH -p $bls_opt_queue" >> $bls_tmp_file
+
 # Simple support for multi-cpu attributes
 if [[ $bls_opt_mpinodes -gt 1 ]] ; then
   echo "#SBATCH --nodes=1" >> $bls_tmp_file
