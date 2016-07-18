@@ -38,6 +38,7 @@ extern const char *blah_omem_msg;
 
 char *make_message(const char *fmt, ...);
 char *escape_spaces(const char *str);
+char *convert_newstyle(const char* original, const char separator);
 
 #define BLAH_DYN_ALLOCATED(escstr) ((escstr) != blah_omem_msg && (escstr) != NULL)
 

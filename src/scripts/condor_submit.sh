@@ -199,23 +199,26 @@ fi
 # Convert input environment (old Condor or shell format as dictated by 
 # input args):
 
-submit_file_environment="#"
+submit_file_environment="# No environment defined"
 
 if [ "x$environment" != "x" ] ; then
 # Input format is suitable for bourne shell style assignment. Convert to
-# old condor format (no double quotes in submit file).
-# FIXME: probably it's better to convert everything into the 'new' Condor
-# environment format.
+# HTCondor's new submit format (double quotes around the value).
     eval "env_array=($environment)"
     submit_file_environment=""
     for  env_var in "${env_array[@]}"; do
         if [ "x$submit_file_environment" == "x" ] ; then
-            submit_file_environment="environment = "
+            submit_file_environment="environment = \""
         else
-            submit_file_environment="$submit_file_environment;"
+            submit_file_environment="$submit_file_environment "
         fi
+        # Undo bash escaping
+        env_var=${env_var//\'/\'\'}    # escape quotes by repeating them
+        env_var=${env_var//\\\"/\"\"}  # replace \" with "" (Condor escaping)
+        env_var=${env_var%%=*}=\'${env_var#*=}\' # protect rvalue with quotes
         submit_file_environment="${submit_file_environment}${env_var}"
     done
+    submit_file_environment="${submit_file_environment}\""
 else
     if [ "x$envir" != "x" ] ; then
 # Old Condor format (no double quotes in submit file)
@@ -264,7 +267,6 @@ when_to_transfer_output = on_exit
 should_transfer_files = yes
 notification = error
 $submit_file_environment
-# Hang around for 1 day (86400 seconds) ?
 # Hang around for 30 minutes (1800 seconds) ?
 leave_in_queue = JobStatus == 4 && (CompletionDate =?= UNDEFINED || CompletionDate == 0 || ((CurrentTime - CompletionDate) < 1800))
 EOF

@@ -138,6 +138,7 @@ add_executable(test_job_registry_update_from_network
     job_registry_updater.c md5.c config.c)
 add_executable(test_cmdbuffer cmdbuffer.c)
 set_target_properties(test_cmdbuffer PROPERTIES COMPILE_FLAGS "-DCMDBUF_DEBUG") 
+add_executable(test_blah_utils test_blah_utils.c blah_utils.c)
 
 # CPack info
 

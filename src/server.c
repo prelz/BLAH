@@ -149,7 +149,7 @@ int logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, 
 int CEReq_parse(classad_context cad, char* filename, char *proxysubject, char *proxyfqan);
 char* outputfileRemaps(char *sb,char *sbrmp);
 int check_TransferINOUT(classad_context cad, char **command, char *reqId, char **resultLine, char ***files_to_clean_up);
-char *ConvertArgs(char* args, char sep);
+/* char *ConvertArgs(char* args, char sep); */
 
 /* Global variables */
 struct blah_managed_child {
@@ -1291,7 +1291,7 @@ cmd_submit_job(void *args)
 	{
 		if (environment[0] != '\000')
 		{
-			conv_environment = ConvertArgs(environment, ' ');
+			conv_environment = convert_newstyle(environment, ' ');
 			/* fprintf(stderr, "DEBUG: args conversion <%s> to <%s>\n", environment, conv_environment); */
 			if (conv_environment != NULL)
 			{
@@ -1326,7 +1326,7 @@ cmd_submit_job(void *args)
 	{
 		if (arguments[0] != '\000')
 		{
-			conv_arguments = ConvertArgs(arguments, ' ');
+			conv_arguments = convert_newstyle(arguments, ' ');
 			/* fprintf(stderr, "DEBUG: args conversion <%s> to <%s>\n", arguments, conv_arguments); */
 			if (conv_arguments)
 			{
@@ -3422,6 +3422,8 @@ char*  outputfileRemaps(char *sb,char *sbrmp)
         return newbuffer;
 }
 
+#if 0
+/* replaced by convert_newstyle in blah_utils.c */
 #define SINGLE_QUOTE_CHAR '\''
 #define DOUBLE_QUOTE_CHAR '\"'
 #define CONVARG_OPENING        "'\""
@@ -3508,4 +3510,4 @@ ConvertArgs(char* original, char separator)
 
 	return(result);
 }
-
+#endif
