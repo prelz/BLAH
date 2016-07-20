@@ -33,6 +33,10 @@
 
 . `dirname $0`/blah_load_config.sh
 
+if [ -x ${blah_libexec_directory}/pbs_status.py ] ; then
+    exec ${blah_libexec_directory}/pbs_status.py "$@"
+fi
+
 if [ "x$job_registry" != "x" ] ; then
    ${blah_sbin_directory}/blah_job_registry_lkup $@
    exit 0
