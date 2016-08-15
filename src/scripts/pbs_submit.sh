@@ -150,7 +150,7 @@ bls_set_up_local_and_extra_args
 
 # Extended support for MPI attributes
 if [ "$is_pbs_pro" == 0 ]; then
-    pbs_select="$pbs_select:ncpus=1"
+    pbs_select="$pbs_select:ncpus=$bls_opt_smpgranularity"
 else
     if [ "x$bls_opt_wholenodes" == "xyes" ]; then
         bls_opt_hostsmpsize=${bls_opt_hostsmpsize:-1}
