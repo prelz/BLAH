@@ -303,6 +303,9 @@ sge_cellname=$SGE_CELL
 
 sge_rootpath=$SGE_ROOT
 
+#set the SGE parallel environment policy
+sge_pe_policy=*
+
 ##SLURM
 
 #path to the slurm executables
