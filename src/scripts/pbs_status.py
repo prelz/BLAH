@@ -225,31 +225,30 @@ def qstat(jobid=""):
 
     Returns a python dictionary with the job info.
     """
-    qstat = get_qstat_location()
-    command = (qstat, '--version')
+    qstat_bin = get_qstat_location()
+    command = (qstat_bin, '--version')
     qstat_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     qstat_version, _ = qstat_process.communicate()
 
     starttime = time.time()
     log("Starting qstat.")
     if re.search(r'PBSPro', qstat_version):
-        child_stdout = os.popen("%s -f %s" % (qstat, jobid)) # -1 conflicts with -f in PBS Pro
+        command = (qstat_bin, '-f', jobid) # -1 conflicts with -f in PBS Pro
     else:
-        child_stdout = os.popen("%s -f -1 %s" % (qstat, jobid))
-    result = parse_qstat_fd(child_stdout)
-    exit_status = child_stdout.close()
+        command = (qstat_bin, '-f', '-1', jobid)
+    qstat_proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    qstat_out, _ = qstat_proc.communicate()
+
+    result = parse_qstat_fd(qstat_out)
     log("Finished qstat (time=%f)." % (time.time()-starttime))
-    if exit_status:
-        exit_code = 0
-        if os.WIFEXITED(exit_status):
-            exit_code = os.WEXITSTATUS(exit_status)
-        if exit_code == 153 or exit_code == 35: # Completed
-            result = {jobid: {'BatchJobId': '"%s"' % jobid, "JobStatus": "4", "ExitCode": ' 0'}}
-        elif exit_code == 271: # Removed
-            result = {jobid: {'BatchJobId': '"%s"' % jobid, 'JobStatus': '3', 'ExitCode': ' 0'}}
-        else:
-            raise Exception("qstat failed with exit code %s" % str(exit_status))
-    
+
+    if qstat_proc.returncode in [35, 153]: # Completed or no longer in queue (presumably completed successfully)
+        result = {jobid: {'BatchJobId': '"%s"' % jobid, "JobStatus": "4", "ExitCode": ' 0'}}
+    elif qstat_proc.returncode == 271: # Removed
+        result = {jobid: {'BatchJobId': '"%s"' % jobid, 'JobStatus': '3', 'ExitCode': ' 0'}}
+    elif qstat_proc.returncode != 0:
+        raise Exception("qstat failed with exit code %s" % str(qstat_proc.returncode))
+
     # If the job has completed...
     if jobid is not "" and "JobStatus" in result[jobid] and (result[jobid]["JobStatus"] == '4' or result[jobid]["JobStatus"] == '3'):
         # Get the finished job stats and update the result
