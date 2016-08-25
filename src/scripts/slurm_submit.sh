@@ -67,7 +67,8 @@ bls_set_up_local_and_extra_args
 
 # Simple support for multi-cpu attributes
 if [[ $bls_opt_mpinodes -gt 1 ]] ; then
-  echo "#SBATCH -N $bls_opt_mpinodes" >> $bls_tmp_file
+  echo "#SBATCH --nodes=1" >> $bls_tmp_file
+  echo "#SBATCH --ntasks=$bls_opt_mpinodes" >> $bls_tmp_file
 fi
 
 
