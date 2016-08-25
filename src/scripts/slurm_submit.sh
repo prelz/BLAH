@@ -54,6 +54,9 @@ end_of_preamble
 #local batch system-specific file output must be added to the submit file
 bls_local_submit_attributes_file=${blah_libexec_directory}/slurm_local_submit_attributes.sh
 
+# Handle queues and paritions (same thing in SLURM) (copied from PBS submit file)
+[ -z "$bls_opt_queue" ] || grep -q "^#SBATCH --partition" $bls_tmp_file || echo "#SBATCH --partition=$bls_opt_queue" >> $bls_tmp_file
+
 if [ "x$bls_opt_req_mem" != "x" ]
 then
   # Different schedulers require different memory checks
