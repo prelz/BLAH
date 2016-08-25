@@ -52,7 +52,7 @@ cat > $bls_tmp_file << end_of_preamble
 end_of_preamble
 
 #local batch system-specific file output must be added to the submit file
-bls_local_submit_attributes_file=${blah_bin_directory}/slurm_local_submit_attributes.sh
+bls_local_submit_attributes_file=${blah_libexec_directory}/slurm_local_submit_attributes.sh
 
 if [ "x$bls_opt_req_mem" != "x" ]
 then
