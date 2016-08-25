@@ -670,7 +670,8 @@ function bls_start_job_wrapper ()
       echo "\$new_home/`basename $bls_opt_the_command` $bls_arguments &"
       echo "fi" 
   else
-      echo "$bls_opt_the_command $bls_arguments &" 
+      echo "export NODE_COUNT=$bls_opt_mpinodes"
+      echo "$blah_job_wrapper $bls_opt_the_command $bls_arguments &" 
   fi
   
   echo "job_pid=\$!" 
