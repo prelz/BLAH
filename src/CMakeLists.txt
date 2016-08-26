@@ -138,6 +138,7 @@ set(blah_scripts
     scripts/sge_local_submit_attributes.sh
     scripts/slurm_cancel.sh scripts/slurm_resume.sh scripts/slurm_status.sh
     scripts/slurm_hold.sh scripts/slurm_submit.sh
+    scripts/slurm_local_submit_attributes.sh
     scripts/pbs_status.py
    )
 
