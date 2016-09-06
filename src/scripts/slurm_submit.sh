@@ -83,7 +83,7 @@ if [ "x$bls_opt_wholenodes" == "xyes" ] ; then
   fi
 else
   if [[ ! -z "$bls_opt_smpgranularity" ]] ; then
-    echo "#$slurm_opt_prefix -N $bls_opt_mpinodes" >> $bls_tmp_file
+    echo "#$slurm_opt_prefix -n $bls_opt_mpinodes" >> $bls_tmp_file
     echo "#$slurm_opt_prefix --ntasks-per-node $bls_opt_smpgranularity" >> $bls_tmp_file
   else
     if [[ ! -z "$bls_opt_hostnumber" ]] ; then
@@ -95,8 +95,13 @@ else
 fi
 # --- End of MPI directives
 
-echo "# End of SLURM directives" >> $bls_tmp_file
-echo "" >> $bls_tmp_file
+# add GPU support
+[ -z "$bls_opt_gpunumber" ] || [ -z "$bls_opt_gpumodel" ] || echo "#$slurm_opt_prefix --gres=gpu:${bls_opt_gpumodel}:${bls_opt_gpunumber}" >> $bls_tmp_file
+[ -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumodel" ] || echo "#$slurm_opt_prefix --gres=gpu:${bls_opt_gpunumber}" >> $bls_tmp_file
+[ ! -z "$bls_opt_gpunumber" ] || [ -z "$bls_opt_gpumodel" ] || echo "#$slurm_opt_prefix --gres=gpu:${bls_opt_gpumodel}:1" >> $bls_tmp_file
+
+#add MIC support
+[ -z "$bls_opt_micnumber" ] || echo "#$slurm_opt_prefix --gres=mic:${bls_opt_micnumber}" >> $bls_tmp_file
 
 # Input sandbox setup
 if [[ bls_inputsand_counter -gt 0 ]] ; then

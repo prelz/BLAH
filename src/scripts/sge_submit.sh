@@ -89,6 +89,10 @@ fi
 
 # end extended MPI support
 
+# GPU support
+[ -z "$bls_opt_gpunumber" ] || echo "#\$ -l gpu=$bls_opt_gpunumber" >>$bls_tmp_file
+# end of GPU support
+
 # Input and output sandbox setup.
 bls_fl_subst_and_accumulate inputsand "@@F_REMOTE@`hostname -f`:@@F_LOCAL" "@@@"
 [ -z "$bls_fl_subst_and_accumulate_result" ] || echo "#\$ -v SGE_stagein=$bls_fl_subst_and_accumulate_result" >> $bls_tmp_file

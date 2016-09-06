@@ -55,7 +55,7 @@ mpinodes=0
 # Name of local requirements file: currently unused
 req_file=""
 
-while getopts "a:i:o:de:j:n:v:V:c:w:x:u:q:r:s:T:I:O:R:C:D:S:" arg 
+while getopts "a:i:o:de:j:g:m:M:P:n:v:V:c:w:x:u:q:r:s:T:I:O:R:C:D:S:" arg 
 do
     case "$arg" in
     a) xtra_args="$OPTARG" ;;
@@ -67,6 +67,10 @@ do
     v) envir="$OPTARG";;
     V) environment="$OPTARG";;
     c) command="$OPTARG" ;;
+    g) gpu_number="$OPTARG";;
+    m) gpu_mode="$OPTARG" ;;
+    M) gpu_model="$OPTARG" ;;
+    P) mic_number="$OPTARG" ;;
     n) mpinodes="$OPTARG" ;;
     w) workdir="$OPTARG";;
     x) proxy_file="$OPTARG" ;;
@@ -243,6 +247,21 @@ EOF
 if [ "x$proxy_file" != "x" ]
 then
   echo "x509userproxy = $proxy_file" >> $submit_file
+fi
+
+if [ "x$gpu_number" != "x" ]
+then
+  echo "request_GPUs = $gpu_number" >> $submit_file
+fi
+
+if [ "x$gpu_model" != "x" ]
+then
+  echo "requirements = CUDADeviceName == \"$gpu_model\"" >> $submit_file
+fi
+
+if [ "x$mic_number" != "x" ];
+then
+  echo "request_mics = $mic_number" >> $submit_file
 fi
 
 if [ "x$xtra_args" != "x" ]
