@@ -239,7 +239,7 @@ def qstat(jobid=""):
     qstat_proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     qstat_out, _ = qstat_proc.communicate()
 
-    result = parse_qstat_fd(qstat_out)
+    result = parse_qstat(qstat_out)
     log("Finished qstat (time=%f)." % (time.time()-starttime))
 
     if qstat_proc.returncode in [35, 153]: # Completed or no longer in queue (presumably completed successfully)
@@ -376,15 +376,15 @@ status_re = re.compile("\s*job_state = ([QREFCH])")
 exit_status_re = re.compile("\s*[Ee]xit_status = (-?[0-9]+)")
 status_mapping = {"Q": 1, "R": 2, "E": 2, "F": 4, "C": 4, "H": 5}
 
-def parse_qstat_fd(fd):
+def parse_qstat(output):
     """
-    Parse the stdout fd of "qstat -f" into a python dictionary containing
+    Parse the stdout of "qstat -f" into a python dictionary containing
     the information we need.
     """
     job_info = {}
     cur_job_id = None
     cur_job_info = {}
-    for line in fd:
+    for line in output.split('\n'):
         line = line.strip()
         m = job_id_re.match(line)
         if m:
