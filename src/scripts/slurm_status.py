@@ -229,27 +229,26 @@ def call_scontrol(jobid=""):
 
     starttime = time.time()
     log("Starting scontrol.")
-    child_stdout = os.popen("%s show job %s" % (scontrol, jobid))
-    result = parse_scontrol_fd(child_stdout)
-    exit_status = child_stdout.close()
+    command = (scontrol, 'show', 'job', jobid)
+    scontrol_proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    scontrol_out, _ = scontrol_proc.communicate()
+
+    result = parse_scontrol(scontrol_out)
     log("Finished scontrol (time=%f)." % (time.time()-starttime))
-    if exit_status:
-        exit_code = 0
-        if os.WIFEXITED(exit_status):
-            exit_code = os.WEXITSTATUS(exit_status)
-        if exit_code == 1: # Completed
-            result = {jobid: {'BatchJobId': '"%s"' % jobid, "JobStatus": "4", "ExitCode": ' 0'}}
-        elif exit_code == 271: # Removed
-            result = {jobid: {'BatchJobId': '"%s"' % jobid, 'JobStatus': '3', 'ExitCode': ' 0'}}
-        else:
-            raise Exception("scontrol failed with exit code %s" % str(exit_status))
-    
+
+    if scontrol_proc.returncode == 1: # Completed
+        result = {jobid: {'BatchJobId': '"%s"' % jobid, "JobStatus": "4", "ExitCode": ' 0'}}
+    elif scontrol_proc.returncode == 271: # Removed
+        result = {jobid: {'BatchJobId': '"%s"' % jobid, 'JobStatus': '3', 'ExitCode': ' 0'}}
+    elif scontrol_proc.returncode != 0:
+        raise Exception("scontrol failed with exit code %s" % str(scontrol_proc.returncode))
+
     # If the job has completed...
     if jobid is not "" and "JobStatus" in result[jobid] and (result[jobid]["JobStatus"] == '4' or result[jobid]["JobStatus"] == '3'):
         # Get the finished job stats and update the result
         finished_job_stats = get_finished_job_stats(jobid)
         result[jobid].update(finished_job_stats)
-    
+
     return result
 
 
@@ -349,15 +348,15 @@ status_re = re.compile("\s*JobState=([\w]+) .*")
 exit_status_re = re.compile(".* ExitCode=(-?[0-9]+:[0-9]+)")
 status_mapping = {"BOOT_FAIL": 4, "CANCELLED": 3, "COMPLETED": 4, "CONFIGURING": 1, "COMPLETING": 2, "FAILED": 4, "NODE_FAIL": 4, "PENDING": 1, "PREEMPTED": 4, "RUNNING": 2, "SPECIAL_EXIT": 4, "STOPPED": 2, "SUSPENDED": 2}
 
-def parse_scontrol_fd(fd):
+def parse_scontrol(output):
     """
-    Parse the stdout fd of "scontrol show job" into a python dictionary
+    Parse the stdout of "scontrol show job" into a python dictionary
     containing the information we need.
     """
     job_info = {}
     cur_job_id = None
     cur_job_info = {}
-    for line in fd:
+    for line in output.split('\n'):
         line = line.strip()
         m = job_id_re.match(line)
         if m:
