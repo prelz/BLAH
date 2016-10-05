@@ -31,6 +31,9 @@ queue_pool=${1#*/} # Queue/Pool, everything after the first /  in Id/Queue/Pool
 queue=${queue_pool%/*} # Queue, everything before the first / in Queue/Pool
 pool=${queue_pool#*/} # Pool, everything after the first / in Queue/Pool
 
+# In current version we are receiving a GlobalJobId
+id="-constr GlobalJobId==\"$id\""
+
 if [ -z "$queue" ]; then
     target=""
 else
