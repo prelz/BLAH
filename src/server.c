@@ -2012,21 +2012,25 @@ cmd_renew_proxy(void *args)
 		switch(jobStatus)
 		{
 			case 1: /* job queued: copy the proxy locally */
-                               if ((!use_mapping) && (!disable_limited_proxy)
-				){
+                               if (!use_mapping)
+				{
+                                 if (!disable_limited_proxy)
+                                   {
 					limit_proxy(proxyFileName, old_proxy, NULL);
-					resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
+                                   }
+                                 resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
 				}
 				else
 				{
 					exe_command.delegation_type = atoi(argv[CMD_RENEW_PROXY_ARGS + 1 + MEXEC_PARAM_DELEGTYPE]);
 					exe_command.delegation_cred = argv[CMD_RENEW_PROXY_ARGS + 1 + MEXEC_PARAM_DELEGCRED];
-					if ((use_glexec) && (disable_limited_proxy))
+					if ((use_glexec) || (disable_limited_proxy))
 					{
 						exe_command.source_proxy = argv[CMD_RENEW_PROXY_ARGS + 1 + MEXEC_PARAM_SRCPROXY];
 					} else {
-						limited_proxy_name = limit_proxy(proxyFileName, NULL, NULL);
-						exe_command.source_proxy = limited_proxy_name;
+                                                limited_proxy_name = limit_proxy(proxyFileName, NULL, NULL);
+                                                exe_command.source_proxy = limited_proxy_name;
+
 					}
 					exe_command.dest_proxy = old_proxy;
 					if (exe_command.source_proxy == NULL)
@@ -2139,9 +2143,16 @@ cmd_send_proxy_to_worker_node(void *args)
 
 	if (workernode != NULL && strcmp(workernode, ""))
 	{
-               if((!use_glexec) && (!disable_limited_proxy))
+               if (!use_glexec)
 		{
+                  if (disable_limited_proxy)
+                    {
+                        proxyFileNameNew = strdup(proxyFileName);
+                    }
+                  else
+                    {
 			proxyFileNameNew = limit_proxy(proxyFileName, NULL, NULL);
+                    }
 		}
 		else
 			proxyFileNameNew = strdup(argv[CMD_SEND_PROXY_TO_WORKER_NODE_ARGS + MEXEC_PARAM_SRCPROXY + 1]);
