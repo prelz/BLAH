@@ -229,7 +229,9 @@ def call_scontrol(jobid=""):
 
     starttime = time.time()
     log("Starting scontrol.")
-    command = (scontrol, 'show', 'job', jobid)
+    command = (scontrol, 'show', 'job')
+    if jobid:
+        command += (jobid,)
     scontrol_proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     scontrol_out, _ = scontrol_proc.communicate()
 
