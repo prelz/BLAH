@@ -49,6 +49,7 @@ char *reg_file;
 int purge_interval=2500000;
 int finalstate_query_interval=30;
 int alldone_interval=36000;
+int qacct_retry_interval=60;
 int debug;
 int nodmn=0;
 
