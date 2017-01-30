@@ -290,6 +290,13 @@ int main(int argc, char *argv[]){
 	loop_interval=atoi(ret->value);
     }
 
+    ret = config_get("sge_qacct_retry_interval",cha);
+    if (ret == NULL){
+	do_log(debuglogfile, debug, 1, "%s: key sge_qacct_retry_interval not found using the default:%d\n",argv0,qacct_retry_interval);
+    } else {
+	qacct_retry_interval=atoi(ret->value);
+    }
+
     ret = config_get("bupdater_pidfile",cha);
     if (ret == NULL){
 	do_log(debuglogfile, debug, 1, "%s: key bupdater_pidfile not found\n",argv0);
@@ -568,7 +575,7 @@ int FinalStateQuery(char *query,char *queryStates, char *query_err){
     if (debug) do_log(debuglogfile, debug, 1, "+-+query_err:%s\n",query_err);
     //now check acumulated error jobids to verify if they are an error or not
     if (strcmp(query_err,"\0")!=0){
-	sleep(60);
+	sleep(qacct_retry_interval);
 	cont=0;
 	int n=0;
 	char cmd[10]="\0";

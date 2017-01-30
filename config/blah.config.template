@@ -305,6 +305,8 @@ sge_cellname=
 
 sge_rootpath=
 
+sge_qacct_retry_interval=60
+
 ##SLURM
 
 #path to the slurm executables
