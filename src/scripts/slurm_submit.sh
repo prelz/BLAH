@@ -63,14 +63,15 @@ then
   echo "#SBATCH --mem=${bls_opt_req_mem}" >> $bls_tmp_file
 fi
 
-bls_set_up_local_and_extra_args
-
 # Simple support for multi-cpu attributes
 if [[ $bls_opt_mpinodes -gt 1 ]] ; then
   echo "#SBATCH --nodes=1" >> $bls_tmp_file
   echo "#SBATCH --ntasks=$bls_opt_mpinodes" >> $bls_tmp_file
 fi
 
+# Do the local and extra args after all #SBATCH commands, otherwise slurm ignores anything
+# after a non-#SBATCH command
+bls_set_up_local_and_extra_args
 
 # Input and output sandbox setup.
 # Assume all filesystems are shared.
