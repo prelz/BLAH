@@ -43,6 +43,8 @@ import tempfile
 import pickle
 import csv
 
+import blah
+
 cache_timeout = 60
 
 launchtime = time.time()
@@ -332,10 +334,9 @@ def get_slurm_location(program):
     global _slurm_location_cache
     if _slurm_location_cache != None:
         return os.path.join(_slurm_location_cache, program)
-    load_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'blah_load_config.sh')
-    if os.path.exists(load_config_path) and os.access(load_config_path, os.R_OK):
-        cmd = 'source %s && echo "${slurm_binpath:-/usr/bin}/%s"' % (load_config_path, program)
-    else:
+    try:
+        cmd = os.path.join(os.environ['slurm_binpath'], program)
+    except KeyError:
         cmd = 'which %s' % program
     child_stdout = os.popen(cmd)
     output = child_stdout.read()
@@ -486,6 +487,10 @@ def main():
         print "1Usage: slurm_status.py slurm/<date>/<jobid>"
         return 1
     jobid = jobid_arg.split("/")[-1].split(".")[0]
+
+    config_dir = os.path.dirname(os.path.abspath(__file__))
+    blah.load_env(config_dir)
+
     log("Checking cache for jobid %s" % jobid)
     cache_contents = None
     try:
