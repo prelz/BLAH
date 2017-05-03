@@ -142,6 +142,32 @@ else
 fi
 # --- End of MPI directives
 
+
+# --- Begin of GPU directives
+
+if [ ! -z $bls_opt_gpunumber ] && [ $bls_opt_gpunumber -gt 0 ] ; then
+  if [ ! -z $bls_opt_gpumodel ] ; then
+       model="gpu_model0=='$bls_opt_gpumodel'"
+       if [ $bls_opt_gpunumber -gt 1 ] ; then
+        for i in $(seq 1 $((bls_opt_gpunumber-1)))
+        do
+        model="$model && gpu_model$i=='$bls_opt_gpumodel'"
+        done
+       fi
+       echo "#BSUB -R \"select[$model] rusage [ngpus_excl_p=$bls_opt_gpunumber]\"" >> $bls_tmp_file
+  else
+    echo "#BSUB -R \"select[ngpus>$((bls_opt_gpunumber-1))]\"" >> $bls_tmp_file
+  fi
+fi
+
+# --- End of GPU directives
+
+# --- Begin of MIC directives
+
+[ -z "$bls_opt_micnumber" ] || echo "#BSUB -R \"rusage[nmics=$bls_opt_micnumber]\"" >> $bls_tmp_file
+
+# --- End of MIC directives
+
 #local batch system-specific file output must be added to the submit file
 bls_local_submit_attributes_file=${blah_libexec_directory}/lsf_local_submit_attributes.sh
 
