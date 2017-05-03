@@ -82,15 +82,11 @@ if [ "x$bls_opt_wholenodes" == "xyes" ] ; then
     fi
   fi
 else
+  echo "#$slurm_opt_prefix -n $bls_opt_mpinodes" >> $bls_tmp_file
   if [[ ! -z "$bls_opt_smpgranularity" ]] ; then
-    echo "#$slurm_opt_prefix -n $bls_opt_mpinodes" >> $bls_tmp_file
     echo "#$slurm_opt_prefix --ntasks-per-node $bls_opt_smpgranularity" >> $bls_tmp_file
-  else
-    if [[ ! -z "$bls_opt_hostnumber" ]] ; then
-      echo "#$slurm_opt_prefix -N $bls_opt_hostnumber" >> $bls_tmp_file
-    elif [[ $bls_opt_mpinodes -gt 0 ]] ; then
-      echo "#$slurm_opt_prefix -n $bls_opt_mpinodes" >> $bls_tmp_file
-    fi
+  elif [[ ! -z "$bls_opt_hostnumber" ]] ; then
+    echo "#$slurm_opt_prefix -N $bls_opt_hostnumber" >> $bls_tmp_file
   fi
 fi
 # --- End of MPI directives
