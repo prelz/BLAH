@@ -82,7 +82,6 @@ fi
 %defattr(-,root,root)
 %config(noreplace) /etc/blparser.conf.template
 %config(noreplace) /etc/blah.config.template
-%dir /etc/rc.d/init.d/
 /etc/rc.d/init.d/glite-ce-*
 /usr/libexec/*
 /usr/sbin/*

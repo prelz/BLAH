@@ -12,7 +12,6 @@
 
 %files
 %defattr(-,root,root,-)
-%dir "/etc/rc.d/init.d"
 %dir "/usr/share/doc/@CPACK_RPM_PACKAGE_NAME@-@CPACK_RPM_PACKAGE_VERSION@"
 "/usr/share/doc/@CPACK_RPM_PACKAGE_NAME@-@CPACK_RPM_PACKAGE_VERSION@/LICENSE"
 "/usr/man/man1/blahpd_daemon.1*"
