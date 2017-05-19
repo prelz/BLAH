@@ -288,6 +288,8 @@ notification = error
 $submit_file_environment
 # Hang around for 30 minutes (1800 seconds) ?
 leave_in_queue = (CompletionDate =?= UNDEFINED || CompletionDate == 0 || ((CurrentTime - CompletionDate) < 1800))
+# Add the batch queue as job attribute
++BatchQueue = "$queue"
 # Group is needed by dgas and EstTT
 +Group = "`id -gn`"
 EOF
