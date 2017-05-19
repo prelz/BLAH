@@ -297,6 +297,11 @@ condor_batch_caching_enabled=
 #If condor_history should be used or not to the final state info about the jobs.
 bupdater_use_condor_history=
 
+# Set to 'yes' if the queue name should be used as schedd name in condor
+# commands with the '-name' option. If not, no name is used and the commands
+# will address the default schedd.
+condor_use_queue_as_schedd=no
+
 ##SGE
 
 sge_binpath=

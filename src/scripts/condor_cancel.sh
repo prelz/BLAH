@@ -34,7 +34,7 @@ pool=${queue_pool#*/} # Pool, everything after the first / in Queue/Pool
 # In current version we are receiving a GlobalJobId
 id="-constr GlobalJobId==\"$id\""
 
-if [ -z "$queue" ]; then
+if [ -z "$queue" -o "$condor_use_queue_as_schedd" != "yes" ]; then
     target=""
 else
     if [ -z "$pool" ]; then

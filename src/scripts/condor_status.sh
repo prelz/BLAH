@@ -89,7 +89,7 @@ for job in $* ; do
     queue=${queue_pool%/*} # Queue, everything before the first / in Queue/Pool
     pool=${queue_pool#*/} # Pool, everything after the first / in Queue/Pool
 
-    if [ -z "$queue" ]; then
+    if [ -z "$queue" -o "$condor_use_queue_as_schedd" != "yes" ]; then
 	target=""
     else
 	if [ -z "$pool" ]; then

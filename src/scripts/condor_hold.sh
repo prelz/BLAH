@@ -31,13 +31,13 @@ queue_pool=${1#*/} # Queue/Pool, everything after the first /  in Id/Queue/Pool
 queue=${queue_pool%/*} # Queue, everything before the first / in Queue/Pool
 pool=${queue_pool#*/} # Pool, everything after the first / in Queue/Pool
 
-if [ -z "$queue" ]; then
+if [ -z "$queue" || "$condor_use_queue_as_schedd" != "yes" ]; then
     target=""
 else
     if [ -z "$pool" ]; then
-	target="-name $queue"
+        target="-name $queue"
     else
-	target="-pool $pool -name $queue"
+        target="-pool $pool -name $queue"
     fi
 fi
 

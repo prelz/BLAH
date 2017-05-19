@@ -287,7 +287,9 @@ should_transfer_files = yes
 notification = error
 $submit_file_environment
 # Hang around for 30 minutes (1800 seconds) ?
-leave_in_queue = JobStatus == 4 && (CompletionDate =?= UNDEFINED || CompletionDate == 0 || ((CurrentTime - CompletionDate) < 1800))
+leave_in_queue = (CompletionDate =?= UNDEFINED || CompletionDate == 0 || ((CurrentTime - CompletionDate) < 1800))
+# Group is needed by dgas and EstTT
++Group = "`id -gn`"
 EOF
 
 # Set up temp file name for requirement passing
@@ -300,7 +302,8 @@ fi
 #local batch system-specific file output must be added to the submit file
 local_submit_attributes_file=${blah_libexec_directory}/condor_local_submit_attributes.sh
 if [ -r $local_submit_attributes_file ] ; then
-    echo \#\!/bin/sh > $tmp_req_file
+    echo "\#\!/bin/sh" > $tmp_req_file
+    echo "queue=$queue" >> $tmp_req_file
     if [ ! -z $req_file ] ; then
         cat $req_file >> $tmp_req_file
     fi
@@ -330,7 +333,7 @@ if [ "$?" == "0" ]; then
     queue=${queue%/*}
 fi
 
-if [ -z "$queue" ]; then
+if [ -z "$queue" -o "$condor_use_queue_as_schedd" != "yes" ]; then
     target=""
 else
     if [ -z "$pool" ]; then
@@ -346,8 +349,10 @@ let now=$now-1
 full_result=$($condor_binpath/condor_submit $target $submit_file)
 return_code=$?
 
-if [ "$return_code" == "0" ] ; then
-    jobID=`echo $full_result | awk '{print $8}' | tr -d '.'`
+full_result=$(echo $full_result | sed 's/.*submitted to cluster \([0-9]*\)./\1/')
+
+if [[ "$return_code" == "0" && "x$full_result" != "x" ]] ; then
+    jobID=$($condor_binpath/condor_q $target -format "%s" GlobalJobId $full_result)
     blahp_jobID="condor/$jobID/$queue/$pool"
 
     if [ "x$job_registry" != "x" ]; then
