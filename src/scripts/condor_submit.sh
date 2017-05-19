@@ -287,7 +287,7 @@ should_transfer_files = yes
 notification = error
 $submit_file_environment
 # Hang around for 30 minutes (1800 seconds) ?
-leave_in_queue = JobStatus == 4 && (CompletionDate =?= UNDEFINED || CompletionDate == 0 || ((CurrentTime - CompletionDate) < 1800))
+leave_in_queue = (CompletionDate =?= UNDEFINED || CompletionDate == 0 || ((CurrentTime - CompletionDate) < 1800))
 EOF
 
 # Set up temp file name for requirement passing
