@@ -465,6 +465,7 @@ int main(int argc, char *argv[]){
 			continue;
 		}
 		job_registry_firstrec(rha,fd);
+		
 		fseek(fd,0L,SEEK_SET);
 		
 		first=TRUE;
@@ -1201,6 +1202,26 @@ IntStateQuery()
 				JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
 				JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 				freetoken(&token,maxtok_t);
+			}else if(line && strstr(line," Exited") && en.status != REMOVED){	
+				if(use_bhist_for_killed && strcmp(use_bhist_for_killed,"yes")==0){ 
+					if(en.status == UNDEFINED){
+						en.status=IDLE;
+						en.exitcode=-1;
+					}
+					bupdater_remove_active_job(&bact, en.batch_id);
+				}else{
+					maxtok_t = strtoken(line, ' ', &token);
+					timestamp=make_message("%s %s %s %s",token[0],token[1],token[2],token[3]);
+					timestamp[strlen(timestamp)-1]='\0';
+					tmstampepoch=str2epoch(timestamp,"W");
+					en.udate=tmstampepoch;
+					free(timestamp);
+					JOB_REGISTRY_ASSIGN_ENTRY(en.updater_info,string_now);
+					JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
+					en.status=REMOVED;
+					en.exitcode=-999;
+					freetoken(&token,maxtok_t);					
+				}
 			}else if(line && strstr(line," Done successfully")){	
 				maxtok_t = strtoken(line, ' ', &token);
 				timestamp=make_message("%s %s %s %s",token[0],token[1],token[2],token[3]);
