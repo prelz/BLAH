@@ -12,7 +12,7 @@
 
 /* Daemon version */
 #ifndef BLAH_VERSION
-#define BLAH_VERSION "1.21.0"
+#define BLAH_VERSION "1.22.0"
 #endif
 
 /* Commit date */
