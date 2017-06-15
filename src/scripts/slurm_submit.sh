@@ -66,7 +66,8 @@ fi
 # Simple support for multi-cpu attributes
 if [[ $bls_opt_mpinodes -gt 1 ]] ; then
   echo "#SBATCH --nodes=1" >> $bls_tmp_file
-  echo "#SBATCH --ntasks=$bls_opt_mpinodes" >> $bls_tmp_file
+  echo "#SBATCH --ntasks=1" >> $bls_tmp_file
+  echo "#SBATCH --cpus-per-task=$bls_opt_mpinodes" >> $bls_tmp_file
 fi
 
 # Do the local and extra args after all #SBATCH commands, otherwise slurm ignores anything
