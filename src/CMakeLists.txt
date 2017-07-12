@@ -139,7 +139,9 @@ set(blah_scripts
     scripts/slurm_cancel.sh scripts/slurm_resume.sh scripts/slurm_status.sh
     scripts/slurm_hold.sh scripts/slurm_submit.sh
     scripts/slurm_local_submit_attributes.sh
+    scripts/blah.py scripts/__init__.py
     scripts/pbs_status.py
+    scripts/slurm_status.py
    )
 
 install(FILES

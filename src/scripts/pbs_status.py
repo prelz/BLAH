@@ -43,6 +43,9 @@ import tempfile
 import pickle
 import csv
 
+sys.path.insert(0, os.path.dirname(__file__))
+import blah
+
 cache_timeout = 60
 
 launchtime = time.time()
@@ -226,14 +229,11 @@ def qstat(jobid=""):
     Returns a python dictionary with the job info.
     """
     qstat_bin = get_qstat_location()
-    command = (qstat_bin, '--version')
-    qstat_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    qstat_version, _ = qstat_process.communicate()
 
     starttime = time.time()
     log("Starting qstat.")
     command = (qstat_bin, '-f')
-    if not re.search(r'PBSPro', qstat_version):
+    if os.environ.get('pbs_pro').lower() != 'yes':
         command += ('-1',) # -1 conflicts with -f in PBS Pro
     if jobid:
         command += (jobid,)
@@ -357,10 +357,9 @@ def get_qstat_location():
     global _qstat_location_cache
     if _qstat_location_cache != None:
         return _qstat_location_cache
-    load_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'blah_load_config.sh')
-    if os.path.exists(load_config_path) and os.access(load_config_path, os.R_OK):
-        cmd = 'source %s && echo "$pbs_binpath/qstat"' % load_config_path
-    else:
+    try:
+        cmd = os.path.join(os.environ['pbs_binpath'], 'qstat')
+    except KeyError:
         cmd = 'which qstat'
     child_stdout = os.popen(cmd)
     output = child_stdout.read()
@@ -526,6 +525,10 @@ def main():
         print "1Usage: pbs_status.sh pbs/<date>/<jobid>"
         return 1
     jobid = jobid_arg.split("/")[-1].split(".")[0]
+
+    config_dir = os.path.dirname(os.path.abspath(__file__))
+    blah.load_env(config_dir)
+
     log("Checking cache for jobid %s" % jobid)
     cache_contents = None
     try:

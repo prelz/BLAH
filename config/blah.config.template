@@ -99,6 +99,8 @@ pbs_fallback=no
 #Set to 'yes' to request pvmem when submitting jobs
 pbs_set_pvmem=no
 
+#Set to 'yes' if you are running PBS Pro
+pbs_pro=no
 
 ##LSF common variables
 

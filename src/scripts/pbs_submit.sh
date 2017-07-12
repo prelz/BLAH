@@ -117,8 +117,6 @@ fi
 #local batch system-specific file output must be added to the submit file
 bls_local_submit_attributes_file=${blah_libexec_directory}/pbs_local_submit_attributes.sh
 
-${pbs_binpath}/qstat --version 2>&1 | grep PBSPro > /dev/null 2>&1
-is_pbs_pro=$?
 # Begin building the select statement: select=x where x is the number of 'chunks'
 # to request. Chunk requests should precede any resource requests (resource
 # requests are order independent). An example from the PBS Pro manual:
@@ -137,7 +135,7 @@ if [ "x$bls_opt_req_mem" != "x" ]; then
     fi
     # Total amount of memory allocated to the job
     pbs_select="$pbs_select:mem=${bls_opt_req_mem}mb"
-    if [ "$is_pbs_pro" != 0 ]; then
+    if [ "x$pbs_pro" != "xyes" ]; then
         echo "#PBS -l mem=${bls_opt_req_mem}mb" >> $bls_tmp_file
     fi
 fi
@@ -149,7 +147,7 @@ bls_set_up_local_and_extra_args
 [ -z "$bls_opt_queue" ] || grep -q "^#PBS -q" $bls_tmp_file || echo "#PBS -q $bls_opt_queue" >> $bls_tmp_file
 
 # Extended support for MPI attributes
-if [ "$is_pbs_pro" == 0 ]; then
+if [ "x$pbs_pro" == "xyes" ]; then
     pbs_select="$pbs_select:ncpus=$bls_opt_smpgranularity"
 else
     if [ "x$bls_opt_wholenodes" == "xyes" ]; then
@@ -209,7 +207,7 @@ else
   [ -z "$bls_fl_subst_and_accumulate_result" ] || echo "#PBS -W stageout=\\'$bls_fl_subst_and_accumulate_result\\'" >> $bls_tmp_file
 fi
 
-if [ "$is_pbs_pro" == 0 ]; then
+if [ "x$pbs_pro" == "xyes" ]; then
     echo $pbs_select >> $bls_tmp_file
 fi
 
