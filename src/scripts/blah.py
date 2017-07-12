@@ -1,18 +1,26 @@
 """Common functions for BLAH python scripts"""
 
 import os
-import subprocess
+from ConfigParser import RawConfigParser
+from io import StringIO
 
-def load_env(config_dir):
-    """Load blah.config into the environment"""
-    load_config_path = os.path.join(config_dir, 'blah_load_config.sh')
-    command = ['bash', '-c', 'source %s && env' % load_config_path]
-    try:
-        config_proc = subprocess.Popen(command, stdout=subprocess.PIPE)
-        config_out, _ = config_proc.communicate()
+class BlahConfigParser(RawConfigParser, object):
 
-        for line in config_out.splitlines():
-            (key, _, val) = line.partition('=')
-            os.environ[key] = val
-    except IOError:
-        pass
+    def __init__(self, path='/etc/blah.config'):
+        # RawConfigParser requires ini-style [section headers] but since
+        # blah.config is also used as a shell script we need to fake one
+        self.header = 'blahp'
+        with open(path) as f:
+            config = f.read()
+        vfile = StringIO(u'[%s]\n%s' % (self.header, config))
+
+        super(BlahConfigParser, self).__init__()
+        # TODO: readfp() is replaced by read_file() in Python 3.2+
+        self.readfp(vfile)
+
+    def items(self):
+        return super(BlahConfigParser, self).items(self.header)
+
+    def get(self, option):
+        return super(BlahConfigParser, self).get(self.header, option)
+

@@ -336,7 +336,7 @@ def get_slurm_location(program):
     if _slurm_location_cache != None:
         return os.path.join(_slurm_location_cache, program)
     try:
-        cmd = os.path.join(os.environ['slurm_binpath'], program)
+        cmd = os.path.join(config.get('slurm_binpath'), program)
     except KeyError:
         cmd = 'which %s' % program
     child_stdout = os.popen(cmd)
