@@ -43,7 +43,7 @@ import tempfile
 import pickle
 import csv
 
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import blah
 
 cache_timeout = 60
