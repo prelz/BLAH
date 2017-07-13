@@ -22,5 +22,8 @@ class BlahConfigParser(RawConfigParser, object):
         return super(BlahConfigParser, self).items(self.header)
 
     def get(self, option):
-        return super(BlahConfigParser, self).get(self.header, option)
+        # ConfigParser happily includes quotes in value strings, which we
+        # happily allow in /etc/blah.config. This causes failures when joining
+        # paths, for example.
+        return super(BlahConfigParser, self).get(self.header, option).strip('"\'')
 

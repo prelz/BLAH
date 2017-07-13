@@ -357,15 +357,17 @@ def get_qstat_location():
     global _qstat_location_cache
     if _qstat_location_cache != None:
         return _qstat_location_cache
+
     try:
-        cmd = os.path.join(config.get('pbs_binpath'), 'qstat')
+        location = os.path.join(config.get('pbs_binpath'), 'qstat')
     except KeyError:
         cmd = 'which qstat'
-    child_stdout = os.popen(cmd)
-    output = child_stdout.read()
-    location = output.split("\n")[0].strip()
-    if child_stdout.close():
-        raise Exception("Unable to determine qstat location: %s" % output)
+        child_stdout = os.popen(cmd)
+        output = child_stdout.read()
+        location = output.split("\n")[0].strip()
+        if child_stdout.close():
+            raise Exception("Unable to determine qstat location: %s" % output)
+
     _qstat_location_cache = location
     return location
 
