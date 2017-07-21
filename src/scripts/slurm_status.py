@@ -43,7 +43,7 @@ import tempfile
 import pickle
 import csv
 
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import blah
 
 cache_timeout = 60
@@ -336,14 +336,15 @@ def get_slurm_location(program):
     if _slurm_location_cache != None:
         return os.path.join(_slurm_location_cache, program)
     try:
-        cmd = os.path.join(os.environ['slurm_binpath'], program)
+        location = os.path.join(config.get('slurm_binpath'), program)
     except KeyError:
         cmd = 'which %s' % program
-    child_stdout = os.popen(cmd)
-    output = child_stdout.read()
-    location = output.split("\n")[0].strip()
-    if child_stdout.close():
-        raise Exception("Unable to determine scontrol location: %s" % output)
+        child_stdout = os.popen(cmd)
+        output = child_stdout.read()
+        location = output.split("\n")[0].strip()
+        if child_stdout.close():
+            raise Exception("Unable to determine scontrol location: %s" % output)
+
     _slurm_location_cache = os.path.dirname(location)
     return location
 

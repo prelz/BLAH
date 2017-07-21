@@ -43,7 +43,7 @@ import tempfile
 import pickle
 import csv
 
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import blah
 
 cache_timeout = 60
@@ -233,7 +233,7 @@ def qstat(jobid=""):
     starttime = time.time()
     log("Starting qstat.")
     command = (qstat_bin, '-f')
-    if os.environ.get('pbs_pro').lower() != 'yes':
+    if config.get('pbs_pro').lower() != 'yes':
         command += ('-1',) # -1 conflicts with -f in PBS Pro
     if jobid:
         command += (jobid,)
@@ -357,15 +357,17 @@ def get_qstat_location():
     global _qstat_location_cache
     if _qstat_location_cache != None:
         return _qstat_location_cache
+
     try:
-        cmd = os.path.join(os.environ['pbs_binpath'], 'qstat')
+        location = os.path.join(config.get('pbs_binpath'), 'qstat')
     except KeyError:
         cmd = 'which qstat'
-    child_stdout = os.popen(cmd)
-    output = child_stdout.read()
-    location = output.split("\n")[0].strip()
-    if child_stdout.close():
-        raise Exception("Unable to determine qstat location: %s" % output)
+        child_stdout = os.popen(cmd)
+        output = child_stdout.read()
+        location = output.split("\n")[0].strip()
+        if child_stdout.close():
+            raise Exception("Unable to determine qstat location: %s" % output)
+
     _qstat_location_cache = location
     return location
 
@@ -527,7 +529,8 @@ def main():
     jobid = jobid_arg.split("/")[-1].split(".")[0]
 
     config_dir = os.path.dirname(os.path.abspath(__file__))
-    blah.load_env(config_dir)
+    global config
+    config = blah.BlahConfigParser()
 
     log("Checking cache for jobid %s" % jobid)
     cache_contents = None
