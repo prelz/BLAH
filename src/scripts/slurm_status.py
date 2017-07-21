@@ -335,18 +335,18 @@ def get_slurm_location(program):
     global _slurm_location_cache
     if _slurm_location_cache != None:
         return os.path.join(_slurm_location_cache, program)
-    try:
-        location = os.path.join(config.get('slurm_binpath'), program)
-    except KeyError:
-        cmd = 'which %s' % program
-        child_stdout = os.popen(cmd)
-        output = child_stdout.read()
-        location = output.split("\n")[0].strip()
-        if child_stdout.close():
-            raise Exception("Unable to determine scontrol location: %s" % output)
 
-    _slurm_location_cache = os.path.dirname(location)
-    return location
+    if not (config.has_option('slurm_binpath') and config.get('slurm_binpath')):
+        config.set('slurm_binpath', '/usr/bin')
+    cmd = 'echo "%s/%s"' % (config.get('slurm_binpath'), 'scontrol')
+
+    child_stdout = os.popen(cmd)
+    output = child_stdout.read().split("\n")[0].strip()
+    if child_stdout.close():
+        raise Exception("Unable to determine scontrol location: %s" % output)
+
+    _slurm_location_cache = os.path.dirname(output)
+    return output
 
 job_id_re = re.compile("JobId=([0-9]+) .*")
 exec_host_re = re.compile("\s*BatchHost=([\w\-.]+)")
@@ -490,8 +490,8 @@ def main():
         return 1
     jobid = jobid_arg.split("/")[-1].split(".")[0]
 
-    config_dir = os.path.dirname(os.path.abspath(__file__))
-    blah.load_env(config_dir)
+    global config
+    config = blah.BlahConfigParser()
 
     log("Checking cache for jobid %s" % jobid)
     cache_contents = None

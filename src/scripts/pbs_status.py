@@ -358,18 +358,17 @@ def get_qstat_location():
     if _qstat_location_cache != None:
         return _qstat_location_cache
 
-    try:
-        location = os.path.join(config.get('pbs_binpath'), 'qstat')
-    except KeyError:
-        cmd = 'which qstat'
-        child_stdout = os.popen(cmd)
-        output = child_stdout.read()
-        location = output.split("\n")[0].strip()
-        if child_stdout.close():
-            raise Exception("Unable to determine qstat location: %s" % output)
+    if not (config.has_option('pbs_binpath') and config.get('pbs_binpath')):
+        config.set('pbs_binpath', '/usr/bin')
+    cmd = 'echo "%s/%s"' % (config.get('pbs_binpath'), 'qstat')
 
-    _qstat_location_cache = location
-    return location
+    child_stdout = os.popen(cmd)
+    output = child_stdout.read().split("\n")[0].strip()
+    if child_stdout.close():
+        raise Exception("Unable to determine qstat location: %s" % output)
+
+    _qstat_location_cache = output
+    return output
 
 job_id_re = re.compile("\s*Job Id:\s([0-9]+)([\w\-\/.]*)")
 exec_host_re = re.compile("\s*exec_host = ([\w\-\/.]+)")
@@ -528,7 +527,6 @@ def main():
         return 1
     jobid = jobid_arg.split("/")[-1].split(".")[0]
 
-    config_dir = os.path.dirname(os.path.abspath(__file__))
     global config
     config = blah.BlahConfigParser()
 
