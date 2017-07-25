@@ -27,3 +27,8 @@ class BlahConfigParser(RawConfigParser, object):
         # paths, for example.
         return super(BlahConfigParser, self).get(self.header, option).strip('"\'')
 
+    def set(self, option, value):
+        return super(BlahConfigParser, self).set(self.header, option, value)
+
+    def has_option(self, option):
+        return super(BlahConfigParser, self).has_option(self.header, option)
