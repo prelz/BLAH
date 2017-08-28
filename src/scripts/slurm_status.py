@@ -344,8 +344,6 @@ def get_slurm_location(program):
     if _slurm_location_cache != None:
         return os.path.join(_slurm_location_cache, program)
 
-    if not (config.has_option('slurm_binpath') and config.get('slurm_binpath')):
-        config.set('slurm_binpath', '/usr/bin')
     cmd = 'echo "%s/%s"' % (config.get('slurm_binpath'), 'scontrol')
 
     child_stdout = os.popen(cmd)
@@ -499,7 +497,7 @@ def main():
     jobid = jobid_arg.split("/")[-1].split(".")[0]
 
     global config
-    config = blah.BlahConfigParser()
+    config = blah.BlahConfigParser(defaults={'slurm_binpath': '/usr/bin'})
 
     log("Checking cache for jobid %s" % jobid)
     cache_contents = None

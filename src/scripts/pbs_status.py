@@ -233,7 +233,7 @@ def qstat(jobid=""):
     starttime = time.time()
     log("Starting qstat.")
     command = (qstat_bin, '-f')
-    if config.has_option('pbs_pro') and config.get('pbs_pro').lower() != 'yes':
+    if config.get('pbs_pro').lower() != 'yes':
         command += ('-1',) # -1 conflicts with -f in PBS Pro
     if jobid:
         command += (jobid,)
@@ -358,8 +358,6 @@ def get_qstat_location():
     if _qstat_location_cache != None:
         return _qstat_location_cache
 
-    if not (config.has_option('pbs_binpath') and config.get('pbs_binpath')):
-        config.set('pbs_binpath', '/usr/bin')
     cmd = 'echo "%s/%s"' % (config.get('pbs_binpath'), 'qstat')
 
     child_stdout = os.popen(cmd)
@@ -528,7 +526,8 @@ def main():
     jobid = jobid_arg.split("/")[-1].split(".")[0]
 
     global config
-    config = blah.BlahConfigParser()
+    config = blah.BlahConfigParser(defaults={'pbs_pro': 'no',
+                                             'pbs_binpath': '/usr/bin'})
 
     log("Checking cache for jobid %s" % jobid)
     cache_contents = None
