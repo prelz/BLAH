@@ -6,7 +6,7 @@ from io import StringIO
 
 class BlahConfigParser(RawConfigParser, object):
 
-    def __init__(self, path='/etc/blah.config'):
+    def __init__(self, path='/etc/blah.config', defaults=None):
         # RawConfigParser requires ini-style [section headers] but since
         # blah.config is also used as a shell script we need to fake one
         self.header = 'blahp'
@@ -14,7 +14,7 @@ class BlahConfigParser(RawConfigParser, object):
             config = f.read()
         vfile = StringIO(u'[%s]\n%s' % (self.header, config))
 
-        super(BlahConfigParser, self).__init__()
+        super(BlahConfigParser, self).__init__(defaults=defaults)
         # TODO: readfp() is replaced by read_file() in Python 3.2+
         self.readfp(vfile)
 
