@@ -233,7 +233,7 @@ def qstat(jobid=""):
     starttime = time.time()
     log("Starting qstat.")
     command = (qstat_bin, '-f')
-    if config.get('pbs_pro').lower() != 'yes':
+    if config.has_option('pbs_pro') and config.get('pbs_pro').lower() != 'yes':
         command += ('-1',) # -1 conflicts with -f in PBS Pro
     if jobid:
         command += (jobid,)
