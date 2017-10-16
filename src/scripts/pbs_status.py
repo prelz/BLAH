@@ -329,25 +329,24 @@ def get_finished_job_stats(jobid):
         except Exception, e:
             log("Unable to read in CSV output from sacct: %s" % str(e))
             return return_dict
-
-        sacct_parser = {'RemoteUserCpu': lambda orig, results: orig + \
-                        convert_cpu_to_seconds(results["AveCPU"]) * int(results["AllocCPUS"]),
-                        'ImageSize': lambda orig, results: orig + int(results["MaxRSS"].replace('K', '')),
-                        'ExitCode': lambda orig, results: int(results["ExitCode"].split(":")[0])}
+            
         # Slurm can return more than 1 row, for some odd reason.
         # so sum up relevant values
         for row in reader:
-            for attr, func in sacct_parser.items():
-                try:
-                    return_dict[attr] = func(return_dict[attr], row)
-                except (ValueError, KeyError), exc:
-                    log("Could not parse %s for Jobid %s: %s" % (attr, jobid, exc))
-
-    # PBS completion
+            if row["AveCPU"] is not "":
+                return_dict['RemoteUserCpu'] += convert_cpu_to_seconds(row["AveCPU"]) * int(row["AllocCPUS"])
+            if row["MaxRSS"] is not "":
+                # Remove the trailing 'K'
+                return_dict["ImageSize"] += int(row["MaxRSS"].replace('K', ''))
+            if row["ExitCode"] is not "":
+                return_dict["ExitCode"] = int(row["ExitCode"].split(":")[0])
+    
+    # PBS completion        
     elif _cluster_type_cache == "pbs":
         pass
 
     return return_dict
+    
 
 _qstat_location_cache = None
 def get_qstat_location():
