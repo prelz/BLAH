@@ -334,25 +334,37 @@ def get_finished_job_stats(jobid):
         # so sum up relevant values
         for row in reader:
             if row["AveCPU"] is not "":
-                return_dict['RemoteUserCpu'] += convert_cpu_to_seconds(row["AveCPU"]) * int(row["AllocCPUS"])
+                try:
+                    return_dict['RemoteUserCpu'] += convert_cpu_to_seconds(row["AveCPU"]) * int(row["AllocCPUS"])
+                except:
+                    log("Failed to parse CPU usage for job id %s: %s, %s" % (jobid, row["AveCPU"], row["AllocCPUS"]))
+                    raise
             if row["MaxRSS"] is not "":
                 # Remove the trailing [KMGTP] and scale the value appropriately
                 # Note: We assume that all values will have a suffix, and we
                 #   want the value in kilos.
-                value = row["MaxRSS"]
-                factor = 1
-                if value[-1] == 'M':
-                    factor = 1024
-                elif value[-1] == 'G':
-                    factor = 1024 * 1024
-                elif value[-1] == 'T':
-                    factor = 1024 * 1024 * 1024
-                elif value[-1] == 'P':
-                    factor = 1024 * 1024 * 1024 * 1024
-                return_dict["ImageSize"] += int(value.strip('KMGTP')) * factor
+                try:
+                    value = row["MaxRSS"]
+                    factor = 1
+                    if value[-1] == 'M':
+                        factor = 1024
+                    elif value[-1] == 'G':
+                        factor = 1024 * 1024
+                    elif value[-1] == 'T':
+                        factor = 1024 * 1024 * 1024
+                    elif value[-1] == 'P':
+                        factor = 1024 * 1024 * 1024 * 1024
+                        return_dict["ImageSize"] += int(value.strip('KMGTP')) * factor
+                except:
+                    log("Failed to parse memory usage for job id %s: %s" % (jobid, row["MaxRSS"]))
+                    raise
             if row["ExitCode"] is not "":
-                return_dict["ExitCode"] = int(row["ExitCode"].split(":")[0])
-    
+                try:
+                    return_dict["ExitCode"] = int(row["ExitCode"].split(":")[0])
+                except:
+                    log("Failed to parse ExitCode for job id %s: %s" % (jobid, row["ExitCode"]))
+                    raise
+                    
     # PBS completion        
     elif _cluster_type_cache == "pbs":
         pass
