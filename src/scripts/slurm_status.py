@@ -40,6 +40,7 @@ import struct
 import subprocess
 import signal
 import tempfile
+import traceback
 import pickle
 import csv
 
@@ -534,5 +535,6 @@ if __name__ == "__main__":
     except SystemExit:
         raise
     except Exception, e:
+        log(traceback.format_exc())
         print "1ERROR: %s" % str(e).replace("\n", "\\n")
         sys.exit(0)
