@@ -1,8 +1,8 @@
 """Common functions for BLAH python scripts"""
 
-import os
 from ConfigParser import RawConfigParser
-from io import StringIO
+# TODO: io.StringIO is preferred in Python3 since it handles unicode-encoded files
+from StringIO import StringIO
 
 class BlahConfigParser(RawConfigParser, object):
 
@@ -12,7 +12,7 @@ class BlahConfigParser(RawConfigParser, object):
         self.header = 'blahp'
         with open(path) as f:
             config = f.read()
-        vfile = StringIO(u'[%s]\n%s' % (self.header, config))
+        vfile = StringIO('[%s]\n%s' % (self.header, config))
 
         super(BlahConfigParser, self).__init__(defaults=defaults)
         # TODO: readfp() is replaced by read_file() in Python 3.2+
