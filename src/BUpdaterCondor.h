@@ -61,6 +61,8 @@ char *batch_command=NULL;
 FILE *debuglogfile;
 char *debuglogname=NULL;
 
+char *schedd_name=NULL;
+
 job_registry_handle *rha;
 config_handle *cha;
 config_entry *ret;
