@@ -49,6 +49,10 @@ int main(int argc, char *argv[]){
 	int max_constr_len=0;
 	char *toadd=NULL;
 	
+        FILE *fp;
+	char *command_string=NULL;
+	char *line=NULL;
+	
 	pthread_t RecUpdNetThd;
 
 	int confirm_time=0;	
@@ -258,6 +262,16 @@ int main(int argc, char *argv[]){
 	}
 	
 	batch_command=(strcmp(condor_batch_caching_enabled,"yes")==0?make_message("%s ",batch_command_caching_filter):make_message(""));
+	
+	ret = config_get("condor_schedd_name",cha);
+	if (ret == NULL){
+		do_log(debuglogfile, debug, 1, "%s: key condor_schedd_name not found using default (-global)\n",argv0,schedd_name);
+	} else {
+		schedd_name=strdup(ret->value);
+                if(schedd_name == NULL){
+                        sysfatal("strdup failed for condor_schedd_name in main: %r");
+                }
+	}
 
 	ret = config_get("job_registry_use_mmap",cha);
 	if (ret == NULL){
@@ -560,8 +574,14 @@ IntStateQuery()
 	job_registry_entry *ren=NULL;
 	time_t now;
 	char *string_now=NULL;
+	
+	if(schedd_name == NULL){
 
-	command_string=make_message("%s%s/condor_q -global -format \"%%s \" GlobalJobId -format \"%%s \" JobStatus -format \"%%s \" ExitStatus -format \"%%s \" EnteredCurrentStatus -format \"%%s\\n\" '(JobStatus == 2) ? RemoteHost : (((JobStatus == 3 || JobStatus == 4) && !IsUndefined(LastRemoteHost)) ? LastRemoteHost : \"N/A\")'",batch_command,condor_binpath);
+		command_string=make_message("%s%s/condor_q -global -format \"%%s \" GlobalJobId -format \"%%s \" JobStatus -format \"%%s \" ExitStatus -format \"%%s \" EnteredCurrentStatus -format \"%%s\\n\" '(JobStatus == 2) ? RemoteHost : (((JobStatus == 3 || JobStatus == 4) && !IsUndefined(LastRemoteHost)) ? LastRemoteHost : \"N/A\")'",batch_command,condor_binpath);
+	}else{
+		command_string=make_message("%s%s/condor_q -name %s -format \"%%s \" GlobalJobId -format \"%%s \" JobStatus -format \"%%s \" ExitStatus -format \"%%s \" EnteredCurrentStatus -format \"%%s\\n\" '(JobStatus == 2) ? RemoteHost : (((JobStatus == 3 || JobStatus == 4) && !IsUndefined(LastRemoteHost)) ? LastRemoteHost : \"N/A\")'",batch_command,condor_binpath,schedd_name);
+		
+	}
 	do_log(debuglogfile, debug, 2, "%s: command_string in IntStateQuery:%s\n",argv0,command_string);
 	fp = popen(command_string,"r");
 
