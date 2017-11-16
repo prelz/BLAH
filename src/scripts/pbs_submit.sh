@@ -114,6 +114,14 @@ then
   echo "#PBS -e $pbs_std_storage" >> $bls_tmp_file
 fi
 
+if [ "x$bls_opt_project" != "x" ] ; then
+  echo "#PBS -A $bls_opt_project" >> $bls_tmp_file
+fi
+
+if [ "x$bls_opt_runtime" != "x" ] ; then
+  echo "#PBS -l walltime=$bls_opt_runtime" >> $bls_tmp_file
+fi
+
 #local batch system-specific file output must be added to the submit file
 bls_local_submit_attributes_file=${blah_libexec_directory}/pbs_local_submit_attributes.sh
 

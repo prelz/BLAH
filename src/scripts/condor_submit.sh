@@ -53,7 +53,7 @@ mpinodes=1
 # Name of local requirements file: currently unused
 req_file=""
 
-while getopts "a:i:o:de:j:n:N:z:h:S:v:V:c:w:x:u:q:r:s:T:I:O:R:C:D:m:" arg 
+while getopts "a:i:o:de:j:n:N:z:h:S:v:V:c:w:x:u:q:r:s:T:I:O:R:C:D:m:A:t:" arg 
 do
     case "$arg" in
     a) xtra_args="$OPTARG" ;;
@@ -83,6 +83,8 @@ do
     C) req_file="$OPTARG" ;;
     D) run_dir="$OPTARG" ;;
     m) req_mem="$OPTARG" ;;
+    A) project="$OPTARG" ;;
+    t) runtime="$OPTARG" ;;
     -) break ;;
     ?) echo $usage_string
        exit 1 ;;
@@ -247,6 +249,11 @@ fi
 if [ "x$req_mem" != "x" ]
 then
   echo "request_memory = $req_mem" >> $submit_file
+fi
+
+if [ "x$runtime" != "x" ]
+then
+  echo "periodic_remove = JobStatus == 2 && time() - JobCurrentStartExecutingDate > $runtime" >> $submit_file
 fi
 
 cat >> $submit_file << EOF

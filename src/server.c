@@ -1311,6 +1311,8 @@ cmd_submit_job(void *args)
 	    (set_cmd_bool_option  (&command, cad, "StageCmd",   "-s", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "ClientJobId","-j", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "JobDirectory","-D", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_string_option(&command, cad, "BatchProject", "-A", NO_QUOTE) == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_int_option(&command, cad, "BatchRuntime", "-t", INT_NOQUOTE) == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "BatchExtraSubmitArgs", "-a", SINGLE_QUOTE) == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_int_option(&command, cad, "RequestMemory", "-m", INT_NOQUOTE) == C_CLASSAD_OUT_OF_MEMORY))
 //	    (set_cmd_string_option(&command, cad, "Args",      	"--", SINGLE_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY))

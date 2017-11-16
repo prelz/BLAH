@@ -297,6 +297,7 @@ function bls_parse_submit_options ()
   # Parse parameters
   ###############################################################
   while getopts "a:i:o:e:c:s:v:V:dw:q:n:N:z:h:S:r:p:l:x:u:j:T:I:O:R:C:D:m:" arg 
+  while getopts "a:i:o:e:c:s:v:V:dw:q:n:N:z:h:S:r:p:l:x:u:j:T:I:O:R:C:D:m:A:t:" arg 
   do
       case "$arg" in
       a) bls_opt_xtra_args="$OPTARG" ;;
@@ -328,6 +329,8 @@ function bls_parse_submit_options ()
       C) bls_opt_req_file="$OPTARG";;
       D) bls_opt_run_dir="$OPTARG";;
       m) bls_opt_req_mem="$OPTARG";;
+      A) bls_opt_project="$OPTARG";;
+      t) bls_opt_runtime="$OPTARG";;
       -) break ;;
       ?) echo $usage_string
          exit 1 ;;
