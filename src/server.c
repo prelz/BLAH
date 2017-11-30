@@ -1159,7 +1159,7 @@ cmd_submit_job(void *args)
 	else if ((proxyname) != NULL && (!disable_limited_proxy))
 	{
 		/* not in glexec mode: need to limit the proxy */
-		char *errmsg;
+		char *errmsg = NULL;
 		if((proxynameNew = limit_proxy(proxyname, NULL, &errmsg)) == NULL)
 		{
 			/* PUSH A FAILURE */
