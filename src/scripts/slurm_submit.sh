@@ -70,6 +70,14 @@ if [[ $bls_opt_mpinodes -gt 1 ]] ; then
   echo "#SBATCH --cpus-per-task=$bls_opt_mpinodes" >> $bls_tmp_file
 fi
 
+# Ensure local files actually exist before submitting job. This prevents
+# unnecessary churn on the scheduler if the files don't exist.  
+if ! bls_fl_test_exists inputsand ; then
+    echo "Input sandbox file doesn't exist: $bls_fl_test_exists_result" >&2
+    echo Error # for the sake of waiting fgets in blahpd
+    exit 1
+fi
+
 # Do the local and extra args after all #SBATCH commands, otherwise slurm ignores anything
 # after a non-#SBATCH command
 bls_set_up_local_and_extra_args
