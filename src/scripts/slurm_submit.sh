@@ -70,6 +70,14 @@ if [[ $bls_opt_mpinodes -gt 1 ]] ; then
   echo "#SBATCH --cpus-per-task=$bls_opt_mpinodes" >> $bls_tmp_file
 fi
 
+# Verify the workdir exists before submitting the job. If a bogus workdir is
+# given, the job is hopeless
+if [[ ! -z "$bls_opt_workdir" && ! -d "$bls_opt_workdir" ]] ; then
+  echo "Error: Workdir doesn't exist" >&2
+  echo Error # for the sake of waiting fgets in blahpd
+  exit 1
+fi
+
 # Ensure local files actually exist before submitting job. This prevents
 # unnecessary churn on the scheduler if the files don't exist.  
 if ! bls_fl_test_exists inputsand ; then
