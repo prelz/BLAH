@@ -816,7 +816,7 @@ function bls_add_job_wrapper ()
 function bls_set_up_local_and_extra_args ()
 {
   if [ -r $bls_local_submit_attributes_file ] ; then
-      echo \#\!/bin/sh > $bls_opt_tmp_req_file
+      echo \#\!/bin/bash > $bls_opt_tmp_req_file
       if [ ! -z $bls_opt_req_file ] ; then
           cat $bls_opt_req_file >> $bls_opt_tmp_req_file
       fi
