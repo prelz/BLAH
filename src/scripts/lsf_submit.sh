@@ -161,6 +161,7 @@ echo "    cd \$CERN_STARTER_ORIGINAL_CWD" >> $bls_tmp_file
 echo "fi" >> $bls_tmp_file
 
 bls_add_job_wrapper
+bls_save_submit
 
 # Let the wrap script be at least 1 second older than logfile
 # for subsequent "find -newer" command to work

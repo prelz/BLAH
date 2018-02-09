@@ -78,7 +78,7 @@ bls_set_up_local_and_extra_args
 # Assume all filesystems are shared.
 
 bls_add_job_wrapper
-
+bls_save_submit
 
 ###############################################################
 # Submit the script
