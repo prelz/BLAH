@@ -130,6 +130,34 @@ function bls_fl_subst_and_accumulate ()
   done
 }
 
+function bls_fl_test_exists ()
+{
+#
+# Usage: bls_fl_test_exists container_name
+# Verfies all container_name "@@F_LOCAL" exists
+# First missing file is returned in $bls_fl_test_exists_result.
+#
+  local container_name
+
+  container_name=${1:?"Missing container name argument to bls_fl_subst_and_accumulate"}
+
+  local last_argument
+
+  eval "last_argument=\${bls_${container_name}_counter:=0}"
+
+  local ind
+  bls_fl_test_exists_result=
+  for (( ind=0 ; ind < $last_argument ; ind++ )) ; do
+      bls_fl_subst $container_name $ind "@@F_LOCAL"
+      if [ ! -z "$bls_fl_subst_result" -a ! -f "$bls_fl_subst_result" ] ; then
+          bls_fl_test_exists_result="${bls_fl_subst_result}"
+          return 1
+      fi
+  done
+  return 0
+}
+
+
 function bls_fl_subst_and_dump ()
 {
 #
