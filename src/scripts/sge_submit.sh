@@ -94,6 +94,7 @@ bls_fl_subst_and_accumulate outputsand "@@F_REMOTE@`hostname -f`:@@F_LOCAL" "@@@
 echo "#$ -m n"  >> $bls_tmp_file
 
 bls_add_job_wrapper
+bls_save_submit
 
 ###############################################################
 # Submit the script
