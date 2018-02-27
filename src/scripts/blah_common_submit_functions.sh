@@ -768,8 +768,10 @@ function bls_finish_job_wrapper ()
   fi
 }
 
-function bls_test_working_dir ()
+function bls_test_input_files ()
 {
+  # Verify the workdir can be accessed before submitting the job. If a bogus workdir is
+  # given, the job is hopeless
   if [ "x$bls_opt_workdir" != "x" ]; then
       cd $bls_opt_workdir
   elif [ "x$blah_set_default_workdir_to_home" == "xyes" ]; then
@@ -782,13 +784,22 @@ function bls_test_working_dir ()
       rm -f $bls_tmp_file
       exit 1
   fi
+
+  # Ensure local files actually exist. When called before job submission, this prevents
+  # unnecessary churn on the scheduler if the files don't exist.
+  if ! bls_fl_test_exists inputsand ; then
+      echo "Input sandbox file doesn't exist: $bls_fl_test_exists_result" >&2
+      echo Error # for the sake of waiting fgets in blahpd
+      rm -rf $bls_tmp_file
+      exit 1
+  fi
 }
 
 function bls_add_job_wrapper ()
 {
+  bls_test_input_files
   bls_start_job_wrapper >> $bls_tmp_file
   bls_finish_job_wrapper >> $bls_tmp_file
-  bls_test_working_dir
 }
 
 function bls_set_up_local_and_extra_args ()
