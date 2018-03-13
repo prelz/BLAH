@@ -790,7 +790,7 @@ function bls_test_input_files ()
   if ! bls_fl_test_exists inputsand ; then
       echo "Input sandbox file doesn't exist: $bls_fl_test_exists_result" >&2
       echo Error # for the sake of waiting fgets in blahpd
-      rm -rf $bls_tmp_file
+      rm -f "$bls_tmp_file"
       exit 1
   fi
 }
