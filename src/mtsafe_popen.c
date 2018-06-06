@@ -308,7 +308,7 @@ exe_getouterr(char *const command, char *const environment[], char **cmd_output,
 	envcopy[envcopy_size + i] = (char *)NULL;
 
 	/* Do the shell expansion */
-	if(i = wordexp(command, &args, 0))
+	if(i = wordexp(command, &args, WRDE_NOCMD))
 	{
 		fprintf(stderr,"wordexp: unable to parse the command line \"%s\" (error %d)\n", command, i);
 		return(1);
