@@ -12,12 +12,12 @@
 
 /* Daemon version */
 #ifndef BLAH_VERSION
-#define BLAH_VERSION "1.22.2"
+#define BLAH_VERSION "1.22.3"
 #endif
 
 /* Commit date */
 #ifndef BLAH_BUILD_TIMESTAMP
-#define BLAH_BUILD_TIMESTAMP "Jun 20 2017"
+#define BLAH_BUILD_TIMESTAMP "Jun 13 2018"
 #endif
 
 /* VERSION command result */
