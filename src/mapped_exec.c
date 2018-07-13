@@ -430,7 +430,7 @@ execute_cmd(exec_cmd_t *cmd)
 	}
 
 	/* Do the shell expansion */
-	if(wordexp_err = wordexp(command, &args, 0))
+	if(wordexp_err = wordexp(command, &args, WRDE_NOCMD))
 	{
 		fprintf(stderr,"wordexp: unable to parse the command line \"%s\" (error %d)\n", command, wordexp_err);
 		return(1);
@@ -466,7 +466,7 @@ execute_cmd(exec_cmd_t *cmd)
 			{
 				fprintf(stderr,"Error: setsid() returns %d. getpid returns %d: ", process_group, getpid());
 				perror("");
-				exit(1);       
+				_exit(1);       
 			}
 
 			/* Connect stdin to the proxy file if opened */
@@ -475,7 +475,7 @@ execute_cmd(exec_cmd_t *cmd)
 				if (dup2(proxy_fd, STDIN_FILENO) == -1)
 				{
 					perror("dup2() stdin");
-					exit(1);       
+					_exit(1);       
 				}
 				BLAHDBG("%s\n", "Proxy fd dupped on stdin. Setting umask to 0777");
 				umask(077);
@@ -485,12 +485,12 @@ execute_cmd(exec_cmd_t *cmd)
 			if (dup2(fdpipe_stdout[1], STDOUT_FILENO) == -1)
 			{
 				perror("dup2() stdout");
-				exit(1);       
+				_exit(1);       
 			}
 			if (dup2(fdpipe_stderr[1], STDERR_FILENO) == -1)
 			{
 				perror("dup2() stderr");
-				exit(1);       
+				_exit(1);       
 			}
 
 			/* Close unused pipes */
@@ -504,7 +504,7 @@ execute_cmd(exec_cmd_t *cmd)
 
 			/* If we are still here, execve failed */
 			fprintf(stderr, "%s: %s", args.we_wordv[0], strerror(errno));
-			exit(errno);
+			_exit(errno);
 
 		default: /* Parent process */
 			/* Close unused pipes */
