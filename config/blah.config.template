@@ -12,7 +12,7 @@ BLAHPD_ACCOUNTING_INFO_LOG=
 
 #Set to yes if you wish to disable BLAH's machinery for transferring 
 #or delegating proxies to the worker node where a job is running. (default = no)
-blah_disable_wn_proxy_renewal=
+blah_disable_wn_proxy_renewal=yes
 
 #Set to yes to enable delegation (instead of copy) of renewed proxies
 #to worker nodes. NOTE: limited *and* delegated proxes are not 
@@ -21,7 +21,7 @@ blah_disable_wn_proxy_renewal=
 blah_delegate_renewed_proxies=
 
 #Set to yes to disable creation of a limited proxy. (default = no)
-blah_disable_limited_proxy=
+blah_disable_limited_proxy=yes
 
 #max number of concurrent threads to serve commands (default = 500)
 blah_max_threaded_cmds=50
