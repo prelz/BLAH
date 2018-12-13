@@ -381,7 +381,7 @@ def get_slurm_location(program):
     Locate the copy of the slurm bin the blahp configuration wants to use.
     """
     global _slurm_location_cache
-    if _slurm_location_cache != None:
+    if _slurm_location_cache is not None:
         return os.path.join(_slurm_location_cache, program)
 
     cmd = 'echo "%s/%s"' % (config.get('slurm_binpath'), 'scontrol')
@@ -418,7 +418,7 @@ def parse_scontrol(output):
             #print cur_job_id, line
             cur_job_info = {"BatchJobId": '"%s"' % cur_job_id}
             continue
-        if cur_job_id == None:
+        if cur_job_id is None:
             continue
         m = exec_host_re.match(line)
         if m:
