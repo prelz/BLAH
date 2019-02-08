@@ -660,7 +660,7 @@ function bls_start_job_wrapper ()
     echo "new_home=\${old_home}/$run_dir"
   fi
 
-  echo "mkdir \$new_home"
+  echo 'mkdir "$new_home"'
   echo "trap 'wait \$job_pid; cd \$old_home; rm -rf \$new_home; exit 255' HUP INT QUIT TERM XCPU"
   echo "trap 'wait \$job_pid; cd \$old_home; rm -rf \$new_home' EXIT"
 
