@@ -660,9 +660,12 @@ function bls_start_job_wrapper ()
     echo "new_home=\${old_home}/$run_dir"
   fi
 
-  echo "mkdir \$new_home"
-  echo "trap 'wait \$job_pid; cd \$old_home; rm -rf \$new_home; exit 255' 1 2 3 15 24"
-  echo "trap 'wait \$job_pid; cd \$old_home; rm -rf \$new_home' 0"
+  echo 'mkdir "$new_home"'
+  echo 'job_wait_cleanup () { wait "$job_pid"; cd "$old_home"; rm -rf "$new_home"; }'
+  echo 'on_signal () { kill -$1 "$job_pid"; job_wait_cleanup; exit 255; }'
+  echo 'trap_sigs () { for sig; do trap "on_signal $sig" $sig; done; }'
+  echo 'trap_sigs HUP INT QUIT TERM XCPU'
+  echo 'trap job_wait_cleanup EXIT'
 
   echo "# Copy into new home any shared input sandbox file"
   bls_fl_subst_and_dump inputcopy "cp \"@@F_LOCAL\" \"\$new_home/@@F_REMOTE\" &> /dev/null" 
