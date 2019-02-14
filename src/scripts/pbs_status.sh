@@ -208,6 +208,9 @@ BEGIN {
 
 END {
         if (current_js ~ "Q")  {jobstatus = 1}
+        if (current_js ~ "W")  {jobstatus = 1}
+        if (current_js ~ "S")  {jobstatus = 1}
+        if (current_js ~ "T")  {jobstatus = 1}
         if (current_js ~ "R")  {jobstatus = 2}
         if (current_js ~ "E")  {jobstatus = 2}
         if (current_js ~ "C")  {jobstatus = 4}
