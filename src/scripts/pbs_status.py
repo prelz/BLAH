@@ -234,8 +234,10 @@ def qstat(jobid=""):
     starttime = time.time()
     log("Starting qstat.")
     command = (qstat_bin, '-f')
-    if config.get('pbs_pro').lower() != 'yes':
-        command += ('-1',) # -1 conflicts with -f in PBS Pro
+    if config.get('pbs_pro').lower() == 'yes':
+        command += ('-x',)  # also query for detailed output of finished jobs
+    else:
+        command += ('-1',)  # -1 conflicts with -f in PBS Pro
     if jobid:
         command += (jobid,)
     qstat_proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
