@@ -35,6 +35,13 @@ for  job in  $@ ; do
         requested=`echo $job | sed 's/^.*\///'`
         cmdout=`${pbs_binpath}/qdel $requested 2>&1`
         retcode=$?
+        # If the job is already completed or no longer in the queue,
+        # treat it as successfully deleted.
+        if echo "$cmdout" | grep -q 'Unknown Job' ; then
+                retcode=0
+        elif echo "$cmdout" | grep -q 'Request invalid for state of job MSG=invalid state for job - COMPLETE' ; then
+                retcode=0
+        fi
         if [ "$retcode" == "0" ] ; then
                 if [ "$jnr" == "1" ]; then
                         echo " 0 No\\ error"
