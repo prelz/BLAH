@@ -204,9 +204,14 @@ if [ "x$environment" != "x" ] ; then
 # new condor format to avoid errors  when things like LS_COLORS (which 
 # has semicolons in it) get captured
     eval "env_array=($environment)"
-    sq="'"  # map key=val -> key='val'
+    dq='"'
+    sq="'"
+    # map key=val -> key='val'
     env_array=("${env_array[@]/=/=$sq}")
     env_array=("${env_array[@]/%/$sq}")
+    # escape single-quote and double-quote characters (by doubling them)
+    env_array=("${env_array[@]//$sq/$sq$sq}")
+    env_array=("${env_array[@]//$dq/$dq$dq}")
     submit_file_environment="environment = \"${env_array[*]}\""
 else
     if [ "x$envir" != "x" ] ; then
