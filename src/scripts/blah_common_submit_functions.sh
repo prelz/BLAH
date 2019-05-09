@@ -514,11 +514,14 @@ function bls_setup_all_files ()
           bls_proxy_remote_file=${bls_tmp_name}.proxy
           bls_test_shared_dir "$bls_proxy_local_file"
           if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
-            bls_fl_add_value inputcopy "$bls_proxy_local_file" "${bls_proxy_remote_file}"
+              if [ "x$bls_opt_proxyrenew" == "xyes" ] ; then
+                  bls_fl_add_value inputcopy "$bls_proxy_local_file" "${bls_proxy_remote_file}"
+                  bls_need_to_reset_proxy=yes
+              fi
           else
-            bls_fl_add_value inputsand "$bls_proxy_local_file" "${blah_wn_inputsandbox}${bls_proxy_remote_file}" "$bls_proxy_remote_file"
+              bls_fl_add_value inputsand "$bls_proxy_local_file" "${blah_wn_inputsandbox}${bls_proxy_remote_file}" "$bls_proxy_remote_file"
+              bls_need_to_reset_proxy=yes
           fi
-          bls_need_to_reset_proxy=yes
       fi
   fi
   
@@ -679,6 +682,8 @@ function bls_start_job_wrapper ()
   if [ "x$bls_need_to_reset_proxy" == "xyes" ] ; then
       echo "# Resetting proxy to local position"
       echo "export X509_USER_PROXY=\$new_home/${bls_proxy_remote_file}"
+  elif [ -r "$bls_proxy_local_file" -a -f "$bls_proxy_local_file" ] ; then
+      echo "export X509_USER_PROXY=${bls_proxy_local_file}"
   fi
   
   # Add the command (with full path if not staged)
