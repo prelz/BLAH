@@ -206,12 +206,12 @@ if [ "x$environment" != "x" ] ; then
     eval "env_array=($environment)"
     dq='"'
     sq="'"
-    # map key=val -> key='val'
-    env_array=("${env_array[@]/=/=$sq}")
-    env_array=("${env_array[@]/%/$sq}")
     # escape single-quote and double-quote characters (by doubling them)
     env_array=("${env_array[@]//$sq/$sq$sq}")
     env_array=("${env_array[@]//$dq/$dq$dq}")
+    # map key=val -> key='val'
+    env_array=("${env_array[@]/=/=$sq}")
+    env_array=("${env_array[@]/%/$sq}")
     submit_file_environment="environment = \"${env_array[*]}\""
 else
     if [ "x$envir" != "x" ] ; then
