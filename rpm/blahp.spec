@@ -4,7 +4,7 @@
 %define bl_libexecdir %{_libexecdir}/%{name}
 
 Name:		blahp
-Version:	1.18.42
+Version:	1.18.43
 Release:	1%{?gitrev:.%{gitrev}}%{?dist}
 Summary:	gLite BLAHP daemon
 
@@ -174,6 +174,9 @@ fi
 %{_initrddir}/glite-ce-*
 
 %changelog
+* Tue Jun 25 2019 Carl Edquist <edquist@cs.wisc.edu> - 1.18.43
+- Support batch_gahp.config paths from condor (SOFTWARE-3587)
+
 * Fri Jun 21 2019 Carl Edquist <edquist@cs.wisc.edu> - 1.18.42
 - Move glite-build-common-cpp m4 files to vendor area (SOFTWARE-3587)
 - Pull rpm spec file into source repo
