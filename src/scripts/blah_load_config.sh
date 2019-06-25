@@ -50,6 +50,11 @@ fi
 
 if [ -r "$BLAHPD_CONFIG_LOCATION" ]; then
   . $BLAHPD_CONFIG_LOCATION
+elif [ -r "${GLITE_LOCATION:-/opt/glite}/etc/batch_gahp.config" ]; then
+  . ${GLITE_LOCATION:-/opt/glite}/etc/batch_gahp.config
+elif [ -r "${BLAHPD_LOCATION}/etc/batch_gahp.config" ]; then
+#   This will default to /etc/batch_gahp.config if BLAHPD_LOCATION is unset.
+  . ${BLAHPD_LOCATION}/etc/batch_gahp.config
 elif [ -r "${GLITE_LOCATION:-/opt/glite}/etc/blah.config" ]; then
   . ${GLITE_LOCATION:-/opt/glite}/etc/blah.config
 elif [ -r "${BLAHPD_LOCATION}/etc/blah.config" ]; then
