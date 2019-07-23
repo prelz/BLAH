@@ -330,14 +330,14 @@ def get_finished_job_stats(jobid):
             try:
                 return_dict['RemoteUserCpu'] += convert_cpu_to_seconds(row["UserCPU"])
             except:
-                log("Failed to parse CPU usage for job id %s: %s, %s" % (jobid, row["UserCPU"]))
+                log("Failed to parse CPU usage for job id %s: %s" % (jobid, row["UserCPU"]))
                 raise
 
         if row["SystemCPU"] is not "":
             try:
                 return_dict['RemoteSysCpu'] += convert_cpu_to_seconds(row["SystemCPU"])
             except:
-                log("Failed to parse CPU usage for job id %s: %s, %s" % (jobid, row["SystemCPU"]))
+                log("Failed to parse CPU usage for job id %s: %s" % (jobid, row["SystemCPU"]))
                 raise   
         if row["MaxRSS"] is not "":
             # Remove the trailing [KMGTP] and scale the value appropriately
