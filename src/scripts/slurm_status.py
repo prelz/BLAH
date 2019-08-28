@@ -307,13 +307,13 @@ def get_finished_job_stats(jobid):
 
     # List of attributes required from sacct
     attributes = "UserCPU,SystemCPU,MaxRSS,ExitCode"
-    child_stdout = os.popen("%s -j %s --noconvert -P --format %s" % (sacct, str(jobid), attributes)
+    child_stdout = os.popen("%s -j %s --noconvert -P --format %s" % (sacct, str(jobid), attributes))
     sacct_data = child_stdout.readlines()
     ret = child_stdout.close()
 
     if ret:
         # retry without --noconvert for slurm < 15.8
-        child_stdout = os.popen("sacct -j %s -P --format %s" % (str(jobid), attributes)
+        child_stdout = os.popen("sacct -j %s -P --format %s" % (str(jobid), attributes))
         sacct_data = child_stdout.readlines()
         child_stdout.close()
 
