@@ -299,7 +299,7 @@ def get_finished_job_stats(jobid):
     """
     
     # First, list the attributes that we want
-    return_dict = { "ImageSize": 0, "ExitCode": 0, "RemoteUserCpu": 0 }
+    return_dict = { "ImageSize": 0, "ExitCode": 0, "RemoteUserCpu": 0, "RemoteSysCpu": 0 }
 
     # Next, query the appropriate interfaces for the completed job information
     sacct = get_slurm_location('sacct')
