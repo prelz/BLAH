@@ -286,12 +286,14 @@ def convert_cpu_to_seconds(cpu_string):
     #   [DD-[hh:]]mm:ss.sss
     # Convert that to just seconds.
     elem = re.split('[-:]', cpu_string)
+
+    # Convert seconds to a float, truncate to int at end
     secs = float(elem[-1]) + int(elem[-2]) * 60
     if len(elem) > 2:
         secs += int(elem[-3]) * 3600
     if len(elem) > 3:
         secs += int(elem[-4]) * 86400
-    return secs
+    return int(secs)
 
 def get_finished_job_stats(jobid):
     """
