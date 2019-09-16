@@ -299,18 +299,21 @@ def get_finished_job_stats(jobid):
     """
     
     # First, list the attributes that we want
-    return_dict = { "ImageSize": 0, "ExitCode": 0, "RemoteUserCpu": 0 }
+    return_dict = { "ImageSize": 0, "ExitCode": 0, "RemoteUserCpu": 0, "RemoteSysCpu": 0 }
 
     # Next, query the appropriate interfaces for the completed job information
     sacct = get_slurm_location('sacct')
     log("Querying sacct for completed job for jobid: %s" % (str(jobid)))
-    child_stdout = os.popen("%s -j %s -l --noconvert -P" % (sacct, str(jobid)))
+
+    # List of attributes required from sacct
+    attributes = "UserCPU,SystemCPU,MaxRSS,ExitCode"
+    child_stdout = os.popen("%s -j %s --noconvert -P --format %s" % (sacct, str(jobid), attributes))
     sacct_data = child_stdout.readlines()
     ret = child_stdout.close()
 
     if ret:
         # retry without --noconvert for slurm < 15.8
-        child_stdout = os.popen("sacct -j %s -l -P" % (str(jobid)))
+        child_stdout = os.popen("sacct -j %s -P --format %s" % (str(jobid), attributes))
         sacct_data = child_stdout.readlines()
         child_stdout.close()
 
@@ -323,16 +326,24 @@ def get_finished_job_stats(jobid):
     # Slurm can return more than 1 row, for some odd reason.
     # so sum up relevant values
     for row in reader:
-        if row["AveCPU"] is not "":
+        if row["UserCPU"] is not "":
             try:
-                return_dict['RemoteUserCpu'] += convert_cpu_to_seconds(row["AveCPU"]) * int(row["AllocCPUS"])
+                return_dict['RemoteUserCpu'] += convert_cpu_to_seconds(row["UserCPU"])
             except:
-                log("Failed to parse CPU usage for job id %s: %s, %s" % (jobid, row["AveCPU"], row["AllocCPUS"]))
-                raise                
+                log("Failed to parse CPU usage for job id %s: %s" % (jobid, row["UserCPU"]))
+                raise
+
+        if row["SystemCPU"] is not "":
+            try:
+                return_dict['RemoteSysCpu'] += convert_cpu_to_seconds(row["SystemCPU"])
+            except:
+                log("Failed to parse CPU usage for job id %s: %s" % (jobid, row["SystemCPU"]))
+                raise   
         if row["MaxRSS"] is not "":
             # Remove the trailing [KMGTP] and scale the value appropriately
             # Note: We assume that all values will have a suffix, and we
             #   want the value in kilos.
+            # With the --noconvert option, there should be no suffix, and the value is in bytes.
             try:
                 value = row["MaxRSS"]
                 factor = 1
@@ -344,7 +355,12 @@ def get_finished_job_stats(jobid):
                     factor = 1024 * 1024 * 1024
                 elif value[-1] == 'P':
                     factor = 1024 * 1024 * 1024 * 1024
-                    return_dict["ImageSize"] += int(value.strip('KMGTP')) * factor
+                elif value[-1] == 'K':
+                    factor = 1
+                else:
+                    # The last value is not a letter (or unrecognized scaling factor), and is in bytes, convert to k
+                    value = str(int(value) / 1024)
+                return_dict["ImageSize"] += int(value.strip('KMGTP')) * factor
             except:
                 log("Failed to parse memory usage for job id %s: %s" % (jobid, row["MaxRSS"]))
                 raise
