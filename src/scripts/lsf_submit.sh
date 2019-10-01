@@ -142,6 +142,14 @@ else
 fi
 # --- End of MPI directives
 
+if [ "x$bls_opt_project" != "x" ] ; then
+  echo "#BSUB -P $bls_opt_project" >> $bls_tmp_file
+fi
+
+if [ "x$bls_opt_runtime" != "x" ] ; then
+  echo "#BSUB -W $((bls_opt_runtime / 60))" >> $bls_tmp_file
+fi
+
 #local batch system-specific file output must be added to the submit file
 bls_local_submit_attributes_file=${blah_libexec_directory}/lsf_local_submit_attributes.sh
 

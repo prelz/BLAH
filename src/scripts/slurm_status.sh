@@ -29,8 +29,6 @@ fi
 
 usage_string="Usage: $0 [-w] [-n]"
 
-#echo $0 "$@" >>~/slurm.debug
-
 ###############################################################
 # Parse parameters
 ###############################################################
@@ -55,12 +53,16 @@ proxy_dir=~/.blah_jobproxy_dir
 for  reqfull in $pars ; do
   reqjob=`echo $reqfull | sed -e 's/^.*\///'`
 
+  cluster_name=`echo $reqjob | cut -s -f2 -d@`
+  if [ $cluster_name != "" ] ; then
+    reqjob=`echo $reqjob | cut -f1 -d@`
+    cluster_arg="-M $cluster_name"
+  fi
+
   staterr=/tmp/${reqjob}_staterr
 
-#echo "running: ${slurm_binpath}/scontrol show job $reqjob" >>~/slurm.debug
-  result=`${slurm_binpath}/scontrol show job $reqjob 2>$staterr`
+  result=`${slurm_binpath}/scontrol $cluster_arg show job $reqjob 2>$staterr`
   stat_exit_code=$?
-#echo "stat_exit_code=$stat_exit_code" >>~/slurm.debug
   result=`echo "$result" | awk -v job_id=$reqjob -v proxy_dir=$proxy_dir '
 BEGIN {
     blah_status = 4
@@ -92,6 +94,7 @@ END {
     if ( slurm_status ~ "SPECIAL_EXIT" ) { blah_status = 4 }
     if ( slurm_status ~ "STOPPED" ) { blah_status = 2 }
     if ( slurm_status ~ "SUSPENDED" ) { blah_status = 2 }
+    if ( slurm_status ~ "TIMEOUT" ) { blah_status = 4 }
 
     print "[BatchJobId=\"" job_id "\";JobStatus=" blah_status ";"
     if ( blah_status == 4 ) {
@@ -104,7 +107,7 @@ END {
 }
 '
 `
-#echo result=$result >>~/slurm.debug
+
   errout=`cat $staterr`
   rm -f $staterr 2>/dev/null
 
@@ -113,10 +116,8 @@ END {
   fi
   if [ $stat_exit_code -eq 0 ] ; then
     echo 0${result}
-#echo 0${result} >>~/slurm.debug
   else
     echo 1Error: ${errout}
-#echo 1Error: ${errout} >>~/slurm.debug
   fi
 
 done

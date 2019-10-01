@@ -51,17 +51,32 @@ cat > $bls_tmp_file << end_of_preamble
 #SBATCH -e $slurm_std_storage
 end_of_preamble
 
+if [ "x$bls_opt_project" != "x" ] ; then
+  echo "#SBATCH -A $bls_opt_project" >> $bls_tmp_file
+fi
+
+if [ "x$bls_opt_runtime" != "x" ] ; then
+  echo "#SBATCH -t $((bls_opt_runtime / 60))" >> $bls_tmp_file
+fi
+
 #local batch system-specific file output must be added to the submit file
 bls_local_submit_attributes_file=${blah_libexec_directory}/slurm_local_submit_attributes.sh
-
-# Handle queues and paritions (same thing in SLURM) (copied from PBS submit file)
-[ -z "$bls_opt_queue" ] || grep -q "^#SBATCH --partition" $bls_tmp_file || echo "#SBATCH --partition=$bls_opt_queue" >> $bls_tmp_file
 
 if [ "x$bls_opt_req_mem" != "x" ]
 then
   # Different schedulers require different memory checks
   echo "#SBATCH --mem=${bls_opt_req_mem}" >> $bls_tmp_file
 fi
+
+# Write SLURM directives according to command line options
+# Map the queue option to slurm's partition option
+# handle queue/partition overriding
+cluster_name=`echo "$bls_opt_queue" | cut -s -f2 -d@`
+if [ "$cluster_name" != "" ] ; then
+  bls_opt_queue=`echo "$bls_opt_queue" | cut -f1 -d@`
+fi
+[ -z "$bls_opt_queue" ] || grep -q "^#SBATCH -p" $bls_tmp_file || echo "#SBATCH -p $bls_opt_queue" >> $bls_tmp_file
+[ -z "$cluster_name" ] || grep -q "^#SBATCH -M" $bls_tmp_file || echo "#SBATCH -M $cluster_name" >> $bls_tmp_file
 
 # Simple support for multi-cpu attributes
 if [[ $bls_opt_mpinodes -gt 1 ]] ; then
@@ -103,8 +118,11 @@ if [ "X$jobID" == "X" ]; then
 	exit 1
 fi
 
-# Compose the blahp jobID ("slurm/" + datenow + pbs jobid)
+# Compose the blahp jobID ("slurm/" + datenow + jobid [+ cluster])
 blahp_jobID="slurm/`basename $datenow`/$jobID"
+if [ "$cluster_name" != "" ] ; then
+	blahp_jobID="${blahp_jobID}@${cluster_name}"
+fi
 
 echo "BLAHP_JOBID_PREFIX$blahp_jobID"
   

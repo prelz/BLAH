@@ -63,6 +63,14 @@ cat > $bls_tmp_file << end_of_preamble
 #\$ -S /bin/bash
 end_of_preamble
 
+if [ "x$bls_opt_project" != "x" ] ; then
+  echo "#\$ -A $bls_opt_project" >> $bls_tmp_file
+fi
+
+if [ "x$bls_opt_runtime" != "x" ] ; then
+  echo "#\$ -l h_rt=$bls_opt_runtime" >> $bls_tmp_file
+fi
+
 #local batch system-specific file output must be added to the submit file
 local_submit_attributes_file=${blah_libexec_directory}/sge_local_submit_attributes.sh
 if [ -r $local_submit_attributes_file ] ; then
