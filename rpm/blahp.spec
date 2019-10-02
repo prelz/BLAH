@@ -72,72 +72,9 @@ echo "blah_libexec_directory=/usr/libexec/blahp" >> $RPM_BUILD_ROOT%{_sysconfdir
 # Insert appropriate templates for LSF, SGE, Slurm, and HTCondor; admins will need to change these
 install -m 0755 -d -p $RPM_BUILD_ROOT%{bl_sysconfdir}
 
-for batch_system in sge slurm; do
+for batch_system in pbs sge slurm lsf condor; do
     mv $RPM_BUILD_ROOT%{bl_libexecdir}/${batch_system}_local_submit_attributes.sh $RPM_BUILD_ROOT%{bl_sysconfdir}/
 done
-
-for batch_system in lsf condor; do
-cat > $RPM_BUILD_ROOT%{bl_sysconfdir}/${batch_system}_local_submit_attributes.sh << EOF
-#/bin/sh
-
-# This file is sourced by blahp before submitting the job to ${i}
-# Anything printed to stdout is included in the submit file.
-# For example, to set a default walltime of 24 hours in PBS, you
-# could uncomment this line:
-
-# echo "#PBS -l walltime=24:00:00"
-
-# blahp allows arbitrary attributes to be passed to this script on a per-job
-# basis.  If you add the following to your HTCondor-G submit file:
-
-#+remote_cerequirements = NumJobs == 100 && foo = 5
-
-# Then an environment variable, NumJobs, will be exported prior to calling this
-# script and set to a value of 100.  The variable foo will be set to 5.
-
-# You could allow users to set the walltime for the job with the following
-# customization (PBS syntax given; adjust for the appropriate batch system):
-
-#if [ -n "\$Walltime" ]; then
-#  echo "#PBS -l walltime=\$Walltime"
-#else
-#  echo "#PBS -l walltime=24:00:00"
-#fi
-
-EOF
-done
-
-# A more appropriate template for PBS; actually does something
-cat > $RPM_BUILD_ROOT%{bl_sysconfdir}/pbs_local_submit_attributes.sh << EOF
-#/bin/sh
-
-# This file is sourced by blahp before submitting the job to PBS
-# Anything printed to stdout is included in the submit file.
-# For example, to set a default walltime of 24 hours in PBS, you
-# could uncomment this line:
-
-# echo "#PBS -l walltime=24:00:00"
-
-# blahp allows arbitrary attributes to be passed to this script on a per-job
-# basis.  If you add the following to your HTCondor-G submit file:
-
-#+remote_cerequirements = NumJobs == 100 && foo = 5
-
-# Then an environment variable, NumJobs, will be exported prior to calling this
-# script and set to a value of 100.  The variable foo will be set to 5.
-
-# You could allow users to set the walltime for the job with the following
-# customization (PBS syntax given; adjust for the appropriate batch system):
-
-# Uncomment the else block to default to 24 hours of runtime; otherwise, the queue
-# default is used.
-if [ -n "\$Walltime" ]; then
-  echo "#PBS -l walltime=\$Walltime"
-#else
-#  echo "#PBS -l walltime=24:00:00"
-fi
-
-EOF
 
 # Create local_submit_attributes.sh symlinks in /etc/blahp
 for batch_system in pbs sge slurm lsf condor; do
