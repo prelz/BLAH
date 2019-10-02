@@ -1,4 +1,4 @@
-#/bin/sh
+#/bin/bash
 
 # This file is sourced by blahp before submitting the job to LSF
 # Anything printed to stdout is included in the submit file.
