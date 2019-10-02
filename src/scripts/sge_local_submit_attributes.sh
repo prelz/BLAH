@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # $Id: sge_local_submit_attributes.sh,v 1.1 2011/07/20 06:15:34 rrosende Exp $
 
