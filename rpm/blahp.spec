@@ -4,7 +4,7 @@
 %define bl_libexecdir %{_libexecdir}/%{name}
 
 Name:		blahp
-Version:	1.18.43
+Version:	1.18.44
 Release:	1%{?gitrev:.%{gitrev}}%{?dist}
 Summary:	gLite BLAHP daemon
 
@@ -111,6 +111,12 @@ fi
 %{_initrddir}/glite-ce-*
 
 %changelog
+* Tue Oct 08 2019 Carl Edquist <edquist@cs.wisc.edu> - 1.18.44
+- Add Slurm SystemCpu accounting when job completes (SOFTWARE-3825)
+- Add support for decimal seconds fields from sacct (SOFTWARE-3826)
+- Pull in various updates to slurm scripts from htcondor's blap (SOFTWARE-3587)
+- Move local submit attributes scripts from spec to sources (SOFTWARE-3749)
+
 * Tue Jun 25 2019 Carl Edquist <edquist@cs.wisc.edu> - 1.18.43
 - Support batch_gahp.config paths from condor (SOFTWARE-3587)
 
