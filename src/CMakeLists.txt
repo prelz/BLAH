@@ -132,6 +132,9 @@ set(blah_scripts
     scripts/lsf_status.sh scripts/lsf_submit.sh scripts/lsf_hold.sh
     scripts/lsf_resume.sh scripts/condor_cancel.sh scripts/condor_status.sh
     scripts/condor_submit.sh scripts/condor_hold.sh scripts/condor_resume.sh
+    scripts/condor_local_submit_attributes.sh
+    scripts/pbs_local_submit_attributes.sh
+    scripts/lsf_local_submit_attributes.sh
     scripts/sge_cancel.sh scripts/sge_helper scripts/sge_resume.sh 
     scripts/sge_submit.sh scripts/sge_filestaging scripts/sge_hold.sh 
     scripts/sge_status.sh scripts/runcmd.pl.template

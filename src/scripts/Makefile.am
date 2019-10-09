@@ -39,6 +39,9 @@ libexec_SCRIPTS = blah_load_config.sh blah_common_submit_functions.sh \
   sge_hold.sh sge_status.sh runcmd.pl.template sge_local_submit_attributes.sh \
   slurm_cancel.sh slurm_hold.sh slurm_resume.sh slurm_status.sh \
   slurm_submit.sh slurm_local_submit_attributes.sh \
+  condor_local_submit_attributes.sh \
+  pbs_local_submit_attributes.sh \
+  lsf_local_submit_attributes.sh \
   blah.py __init__.py \
   pbs_status.py \
   slurm_status.py
