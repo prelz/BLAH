@@ -180,7 +180,7 @@ fi
 * Thu Mar 16 2017 Brian Lin <blin@cs.wisc.edu> - 1.18.29.bosco-2
 - Rebuild against condor-8.7.1
 
-* Thu Mar 1 2017 Brian Lin <blin@cs.wisc.edu> - 1.18.29.bosco-1
+* Wed Mar 1 2017 Brian Lin <blin@cs.wisc.edu> - 1.18.29.bosco-1
 - Blahp python scripts should ignore optional '-w' argument (SOFTWARE-2603)
 - Fail gracefully when encountering unexpected sacct output (SOFTWARE-2604)
 - Some #SBATCH commands are being ignored (SOFTWARE-2605)
@@ -250,7 +250,7 @@ fi
 - Handle LSF suspended states (SOFTWARE-2168)
 - Modify BLAHP to report gratia necessary attributes (SOFTWARE-2019)
 
-* Thu Dec 16 2015 Brian Lin <blin@cs.wisc.edu> - 1.18.16.bosco-1
+* Wed Dec 16 2015 Brian Lin <blin@cs.wisc.edu> - 1.18.16.bosco-1
 - Allow for disabling limited proxies in glexec
 - Fix bug in pbs_status.py when /tmp/ and /var/tmp were on different filesystems
 - Resync job registry to prevent jobs from being incorrectly marked as completed
