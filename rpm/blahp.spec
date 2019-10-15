@@ -4,7 +4,7 @@
 %define bl_libexecdir %{_libexecdir}/%{name}
 
 Name:		blahp
-Version:	1.18.44
+Version:	1.18.45
 Release:	1%{?gitrev:.%{gitrev}}%{?dist}
 Summary:	gLite BLAHP daemon
 
@@ -111,6 +111,9 @@ fi
 %{_initrddir}/glite-ce-*
 
 %changelog
+* Tue Oct 15 2019 Carl Edquist <edquist@cs.wisc.edu> - 1.18.45
+- Fix cherry-picking error from htcondor patch in 1.18.44 (SOFTWARE-3824)
+
 * Tue Oct 08 2019 Carl Edquist <edquist@cs.wisc.edu> - 1.18.44
 - Add Slurm SystemCpu accounting when job completes (SOFTWARE-3825)
 - Add support for decimal seconds fields from sacct (SOFTWARE-3826)
