@@ -114,6 +114,9 @@ fi
 * Tue Oct 15 2019 Carl Edquist <edquist@cs.wisc.edu> - 1.18.45
 - Fix cherry-picking error from htcondor patch in 1.18.44 (SOFTWARE-3824)
 
+* Wed Oct 09 2019 Carl Edquist <edquist@cs.wisc.edu> - 1.18.44-2
+- Add new local submit attr scripts to build rules (SOFTWARE-3749)
+
 * Tue Oct 08 2019 Carl Edquist <edquist@cs.wisc.edu> - 1.18.44
 - Add Slurm SystemCpu accounting when job completes (SOFTWARE-3825)
 - Add support for decimal seconds fields from sacct (SOFTWARE-3826)
