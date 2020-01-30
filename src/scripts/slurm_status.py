@@ -388,15 +388,12 @@ def get_slurm_location(program):
     if _slurm_location_cache is not None:
         return os.path.join(_slurm_location_cache, program)
 
-    cmd = 'echo "%s/%s"' % (config.get('slurm_binpath'), 'scontrol')
-
-    child_stdout = os.popen(cmd)
-    output = child_stdout.read().split("\n")[0].strip()
-    if child_stdout.close():
-        raise Exception("Unable to determine scontrol location: %s" % output)
-
-    _slurm_location_cache = os.path.dirname(output)
-    return output
+    slurm_bindir = config.get('slurm_binpath')
+    slurm_bin_location = os.path.join(slurm_bindir, program)
+    if not os.path.exists(slurm_bin_location):
+        raise Exception("Could not find %s in slurm_binpath=%s" % (program, output))
+    _slurm_location_cache = slurm_bindir
+    return os.path.join(slurm_bindir, program)
 
 job_id_re = re.compile("JobId=([0-9]+) .*")
 exec_host_re = re.compile("\s*BatchHost=([\w\-.]+)")
