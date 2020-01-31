@@ -393,7 +393,7 @@ def get_slurm_location(program):
     if not os.path.exists(slurm_bin_location):
         raise Exception("Could not find %s in slurm_binpath=%s" % (program, output))
     _slurm_location_cache = slurm_bindir
-    return os.path.join(slurm_bindir, program)
+    return slurm_bin_location
 
 job_id_re = re.compile("JobId=([0-9]+) .*")
 exec_host_re = re.compile("\s*BatchHost=([\w\-.]+)")
