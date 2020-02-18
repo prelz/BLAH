@@ -228,8 +228,11 @@ fi
 # # so to get them back into Condor format we need to remove all the
 # # extra quotes. We do this by replacing '" "' with ' ' and stripping
 # # the leading and trailing "s.
-# arguments="$(echo $arguments | sed -e 's/\" \"/ /g')"
-# arguments=${arguments:1:$((${#arguments}-2))}
+if [[ $arguments = '"'*'"' ]]; then
+  arguments=${arguments//'" "'/ }
+  arguments=${arguments/#'"'}
+  arguments=${arguments/%'"'}
+fi
 
 cat > $submit_file << EOF
 universe = vanilla
