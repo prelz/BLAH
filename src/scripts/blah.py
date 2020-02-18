@@ -1,8 +1,11 @@
 """Common functions for BLAH python scripts"""
 
-from ConfigParser import RawConfigParser
-# TODO: io.StringIO is preferred in Python3 since it handles unicode-encoded files
-from StringIO import StringIO
+try:  # for Python 2
+    from ConfigParser import RawConfigParser
+    from StringIO import StringIO
+except ImportError:  # for Python 3
+    from configparser import RawConfigParser
+    from io import StringIO
 
 class BlahConfigParser(RawConfigParser, object):
 
