@@ -398,7 +398,7 @@ def get_slurm_location(program):
     slurm_bindir = env_expand(config.get('slurm_binpath'))
     slurm_bin_location = os.path.join(slurm_bindir, program)
     if not os.path.exists(slurm_bin_location):
-        raise Exception("Could not find %s in slurm_binpath=%s" % (program, output))
+        raise Exception("Could not find %s in slurm_binpath=%s" % (program, slurm_bindir))
     _slurm_location_cache = slurm_bindir
     return slurm_bin_location
 
