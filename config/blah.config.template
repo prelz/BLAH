@@ -5,14 +5,14 @@
 ##Blah common variables
 
 #Supported batch systems (e.g. pbs,lsf)
-supported_lrms=
+supported_lrms=pbs,lsf,sge,slurm,condor
 
 #DGAS logfile 
 BLAHPD_ACCOUNTING_INFO_LOG=
 
 #Set to yes if you wish to disable BLAH's machinery for transferring 
 #or delegating proxies to the worker node where a job is running. (default = no)
-blah_disable_wn_proxy_renewal=
+blah_disable_wn_proxy_renewal=yes
 
 #Set to yes to enable delegation (instead of copy) of renewed proxies
 #to worker nodes. NOTE: limited *and* delegated proxes are not 
@@ -20,12 +20,15 @@ blah_disable_wn_proxy_renewal=
 #be enabled only if non-limited proxies are used for proxy renewal. (default = no)
 blah_delegate_renewed_proxies=
 
+#Set to yes to disable creation of a limited proxy. (default = no)
+blah_disable_limited_proxy=yes
+
 #max number of concurrent threads to serve commands (default = 500)
-#blah_max_threaded_cmds=100
+blah_max_threaded_cmds=50
 
 #Colon-separated list of paths that are shared among batch system
 #head and worker nodes.
-#blah_shared_directories=/home:/users
+blah_shared_directories=/
 
 #By default the job temporary work directory is created as a subdirectory
 #of wherever the batch system is configured to land the job. 
@@ -71,42 +74,41 @@ blah_children_restart_interval=
 blah_require_proxy_on_submit=
 
 #disable proxy user copy (default no)
-blah_disable_proxy_user_copy=
+#blah_disable_proxy_user_copy=yes
 
 ##PBS common variables
 
 #Path where PBS executables are located 
-pbs_binpath=
-#Uncomment for automatic detection:
-#pbs_binpath=`which qsub 2>/dev/null|sed 's|/[^/]*$||'
+# NOTE: this path is computed many times; I worry about the overhead here.  -BB, 12-13-2012
+pbs_binpath=/usr/bin
 
 #Path where the PBS logs are located ($pbs_spoolpath/server_logs)
-pbs_spoolpath=
+#pbs_spoolpath=
 
 #If it is set to yes blah does not check the jobid in the logfiles
 pbs_nochecksubmission=
 
 #If it is set to yes blah does NOT use log files to get job status, 
 #but uses only standard LRMS query (qstat)  
-pbs_nologaccess=
+pbs_nologaccess=yes
 
 #If it is set to no blah scripts for PBS will not try to read 
 #locally from the logs if BLParser is not present
 pbs_fallback=no
 
+#Set to 'yes' to request pvmem when submitting jobs
+pbs_set_pvmem=no
+
+#Set to 'yes' if you are running PBS Pro
+pbs_pro=no
 
 ##LSF common variables
 
 #Path where LSF executables are located 
-lsf_binpath=
-#Uncomment for automatic detection:
-#lsf_binpath=`which bsub 2>/dev/null|sed 's|/[^/]*$||'`
+lsf_binpath=/usr/bin
 
 #Path where the LSF conf file is located ($lsf_confpath/lsf.conf)
 lsf_confpath=
-#Uncomment for automatic detection:
-#lsf_confpath=${LSF_ENVDIR:-/etc}
-
 
 #If it is set to yes blah does not check the jobid in the logfiles
 lsf_nochecksubmission=
@@ -195,7 +197,7 @@ bupdater_path=
 bupdater_pidfile=/var/tmp/cream_tomcat_bupdater.pid
 
 #Registry file location
-job_registry=/var/tmp/cream_tomcat_registry.db
+job_registry=
 
 #Set the following variable to 'yes' to have multiple BLAHPD instances
 #share the job registry -index- via mmap:
@@ -283,12 +285,10 @@ tracejob_max_output=
 ##Condor
 
 #condor bin location
-condor_binpath=
-#Uncomment for automatic detection:
-#condor_binpath=`which condor_submit 2>/dev/null|sed 's|/[^/]*$||'`
+condor_binpath=/usr/bin
 
 #path to condor_config
-#export CONDOR_CONFIG="/opt/condor-c/etc/condor_config"
+#export CONDOR_CONFIG="/etc/condor/condor_config"
 
 #Enable the use of the caching for the batch system commands
 #(the command is specified by batch_command_caching_filter)
@@ -297,25 +297,25 @@ condor_batch_caching_enabled=
 #If condor_history should be used or not to the final state info about the jobs.
 bupdater_use_condor_history=
 
-# Set to 'yes' if the queue name should be used as schedd name in condor
-# commands with the '-name' option. If not, no name is used and the commands
-# will address the default schedd.
-condor_use_queue_as_schedd=no
-
 ##SGE
 
 sge_binpath=
 
-sge_cellname=
+sge_cellname=$SGE_CELL
 
-sge_rootpath=
+sge_rootpath=$SGE_ROOT
 
-sge_qacct_retry_interval=60
+#set the SGE parallel environment policy
+sge_pe_policy=*
 
 ##SLURM
 
 #path to the slurm executables
-slurm_binpath=
+#default: /usr/bin
+slurm_binpath=/usr/bin
+
+#default: /dev/null
+slurm_std_storage=/dev/null
 
 ##
 #####BNotifier subsection

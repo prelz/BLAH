@@ -1,4 +1,4 @@
-#!/bin/bash -l
+#!/bin/bash
 #
 # File:     pbs_submit.sh
 # Author:   David Rebatto (david.rebatto@mi.infn.it)
@@ -46,8 +46,14 @@
 
 logpath=${pbs_spoolpath}/server_logs
 if [ ! -d $logpath -o ! -x $logpath ]; then
- pbs_spoolpath=`${pbs_binpath}/tracejob | grep 'default prefix path'|awk -F" " '{ print $5 }'`
- logpath=${pbs_spoolpath}/server_logs
+  if [ -x "${pbs_binpath}/tracejob" ]; then
+    pbs_spoolpath=`${pbs_binpath}/tracejob | grep 'default prefix path'|awk -F" " '{ print $5 }'`
+    logpath=${pbs_spoolpath}/server_logs
+  else
+    # EPEL defaults for torque
+    pbs_spoolpath=/var/lib/torque/spool
+    logpath=/var/lib/torque/server_logs
+  fi
 fi
 
 bls_job_id_for_renewal=PBS_JOBID
@@ -108,8 +114,39 @@ then
   echo "#PBS -e $pbs_std_storage" >> $bls_tmp_file
 fi
 
+if [ "x$bls_opt_project" != "x" ] ; then
+  echo "#PBS -A $bls_opt_project" >> $bls_tmp_file
+fi
+
+if [ "x$bls_opt_runtime" != "x" ] ; then
+  echo "#PBS -l walltime=$bls_opt_runtime" >> $bls_tmp_file
+fi
+
 #local batch system-specific file output must be added to the submit file
 bls_local_submit_attributes_file=${blah_libexec_directory}/pbs_local_submit_attributes.sh
+
+# Begin building the select statement: select=x where x is the number of 'chunks'
+# to request. Chunk requests should precede any resource requests (resource
+# requests are order independent). An example from the PBS Pro manual:
+# #PBS -l  select=2:ncpus=8:mpiprocs=8:mem=6gb:interconnect=10g,walltime=16:00:00
+# Only one chunk is required for OSG needs at this time.
+pbs_select="#PBS -l select=1"
+
+if [ "x$bls_opt_req_mem" != "x" ]; then
+    # Max amount of virtual memory allocated to a single process
+    if [[ "x$pbs_set_pvmem" == "xyes" ]]; then
+        echo "#PBS -l pvmem=${bls_opt_req_mem}mb" >> $bls_tmp_file
+    fi
+    # Max amount of physical memory allocated to a single process
+    if [[ "$bls_opt_smpgranularity" == 1 ]]; then
+        echo "#PBS -l pmem=${bls_opt_req_mem}mb" >> $bls_tmp_file
+    fi
+    # Total amount of memory allocated to the job
+    pbs_select="$pbs_select:mem=${bls_opt_req_mem}mb"
+    if [ "x$pbs_pro" != "xyes" ]; then
+        echo "#PBS -l mem=${bls_opt_req_mem}mb" >> $bls_tmp_file
+    fi
+fi
 
 bls_set_up_local_and_extra_args
 
@@ -118,86 +155,90 @@ bls_set_up_local_and_extra_args
 [ -z "$bls_opt_queue" ] || grep -q "^#PBS -q" $bls_tmp_file || echo "#PBS -q $bls_opt_queue" >> $bls_tmp_file
 
 # Extended support for MPI attributes (+GPU for pbs_sched)
-pmaui=$(/usr/bin/pgrep maui)
-if [ "x$bls_opt_wholenodes" == "xyes" ] ; then
-  bls_opt_hostsmpsize=${bls_opt_hostsmpsize:-1}
-  if [[ ! -z "$bls_opt_smpgranularity" ]] ; then
-    if [[ -z "$bls_opt_hostnumber" ]] ; then
-      if [[ -z "$pmaui" ]] ; then 
-        [ -z "$bls_opt_gpunumber" ] || [ -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=1:ppn=$bls_opt_hostsmpsize:gpus=$bls_opt_gpunumber:$bls_opt_gpumode" >> $bls_tmp_file
-        [ -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=1:ppn=$bls_opt_hostsmpsize:gpus=$bls_opt_gpunumber" >> $bls_tmp_file
-        [ ! -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=1:ppn=$bls_opt_hostsmpsize" >> $bls_tmp_file
-      else
-        echo "#PBS -l nodes=1:ppn=$bls_opt_hostsmpsize" >> $bls_tmp_file
-      fi
-    else
-      if [[ -z "$pmaui" ]] ; then
-        [ -z "$bls_opt_gpunumber" ] || [ -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$bls_opt_hostnumber:ppn=$bls_opt_hostsmpsize:gpus=$bls_opt_gpunumber:$bls_opt_gpumode" >> $bls_tmp_file
-        [ -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$bls_opt_hostnumber:ppn=$bls_opt_hostsmpsize:gpus=$bls_opt_gpunumber" >> $bls_tmp_file
-        [ ! -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$bls_opt_hostnumber:ppn=$bls_opt_hostsmpsize" >> $bls_tmp_file
-      else
-        echo "#PBS -l nodes=$bls_opt_hostnumber:ppn=$bls_opt_hostsmpsize" >> $bls_tmp_file
-      fi
-    fi
-    echo "#PBS -W x=NACCESSPOLICY:SINGLEJOB" >> $bls_tmp_file
-  else
-    if [[ ! -z "$bls_opt_hostnumber" ]] ; then
-      if [[ $bls_opt_mpinodes -gt 0 ]] ; then
-        r=$((bls_opt_mpinodes % bls_opt_hostnumber))
-        (( r )) && mpireminder="+$r:ppn=$bls_opt_hostsmpsize"
-        if [[ -z "$pmaui" ]] ; then
-          [ -z "$bls_opt_gpunumber" ] || [ -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$((bls_opt_hostnumber-r)):ppn=${bls_opt_hostsmpsize}${mpireminder}:gpus=$bls_opt_gpunumber:$bls_opt_gpumode" >> $bls_tmp_file
-          [ -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$((bls_opt_hostnumber-r)):ppn=${bls_opt_hostsmpsize}${mpireminder}:gpus=$bls_opt_gpunumber" >> $bls_tmp_file
-          [ ! -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$((bls_opt_hostnumber-r)):ppn=${bls_opt_hostsmpsize}${mpireminder}" >> $bls_tmp_file
-        else
-          echo "#PBS -l nodes=$((bls_opt_hostnumber-r)):ppn=${bls_opt_hostsmpsize}${mpireminder}" >> $bls_tmp_file
-        fi
-      else
-        if [[ -z "$pmaui" ]] ; then
-          [ -z "$bls_opt_gpunumber" ] || [ -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$bls_opt_hostnumber:ppn=$bls_opt_hostsmpsize:gpus=$bls_opt_gpunumber:$bls_opt_gpumode" >> $bls_tmp_file
-          [ -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$bls_opt_hostnumber:ppn=$bls_opt_hostsmpsize:gpus=$bls_opt_gpunumber" >> $bls_tmp_file
-          [ ! -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$bls_opt_hostnumber:ppn=$bls_opt_hostsmpsize" >> $bls_tmp_file
-        else
-          echo "#PBS -l nodes=$bls_opt_hostnumber:ppn=$bls_opt_hostsmpsize" >> $bls_tmp_file
-        fi
-      fi
-      echo "#PBS -W x=NACCESSPOLICY:SINGLEJOB" >> $bls_tmp_file
-    fi
-  fi
+if [ "x$pbs_pro" == "xyes" ]; then
+    pbs_select="$pbs_select:ncpus=$bls_opt_smpgranularity"
 else
-  if [[ ! -z "$bls_opt_smpgranularity" ]] ; then
-    n=$((bls_opt_mpinodes / bls_opt_smpgranularity))
-    r=$((bls_opt_mpinodes % bls_opt_smpgranularity))
-    (( r )) && mpireminder="+1:ppn=$r"
-    if [[ -z "$pmaui" ]] ; then 
-      [ -z "$bls_opt_gpunumber" ] || [ -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$n:ppn=${bls_opt_smpgranularity}${mpireminder}:gpus=$bls_opt_gpunumber:$bls_opt_gpumode" >> $bls_tmp_file
-      [ -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$n:ppn=${bls_opt_smpgranularity}${mpireminder}:gpus=$bls_opt_gpunumber" >> $bls_tmp_file
-      [ ! -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$n:ppn=${bls_opt_smpgranularity}${mpireminder}" >> $bls_tmp_file
+    pmaui=$(/usr/bin/pgrep maui)
+    if [ "x$bls_opt_wholenodes" == "xyes" ]; then
+        bls_opt_hostsmpsize=${bls_opt_hostsmpsize:-1}
+        if [[ ! -z "$bls_opt_smpgranularity" ]] ; then
+            if [[ -z "$bls_opt_hostnumber" ]] ; then
+                if [[ -z "$pmaui" ]] ; then 
+                    [ -z "$bls_opt_gpunumber" ] || [ -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=1:ppn=$bls_opt_hostsmpsize:gpus=$bls_opt_gpunumber:$bls_opt_gpumode" >> $bls_tmp_file
+                    [ -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=1:ppn=$bls_opt_hostsmpsize:gpus=$bls_opt_gpunumber" >> $bls_tmp_file
+                    [ ! -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=1:ppn=$bls_opt_hostsmpsize" >> $bls_tmp_file
+                else
+                    echo "#PBS -l nodes=1:ppn=$bls_opt_hostsmpsize" >> $bls_tmp_file
+                fi
+            else
+                if [[ -z "$pmaui" ]] ; then
+                    [ -z "$bls_opt_gpunumber" ] || [ -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$bls_opt_hostnumber:ppn=$bls_opt_hostsmpsize:gpus=$bls_opt_gpunumber:$bls_opt_gpumode" >> $bls_tmp_file
+                    [ -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$bls_opt_hostnumber:ppn=$bls_opt_hostsmpsize:gpus=$bls_opt_gpunumber" >> $bls_tmp_file
+                    [ ! -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$bls_opt_hostnumber:ppn=$bls_opt_hostsmpsize" >> $bls_tmp_file
+                else
+                    echo "#PBS -l nodes=$bls_opt_hostnumber:ppn=$bls_opt_hostsmpsize" >> $bls_tmp_file
+                fi
+            fi
+            echo "#PBS -W x=NACCESSPOLICY:SINGLEJOB" >> $bls_tmp_file
+        else
+            if [[ ! -z "$bls_opt_hostnumber" ]] ; then
+                if [[ $bls_opt_mpinodes -gt 0 ]] ; then
+                    r=$((bls_opt_mpinodes % bls_opt_hostnumber))
+                    (( r )) && mpireminder="+$r:ppn=$bls_opt_hostsmpsize"
+                    if [[ -z "$pmaui" ]] ; then
+                        [ -z "$bls_opt_gpunumber" ] || [ -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$((bls_opt_hostnumber-r)):ppn=${bls_opt_hostsmpsize}${mpireminder}:gpus=$bls_opt_gpunumber:$bls_opt_gpumode" >> $bls_tmp_file
+                        [ -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$((bls_opt_hostnumber-r)):ppn=${bls_opt_hostsmpsize}${mpireminder}:gpus=$bls_opt_gpunumber" >> $bls_tmp_file
+                        [ ! -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$((bls_opt_hostnumber-r)):ppn=${bls_opt_hostsmpsize}${mpireminder}" >> $bls_tmp_file
+                    else
+                        echo "#PBS -l nodes=$((bls_opt_hostnumber-r)):ppn=${bls_opt_hostsmpsize}${mpireminder}" >> $bls_tmp_file
+                    fi
+                else
+                    if [[ -z "$pmaui" ]] ; then
+                        [ -z "$bls_opt_gpunumber" ] || [ -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$bls_opt_hostnumber:ppn=$bls_opt_hostsmpsize:gpus=$bls_opt_gpunumber:$bls_opt_gpumode" >> $bls_tmp_file
+                        [ -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$bls_opt_hostnumber:ppn=$bls_opt_hostsmpsize:gpus=$bls_opt_gpunumber" >> $bls_tmp_file
+                        [ ! -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$bls_opt_hostnumber:ppn=$bls_opt_hostsmpsize" >> $bls_tmp_file
+                    else
+                        echo "#PBS -l nodes=$bls_opt_hostnumber:ppn=$bls_opt_hostsmpsize" >> $bls_tmp_file
+                    fi
+                fi
+                echo "#PBS -W x=NACCESSPOLICY:SINGLEJOB" >> $bls_tmp_file
+            fi
+        fi
     else
-      echo "#PBS -l nodes=$n:ppn=${bls_opt_smpgranularity}${mpireminder}" >> $bls_tmp_file
+        if [[ ! -z "$bls_opt_smpgranularity" ]] ; then
+            n=$((bls_opt_mpinodes / bls_opt_smpgranularity))
+            r=$((bls_opt_mpinodes % bls_opt_smpgranularity))
+            (( r )) && mpireminder="+1:ppn=$r"
+            if [[ -z "$pmaui" ]] ; then 
+                [ -z "$bls_opt_gpunumber" ] || [ -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$n:ppn=${bls_opt_smpgranularity}${mpireminder}:gpus=$bls_opt_gpunumber:$bls_opt_gpumode" >> $bls_tmp_file
+                [ -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$n:ppn=${bls_opt_smpgranularity}${mpireminder}:gpus=$bls_opt_gpunumber" >> $bls_tmp_file
+                [ ! -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$n:ppn=${bls_opt_smpgranularity}${mpireminder}" >> $bls_tmp_file
+            else
+                echo "#PBS -l nodes=$n:ppn=${bls_opt_smpgranularity}${mpireminder}" >> $bls_tmp_file
+            fi
+        else
+            if [[ ! -z "$bls_opt_hostnumber" ]] ; then
+                n=$((bls_opt_mpinodes / bls_opt_hostnumber))
+                r=$((bls_opt_mpinodes % bls_opt_hostnumber))
+                (( r )) && mpireminder="+$r:ppn=$((n+1))"
+                if [[ -z "$pmaui" ]] ; then
+                    [ -z "$bls_opt_gpunumber" ] || [ -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$((bls_opt_hostnumber-r)):ppn=$n$mpireminder:gpus=$bls_opt_gpunumber:$bls_opt_gpumode" >> $bls_tmp_file
+                    [ -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$((bls_opt_hostnumber-r)):ppn=$n$mpireminder:gpus=$bls_opt_gpunumber" >> $bls_tmp_file
+                    [ ! -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$((bls_opt_hostnumber-r)):ppn=$n$mpireminder" >> $bls_tmp_file
+                else
+                    echo "#PBS -l nodes=$((bls_opt_hostnumber-r)):ppn=$n$mpireminder" >> $bls_tmp_file
+                fi
+            elif [[ $bls_opt_mpinodes -gt 0 ]] ; then
+                if [[ -z "$pmaui" ]] ; then
+                    [ -z "$bls_opt_gpunumber" ] || [ -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$bls_opt_mpinodes:gpus=$bls_opt_gpunumber:$bls_opt_gpumode" >> $bls_tmp_file
+                    [ -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$bls_opt_mpinodes:gpus=$bls_opt_gpunumber" >> $bls_tmp_file  
+                    [ ! -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$bls_opt_mpinodes" >> $bls_tmp_file
+                else
+                    echo "#PBS -l nodes=$bls_opt_mpinodes" >> $bls_tmp_file
+                fi
+            fi
+        fi
     fi
-  else
-    if [[ ! -z "$bls_opt_hostnumber" ]] ; then
-      n=$((bls_opt_mpinodes / bls_opt_hostnumber))
-      r=$((bls_opt_mpinodes % bls_opt_hostnumber))
-      (( r )) && mpireminder="+$r:ppn=$((n+1))"
-      if [[ -z "$pmaui" ]] ; then
-        [ -z "$bls_opt_gpunumber" ] || [ -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$((bls_opt_hostnumber-r)):ppn=$n$mpireminder:gpus=$bls_opt_gpunumber:$bls_opt_gpumode" >> $bls_tmp_file
-        [ -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$((bls_opt_hostnumber-r)):ppn=$n$mpireminder:gpus=$bls_opt_gpunumber" >> $bls_tmp_file
-        [ ! -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$((bls_opt_hostnumber-r)):ppn=$n$mpireminder" >> $bls_tmp_file
-      else
-        echo "#PBS -l nodes=$((bls_opt_hostnumber-r)):ppn=$n$mpireminder" >> $bls_tmp_file
-      fi
-    elif [[ $bls_opt_mpinodes -gt 0 ]] ; then
-      if [[ -z "$pmaui" ]] ; then
-        [ -z "$bls_opt_gpunumber" ] || [ -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$bls_opt_mpinodes:gpus=$bls_opt_gpunumber:$bls_opt_gpumode" >> $bls_tmp_file
-        [ -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$bls_opt_mpinodes:gpus=$bls_opt_gpunumber" >> $bls_tmp_file  
-        [ ! -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumode" ] || echo "#PBS -l nodes=$bls_opt_mpinodes" >> $bls_tmp_file
-      else
-        echo "#PBS -l nodes=$bls_opt_mpinodes" >> $bls_tmp_file
-      fi
-    fi
-  fi
 fi
 # --- End of MPI directives (+GPU for pbs_sched)
 
@@ -225,9 +266,14 @@ else
   [ -z "$bls_fl_subst_and_accumulate_result" ] || echo "#PBS -W stageout=\\'$bls_fl_subst_and_accumulate_result\\'" >> $bls_tmp_file
 fi
 
+if [ "x$pbs_pro" == "xyes" ]; then
+    echo $pbs_select >> $bls_tmp_file
+fi
+
 echo "#PBS -m n"  >> $bls_tmp_file
 
 bls_add_job_wrapper
+bls_save_submit
 
 # Let the wrap script be at least 1 second older than logfile
 # for subsequent "find -newer" command to work
@@ -242,8 +288,19 @@ datenow=`date +%Y%m%d`
 jobID=`${pbs_binpath}/qsub $bls_tmp_file` # actual submission
 retcode=$?
 if [ "$retcode" != "0" ] ; then
-	rm -f $bls_tmp_file
-	exit 1
+    rm -f $bls_tmp_file
+    # Echo the output from qsub onto stderr, which is captured by HTCondor
+    echo "Error from qsub: $jobID" >&2
+    exit 1
+fi
+
+# The job id is actually the first numbers in the string (slurm support)
+jobID=`echo $jobID | awk 'match($0,/[0-9]+/){print substr($0, RSTART, RLENGTH)}'`
+if [ "X$jobID" == "X" ]; then
+    rm -f $bls_tmp_file
+    echo "Error from qsub: $jobID" >&2
+    echo Error # for the sake of waiting fgets in blahpd
+    exit 1
 fi
 
 if [ "x$pbs_nologaccess" != "xyes" -a "x$pbs_nochecksubmission" != "xyes" ]; then

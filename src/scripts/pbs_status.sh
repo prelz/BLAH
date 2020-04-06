@@ -33,6 +33,10 @@
 
 . `dirname $0`/blah_load_config.sh
 
+if [ -x ${blah_libexec_directory}/pbs_status.py ] ; then
+    exec ${blah_libexec_directory}/pbs_status.py "$@"
+fi
+
 if [ "x$job_registry" != "x" ] ; then
    ${blah_sbin_directory}/blah_job_registry_lkup $@
    exit 0
@@ -82,6 +86,9 @@ BEGIN {
 
 /Job Id:/ {
     current_job = substr($0, index($0, ":") + 2)
+    end = index(current_job, ".")
+    if ( end == 0 ) { end = length(current_job) + 1 }
+    current_job = substr(current_job, 1, end)
 }
 /exec_host =/ {
     current_wn = substr($0, index($0, "=")+2)
@@ -176,11 +183,14 @@ BEGIN {
     current_job = ""
     current_wn = ""
     current_js = ""
+    exitcode = "-1"
 }
 
 /Job Id:/ {
     current_job = substr($0, index($0, ":") + 2)
-    current_job = substr(current_job, 1, index(current_job, ".")-1)
+    end = index(current_job, ".")
+    if ( end == 0 ) { end = length(current_job) + 1 }
+    current_job = substr(current_job, 1, end)
     print "[BatchJobId=\"" current_job "\";"
 }
 /exec_host =/ {
@@ -212,6 +222,9 @@ END {
 	}
 	print "JobStatus=" jobstatus ";"
 	if (jobstatus == 4) {
+		if (exitcode == "-1") {
+			exitcode = "0"
+		}
 		print "ExitCode=" exitcode ";"
 	}
 	print "]"

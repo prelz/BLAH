@@ -144,7 +144,7 @@ int set_cmd_list_option(char **command, classad_context cad, const char *attribu
 int set_cmd_string_option(char **command, classad_context cad, const char *attribute, const char *option, const int quote_style);
 int set_cmd_int_option(char **command, classad_context cad, const char *attribute, const char *option, const int quote_style);
 int set_cmd_bool_option(char **command, classad_context cad, const char *attribute, const char *option, const int quote_style);
-char *limit_proxy(char* proxy_name, char *requested_name);
+static char *limit_proxy(char* proxy_name, char *requested_name, char **error_message);
 int getProxyInfo(char* proxname, char** subject, char** fqan);
 int logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, char* userDN, char** environment);
 int CEReq_parse(classad_context cad, char* filename, char *proxysubject, char *proxyfqan);
@@ -185,6 +185,7 @@ int enable_condor_glexec = FALSE;
 int require_proxy_on_submit = FALSE;
 int disable_wn_proxy_renewal = FALSE;
 int disable_proxy_user_copy = FALSE;
+int disable_limited_proxy = FALSE;
 int synchronous_termination = FALSE;
 
 static char *mapping_parameter[MEXEC_PARAM_COUNT];
@@ -364,6 +365,13 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	}
 
 #ifdef GLOBUS_TOOLS_NEED_LIBRARY_PATH
+/* This should never be included in the Condor build of the blahp, where all
+ * needed libraries can be found
+ * via the RUNPATH. Setting LD_LIBRARY_PATH can muck up the command line
+ * tools for the local batch system.
+ *
+ * Similarly, in OSG, all Globus libraries are in the expected location.
+ */
 	needed_libs = make_message("%s/lib:%s/externals/lib:%s/lib:/opt/lcg/lib", result, result, getenv("GLOBUS_LOCATION") ? getenv("GLOBUS_LOCATION") : "/opt/globus");
 	old_ld_lib=getenv("LD_LIBRARY_PATH");
 	if(old_ld_lib)
@@ -380,12 +388,13 @@ serveConnection(int cli_socket, char* cli_ip_addr)
 	else
 	 	 setenv("LD_LIBRARY_PATH",needed_libs,1);
 #endif
-	
+
 	blah_script_location = strdup(blah_config_handle->libexec_path);
 	require_proxy_on_submit = config_test_boolean(config_get("blah_require_proxy_on_submit",blah_config_handle));
 	enable_condor_glexec = config_test_boolean(config_get("blah_enable_glexec_from_condor",blah_config_handle));
 	disable_wn_proxy_renewal = config_test_boolean(config_get("blah_disable_wn_proxy_renewal",blah_config_handle));
 	disable_proxy_user_copy = config_test_boolean(config_get("blah_disable_proxy_user_copy",blah_config_handle));
+        disable_limited_proxy = config_test_boolean(config_get("blah_disable_limited_proxy",blah_config_handle));
 
 	/* Scan configuration for submit attributes to pass to local script */
 	pass_all_submit_attributes = config_test_boolean(config_get("blah_pass_all_submit_attributes",blah_config_handle));
@@ -964,11 +973,12 @@ cmd_set_glexec_dn(void *args)
 		/* proxt4 must be limited for subsequent submission */		
 		if(argv[3][0]=='0')
 		{
-			if((proxynameNew = limit_proxy(proxt4, NULL)) == NULL)
+                  if (((proxynameNew = limit_proxy(proxt4, NULL, NULL)) == NULL) ||
+                      (disable_limited_proxy))
 			{
 				free(mapping_parameter[MEXEC_PARAM_DELEGCRED]);
 				mapping_parameter[MEXEC_PARAM_DELEGCRED] = NULL;
-				result = strdup("F Cannot\\ limit\\ proxy\\ file");
+				result = strdup("F Not\\ limiting\\ proxy\\ file");
 			}
 			else
 				mapping_parameter[MEXEC_PARAM_SRCPROXY] = proxynameNew;
@@ -1034,6 +1044,7 @@ cmd_submit_job(void *args)
 	char *error_string;
 	int res = 1;
 	char *proxyname = NULL;
+	char *iwd = NULL;
 	char *proxysubject = NULL;
 	char *proxyfqan = NULL;
 	char *proxynameNew   = NULL;
@@ -1094,6 +1105,30 @@ cmd_submit_job(void *args)
 			proxyname = NULL;
 		}
 	}
+	/* If the proxy is a relative path, we must prepend the Iwd to make it absolute */
+	if (proxyname && proxyname[0] != '/') {
+		if (classad_get_dstring_attribute(cad, "Iwd", &iwd) == C_CLASSAD_NO_ERROR) {
+			size_t iwdlen = strlen(iwd);
+			size_t proxylen = iwdlen + strlen(proxyname) + 1;
+			char *proxynameTmp;
+			proxynameTmp = malloc(proxylen + 1);
+			if (!proxynameTmp) {
+				resultLine = make_message("%s 1 Malloc\\ failure N/A", reqId);
+				goto cleanup_lrms;
+			}
+			memcpy(proxynameTmp, iwd, iwdlen);
+			proxynameTmp[iwdlen] = '/';
+			strcpy(proxynameTmp+iwdlen+1, proxyname);
+			free(proxyname);
+			free(iwd);
+			iwd = NULL;
+			proxyname = proxynameTmp;
+			proxynameTmp = NULL;
+		} else {
+			resultLine = make_message("%s 1 Relative\\ x509UserProxy\\ specified\\ without\\ Iwd N/A", reqId);
+			goto cleanup_lrms;
+		}
+	}
 
 	/* If there are additional arguments, we have to map on a different id */
 	if(argv[CMD_SUBMIT_JOB_ARGS + 1] != NULL)
@@ -1128,13 +1163,17 @@ cmd_submit_job(void *args)
 			}
 		}
 	}
-	else if (proxyname != NULL)
+	else if ((proxyname != NULL) && (!disable_limited_proxy))
 	{
 		/* not in glexec mode: need to limit the proxy */
-		if((proxynameNew = limit_proxy(proxyname, NULL)) == NULL)
+		char *errmsg = NULL;
+		if((proxynameNew = limit_proxy(proxyname, NULL, &errmsg)) == NULL)
 		{
 			/* PUSH A FAILURE */
-			resultLine = make_message("%s 1 Unable\\ to\\ limit\\ the\\ proxy N/A", reqId);
+			char * escaped_errmsg = (errmsg) ? escape_spaces(errmsg) : NULL;
+			if (escaped_errmsg) resultLine = make_message("%s 1 Unable\\ to\\ limit\\ the\\ proxy\\ (%s) N/A", reqId, escaped_errmsg);
+			else resultLine = make_message("%s 1 Unable\\ to\\ limit\\ the\\ proxy N/A", reqId);
+			if (errmsg) free(errmsg);
 			goto cleanup_proxyname;
 		}
 		free(proxyname);
@@ -1283,7 +1322,10 @@ cmd_submit_job(void *args)
 	    (set_cmd_bool_option  (&command, cad, "StageCmd",   "-s", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "ClientJobId","-j", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "JobDirectory","-D", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
-	    (set_cmd_string_option(&command, cad, "BatchExtraSubmitArgs", "-a", SINGLE_QUOTE) == C_CLASSAD_OUT_OF_MEMORY))
+	    (set_cmd_string_option(&command, cad, "BatchProject", "-A", NO_QUOTE) == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_int_option(&command, cad, "BatchRuntime", "-t", INT_NOQUOTE) == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_string_option(&command, cad, "BatchExtraSubmitArgs", "-a", SINGLE_QUOTE) == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_int_option(&command, cad, "RequestMemory", "-m", INT_NOQUOTE) == C_CLASSAD_OUT_OF_MEMORY))
 //	    (set_cmd_string_option(&command, cad, "Args",      	"--", SINGLE_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY))
 	{
 		/* PUSH A FAILURE */
@@ -1740,7 +1782,7 @@ wrap_up:
 }
 
 int
-get_status_and_old_proxy(int use_glexec, char *jobDescr, 
+get_status_and_old_proxy(int use_glexec, char *jobDescr, const char *proxyFileName,
 			char **status_argv, char **old_proxy,
 			char **workernode, char **error_string)
 {
@@ -1831,6 +1873,21 @@ get_status_and_old_proxy(int use_glexec, char *jobDescr,
 				free(proxy_link);
 				job_registry_free_split_id(spid);
 				return 1; /* 'local' state */
+			}
+			// Look for the limited proxy next to the new proxy - this is a common case for HTCondor-based submission.
+			free(proxy_link);
+			if ((proxy_link = make_message("%s.lmt", proxyFileName)) == NULL)
+			{
+				fprintf(stderr, "Out of memory.\n");
+				exit(MALLOC_ERROR);
+			}
+			if (access(proxy_link, R_OK) == 0)
+			{
+				*old_proxy = proxy_link;
+				// do not free proxy_link in this case.
+				free(r_old_proxy);
+				job_registry_free_split_id(spid);
+				return 1;
 			}
 			free(proxy_link);
 			free(r_old_proxy);
@@ -1952,7 +2009,7 @@ cmd_renew_proxy(void *args)
 
 	if (blah_children_count>0) check_on_children(blah_children, blah_children_count);
 
-	jobStatus=get_status_and_old_proxy(use_mapping, jobDescr, argv + CMD_RENEW_PROXY_ARGS + 1, &old_proxy, &workernode, &error_string);
+	jobStatus=get_status_and_old_proxy(use_mapping, jobDescr, proxyFileName, argv + CMD_RENEW_PROXY_ARGS + 1, &old_proxy, &workernode, &error_string);
 	old_proxy_len = -1;
 	if (old_proxy != NULL) old_proxy_len = strlen(old_proxy);
 	if ((jobStatus < 0) || (old_proxy == NULL) || (old_proxy_len <= 0))
@@ -1968,21 +2025,25 @@ cmd_renew_proxy(void *args)
 		switch(jobStatus)
 		{
 			case 1: /* job queued: copy the proxy locally */
-				if (!use_mapping)
+                               if (!use_mapping)
 				{
-					limit_proxy(proxyFileName, old_proxy); /*FIXME: should check if limited proxies are enabled? */ 
-					resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
+                                 if (!disable_limited_proxy)
+                                   {
+					limit_proxy(proxyFileName, old_proxy, NULL);
+                                   }
+                                 resultLine = make_message("%s 0 Proxy\\ renewed", reqId);
 				}
 				else
 				{
 					exe_command.delegation_type = atoi(argv[CMD_RENEW_PROXY_ARGS + 1 + MEXEC_PARAM_DELEGTYPE]);
 					exe_command.delegation_cred = argv[CMD_RENEW_PROXY_ARGS + 1 + MEXEC_PARAM_DELEGCRED];
-					if (use_glexec)
+					if ((use_glexec) || (disable_limited_proxy))
 					{
 						exe_command.source_proxy = argv[CMD_RENEW_PROXY_ARGS + 1 + MEXEC_PARAM_SRCPROXY];
 					} else {
-						limited_proxy_name = limit_proxy(proxyFileName, NULL);
-						exe_command.source_proxy = limited_proxy_name;
+                                                limited_proxy_name = limit_proxy(proxyFileName, NULL, NULL);
+                                                exe_command.source_proxy = limited_proxy_name;
+
 					}
 					exe_command.dest_proxy = old_proxy;
 					if (exe_command.source_proxy == NULL)
@@ -2097,9 +2158,16 @@ cmd_send_proxy_to_worker_node(void *args)
 
 	if (workernode != NULL && strcmp(workernode, ""))
 	{
-		if(!use_glexec)
+               if (!use_glexec)
 		{
-			proxyFileNameNew = limit_proxy(proxyFileName, NULL);
+                  if (disable_limited_proxy)
+                    {
+                        proxyFileNameNew = strdup(proxyFileName);
+                    }
+                  else
+                    {
+			proxyFileNameNew = limit_proxy(proxyFileName, NULL, NULL);
+                    }
 		}
 		else
 			proxyFileNameNew = strdup(argv[CMD_SEND_PROXY_TO_WORKER_NODE_ARGS + MEXEC_PARAM_SRCPROXY + 1]);
@@ -2574,8 +2642,8 @@ set_cmd_list_option(char **command, classad_context cad, const char *attribute, 
 	return(result);
 }
 
-char *
-limit_proxy(char* proxy_name, char *limited_proxy_name)
+static char *
+limit_proxy(char* proxy_name, char *limited_proxy_name, char **error_message)
 {
 	int seconds_left, hours_left, minutes_left;
 	char *limcommand;
@@ -2597,6 +2665,35 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 		limited_proxy_made_up_name = make_message("%s.lmt", proxy_name);
 		if (limited_proxy_made_up_name == NULL) return (NULL);
 		limited_proxy_name = limited_proxy_made_up_name;
+	}
+
+	/* Sanity check - make sure the destination is writable and the source exists */
+	tmpfd = open(limited_proxy_name, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
+	if (tmpfd == -1)
+	{
+		char * errmsg = make_message("Unable to create limited proxy file (%s):"
+		    " errno=%d, %s", limited_proxy_name, errno, strerror(errno));
+		if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+		if (!errmsg) return(NULL);
+		if (error_message) *error_message = errmsg; else free(errmsg);
+		return NULL;
+	}
+	else
+	{
+		close(tmpfd);
+	}
+	if ((tmpfd = open(proxy_name, O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR)) == -1)
+	{
+		char * errmsg = make_message("Unable to read proxy file (%s):" 
+		    " errno=%d, %s", proxy_name, errno, strerror(errno));
+		if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+		if (!errmsg) return(NULL);
+		if (error_message) *error_message = errmsg; else if (errmsg) free(errmsg);
+		return NULL;
+	}
+	else
+	{
+		close(tmpfd);
 	}
 
 #ifndef HAVE_GLOBUS
@@ -2675,7 +2772,9 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 		if (fpr == NULL)
 		{
 			fprintf(stderr, "blahpd limit_proxy: Cannot open %s in append mode to obtain file lock: %s\n", limited_proxy_name, strerror(errno));
+			char * errmsg = make_message("Cannot open %s in append mode to obtain file lock: %s", limited_proxy_name, strerror(errno));
 			if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+			if (error_message && errmsg) *error_message= errmsg; else if (errmsg) free(errmsg);
 			return(NULL);
 		}
 		/* Acquire lock on limited proxy */
@@ -2687,7 +2786,9 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 		{
 			fclose(fpr);
 			fprintf(stderr, "blahpd limit_proxy: Cannot obtain write file lock on %s: %s\n", limited_proxy_name, strerror(errno));
+			char * errmsg = make_message("Cannot obtain write file lock on %s: %s", limited_proxy_name, strerror(errno));
 			if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+			if (error_message && errmsg) *error_message= errmsg; else if (errmsg) free(errmsg);
 			return(NULL);
 		}
 	} 
@@ -2746,8 +2847,10 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 			{
 				fprintf(stderr, "blahpd limit_proxy: Cannot open %s in append mode to obtain file lock: %s\n", limited_proxy_name, strerror(errno));
 				unlink(limit_command_output);
+				char * errmsg = make_message("Cannot open %s in append mode to obtain file lock: %s", limited_proxy_name, strerror(errno));
 				free(limit_command_output);
 				if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+				if (error_message && errmsg) *error_message= errmsg; else if (errmsg) free(errmsg);
 				return(NULL);
 			}	
 			/* Acquire lock on limited proxy */
@@ -2759,9 +2862,11 @@ limit_proxy(char* proxy_name, char *limited_proxy_name)
 			{
 				fclose(fpr);
 				fprintf(stderr, "blahpd limit_proxy: Cannot obtain write file lock on %s: %s\n", limited_proxy_name, strerror(errno));
+				char * errmsg = make_message("Cannot obtain write file lock on %s: %s", limited_proxy_name, strerror(errno));
 				unlink(limit_command_output);
 				free(limit_command_output);
 				if (limited_proxy_made_up_name != NULL) free(limited_proxy_made_up_name);
+				if (error_message && errmsg) *error_message= errmsg; else free(errmsg);
 				return(NULL);
 			}
 		}
@@ -3431,10 +3536,10 @@ char*  outputfileRemaps(char *sb,char *sbrmp)
 /* replaced by convert_newstyle in blah_utils.c */
 #define SINGLE_QUOTE_CHAR '\''
 #define DOUBLE_QUOTE_CHAR '\"'
-#define CONVARG_OPENING        "'\""
-#define CONVARG_OPENING_LEN    2
-#define CONVARG_CLOSING        "\"'\000"
-#define CONVARG_CLOSING_LEN    3
+#define CONVARG_OPENING        "\"\\\""
+#define CONVARG_OPENING_LEN    3
+#define CONVARG_CLOSING        "\\\"\"\000"
+#define CONVARG_CLOSING_LEN    4
 #define CONVARG_QUOTSEP        "\\\"%c\\\""
 #define CONVARG_QUOTSEP_LEN    5
 #define CONVARG_DBLQUOTESC     "\\\\\\\""
@@ -3500,9 +3605,8 @@ ConvertArgs(char* original, char separator)
 			memcpy(result + j, CONVARG_DBLQUOTESC, CONVARG_DBLQUOTESC_LEN);
 			j += CONVARG_DBLQUOTESC_LEN;
 		}
-		/* Must escape a few meta-characters for wordexp */
 		else if ((original[i] == '(') || (original[i] == ')') || (original[i] == '&'))
-		{
+		{	/* Must escape a few meta-characters for wordexp */
 			result[j++] = '\\';
 			result[j++] = original[i];
 		}
@@ -3515,4 +3619,5 @@ ConvertArgs(char* original, char separator)
 
 	return(result);
 }
+
 #endif

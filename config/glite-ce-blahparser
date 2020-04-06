@@ -34,7 +34,11 @@ if [ ! -d "$BLAHPD_LOCATION" ]; then
 fi
 
 if [ ! -r "$BLAHPD_CONFIG_LOCATION" ]; then
-  if [ -r "/etc/blah.config" ]; then
+  if [ -r "/etc/batch_gahp.config" ]; then
+    export BLAHPD_CONFIG_LOCATION="/etc/batch_gahp.config"
+  elif [ -r "${BLAHPD_LOCATION:-/opt/glite}/etc/batch_gahp.config" ]; then
+    export BLAHPD_CONFIG_LOCATION="${BLAHPD_LOCATION:-/opt/glite}/etc/batch_gahp.config"
+  elif [ -r "/etc/blah.config" ]; then
     export BLAHPD_CONFIG_LOCATION="/etc/blah.config"
   elif [ -r "${BLAHPD_LOCATION:-/opt/glite}/etc/blah.config" ]; then
     export BLAHPD_CONFIG_LOCATION="${BLAHPD_LOCATION:-/opt/glite}/etc/blah.config"
@@ -42,7 +46,7 @@ if [ ! -r "$BLAHPD_CONFIG_LOCATION" ]; then
 fi
 
 if [ ! -r "$BLAHPD_CONFIG_LOCATION" ]; then
-  echo "$0: Cannot read BLAH config file (\$BLAHPD_CONFIG_LOCATION, or /etc/blah.config, or /opt/glite/etc/blah.config)"
+  echo "$0: Cannot read BLAH config file (\$BLAHPD_CONFIG_LOCATION, or /etc/batch_gahp.config, or /opt/glite/etc/batch_gahp.config, or /etc/blah.config, or /opt/glite/etc/blah.config)"
   exit 1
 fi
 

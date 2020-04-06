@@ -143,18 +143,18 @@ check_on_children_args(const struct blah_managed_child *children, const int coun
 			fret = fork();
 			if (fret == 0)
 			{
-				if((j = wordexp(children[i].exefile, &args, 0)))
+				if((j = wordexp(children[i].exefile, &args, WRDE_NOCMD)))
 				{
 					fprintf(stderr,"wordexp: unable to parse the command line \"%s\" (error %d)\n", children[i].exefile, j);
-                			return;
-        			}
+					_exit(1);
+				}
 				/* Child process. Exec exe file. */
 				if (execv(args.we_wordv[0], args.we_wordv) < 0)
 				{
 					fprintf(stderr,"Cannot exec %s: %s\n",
 						children[i].exefile,
 						strerror(errno));
-					exit(1);
+					_exit(1);
 				}
 				/* Free the wordexp'd args */
  				wordfree(&args);

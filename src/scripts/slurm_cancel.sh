@@ -1,15 +1,13 @@
 #!/bin/bash
 
-#  File:     slurm_cancel.sh
-#
-#  Author:   David Rebatto
-#  e-mail:   David.Rebatto@mi.infn.it
-#
-#
-# Copyright (c) Members of the EGEE Collaboration. 2004. 
-# See http://www.eu-egee.org/partners/ for details on the copyright
-# holders.  
+# File:     slurm_cancel.sh
+# Author:   Jaime Frey (jfrey@cs.wisc.edu)
+# Based on code by David Rebatto (david.rebatto@mi.infn.it)
 # 
+# Copyright (c) Members of the EGEE Collaboration. 2004. 
+# Copyright (c) HTCondor Team, Computer Sciences Department,
+#   University of Wisconsin-Madison, WI. 2015.
+#
 # Licensed under the Apache License, Version 2.0 (the "License"); 
 # you may not use this file except in compliance with the License. 
 # You may obtain a copy of the License at 
@@ -26,15 +24,29 @@
 
 . `dirname $0`/blah_load_config.sh
 
+if [ -z "$slurm_binpath" ] ; then
+  slurm_binpath=/usr/bin
+fi
+
 jnr=0
 jc=0
 for job in  $@ ; do
         jnr=$(($jnr+1))
 done
-for  job in $@ ; do
+for  job in  $@ ; do
         requested=`echo $job | sed 's/^.*\///'`
-        cmdout=`${slurm_binpath}/scancel $requested 2>&1`
+        cluster_name=`echo $requested | cut -s -f2 -d@`
+        if [ $cluster_name != "" ] ; then
+            requested=`echo $requested | cut -f1 -d@`
+            cluster_arg="-M $cluster_name"
+        fi
+        cmdout=`${slurm_binpath}/scancel $cluster_arg $requested 2>&1`
         retcode=$?
+        # If the job is already completed or no longer in the queue,
+        # treat it as successfully deleted.
+        if echo "$cmdout" | grep -q 'Invalid job id specified' ; then
+                retcode=0
+        fi
         if [ "$retcode" == "0" ] ; then
                 if [ "$jnr" == "1" ]; then
                         echo " 0 No\\ error"

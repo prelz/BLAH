@@ -2,7 +2,8 @@
 
 #  File:     condor_cancel.sh
 #
-#  Author:   Matt Farrellee (Condor) - received on March 28, 2007
+#  Author:   Francesco Prelz
+#  e-mail:   Francesco.Prelz@mi.infn.it
 #
 #
 # Copyright (c) Members of the EGEE Collaboration. 2004. 
@@ -30,9 +31,6 @@ id=${1%%/*} # Id, everything before the first / in Id/Queue/Pool
 queue_pool=${1#*/} # Queue/Pool, everything after the first /  in Id/Queue/Pool
 queue=${queue_pool%/*} # Queue, everything before the first / in Queue/Pool
 pool=${queue_pool#*/} # Pool, everything after the first / in Queue/Pool
-
-# In current version we are receiving a GlobalJobId
-id="-constr GlobalJobId==\"$id\""
 
 if [ -z "$queue" -o "$condor_use_queue_as_schedd" != "yes" ]; then
     target=""

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # $Id: sge_local_submit_attributes.sh,v 1.1 2011/07/20 06:15:34 rrosende Exp $
 
@@ -46,24 +46,7 @@ fi
 # or some string. It must be a number but let's make sure by using
 # the test below.
 if [ $memmin -gt 0 ]; then
-    echo "#$ -l s_rss=${memmin}M"
-fi
-
-# The virtual memory size gets mostly the same treatment as the phsical memory (resident set size).
-
-vmemmin="$GlueHostMainMemoryVirtualSize_Min"
-
-# If the user was so careless to ask for an exact match instead of
-# a minimum, the variable name is different.
-if [ -z "$vmemmin" ]; then
-    vmemmin="$GlueHostMainMemoryVirtualSize"
-fi
-
-# At this point $memmin is either empty, if no requirement was given,
-# or some string. It must be a number but let's make sure by using
-# the test below.
-if [ $vmemmin -gt 0 ]; then
-    echo "#$ -l s_vmem=${vmemmin}M"
+    echo "#$ -l s_vmem=${memmin}"
 fi
 
 # Part 2: Wall clock time requirement.

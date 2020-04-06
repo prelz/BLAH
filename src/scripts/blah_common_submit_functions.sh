@@ -1,3 +1,4 @@
+#!/bin/bash
 #  File:     blah_common_submit_functions.sh 
 #
 #  Author:   Francesco Prelz 
@@ -129,6 +130,34 @@ function bls_fl_subst_and_accumulate ()
       fi
   done
 }
+
+function bls_fl_test_exists ()
+{
+#
+# Usage: bls_fl_test_exists container_name
+# Verfies all container_name "@@F_LOCAL" exists
+# First missing file is returned in $bls_fl_test_exists_result.
+#
+  local container_name
+
+  container_name=${1:?"Missing container name argument to bls_fl_subst_and_accumulate"}
+
+  local last_argument
+
+  eval "last_argument=\${bls_${container_name}_counter:=0}"
+
+  local ind
+  bls_fl_test_exists_result=
+  for (( ind=0 ; ind < $last_argument ; ind++ )) ; do
+      bls_fl_subst $container_name $ind "@@F_LOCAL"
+      if [ ! -z "$bls_fl_subst_result" -a ! -f "$bls_fl_subst_result" ] ; then
+          bls_fl_test_exists_result="${bls_fl_subst_result}"
+          return 1
+      fi
+  done
+  return 0
+}
+
 
 function bls_fl_subst_and_dump ()
 {
@@ -268,7 +297,7 @@ function bls_parse_submit_options ()
   ###############################################################
   # Parse parameters
   ###############################################################
-  while getopts "a:i:o:e:c:s:v:V:dw:q:n:N:z:h:g:m:M:P:S:r:p:l:x:u:j:T:I:O:R:C:D:" arg 
+  while getopts "a:i:o:e:c:s:v:V:dw:q:n:N:z:h:g:m:M:P:S:r:p:l:x:u:j:T:I:O:R:C:D:m:A:t:" arg 
   do
       case "$arg" in
       a) bls_opt_xtra_args="$OPTARG" ;;
@@ -303,6 +332,9 @@ function bls_parse_submit_options ()
       R) bls_opt_outputflstringremap="$OPTARG" ;;
       C) bls_opt_req_file="$OPTARG";;
       D) bls_opt_run_dir="$OPTARG";;
+      m) bls_opt_req_mem="$OPTARG";;
+      A) bls_opt_project="$OPTARG";;
+      t) bls_opt_runtime="$OPTARG";;
       -) break ;;
       ?) echo $usage_string
          exit 1 ;;
@@ -330,7 +362,6 @@ function bls_parse_submit_options ()
 
   shift `expr $OPTIND - 1`
   bls_arguments=$*
-  bls_redirections=
 }
 
 function bls_test_shared_dir ()
@@ -490,11 +521,14 @@ function bls_setup_all_files ()
           bls_proxy_remote_file=${bls_tmp_name}.proxy
           bls_test_shared_dir "$bls_proxy_local_file"
           if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
-            bls_fl_add_value inputcopy "$bls_proxy_local_file" "${bls_proxy_remote_file}"
+              if [ "x$bls_opt_proxyrenew" == "xyes" ] ; then
+                  bls_fl_add_value inputcopy "$bls_proxy_local_file" "${bls_proxy_remote_file}"
+                  bls_need_to_reset_proxy=yes
+              fi
           else
-            bls_fl_add_value inputsand "$bls_proxy_local_file" "${blah_wn_inputsandbox}${bls_proxy_remote_file}" "$bls_proxy_remote_file"
+              bls_fl_add_value inputsand "$bls_proxy_local_file" "${blah_wn_inputsandbox}${bls_proxy_remote_file}" "$bls_proxy_remote_file"
+              bls_need_to_reset_proxy=yes
           fi
-          bls_need_to_reset_proxy=yes
       fi
   fi
   
@@ -504,24 +538,24 @@ function bls_setup_all_files ()
       if [ -f "$bls_opt_stdin" ] ; then
           bls_test_shared_dir "$bls_opt_stdin"
           if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
-              bls_redirections="$bls_redirections < \"$bls_opt_stdin\""
+              bls_arguments="$bls_arguments < \"$bls_opt_stdin\""
           else
               bls_unique_stdin_name=`basename $bls_opt_stdin`.$uni_ext
               bls_fl_add_value inputsand "$bls_opt_stdin" "${blah_wn_inputsandbox}${bls_unique_stdin_name}" "$bls_unique_stdin_name"
-              bls_redirections="$bls_redirections < \"$bls_unique_stdin_name\""
+              bls_arguments="$bls_arguments < \"$bls_unique_stdin_name\""
           fi
       else
-          bls_redirections="$bls_redirections < \"$bls_opt_stdin\""
+          bls_arguments="$bls_arguments < \"$bls_opt_stdin\""
       fi
   fi
   if [ ! -z "$bls_opt_stdout" ] ; then
       if [ "${bls_opt_stdout:0:1}" != "/" ] ; then bls_opt_stdout=${bls_opt_workdir}/${bls_opt_stdout} ; fi
       bls_test_shared_dir "$bls_opt_stdout"
       if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
-          bls_redirections="$bls_redirections > \"$bls_opt_stdout\""
+          bls_arguments="$bls_arguments > \"$bls_opt_stdout\""
       else
           bls_unique_stdout_name="${blah_wn_outputsandbox}out_${bls_tmp_name}_`basename $bls_opt_stdout`"
-          bls_redirections="$bls_redirections > \"$bls_unique_stdout_name\""
+          bls_arguments="$bls_arguments > \"$bls_unique_stdout_name\""
           bls_fl_add_value outputsand "$bls_opt_stdout" "$bls_unique_stdout_name"
       fi
   fi
@@ -529,13 +563,13 @@ function bls_setup_all_files ()
       if [ "${bls_opt_stderr:0:1}" != "/" ] ; then bls_opt_stderr=${bls_opt_workdir}/${bls_opt_stderr} ; fi
       bls_test_shared_dir "$bls_opt_stderr"
       if [ "x$bls_is_in_shared_dir" == "xyes" ] ; then
-          bls_redirections="$bls_redirections 2> \"$bls_opt_stderr\""
+          bls_arguments="$bls_arguments 2> \"$bls_opt_stderr\""
       else
           if [ "$bls_opt_stderr" == "$bls_opt_stdout" ]; then
-              bls_redirections="$bls_redirections 2>&1"
+              bls_arguments="$bls_arguments 2>&1"
           else
               bls_unique_stderr_name="${blah_wn_outputsandbox}err_${bls_tmp_name}_`basename $bls_opt_stderr`"
-              bls_redirections="$bls_redirections 2> \"$bls_unique_stderr_name\""
+              bls_arguments="$bls_arguments 2> \"$bls_unique_stderr_name\""
               bls_fl_add_value outputsand "$bls_opt_stderr" "$bls_unique_stderr_name"
           fi
       fi
@@ -585,7 +619,6 @@ function bls_setup_all_files ()
                 xfileremap=${bls_opt_workdir}/${xfileremap}
               fi
               bls_test_shared_dir "$xfileremap"
-
               if [ "x$bls_is_in_shared_dir" != "xyes" ] ; then
                   xfile_base="`basename ${xfile}`"
                   xfile_transfer="${blah_wn_outputsandbox}${xfile_base}.$uni_ext"
@@ -618,24 +651,31 @@ function bls_start_job_wrapper ()
           fi
   fi
   
-  echo "old_home=\`pwd\`"
+  JOB_ENV="/var/lib/osg/osg-job-environment.conf"
+  LOCAL_JOB_ENV="/var/lib/osg/osg-local-job-environment.conf"
+  for fname in $JOB_ENV $LOCAL_JOB_ENV; do
+    test -r $fname && echo "`grep -G \"^[^# ]\" $fname`"
+  done
 
+  echo "old_home=\`pwd\`"
   # Set the temporary home (including cd'ing into it)
   if [ "x$bls_opt_run_dir" != "x" ] ; then
     run_dir="$bls_opt_run_dir"
   else
     run_dir="home_$bls_tmp_name"
   fi
-
   if [ -n "$blah_wn_temporary_home_dir" ] ; then
     echo "new_home=${blah_wn_temporary_home_dir}/$run_dir"
   else
     echo "new_home=\${old_home}/$run_dir"
   fi
 
-  echo "mkdir \$new_home"
-  echo "trap 'wait \$job_pid; cd \$old_home; rm -rf \$new_home; exit 255' 1 2 3 15 24"
-  echo "trap 'wait \$job_pid; cd \$old_home; rm -rf \$new_home' 0"
+  echo 'mkdir "$new_home"'
+  echo 'job_wait_cleanup () { wait "$job_pid"; cd "$old_home"; rm -rf "$new_home"; }'
+  echo 'on_signal () { kill -$1 "$job_pid"; job_wait_cleanup; exit 255; }'
+  echo 'trap_sigs () { for sig; do trap "on_signal $sig" $sig; done; }'
+  echo 'trap_sigs HUP INT QUIT TERM XCPU'
+  echo 'trap job_wait_cleanup EXIT'
 
   echo "# Copy into new home any shared input sandbox file"
   bls_fl_subst_and_dump inputcopy "cp \"@@F_LOCAL\" \"\$new_home/@@F_REMOTE\" &> /dev/null" 
@@ -649,6 +689,8 @@ function bls_start_job_wrapper ()
   if [ "x$bls_need_to_reset_proxy" == "xyes" ] ; then
       echo "# Resetting proxy to local position"
       echo "export X509_USER_PROXY=\$new_home/${bls_proxy_remote_file}"
+  elif [ -r "$bls_proxy_local_file" -a -f "$bls_proxy_local_file" ] ; then
+      echo "export X509_USER_PROXY=${bls_proxy_local_file}"
   fi
   
   # Add the command (with full path if not staged)
@@ -657,15 +699,6 @@ function bls_start_job_wrapper ()
   if [ "x$bls_opt_stgcmd" == "xyes" ] 
   then
       bls_opt_the_command="./`basename $bls_opt_the_command`"
-      # Massage the arguments, in case they where specified using new syntax
-      # (no harm to old syntax)
-      eval "arg_array=($bls_arguments)"
-      bls_arguments=""
-      for arg in "${arg_array[@]}"
-      do
-          bls_arguments="$bls_arguments \"$arg\""
-      done
-      bls_arguments="$bls_arguments $bls_redirections"
       echo "if [ ! -x $bls_opt_the_command ]; then chmod u+x $bls_opt_the_command; fi" 
       echo "if [ -x \${GLITE_LOCATION:-/opt/glite}/libexec/jobwrapper ]"
       echo "then"
@@ -680,7 +713,8 @@ function bls_start_job_wrapper ()
       echo "\$new_home/`basename $bls_opt_the_command` $bls_arguments &"
       echo "fi" 
   else
-      echo "$bls_opt_the_command $bls_arguments &" 
+      echo "export NODE_COUNT=$bls_opt_mpinodes"
+      echo "$blah_job_wrapper $bls_opt_the_command $bls_arguments &" 
   fi
   
   echo "job_pid=\$!" 
@@ -733,7 +767,11 @@ function bls_start_job_wrapper ()
 function bls_finish_job_wrapper ()
 {
   echo "cd \$old_home"
-  
+  if [ "x$bls_opt_proxy_string" != "x" ]
+  then
+    echo "rm -f $bls_opt_proxy_string"
+  fi
+
   echo ""
   
   echo "exit \$user_retcode"
@@ -745,8 +783,10 @@ function bls_finish_job_wrapper ()
   fi
 }
 
-function bls_test_working_dir ()
+function bls_test_input_files ()
 {
+  # Verify the workdir can be accessed before submitting the job. If a bogus workdir is
+  # given, the job is hopeless
   if [ "x$bls_opt_workdir" != "x" ]; then
       cd $bls_opt_workdir
   elif [ "x$blah_set_default_workdir_to_home" == "xyes" ]; then
@@ -759,19 +799,28 @@ function bls_test_working_dir ()
       rm -f $bls_tmp_file
       exit 1
   fi
+
+  # Ensure local files actually exist. When called before job submission, this prevents
+  # unnecessary churn on the scheduler if the files don't exist.
+  if ! bls_fl_test_exists inputsand ; then
+      echo "Input sandbox file doesn't exist: $bls_fl_test_exists_result" >&2
+      echo Error # for the sake of waiting fgets in blahpd
+      rm -f "$bls_tmp_file"
+      exit 1
+  fi
 }
 
 function bls_add_job_wrapper ()
 {
+  bls_test_input_files
   bls_start_job_wrapper >> $bls_tmp_file
   bls_finish_job_wrapper >> $bls_tmp_file
-  bls_test_working_dir
 }
 
 function bls_set_up_local_and_extra_args ()
 {
   if [ -r $bls_local_submit_attributes_file ] ; then
-      echo \#\!/bin/sh > $bls_opt_tmp_req_file
+      echo \#\!/bin/bash > $bls_opt_tmp_req_file
       if [ ! -z $bls_opt_req_file ] ; then
           cat $bls_opt_req_file >> $bls_opt_tmp_req_file
       fi
@@ -791,38 +840,39 @@ function bls_set_up_local_and_extra_args ()
   fi
 }
 
+function bls_save_submit () {
+    if [ -d "$blah_debug_save_submit_info" -a -n "$bls_tmp_name" ]; then
+        # Store files used for this job in a directory
+        bls_info_dir="$blah_debug_save_submit_info/$bls_tmp_name.debug"     
+        mkdir "$bls_info_dir"
+        if [ $? -eq 0 ]; then
+            # Best effort.
+            if [ -r "$bls_proxy_local_file" ]; then
+                cp "$bls_proxy_local_file" "$bls_info_dir/submit.proxy"
+            fi
+            if [ -r "$bls_opt_stdout" ]; then
+                ln "$bls_opt_stdout" "$bls_info_dir/job.stdout"
+                if [ $? -ne 0 ]; then
+                    # If we cannot hardlink, try a soft link.
+                    ln -s "$bls_opt_stdout" "$bls_info_dir/job.stdout"
+                fi
+            fi
+            if [ -r "$bls_opt_stderr" ]; then
+                ln "$bls_opt_stderr" "$bls_info_dir/job.stderr"
+                if [ $? -ne 0 ]; then
+                    # If we cannot hardlink, try a soft link.
+                    ln -s "$bls_opt_stderr" "$bls_info_dir/job.stderr"
+                fi
+            fi
+            if [ -r "$bls_tmp_file" ]; then
+                cp "$bls_tmp_file" "$bls_info_dir/submit.script"
+            fi
+        fi
+    fi    
+}
+
 function bls_wrap_up_submit ()
 {
-
-  if [ -d "$blah_debug_save_submit_info" -a -n "$bls_tmp_name" ]; then
-    # Store files used for this job in a directory
-    bls_info_dir="$blah_debug_save_submit_info/$bls_tmp_name.debug"     
-    mkdir "$bls_info_dir"
-    if [ $? -eq 0 ]; then
-      # Best effort.
-      if [ -r "$bls_proxy_local_file" ]; then
-        cp "$bls_proxy_local_file" "$bls_info_dir/submit.proxy"
-      fi
-      if [ -r "$bls_opt_stdout" ]; then
-        ln "$bls_opt_stdout" "$bls_info_dir/job.stdout"
-        if [ $? -ne 0 ]; then
-          # If we cannot hardlink, try a soft link.
-          ln -s "$bls_opt_stdout" "$bls_info_dir/job.stdout"
-        fi
-      fi
-      if [ -r "$bls_opt_stderr" ]; then
-        ln "$bls_opt_stderr" "$bls_info_dir/job.stderr"
-        if [ $? -ne 0 ]; then
-          # If we cannot hardlink, try a soft link.
-          ln -s "$bls_opt_stderr" "$bls_info_dir/job.stderr"
-        fi
-      fi
-      if [ -r "$bls_tmp_file" ]; then
-        cp "$bls_tmp_file" "$bls_info_dir/submit.script"
-      fi
-    fi
-  fi
-
   bls_fl_clear inputsand
   bls_fl_clear outputsand
   bls_fl_clear inputcopy

@@ -1,4 +1,4 @@
-#!/bin/bash -l
+#!/bin/bash
 #
 # 	File:     condor_submit.sh
 # 	Author:   Giuseppe Fiorentino (giuseppe.fiorentino@mi.infn.it)
@@ -49,13 +49,13 @@ original_args="$@"
 # script debug flag: currently unused
 debug=no
 
-# number of MPI nodes: currently unused
-mpinodes=0
+# number of MPI nodes: interpretted as a core count for vanilla universe
+mpinodes=1
 
 # Name of local requirements file: currently unused
 req_file=""
 
-while getopts "a:i:o:de:j:g:m:M:P:n:v:V:c:w:x:u:q:r:s:T:I:O:R:C:D:S:" arg 
+while getopts "a:i:o:de:j:g:m:M:P:n:N:z:h:S:v:V:c:w:x:u:q:r:s:T:I:O:R:C:D:m:A:t:S:" arg 
 do
     case "$arg" in
     a) xtra_args="$OPTARG" ;;
@@ -72,6 +72,10 @@ do
     M) gpu_model="$OPTARG" ;;
     P) mic_number="$OPTARG" ;;
     n) mpinodes="$OPTARG" ;;
+    N) hostsmpsize="$OPTARG";;
+    z) wholenodes="$OPTARG";;
+    h) hostnumber="$OPTARG";;
+    S) smpgranularity="$OPTARG";;
     w) workdir="$OPTARG";;
     x) proxy_file="$OPTARG" ;;
     u) proxy_subject="$OPTARG" ;;
@@ -84,6 +88,9 @@ do
     R) remaps="$OPTARG" ;;
     C) req_file="$OPTARG" ;;
     D) run_dir="$OPTARG" ;;
+    m) req_mem="$OPTARG" ;;
+    A) project="$OPTARG" ;;
+    t) runtime="$OPTARG" ;;
     S) smp_core="$OPTARG" ;;
     -) break ;;
     ?) echo $usage_string
@@ -193,7 +200,7 @@ if [ ${#remap_files[@]} -gt 0 ] ; then
 	if [ ! -z "${remap_files[0]}" ] ; then
 	    map=${remap_files[$i]}
 	else
-	    map=${output_files$i]}
+	    map=${output_files[$i]}
 	fi
 	transfer_output_remaps="$transfer_output_remaps;${output_files[$i]}=$map"
     done
@@ -203,26 +210,22 @@ fi
 # Convert input environment (old Condor or shell format as dictated by 
 # input args):
 
-submit_file_environment="# No environment defined"
+submit_file_environment="#"
 
 if [ "x$environment" != "x" ] ; then
 # Input format is suitable for bourne shell style assignment. Convert to
-# HTCondor's new submit format (double quotes around the value).
+# new condor format to avoid errors  when things like LS_COLORS (which 
+# has semicolons in it) get captured
     eval "env_array=($environment)"
-    submit_file_environment=""
-    for  env_var in "${env_array[@]}"; do
-        if [ "x$submit_file_environment" == "x" ] ; then
-            submit_file_environment="environment = \""
-        else
-            submit_file_environment="$submit_file_environment "
-        fi
-        # Undo bash escaping
-        env_var=${env_var//\'/\'\'}    # escape quotes by repeating them
-        env_var=${env_var//\\\"/\"\"}  # replace \" with "" (Condor escaping)
-        env_var=${env_var%%=*}=\'${env_var#*=}\' # protect rvalue with quotes
-        submit_file_environment="${submit_file_environment}${env_var}"
-    done
-    submit_file_environment="${submit_file_environment}\""
+    dq='"'
+    sq="'"
+    # escape single-quote and double-quote characters (by doubling them)
+    env_array=("${env_array[@]//$sq/$sq$sq}")
+    env_array=("${env_array[@]//$dq/$dq$dq}")
+    # map key=val -> key='val'
+    env_array=("${env_array[@]/=/=$sq}")
+    env_array=("${env_array[@]/%/$sq}")
+    submit_file_environment="environment = \"${env_array[*]}\""
 else
     if [ "x$envir" != "x" ] ; then
 # Old Condor format (no double quotes in submit file)
@@ -236,8 +239,11 @@ fi
 # # so to get them back into Condor format we need to remove all the
 # # extra quotes. We do this by replacing '" "' with ' ' and stripping
 # # the leading and trailing "s.
-# arguments="$(echo $arguments | sed -e 's/\" \"/ /g')"
-# arguments=${arguments:1:$((${#arguments}-2))}
+if [[ $arguments = '"'*'"' ]]; then
+  arguments=${arguments//'" "'/ }
+  arguments=${arguments/#'"'}
+  arguments=${arguments/%'"'}
+fi
 
 cat > $submit_file << EOF
 universe = vanilla
@@ -269,11 +275,18 @@ then
   echo -e $xtra_args >> $submit_file
 fi
 
-if [ "x$mpinodes" != "x" ]
+if [ "x$req_mem" != "x" ]
 then
-  echo "request_cpus = $mpinodes" >> $submit_file
+  echo "request_memory = $req_mem" >> $submit_file
 fi
+
+if [ "x$runtime" != "x" ]
+then
+  echo "periodic_remove = JobStatus == 2 && time() - JobCurrentStartExecutingDate > $runtime" >> $submit_file
+fi
+
 cat >> $submit_file << EOF
+request_cpus = $mpinodes
 # We insist on new style quoting in Condor
 arguments = $arguments
 input = $stdin
@@ -287,7 +300,7 @@ should_transfer_files = yes
 notification = error
 $submit_file_environment
 # Hang around for 30 minutes (1800 seconds) ?
-leave_in_queue = (CompletionDate =?= UNDEFINED || CompletionDate == 0 || ((CurrentTime - CompletionDate) < 1800))
+leave_in_queue = JobStatus == 4 && (CompletionDate =?= UNDEFINED || CompletionDate == 0 || ((CurrentTime - CompletionDate) < 1800))
 # Add the batch queue as job attribute
 +BatchQueue = "$queue"
 # Group is needed by dgas and EstTT
@@ -304,7 +317,7 @@ fi
 #local batch system-specific file output must be added to the submit file
 local_submit_attributes_file=${blah_libexec_directory}/condor_local_submit_attributes.sh
 if [ -r $local_submit_attributes_file ] ; then
-    echo "\#\!/bin/sh" > $tmp_req_file
+    echo \#\!/bin/sh > $tmp_req_file
     echo "queue=$queue" >> $tmp_req_file
     if [ ! -z $req_file ] ; then
         cat $req_file >> $tmp_req_file
@@ -351,10 +364,8 @@ let now=$now-1
 full_result=$($condor_binpath/condor_submit $target $submit_file)
 return_code=$?
 
-full_result=$(echo $full_result | sed 's/.*submitted to cluster \([0-9]*\)./\1/')
-
-if [[ "$return_code" == "0" && "x$full_result" != "x" ]] ; then
-    jobID=$($condor_binpath/condor_q $target -format "%s" GlobalJobId $full_result)
+if [ "$return_code" == "0" ] ; then
+    jobID=`echo $full_result | awk '{print $8}' | tr -d '.'`
     blahp_jobID="condor/$jobID/$queue/$pool"
 
     if [ "x$job_registry" != "x" ]; then

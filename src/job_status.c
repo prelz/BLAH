@@ -126,8 +126,15 @@ get_status(const char *jobDesc, classad_context *cad, char **deleg_parameters, c
 		return(255);
 	}
 
-	exec_command.command = make_message("%s/%s_status.sh %s %s", blah_script_location,
-	                                    spid->lrms, (get_workernode ? "-w" : ""), jobDesc);
+	if (strcmp(spid->lrms, "pbs") == 0) {
+		exec_command.command = make_message("%s/%s_status.py %s %s", blah_script_location,
+		                                    spid->lrms, (get_workernode ? "-w" : ""), jobDesc);
+	}
+	else
+	{
+		exec_command.command = make_message("%s/%s_status.sh %s %s", blah_script_location,
+		                                    spid->lrms, (get_workernode ? "-w" : ""), jobDesc);
+	}
 	if (exec_command.command == NULL)
 	{
 		fprintf(stderr, "blahpd: out of memory");

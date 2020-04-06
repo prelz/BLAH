@@ -63,6 +63,14 @@ cat > $bls_tmp_file << end_of_preamble
 #\$ -S /bin/bash
 end_of_preamble
 
+if [ "x$bls_opt_project" != "x" ] ; then
+  echo "#\$ -A $bls_opt_project" >> $bls_tmp_file
+fi
+
+if [ "x$bls_opt_runtime" != "x" ] ; then
+  echo "#\$ -l h_rt=$bls_opt_runtime" >> $bls_tmp_file
+fi
+
 #local batch system-specific file output must be added to the submit file
 local_submit_attributes_file=${blah_libexec_directory}/sge_local_submit_attributes.sh
 if [ -r $local_submit_attributes_file ] ; then
@@ -82,8 +90,12 @@ fi
 
 # Write SGE directives according to command line options
 # handle queue overriding
+if [ -z "$sge_pe_policy" ] ; then
+    sge_pe_policy=\*
+fi
 [ -z "$bls_opt_queue" ] || grep -q "^#\$ -q" $bls_tmp_file || echo "#\$ -q $bls_opt_queue" >> $bls_tmp_file
-[ -z "$bls_opt_mpinodes" -o "x${bls_opt_mpinodes}" = "x1" ] || grep -q"^#\$ -pe *\\*" $bls_tmp_file || echo "#\$ -pe * $bls_opt_mpinodes" >>$bls_tmp_file
+[ -z "$bls_opt_mpinodes" -o "x${bls_opt_mpinodes}" = "x1" ] || grep -q "^#\$ -pe *\\*" $bls_tmp_file \
+    || echo "#\$ -pe $sge_pe_policy $bls_opt_mpinodes" >>$bls_tmp_file
 
 # Extended MPI support must be added
 
@@ -101,14 +113,14 @@ bls_fl_subst_and_accumulate outputsand "@@F_REMOTE@`hostname -f`:@@F_LOCAL" "@@@
 echo "#$ -m n"  >> $bls_tmp_file
 
 bls_add_job_wrapper
+bls_save_submit
 
 ###############################################################
 # Submit the script
 ###############################################################
 #Your job 3236842 ("run") has been submitted
-qsub_out=`qsub $bls_tmp_file`
+jobID=`qsub $bls_tmp_file 2> /dev/null | perl -ne 'print $1 if /^Your job (\d+) /;'` # actual submission
 retcode=$?
-jobID=`echo $qsub_out | perl -ne 'print $1 if /^Your job (\d+) /;'` # actual submission
 if [ "$retcode" != "0" -o -z "$jobID" ] ; then
 	rm -f $bls_tmp_file
 	exit 1

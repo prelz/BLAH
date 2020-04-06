@@ -42,6 +42,15 @@ if test "x%{extbuilddir}" == "x--" ; then
 else
   cp -R %{extbuilddir}/* %{buildroot}
 fi
+strip -s %{buildroot}/usr/sbin/blah_job_registry_*
+strip -s %{buildroot}/usr/sbin/blahpd_daemon
+strip -s %{buildroot}/usr/sbin/blah_check_config
+strip -s %{buildroot}/usr/libexec/blparser_master
+strip -s %{buildroot}/usr/libexec/BLClient
+strip -s %{buildroot}/usr/libexec/BUpdater*
+strip -s %{buildroot}/usr/libexec/BNotifier
+strip -s %{buildroot}/usr/libexec/BLParser*
+strip -s %{buildroot}/usr/bin/blahpd
 
 
 %clean
@@ -82,6 +91,7 @@ fi
 %defattr(-,root,root)
 %config(noreplace) /etc/blparser.conf.template
 %config(noreplace) /etc/blah.config.template
+%dir /etc/rc.d/init.d/
 /etc/rc.d/init.d/glite-ce-*
 /usr/libexec/*
 /usr/sbin/*
@@ -91,6 +101,6 @@ fi
 %doc /usr/share/man/man1/*.1.gz
 
 %changelog
-* %(date +"%%a %%b %%d %%Y") CREAM group <cream-support@lists.infn.it> - %{version}-%{release}
+* %{extcdate} CREAM group <cream-support@lists.infn.it> - %{extversion}-%{extage}.%{extdist}
 - %{extclog}
 

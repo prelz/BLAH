@@ -2,7 +2,8 @@
 
 #  File:     condor_resume.sh
 #
-#  Author:   Matt Farrellee (Condor) - received on March 28, 2007
+#  Author:   Francesco Prelz
+#  e-mail:   Francesco.Prelz@mi.infn.it
 #
 #
 # Copyright (c) Members of the EGEE Collaboration. 2004. 
@@ -41,7 +42,7 @@ else
     fi
 fi
 
-$condor_binpath/condor_release $target -constr "GlobalJobId == \"$id\"" &>/dev/null
+$condor_binpath/condor_release $target $id >&/dev/null
 
 if [ "$?" == "0" ]; then
     echo " 0 No\\ error"

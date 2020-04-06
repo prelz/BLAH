@@ -20,8 +20,9 @@
 #
 
 
-#[ -f ${GLITE_LOCATION:-/opt/glite}/etc/blah.config ] && . ${GLITE_LOCATION:-/opt/glite}/etc/blah.config
 . `dirname $0`/blah_load_config.sh
+
+sge_helper_path=${blah_libexec_directory}
 
 usage_string="Usage: $0 [-w] [-n]"
 
@@ -66,7 +67,7 @@ tmpid=`echo "$@"|sed 's/.*\/.*\///g'`
 jobid=${tmpid}.${sge_cellname:-default}
 
 
-blahp_status=`exec ${sge_helper_path:-/opt/glite/bin}/sge_helper --status $getwn $jobid`
+blahp_status=`exec ${sge_helper_path}/sge_helper --status $getwn $jobid`
 retcode=$?
 
 # Now see if we need to run qstat 'manually'
