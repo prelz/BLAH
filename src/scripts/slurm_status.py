@@ -379,7 +379,12 @@ def get_finished_job_stats(jobid, cluster):
                 log("Failed to parse memory usage for job id %s: %s" % (jobid, row["MaxRSS"]))
                 raise
     return return_dict
-    
+
+def env_expand(path):
+    """ substitute occurences of $VAR or ${VAR} in path """
+    def envmatch(m):
+        return os.getenv(m.group(1) or m.group(2)) or ""
+    return re.sub(r'\$(?:{(\w+)}|(\w+))', envmatch, path)
 
 _slurm_location_cache = None
 def get_slurm_location(program):
@@ -390,10 +395,10 @@ def get_slurm_location(program):
     if _slurm_location_cache is not None:
         return os.path.join(_slurm_location_cache, program)
 
-    slurm_bindir = config.get('slurm_binpath')
+    slurm_bindir = env_expand(config.get('slurm_binpath'))
     slurm_bin_location = os.path.join(slurm_bindir, program)
     if not os.path.exists(slurm_bin_location):
-        raise Exception("Could not find %s in slurm_binpath=%s" % (program, output))
+        raise Exception("Could not find %s in slurm_binpath=%s" % (program, slurm_bindir))
     _slurm_location_cache = slurm_bindir
     return slurm_bin_location
 
