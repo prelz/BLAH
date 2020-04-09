@@ -232,12 +232,13 @@ def call_scontrol(jobid="", cluster=""):
     Returns a python dictionary with the job info.
     """
     scontrol = get_slurm_location('scontrol')
-    if cluster != "":
-        scontrol += " -M %s" % cluster
 
     starttime = time.time()
     log("Starting scontrol.")
-    command = (scontrol, 'show', 'job')
+    if cluster:
+        command = (scontrol, '-M', cluster, 'show', 'job')
+    else:
+        command = (scontrol, 'show', 'job')
     if jobid:
         command += (jobid,)
     scontrol_proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
