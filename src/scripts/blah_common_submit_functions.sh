@@ -628,6 +628,14 @@ function bls_setup_all_files ()
   fi
 } 
 
+print_blahp_job_env () {
+  local IFS=,
+
+  for fname in $blah_job_env_confs; do
+    test -r "$fname" && echo "`grep -G \"^[^# ]\" $fname`"
+  done
+}
+
 function bls_start_job_wrapper ()
 {
   # Set the required environment variables (escape values with double quotes)
@@ -646,11 +654,7 @@ function bls_start_job_wrapper ()
           fi
   fi
   
-  JOB_ENV="/var/lib/osg/osg-job-environment.conf"
-  LOCAL_JOB_ENV="/var/lib/osg/osg-local-job-environment.conf"
-  for fname in $JOB_ENV $LOCAL_JOB_ENV; do
-    test -r $fname && echo "`grep -G \"^[^# ]\" $fname`"
-  done
+  print_blahp_job_env
 
   echo "old_home=\`pwd\`"
   # Set the temporary home (including cd'ing into it)

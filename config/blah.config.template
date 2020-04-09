@@ -332,3 +332,8 @@ bnotifier_debug_level=1
 
 #bnotifier debug log file
 bnotifier_debug_logfile=/var/tmp/bnotifier.log
+
+#Comma-separated list of environment config files, with VAR=VAL lines
+#These lines are sourced by the shell, so embedded variables are expanded
+blah_job_env_confs=/var/lib/osg/osg-job-environment.conf,/var/lib/osg/osg-local-job-environment.conf
+
