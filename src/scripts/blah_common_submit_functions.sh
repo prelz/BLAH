@@ -629,7 +629,7 @@ function bls_setup_all_files ()
 } 
 
 print_blahp_job_env () {
-  local IFS=,
+  local IFS=$' \t\n,'  # split on whitespace and/or commas
 
   for fname in $blah_job_env_confs; do
     test -r "$fname" && echo "`grep -G \"^[^# ]\" $fname`"
