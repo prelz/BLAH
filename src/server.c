@@ -77,7 +77,7 @@
 #include <netdb.h>
 #include <libgen.h>
 #include <sys/socket.h>
-#include <sys/types.h>
+#include <sys/time.h>
 #include <sys/select.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -123,6 +123,10 @@
 #define TRUE  1
 #endif
 
+#ifdef HAVE_GLOBUS
+#include "globus_utils.h"
+#endif
+
 const char *opt_format[] = {
 	" %s %s",          /* NO_QUOTE */
 	" %s '%s'",        /* SINGLE_QUOTE */
@@ -150,6 +154,7 @@ int logAccInfo(char* jobId, char* server_lrms, classad_context cad, char* fqan, 
 int CEReq_parse(classad_context cad, char* filename, char *proxysubject, char *proxyfqan);
 char* outputfileRemaps(char *sb,char *sbrmp);
 int check_TransferINOUT(classad_context cad, char **command, char *reqId, char **resultLine, char ***files_to_clean_up);
+int enqueue_result(char *);
 /* char *ConvertArgs(char* args, char sep); */
 
 /* Global variables */
@@ -1503,7 +1508,7 @@ cleanup_argv:
 		exit(MALLOC_ERROR);
 	}
 	sem_post(&sem_total_commands);
-	return;
+	return(NULL);
 }
 
 #define CMD_CANCEL_JOB_ARGS 2
@@ -1598,7 +1603,7 @@ cleanup_argv:
 		free (resultLine);
 	}
 	sem_post(&sem_total_commands);
-	return;
+	return(NULL);
 }
 
 #define CMD_STATUS_JOB_ARGS 2
@@ -1664,7 +1669,7 @@ cmd_status_job(void *args)
 	/* Free up all arguments */
 	free_args(argv);
 	sem_post(&sem_total_commands);
-	return;
+	return(NULL);
 }
 
 void*
@@ -1778,7 +1783,7 @@ wrap_up:
 		free (resultLine);
 	}
 	sem_post(&sem_total_commands);
-	return;
+	return(NULL);
 }
 
 int
@@ -2079,7 +2084,7 @@ cmd_renew_proxy(void *args)
 						argv[CMD_RENEW_PROXY_ARGS+1] = workernode;
 						cmd_send_proxy_to_worker_node((void *)argv);
 						if (old_proxy != NULL) free(old_proxy);
-						return;
+						return(NULL);
 					}
 					else
 					{
@@ -2125,7 +2130,7 @@ cmd_renew_proxy(void *args)
 	/* Free up all arguments */
 	free_args(argv);
 	sem_post(&sem_total_commands);
-	return;
+	return(NULL);
 }
 
 #define CMD_SEND_PROXY_TO_WORKER_NODE_ARGS 4
@@ -2222,7 +2227,7 @@ cmd_send_proxy_to_worker_node(void *args)
 	/* Free up all arguments */
 	free_args(argv);
 	sem_post(&sem_total_commands);
-	return;
+	return(NULL);
 }
 
 void
@@ -2428,7 +2433,7 @@ cmd_hold_job(void* args)
 {
 	hold_resume(args,HOLD_JOB);
 	sem_post(&sem_total_commands);
-	return;
+	return(NULL);
 }
 
 void *
@@ -2436,7 +2441,7 @@ cmd_resume_job(void* args)
 {
 	hold_resume(args,RESUME_JOB);
 	sem_post(&sem_total_commands);
-	return;
+	return(NULL);
 }
 
 void *
@@ -2486,7 +2491,7 @@ cmd_get_hostport(void *args)
 	free(resultLine);
 	free_args(argv);
 	sem_post(&sem_total_commands);
-	return ;
+	return(NULL);
 }
 
 /* Utility functions

@@ -22,6 +22,9 @@
 # 
 */
 
+#define _GNU_SOURCE
+#include <pthread.h>
+
 #include "BNotifier.h"
 
 /* Variables initialization */
@@ -361,7 +364,7 @@ PollDB()
 			pthread_mutex_lock(&notifier_lock);
 			
 			if(i%5 == 0){
-				pthread_yield(NULL);
+				pthread_yield();
 			}
 			
 			if(!connections[i].startnotify && !connections[i].startnotifyjob && !(connections[i].firstnotify && connections[i].sentendonce)){
@@ -511,7 +514,7 @@ PollDB()
 				pthread_mutex_lock(&notifier_lock);
 			
 				if(i%5 == 0){
-					pthread_yield(NULL);
+					pthread_yield();
 				}
 				
 				if(connections[i].creamfilter==NULL){
@@ -546,7 +549,7 @@ PollDB()
 			pthread_mutex_lock(&notifier_lock);
 			
 			if(i%5 == 0){
-				pthread_yield(NULL);
+				pthread_yield();
 			}
 			
 			if(connections[i].finalbuffer != NULL){

@@ -23,7 +23,7 @@
 */
 
 #define _GNU_SOURCE
-#define _XOPEN_SOURCE
+//#define _XOPEN_SOURCE
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
