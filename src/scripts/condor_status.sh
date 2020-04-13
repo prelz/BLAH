@@ -213,6 +213,12 @@ function make_ad {
     echo "]"
 }
 
+function at_exit {
+    local cache=$(identify_cache $queue $pool)
+    rm -f "$cache.barrier"
+}
+trap at_exit EXIT
+
 ### main
 
 while getopts "wn" arg 
