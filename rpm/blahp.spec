@@ -4,7 +4,7 @@
 %define bl_libexecdir %{_libexecdir}/%{name}
 
 Name:		blahp
-Version:	1.18.45
+Version:	1.18.46
 Release:	1%{?gitrev:.%{gitrev}}%{?dist}
 Summary:	gLite BLAHP daemon
 
@@ -111,6 +111,16 @@ fi
 %{_initrddir}/glite-ce-*
 
 %changelog
+* Tue Apr 21 2020 Carl Edquist <edquist@cs.wisc.edu> - 1.18.45
+- Fix an issue where the slurm binpath always returned scontrol (SOFTWARE-3986)
+- Python 3 compatibility (#7)
+- Handle extra-quoted arguments to condor_submit.sh (SOFTWARE-3993)
+- Expand env vars in configured slurm_binpath (#10)
+- Fix cluster handling in slurm_status.py (#13)
+- Introduce blah_job_env_confs for dynamic env var expansion (SOFTWARE-2521)
+- Add EXIT trap to remove barrier file (SOFTWARE-3930)
+- Amended file credits for Matt Farrellee (#17)
+
 * Tue Oct 15 2019 Carl Edquist <edquist@cs.wisc.edu> - 1.18.45
 - Fix cherry-picking error from htcondor patch in 1.18.44 (SOFTWARE-3824)
 
