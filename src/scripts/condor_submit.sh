@@ -136,11 +136,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-#  Remove any preexisting submit file
-if [ -f $submit_file ] ; then
-	rm -f $submit_file
-fi
-
 if [ ! -z "$inputflstring" ] ; then
     i=0
     for file in `cat $inputflstring`; do
