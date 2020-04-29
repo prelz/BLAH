@@ -166,9 +166,9 @@ then
   echo "x509userproxy = $bls_opt_proxy_string" >> $submit_file
 fi
 
-if [ "x$req_mem" != "x" ]
+if [ "x$bls_opt_req_mem" != "x" ]
 then
-  echo "request_memory = $req_mem" >> $submit_file
+  echo "request_memory = $bls_opt_req_mem" >> $submit_file
 fi
 
 if [ "x$runtime" != "x" ]
