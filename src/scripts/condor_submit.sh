@@ -240,7 +240,7 @@ if [ "$return_code" == "0" ] ; then
     blahp_jobID="condor/$jobID/$bls_opt_queue/$pool"
 
     if [ "x$job_registry" != "x" ]; then
-      ${blah_sbin_directory}/blah_job_registry_add "$blahp_jobID" "$jobID" 1 $now "$creamjobid" "$bls_opt_proxy_string" 0 "$bls_opt_proxy_subject"
+      ${blah_sbin_directory}/blah_job_registry_add "$blahp_jobID" "$jobID" 1 $now "$bls_opt_creamjobid" "$bls_opt_proxy_string" 0 "$bls_opt_proxy_subject"
     fi
 
     echo "BLAHP_JOBID_PREFIX$blahp_jobID"
