@@ -251,6 +251,9 @@ else
     echo Error
 fi
 
+# TODO: Use 'bls_wrap_up_submit' here instead of manual cleanup below.
+#       Won't work currently as proxy symlink setup is subtly different.
+
 # Clean temporary files -- There only temp file is the one we submit
 rm -f $submit_file
 
