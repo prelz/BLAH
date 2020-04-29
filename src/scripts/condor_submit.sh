@@ -161,9 +161,9 @@ universe = vanilla
 executable = $bls_opt_the_command
 EOF
 
-if [ "x$proxy_file" != "x" ]
+if [ "x$bls_opt_proxy_string" != "x" ]
 then
-  echo "x509userproxy = $proxy_file" >> $submit_file
+  echo "x509userproxy = $bls_opt_proxy_string" >> $submit_file
 fi
 
 if [ "x$req_mem" != "x" ]
@@ -240,7 +240,7 @@ if [ "$return_code" == "0" ] ; then
     blahp_jobID="condor/$jobID/$queue/$pool"
 
     if [ "x$job_registry" != "x" ]; then
-      ${blah_sbin_directory}/blah_job_registry_add "$blahp_jobID" "$jobID" 1 $now "$creamjobid" "$proxy_file" 0 "$proxy_subject"
+      ${blah_sbin_directory}/blah_job_registry_add "$blahp_jobID" "$jobID" 1 $now "$creamjobid" "$bls_opt_proxy_string" 0 "$proxy_subject"
     fi
 
     echo "BLAHP_JOBID_PREFIX$blahp_jobID"
@@ -256,9 +256,9 @@ rm -f $submit_file
 # of limited proxy only.
 
 if [ "x$job_registry" == "x" ]; then
-    if [ -r "$proxy_file" -a -f "$proxy_file" ] ; then
+    if [ -r "$bls_opt_proxy_string" -a -f "$bls_opt_proxy_string" ] ; then
         [ -d "$proxy_dir" ] || mkdir $proxy_dir
-        ln -s $proxy_file $proxy_dir/$jobID.proxy.norenew
+        ln -s "$bls_opt_proxy_string" "$proxy_dir/$jobID.proxy.norenew"
     fi
 fi
 
