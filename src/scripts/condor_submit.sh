@@ -36,15 +36,8 @@
 original_args="$@"
 # Note: -s (stage command) s ignored as it is not relevant for Condor.
 
-# script debug flag: currently unused
-bls_opt_debug=no
-
 # number of MPI nodes: interpretted as a core count for vanilla universe
 bls_opt_mpinodes=1
-
-# Name of local requirements file: currently unused
-bls_opt_req_file=""
-
 
 
 bls_parse_submit_options "$@"
