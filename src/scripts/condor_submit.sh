@@ -62,6 +62,8 @@ bls_test_input_files
 submit_file=$bls_tmp_file
 
 
+# XXX: is this (vvv) section covered in 'bls_setup_all_files'  ???
+
 if [ ! -z "$bls_opt_inputflstring" ] ; then
     i=0
     for file in `cat $bls_opt_inputflstring`; do
@@ -117,6 +119,9 @@ if [ ${#remap_files[@]} -gt 0 ] ; then
     done
     transfer_output_remaps="$transfer_output_remaps\""
 fi
+
+# XXX: is this (^^^) section covered in 'bls_setup_all_files'  ???
+
 
 # Convert input environment (old Condor or shell format as dictated by 
 # input args):
