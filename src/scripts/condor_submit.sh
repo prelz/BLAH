@@ -92,11 +92,6 @@ do
     esac
 done
 
-if [ -z "$temp_dir"  ] ; then
-      curdir=`pwd`
-      temp_dir="$curdir"
-fi
-
 shift `expr $OPTIND - 1`
 arguments=$*
 
@@ -116,6 +111,8 @@ if [ "x$workdir" == "x" ]; then
     fi
 fi
 
+bls_setup_all_files
+
 if [ "x$workdir" != "x" ]; then
     cd $workdir
     if [ $? -ne 0 ]; then
@@ -129,12 +126,9 @@ fi
 # Create submit file
 ###############################################################
 
-submit_file=`mktemp -q $temp_dir/blahXXXXXX`
-if [ $? -ne 0 ]; then
-    echo "mktemp failed" >&2
-    echo Error
-    exit 1
-fi
+# set in bls_setup_all_files
+submit_file=$bls_tmp_file
+
 
 if [ ! -z "$inputflstring" ] ; then
     i=0
@@ -269,12 +263,6 @@ $submit_file_environment
 leave_in_queue = JobStatus == 4 && (CompletionDate =?= UNDEFINED || CompletionDate == 0 || ((CurrentTime - CompletionDate) < 1800))
 EOF
 
-# Set up temp file name for requirement passing
-if [ ! -z $req_file ] ; then
-   tmp_req_file=${req_file}-temp_req_script
-else
-   tmp_req_file=`mktemp $temp_dir/temp_req_script_XXXXXXXXXX`
-fi
 
 #local batch system-specific file output must be added to the submit file
 bls_local_submit_attributes_file=${blah_libexec_directory}/condor_local_submit_attributes.sh
