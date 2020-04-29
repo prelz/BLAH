@@ -212,9 +212,8 @@ echo "queue 1" >> $submit_file
 # first param is the name of the queue and the second is the name of
 # the pool where the queue exists, i.e. a Collector's name.
 
-echo $bls_opt_queue | grep "/" >&/dev/null
 # If there is a "/" we need to split out the pool and queue
-if [ "$?" == "0" ]; then
+if [[ $bls_opt_queue = */* ]]; then
     pool=${bls_opt_queue#*/}
     bls_opt_queue=${bls_opt_queue%/*}
 fi
