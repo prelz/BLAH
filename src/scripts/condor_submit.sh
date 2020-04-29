@@ -171,9 +171,9 @@ then
   echo "request_memory = $bls_opt_req_mem" >> $submit_file
 fi
 
-if [ "x$runtime" != "x" ]
+if [ "x$bls_opt_runtime" != "x" ]
 then
-  echo "periodic_remove = JobStatus == 2 && time() - JobCurrentStartExecutingDate > $runtime" >> $submit_file
+  echo "periodic_remove = JobStatus == 2 && time() - JobCurrentStartExecutingDate > $bls_opt_runtime" >> $submit_file
 fi
 
 cat >> $submit_file << EOF
