@@ -180,9 +180,9 @@ cat >> $submit_file << EOF
 request_cpus = $bls_opt_mpinodes
 # We insist on new style quoting in Condor
 arguments = $arguments
-input = $stdin
-output = $stdout
-error = $stderr
+input = $bls_opt_stdin
+output = $bls_opt_stdout
+error = $bls_opt_stderr
 $transfer_input_files
 $transfer_output_files
 $transfer_output_remaps
