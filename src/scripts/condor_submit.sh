@@ -43,7 +43,7 @@ bls_opt_debug=no
 bls_opt_mpinodes=1
 
 # Name of local requirements file: currently unused
-req_file=""
+bls_opt_req_file=""
 
 
 
