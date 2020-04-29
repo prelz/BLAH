@@ -103,24 +103,10 @@ then
     exit 1
 fi
 
-# Move into the IWD so we don't clutter the current working directory.
-curdir=`pwd`
-if [ "x$workdir" == "x" ]; then
-    if [ "x$blah_set_default_workdir_to_home" == "xyes" ]; then
-        workdir=$HOME
-    fi
-fi
-
 bls_setup_all_files
 
-if [ "x$workdir" != "x" ]; then
-    cd $workdir
-    if [ $? -ne 0 ]; then
-	echo "Failed to CD to Initial Working Directory." >&2
-	echo Error # for the sake of waiting fgets in blahpd
-	exit 1
-    fi
-fi
+bls_test_input_files
+
 
 ##############################################################
 # Create submit file
