@@ -212,20 +212,20 @@ echo "queue 1" >> $submit_file
 # first param is the name of the queue and the second is the name of
 # the pool where the queue exists, i.e. a Collector's name.
 
-echo $queue | grep "/" >&/dev/null
+echo $bls_opt_queue | grep "/" >&/dev/null
 # If there is a "/" we need to split out the pool and queue
 if [ "$?" == "0" ]; then
-    pool=${queue#*/}
-    queue=${queue%/*}
+    pool=${bls_opt_queue#*/}
+    bls_opt_queue=${bls_opt_queue%/*}
 fi
 
-if [ -z "$queue" ]; then
+if [ -z "$bls_opt_queue" ]; then
     target=""
 else
     if [ -z "$pool" ]; then
-	target="-name $queue"
+	target="-name $bls_opt_queue"
     else
-	target="-pool $pool -name $queue"
+	target="-pool $pool -name $bls_opt_queue"
     fi
 fi
 
@@ -237,7 +237,7 @@ return_code=$?
 
 if [ "$return_code" == "0" ] ; then
     jobID=`echo $full_result | awk '{print $8}' | tr -d '.'`
-    blahp_jobID="condor/$jobID/$queue/$pool"
+    blahp_jobID="condor/$jobID/$bls_opt_queue/$pool"
 
     if [ "x$job_registry" != "x" ]; then
       ${blah_sbin_directory}/blah_job_registry_add "$blahp_jobID" "$jobID" 1 $now "$creamjobid" "$bls_opt_proxy_string" 0 "$bls_opt_proxy_subject"
