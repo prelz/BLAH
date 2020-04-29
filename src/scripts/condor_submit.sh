@@ -40,7 +40,7 @@ original_args="$@"
 bls_opt_debug=no
 
 # number of MPI nodes: interpretted as a core count for vanilla universe
-mpinodes=1
+bls_opt_mpinodes=1
 
 # Name of local requirements file: currently unused
 req_file=""
@@ -177,7 +177,7 @@ then
 fi
 
 cat >> $submit_file << EOF
-request_cpus = $mpinodes
+request_cpus = $bls_opt_mpinodes
 # We insist on new style quoting in Condor
 arguments = $arguments
 input = $stdin
