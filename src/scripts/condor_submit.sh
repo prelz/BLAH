@@ -123,11 +123,11 @@ fi
 
 submit_file_environment="#"
 
-if [ "x$environment" != "x" ] ; then
+if [ "x$bls_opt_environment" != "x" ] ; then
 # Input format is suitable for bourne shell style assignment. Convert to
 # new condor format to avoid errors  when things like LS_COLORS (which 
 # has semicolons in it) get captured
-    eval "env_array=($environment)"
+    eval "env_array=($bls_opt_environment)"
     dq='"'
     sq="'"
     # escape single-quote and double-quote characters (by doubling them)
