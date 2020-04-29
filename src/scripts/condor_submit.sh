@@ -62,9 +62,9 @@ bls_test_input_files
 submit_file=$bls_tmp_file
 
 
-if [ ! -z "$inputflstring" ] ; then
+if [ ! -z "$bls_opt_inputflstring" ] ; then
     i=0
-    for file in `cat $inputflstring`; do
+    for file in `cat $bls_opt_inputflstring`; do
 	input_files[$i]=$file
 	i=$((i+1))
     done
