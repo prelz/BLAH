@@ -158,7 +158,7 @@ fi
 
 cat > $submit_file << EOF
 universe = vanilla
-executable = $command
+executable = $bls_opt_the_command
 EOF
 
 if [ "x$proxy_file" != "x" ]
