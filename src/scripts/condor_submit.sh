@@ -31,7 +31,7 @@
 # limitations under the License.
 #
 
-. `dirname $0`/blah_load_config.sh
+. `dirname $0`/blah_common_submit_functions.sh
 
 usage_string="Usage: $0 -c <command> [-i <stdin>] [-o <stdout>] [-e <stderr>] [-v <environment>] [-s <yes | no>] [-- command_arguments]"
 
