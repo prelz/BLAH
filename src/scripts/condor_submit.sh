@@ -78,9 +78,9 @@ if [ ! -z "$bls_opt_outputflstring" ] ; then
     done
 fi
 
-if [ ! -z "$remaps" ] ; then
+if [ ! -z "$bls_opt_outputflstringremap" ] ; then
     i=0
-    for file in `cat $remaps`; do
+    for file in `cat $bls_opt_outputflstringremap`; do
 	remap_files[$i]=$file
 	i=$((i+1))
     done
