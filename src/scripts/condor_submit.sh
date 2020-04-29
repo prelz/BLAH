@@ -201,6 +201,9 @@ bls_set_up_local_and_extra_args
 
 echo "queue 1" >> $submit_file
 
+
+bls_save_submit
+
 ###############################################################
 # Perform submission
 ###############################################################
