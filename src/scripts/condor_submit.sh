@@ -37,7 +37,7 @@ original_args="$@"
 # Note: -s (stage command) s ignored as it is not relevant for Condor.
 
 # script debug flag: currently unused
-debug=no
+bls_opt_debug=no
 
 # number of MPI nodes: interpretted as a core count for vanilla universe
 mpinodes=1
