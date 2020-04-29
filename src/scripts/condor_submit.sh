@@ -148,10 +148,10 @@ fi
 # # so to get them back into Condor format we need to remove all the
 # # extra quotes. We do this by replacing '" "' with ' ' and stripping
 # # the leading and trailing "s.
-if [[ $arguments = '"'*'"' ]]; then
-  arguments=${arguments//'" "'/ }
-  arguments=${arguments/#'"'}
-  arguments=${arguments/%'"'}
+if [[ $bls_arguments = '"'*'"' ]]; then
+  bls_arguments=${bls_arguments//'" "'/ }
+  bls_arguments=${bls_arguments/#'"'}
+  bls_arguments=${bls_arguments/%'"'}
 fi
 
 cat > $submit_file << EOF
@@ -177,7 +177,7 @@ fi
 cat >> $submit_file << EOF
 request_cpus = $bls_opt_mpinodes
 # We insist on new style quoting in Condor
-arguments = $arguments
+arguments = $bls_arguments
 input = $bls_opt_stdin
 output = $bls_opt_stdout
 error = $bls_opt_stderr
