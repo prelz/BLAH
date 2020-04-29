@@ -138,9 +138,9 @@ if [ "x$bls_opt_environment" != "x" ] ; then
     env_array=("${env_array[@]/%/$sq}")
     submit_file_environment="environment = \"${env_array[*]}\""
 else
-    if [ "x$envir" != "x" ] ; then
+    if [ "x$bls_opt_envir" != "x" ] ; then
 # Old Condor format (no double quotes in submit file)
-        submit_file_environment="environment = $envir"
+        submit_file_environment="environment = $bls_opt_envir"
     fi
 fi
 
