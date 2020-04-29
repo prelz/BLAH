@@ -70,9 +70,9 @@ if [ ! -z "$bls_opt_inputflstring" ] ; then
     done
 fi
 
-if [ ! -z "$outputflstring" ] ; then
+if [ ! -z "$bls_opt_outputflstring" ] ; then
     i=0
-    for file in `cat $outputflstring`; do
+    for file in `cat $bls_opt_outputflstring`; do
 	output_files[$i]=$file
 	i=$((i+1))
     done
