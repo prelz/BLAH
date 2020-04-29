@@ -240,11 +240,6 @@ then
   echo "x509userproxy = $proxy_file" >> $submit_file
 fi
 
-if [ "x$xtra_args" != "x" ]
-then
-  echo -e $xtra_args >> $submit_file
-fi
-
 if [ "x$req_mem" != "x" ]
 then
   echo "request_memory = $req_mem" >> $submit_file
@@ -282,19 +277,9 @@ else
 fi
 
 #local batch system-specific file output must be added to the submit file
-local_submit_attributes_file=${blah_libexec_directory}/condor_local_submit_attributes.sh
-if [ -r $local_submit_attributes_file ] ; then
-    echo \#\!/bin/sh > $tmp_req_file
-    if [ ! -z $req_file ] ; then
-        cat $req_file >> $tmp_req_file
-    fi
-    echo "source $local_submit_attributes_file" >> $tmp_req_file
-    chmod +x $tmp_req_file
-    $tmp_req_file >> $submit_file 2> /dev/null
-fi
-if [ -e $tmp_req_file ] ; then
-    rm -f $tmp_req_file
-fi
+bls_local_submit_attributes_file=${blah_libexec_directory}/condor_local_submit_attributes.sh
+
+bls_set_up_local_and_extra_args
 
 echo "queue 1" >> $submit_file
 
