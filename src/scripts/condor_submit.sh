@@ -257,8 +257,8 @@ rm -f $submit_file
 
 if [ "x$job_registry" == "x" ]; then
     if [ -r "$bls_opt_proxy_string" -a -f "$bls_opt_proxy_string" ] ; then
-        [ -d "$proxy_dir" ] || mkdir $proxy_dir
-        ln -s "$bls_opt_proxy_string" "$proxy_dir/$jobID.proxy.norenew"
+        [ -d "$bls_proxy_dir" ] || mkdir "$bls_proxy_dir"
+        ln -s "$bls_opt_proxy_string" "$bls_proxy_dir/$jobID.proxy.norenew"
     fi
 fi
 
