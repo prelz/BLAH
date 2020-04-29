@@ -202,6 +202,8 @@ bls_set_up_local_and_extra_args
 echo "queue 1" >> $submit_file
 
 
+# bls_add_job_wrapper  # XXX appends to submit file; don't seem to want this.
+
 bls_save_submit
 
 ###############################################################
