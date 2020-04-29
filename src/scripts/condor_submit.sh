@@ -33,15 +33,6 @@
 
 . `dirname $0`/blah_common_submit_functions.sh
 
-usage_string="Usage: $0 -c <command> [-i <stdin>] [-o <stdout>] [-e <stderr>] [-v <environment>] [-s <yes | no>] [-- command_arguments]"
-
-workdir=$PWD
-
-proxy_dir=~/.blah_jobproxy_dir
-
-###############################################################
-# Parse parameters
-###############################################################
 original_args="$@"
 # Note: -s (stage command) s ignored as it is not relevant for Condor.
 
@@ -54,54 +45,9 @@ mpinodes=1
 # Name of local requirements file: currently unused
 req_file=""
 
-while getopts "a:i:o:de:j:n:N:z:h:S:v:V:c:w:x:u:q:r:s:T:I:O:R:C:D:m:A:t:" arg 
-do
-    case "$arg" in
-    a) xtra_args="$OPTARG" ;;
-    i) stdin="$OPTARG" ;;
-    o) stdout="$OPTARG" ;;
-    d) debug="yes" ;;
-    e) stderr="$OPTARG" ;;
-    j) creamjobid="$OPTARG" ;;
-    v) envir="$OPTARG";;
-    V) environment="$OPTARG";;
-    c) command="$OPTARG" ;;
-    n) mpinodes="$OPTARG" ;;
-    N) hostsmpsize="$OPTARG";;
-    z) wholenodes="$OPTARG";;
-    h) hostnumber="$OPTARG";;
-    S) smpgranularity="$OPTARG";;
-    w) workdir="$OPTARG";;
-    x) proxy_file="$OPTARG" ;;
-    u) proxy_subject="$OPTARG" ;;
-    q) queue="$OPTARG" ;;
-    r) dummy_proxyrenew="$OPTARG" ;;
-    s) stgcmd="$OPTARG" ;;
-    T) temp_dir="$OPTARG" ;;
-    I) inputflstring="$OPTARG" ;;
-    O) outputflstring="$OPTARG" ;;
-    R) remaps="$OPTARG" ;;
-    C) req_file="$OPTARG" ;;
-    D) run_dir="$OPTARG" ;;
-    m) req_mem="$OPTARG" ;;
-    A) project="$OPTARG" ;;
-    t) runtime="$OPTARG" ;;
-    -) break ;;
-    ?) echo $usage_string
-       exit 1 ;;
-    esac
-done
-
-shift `expr $OPTIND - 1`
-arguments=$*
 
 
-# Command is mandatory
-if [ "x$command" == "x" ]
-then
-    echo $usage_string
-    exit 1
-fi
+bls_parse_submit_options "$@"
 
 bls_setup_all_files
 
