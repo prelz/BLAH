@@ -31,135 +31,51 @@
 # limitations under the License.
 #
 
-. `dirname $0`/blah_load_config.sh
+. `dirname $0`/blah_common_submit_functions.sh
 
-usage_string="Usage: $0 -c <command> [-i <stdin>] [-o <stdout>] [-e <stderr>] [-v <environment>] [-s <yes | no>] [-- command_arguments]"
-
-workdir=$PWD
-
-proxy_dir=~/.blah_jobproxy_dir
-
-###############################################################
-# Parse parameters
-###############################################################
 original_args="$@"
 # Note: -s (stage command) s ignored as it is not relevant for Condor.
 
-# script debug flag: currently unused
-debug=no
-
 # number of MPI nodes: interpretted as a core count for vanilla universe
-mpinodes=1
-
-# Name of local requirements file: currently unused
-req_file=""
-
-while getopts "a:i:o:de:j:n:N:z:h:S:v:V:c:w:x:u:q:r:s:T:I:O:R:C:D:m:A:t:" arg 
-do
-    case "$arg" in
-    a) xtra_args="$OPTARG" ;;
-    i) stdin="$OPTARG" ;;
-    o) stdout="$OPTARG" ;;
-    d) debug="yes" ;;
-    e) stderr="$OPTARG" ;;
-    j) creamjobid="$OPTARG" ;;
-    v) envir="$OPTARG";;
-    V) environment="$OPTARG";;
-    c) command="$OPTARG" ;;
-    n) mpinodes="$OPTARG" ;;
-    N) hostsmpsize="$OPTARG";;
-    z) wholenodes="$OPTARG";;
-    h) hostnumber="$OPTARG";;
-    S) smpgranularity="$OPTARG";;
-    w) workdir="$OPTARG";;
-    x) proxy_file="$OPTARG" ;;
-    u) proxy_subject="$OPTARG" ;;
-    q) queue="$OPTARG" ;;
-    r) dummy_proxyrenew="$OPTARG" ;;
-    s) stgcmd="$OPTARG" ;;
-    T) temp_dir="$OPTARG" ;;
-    I) inputflstring="$OPTARG" ;;
-    O) outputflstring="$OPTARG" ;;
-    R) remaps="$OPTARG" ;;
-    C) req_file="$OPTARG" ;;
-    D) run_dir="$OPTARG" ;;
-    m) req_mem="$OPTARG" ;;
-    A) project="$OPTARG" ;;
-    t) runtime="$OPTARG" ;;
-    -) break ;;
-    ?) echo $usage_string
-       exit 1 ;;
-    esac
-done
-
-if [ -z "$temp_dir"  ] ; then
-      curdir=`pwd`
-      temp_dir="$curdir"
-fi
-
-shift `expr $OPTIND - 1`
-arguments=$*
+bls_opt_mpinodes=1
 
 
-# Command is mandatory
-if [ "x$command" == "x" ]
-then
-    echo $usage_string
-    exit 1
-fi
+bls_parse_submit_options "$@"
 
-# Move into the IWD so we don't clutter the current working directory.
-curdir=`pwd`
-if [ "x$workdir" == "x" ]; then
-    if [ "x$blah_set_default_workdir_to_home" == "xyes" ]; then
-        workdir=$HOME
-    fi
-fi
+bls_setup_all_files
 
-if [ "x$workdir" != "x" ]; then
-    cd $workdir
-    if [ $? -ne 0 ]; then
-	echo "Failed to CD to Initial Working Directory." >&2
-	echo Error # for the sake of waiting fgets in blahpd
-	exit 1
-    fi
-fi
+bls_test_input_files
+
 
 ##############################################################
 # Create submit file
 ###############################################################
 
-submit_file=`mktemp -q $temp_dir/blahXXXXXX`
-if [ $? -ne 0 ]; then
-    echo "mktemp failed" >&2
-    echo Error
-    exit 1
-fi
+# set in bls_setup_all_files
+submit_file=$bls_tmp_file
 
-#  Remove any preexisting submit file
-if [ -f $submit_file ] ; then
-	rm -f $submit_file
-fi
 
-if [ ! -z "$inputflstring" ] ; then
+# XXX: is this (vvv) section covered in 'bls_setup_all_files'  ???
+
+if [ ! -z "$bls_opt_inputflstring" ] ; then
     i=0
-    for file in `cat $inputflstring`; do
+    for file in `cat $bls_opt_inputflstring`; do
 	input_files[$i]=$file
 	i=$((i+1))
     done
 fi
 
-if [ ! -z "$outputflstring" ] ; then
+if [ ! -z "$bls_opt_outputflstring" ] ; then
     i=0
-    for file in `cat $outputflstring`; do
+    for file in `cat $bls_opt_outputflstring`; do
 	output_files[$i]=$file
 	i=$((i+1))
     done
 fi
 
-if [ ! -z "$remaps" ] ; then
+if [ ! -z "$bls_opt_outputflstringremap" ] ; then
     i=0
-    for file in `cat $remaps`; do
+    for file in `cat $bls_opt_outputflstringremap`; do
 	remap_files[$i]=$file
 	i=$((i+1))
     done
@@ -197,16 +113,19 @@ if [ ${#remap_files[@]} -gt 0 ] ; then
     transfer_output_remaps="$transfer_output_remaps\""
 fi
 
+# XXX: is this (^^^) section covered in 'bls_setup_all_files'  ???
+
+
 # Convert input environment (old Condor or shell format as dictated by 
 # input args):
 
 submit_file_environment="#"
 
-if [ "x$environment" != "x" ] ; then
+if [ "x$bls_opt_environment" != "x" ] ; then
 # Input format is suitable for bourne shell style assignment. Convert to
 # new condor format to avoid errors  when things like LS_COLORS (which 
 # has semicolons in it) get captured
-    eval "env_array=($environment)"
+    eval "env_array=($bls_opt_environment)"
     dq='"'
     sq="'"
     # escape single-quote and double-quote characters (by doubling them)
@@ -217,9 +136,9 @@ if [ "x$environment" != "x" ] ; then
     env_array=("${env_array[@]/%/$sq}")
     submit_file_environment="environment = \"${env_array[*]}\""
 else
-    if [ "x$envir" != "x" ] ; then
+    if [ "x$bls_opt_envir" != "x" ] ; then
 # Old Condor format (no double quotes in submit file)
-        submit_file_environment="environment = $envir"
+        submit_file_environment="environment = $bls_opt_envir"
     fi
 fi
 
@@ -229,44 +148,39 @@ fi
 # # so to get them back into Condor format we need to remove all the
 # # extra quotes. We do this by replacing '" "' with ' ' and stripping
 # # the leading and trailing "s.
-if [[ $arguments = '"'*'"' ]]; then
-  arguments=${arguments//'" "'/ }
-  arguments=${arguments/#'"'}
-  arguments=${arguments/%'"'}
+if [[ $bls_arguments = '"'*'"' ]]; then
+  bls_arguments=${bls_arguments//'" "'/ }
+  bls_arguments=${bls_arguments/#'"'}
+  bls_arguments=${bls_arguments/%'"'}
 fi
 
 cat > $submit_file << EOF
 universe = vanilla
-executable = $command
+executable = $bls_opt_the_command
 EOF
 
-if [ "x$proxy_file" != "x" ]
+if [ "x$bls_opt_proxy_string" != "x" ]
 then
-  echo "x509userproxy = $proxy_file" >> $submit_file
+  echo "x509userproxy = $bls_opt_proxy_string" >> $submit_file
 fi
 
-if [ "x$xtra_args" != "x" ]
+if [ "x$bls_opt_req_mem" != "x" ]
 then
-  echo -e $xtra_args >> $submit_file
+  echo "request_memory = $bls_opt_req_mem" >> $submit_file
 fi
 
-if [ "x$req_mem" != "x" ]
+if [ "x$bls_opt_runtime" != "x" ]
 then
-  echo "request_memory = $req_mem" >> $submit_file
-fi
-
-if [ "x$runtime" != "x" ]
-then
-  echo "periodic_remove = JobStatus == 2 && time() - JobCurrentStartExecutingDate > $runtime" >> $submit_file
+  echo "periodic_remove = JobStatus == 2 && time() - JobCurrentStartExecutingDate > $bls_opt_runtime" >> $submit_file
 fi
 
 cat >> $submit_file << EOF
-request_cpus = $mpinodes
+request_cpus = $bls_opt_mpinodes
 # We insist on new style quoting in Condor
-arguments = $arguments
-input = $stdin
-output = $stdout
-error = $stderr
+arguments = $bls_arguments
+input = $bls_opt_stdin
+output = $bls_opt_stdout
+error = $bls_opt_stderr
 $transfer_input_files
 $transfer_output_files
 $transfer_output_remaps
@@ -279,29 +193,18 @@ $submit_file_environment
 leave_in_queue = JobStatus == 4 && (CompletionDate =?= UNDEFINED || CompletionDate == 0 || ((CurrentTime - CompletionDate) < 1800))
 EOF
 
-# Set up temp file name for requirement passing
-if [ ! -z $req_file ] ; then
-   tmp_req_file=${req_file}-temp_req_script
-else
-   tmp_req_file=`mktemp $temp_dir/temp_req_script_XXXXXXXXXX`
-fi
 
 #local batch system-specific file output must be added to the submit file
-local_submit_attributes_file=${blah_libexec_directory}/condor_local_submit_attributes.sh
-if [ -r $local_submit_attributes_file ] ; then
-    echo \#\!/bin/sh > $tmp_req_file
-    if [ ! -z $req_file ] ; then
-        cat $req_file >> $tmp_req_file
-    fi
-    echo "source $local_submit_attributes_file" >> $tmp_req_file
-    chmod +x $tmp_req_file
-    $tmp_req_file >> $submit_file 2> /dev/null
-fi
-if [ -e $tmp_req_file ] ; then
-    rm -f $tmp_req_file
-fi
+bls_local_submit_attributes_file=${blah_libexec_directory}/condor_local_submit_attributes.sh
+
+bls_set_up_local_and_extra_args
 
 echo "queue 1" >> $submit_file
+
+
+# bls_add_job_wrapper  # XXX appends to submit file; don't seem to want this.
+
+bls_save_submit
 
 ###############################################################
 # Perform submission
@@ -312,20 +215,19 @@ echo "queue 1" >> $submit_file
 # first param is the name of the queue and the second is the name of
 # the pool where the queue exists, i.e. a Collector's name.
 
-echo $queue | grep "/" >&/dev/null
 # If there is a "/" we need to split out the pool and queue
-if [ "$?" == "0" ]; then
-    pool=${queue#*/}
-    queue=${queue%/*}
+if [[ $bls_opt_queue = */* ]]; then
+    pool=${bls_opt_queue#*/}
+    bls_opt_queue=${bls_opt_queue%/*}
 fi
 
-if [ -z "$queue" ]; then
+if [ -z "$bls_opt_queue" ]; then
     target=""
 else
     if [ -z "$pool" ]; then
-	target="-name $queue"
+	target="-name $bls_opt_queue"
     else
-	target="-pool $pool -name $queue"
+	target="-pool $pool -name $bls_opt_queue"
     fi
 fi
 
@@ -337,10 +239,10 @@ return_code=$?
 
 if [ "$return_code" == "0" ] ; then
     jobID=`echo $full_result | awk '{print $8}' | tr -d '.'`
-    blahp_jobID="condor/$jobID/$queue/$pool"
+    blahp_jobID="condor/$jobID/$bls_opt_queue/$pool"
 
     if [ "x$job_registry" != "x" ]; then
-      ${blah_sbin_directory}/blah_job_registry_add "$blahp_jobID" "$jobID" 1 $now "$creamjobid" "$proxy_file" 0 "$proxy_subject"
+      ${blah_sbin_directory}/blah_job_registry_add "$blahp_jobID" "$jobID" 1 $now "$bls_opt_creamjobid" "$bls_opt_proxy_string" 0 "$bls_opt_proxy_subject"
     fi
 
     echo "BLAHP_JOBID_PREFIX$blahp_jobID"
@@ -349,6 +251,9 @@ else
     echo Error
 fi
 
+# TODO: Use 'bls_wrap_up_submit' here instead of manual cleanup below.
+#       Won't work currently as proxy symlink setup is subtly different.
+
 # Clean temporary files -- There only temp file is the one we submit
 rm -f $submit_file
 
@@ -356,9 +261,9 @@ rm -f $submit_file
 # of limited proxy only.
 
 if [ "x$job_registry" == "x" ]; then
-    if [ -r "$proxy_file" -a -f "$proxy_file" ] ; then
-        [ -d "$proxy_dir" ] || mkdir $proxy_dir
-        ln -s $proxy_file $proxy_dir/$jobID.proxy.norenew
+    if [ -r "$bls_opt_proxy_string" -a -f "$bls_opt_proxy_string" ] ; then
+        [ -d "$bls_proxy_dir" ] || mkdir "$bls_proxy_dir"
+        ln -s "$bls_opt_proxy_string" "$bls_proxy_dir/$jobID.proxy.norenew"
     fi
 fi
 
