@@ -6,7 +6,7 @@ RUN yum -y install git cmake make libxslt docbook-style-xsl \
     yum -y update
 
 RUN yum-config-manager --add-repo \
-    http://research.cs.wisc.edu/htcondor/yum/repo.d/htcondor-stable-rhel8.repo && \
+    http://research.cs.wisc.edu/htcondor/yum/repo.d/htcondor-stable-rhel7.repo && \
     rpm --import https://research.cs.wisc.edu/htcondor/yum/RPM-GPG-KEY-HTCondor && \
     yum -y install condor-classads condor-classads-devel
 
