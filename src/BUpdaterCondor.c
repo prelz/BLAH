@@ -221,6 +221,14 @@ int main(int argc, char *argv[]){
 		bupdater_consistency_check_interval=atoi(ret->value);
 	}
 
+	ret = config_get("bupdater_can_append_to_registry", cha);
+	if (ret == NULL) {
+		do_log(debuglogfile, debug, 1, "%s: key bupdater_can_append_to_registry not found using the default:%d\n",argv0,bupdater_can_append_to_registry);
+	} else {
+		bupdater_can_append_to_registry=atoi(ret->value);
+	}
+
+
 	ret = config_get("bupdater_pidfile",cha);
 	if (ret == NULL){
 		do_log(debuglogfile, debug, 1, "%s: key bupdater_pidfile not found\n",argv0);
@@ -614,16 +622,19 @@ IntStateQuery()
 			JOB_REGISTRY_ASSIGN_ENTRY(en.exitreason,"\0");
 
 			if ((ren=job_registry_get(rha, en.batch_id)) == NULL){
+					do_log(debuglogfile, debug, 3, "%s: IntStateQuery found an unknown job: jobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.wn_addr,en.status);
 					fprintf(stderr,"Get of record returns error for %s ",en.batch_id);
 					perror("");
 			}
 			
-			if(ren==NULL){
+			if(ren==NULL && bupdater_can_append_to_registry){
 				if ((ret=job_registry_append(rha, &en)) < 0){
 					if(ret != JOB_REGISTRY_NOT_FOUND){
 						fprintf(stderr,"Error on job_registry_append %d: ",ret);
 						perror("");
-					}					
+					}else{
+						do_log(debuglogfile, debug, 2, "%s: registry append in IntStateQuery for: jobid=%s creamjobid=%s wn=%s status=%d\n",argv0,en.batch_id,en.user_prefix,en.wn_addr,en.status);
+					}
 				}
 			}else if(en.status!=UNDEFINED && ren && ren->status!=REMOVED && ren->status!=COMPLETED){
 
