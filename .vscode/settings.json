@@ -1,0 +1,8 @@
+{
+    "cmake.configureOnOpen": false,
+    "C_Cpp.errorSquiggles": "Enabled",
+    "files.associations": {
+        "cmake_spec_userpmtools_build": "rpm-spec",
+        "cmake_spec_epilogue": "rpm-spec"
+    }
+}

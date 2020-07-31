@@ -1,0 +1,28 @@
+minorRelease:
+    default: vanilla
+    description: set Minor of package release version
+    choices:
+        zero:
+            short: zero
+            long: Use "0" as Minor
+            settings:
+                RPM_PACKAGE_RELEASE_MIN: "0"
+        UMD4:
+            short: UMD4 
+            long: Use UMD4 as Minor
+            settings:
+                RPM_PACKAGE_RELEASE_MIN: "UMD4"
+disableGlobus:
+    default: useGlobus
+    description: Disable Globus even when available at build time
+    choices:
+        useGlobus:
+            short: Use Globus
+            long: Compile also the binaries that use Globus
+            settings:
+                DISABLE_GLOBUS: "FALSE" 
+        disableGlobus: 
+            short: Disable Globus
+            long: Disable Globus even when available at build time
+            settings:
+                DISABLE_GLOBUS: "TRUE"
