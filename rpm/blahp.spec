@@ -10,7 +10,7 @@ Summary:	gLite BLAHP daemon
 
 Group:		System/Libraries
 License:	Apache 2.0
-URL:		https://github.com/osg-bosco/BLAH
+URL:		https://github.com/htcondor/BLAH
 
 # Pre-release build tarballs should be generated with:
 # git archive %{gitrev} | gzip -9 > %{name}-%{version}-%{gitrev}.tar.gz
@@ -18,18 +18,15 @@ Source0:        %{name}-%{version}%{?gitrev:-%{gitrev}}.tar.gz
 
 BuildRequires:  automake
 BuildRequires:  autoconf
+BuildRequires:  gcc-c++
 BuildRequires:  libtool
+BuildRequires:  make
 BuildRequires:  condor-classads-devel
 BuildRequires:  globus-gss-assist-devel
 BuildRequires:  globus-gsi-credential-devel
 BuildRequires:  globus-gsi-proxy-core-devel
 BuildRequires:  globus-gsi-cert-utils-devel
 BuildRequires:  docbook-style-xsl, libxslt
-
-#Requires(post):         chkconfig
-#Requires(preun):        chkconfig
-#Requires(preun):        initscripts
-#Requires(postun):       initscripts
 
 %description
 %{summary}
@@ -38,14 +35,13 @@ BuildRequires:  docbook-style-xsl, libxslt
 %setup
 
 %build
-./bootstrap
-%if 0%{?rhel} >= 7
-export CPPFLAGS="-I/usr/include/classad -std=c++11"
-export LDFLAGS="-lclassad -lglobus_gsi_credential -lglobus_common -lglobus_gsi_proxy_core"
-%else
-export CPPFLAGS="-I/usr/include/classad"
-export LDFLAGS="-lclassad"
+%if 0%{?rhel} == 7
+# Python 3 may not be installed on EL7
+sed -i 's;/usr/bin/python3;/usr/bin/python2;' src/scripts/*status.py
 %endif
+./bootstrap
+export CPPFLAGS="-I/usr/include/classad -std=c++11 -fcommon"
+export LDFLAGS="-lclassad -lglobus_gsi_credential -lglobus_common -lglobus_gsi_proxy_core"
 %configure --with-classads-prefix=/usr --with-globus-prefix=/usr --with-glite-location=/usr
 unset CPPFLAGS
 unset LDFLAGS
