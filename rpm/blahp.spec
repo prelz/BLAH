@@ -4,7 +4,7 @@
 %define bl_libexecdir %{_libexecdir}/%{name}
 
 Name:		blahp
-Version:	1.18.46
+Version:	1.18.47
 Release:	1%{?gitrev:.%{gitrev}}%{?dist}
 Summary:	gLite BLAHP daemon
 
@@ -107,7 +107,11 @@ fi
 %{_initrddir}/glite-ce-*
 
 %changelog
-* Tue Apr 21 2020 Carl Edquist <edquist@cs.wisc.edu> - 1.18.45
+* Mon Aug 03 2020 Carl Edquist <edquist@cs.wisc.edu> - 1.18.47
+- EL8 build fixes
+- Add submit debugging support to condor_submit.sh (SOFTWARE-3994)
+
+* Tue Apr 21 2020 Carl Edquist <edquist@cs.wisc.edu> - 1.18.46
 - Fix an issue where the slurm binpath always returned scontrol (SOFTWARE-3986)
 - Python 3 compatibility (#7)
 - Handle extra-quoted arguments to condor_submit.sh (SOFTWARE-3993)
