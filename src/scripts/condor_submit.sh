@@ -42,7 +42,7 @@ bls_opt_mpinodes=1
 
 bls_parse_submit_options "$@"
 
-bls_setup_all_files
+bls_setup_temp_files
 
 bls_test_input_files
 
