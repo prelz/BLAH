@@ -387,45 +387,8 @@ function bls_test_shared_dir ()
   done 
 }
 
-function bls_setup_all_files ()
+function bls_setup_temp_files ()
 {
-
-# Make sure /dev/null is always 'shared' (i.e., not copied over by the
-# batch system).
-
-  if [ -z "$blah_shared_directories" ]; then
-      blah_shared_directories="/dev/null"
-  else
-      bls_test_shared_dir "/dev/null"
-      if [ "x$bls_is_in_shared_dir" != "xyes" ] ; then
-         blah_shared_directories="$blah_shared_directories:/dev/null"
-      fi   
-  fi
-
-  if [ -z "$blah_wn_inputsandbox" ]; then
-#     Backwards compatibility with old name.
-      blah_wn_inputsandbox="$blahpd_inputsandbox"
-  fi
-  if [ -z "$blah_wn_outputsandbox" ]; then
-#     Backwards compatibility with old name.
-      blah_wn_outputsandbox="$blahpd_outputsandbox"
-  fi
-
-  local last_char_pos
-
-  if [ -n "$blah_wn_inputsandbox" ]; then
-      last_char_pos=$(( ${#blah_wn_inputsandbox} - 1 ))
-      if [ "${blah_wn_inputsandbox:$last_char_pos:1}" != "/" ]; then
-         blah_wn_inputsandbox="${blah_wn_inputsandbox}/"
-      fi
-  fi
-  if [ -n "$blah_wn_outputsandbox" ]; then
-      last_char_pos=$(( ${#blah_wn_outputsandbox} - 1 ))
-      if [ "${blah_wn_outputsandbox:$last_char_pos:1}" != "/" ]; then
-         blah_wn_outputsandbox="${blah_wn_outputsandbox}/"
-      fi
-  fi
-
   curdir=`pwd`
   if [ -z "$bls_opt_temp_dir"  ] ; then
       bls_opt_temp_dir="$curdir"
@@ -469,6 +432,48 @@ function bls_setup_all_files ()
   else
      bls_opt_tmp_req_file=`mktemp $bls_opt_temp_dir/temp_req_script_XXXXXXXXXX` 
   fi
+}
+
+function bls_setup_all_files ()
+{
+
+# Make sure /dev/null is always 'shared' (i.e., not copied over by the
+# batch system).
+
+  if [ -z "$blah_shared_directories" ]; then
+      blah_shared_directories="/dev/null"
+  else
+      bls_test_shared_dir "/dev/null"
+      if [ "x$bls_is_in_shared_dir" != "xyes" ] ; then
+         blah_shared_directories="$blah_shared_directories:/dev/null"
+      fi
+  fi
+
+  if [ -z "$blah_wn_inputsandbox" ]; then
+#     Backwards compatibility with old name.
+      blah_wn_inputsandbox="$blahpd_inputsandbox"
+  fi
+  if [ -z "$blah_wn_outputsandbox" ]; then
+#     Backwards compatibility with old name.
+      blah_wn_outputsandbox="$blahpd_outputsandbox"
+  fi
+
+  local last_char_pos
+
+  if [ -n "$blah_wn_inputsandbox" ]; then
+      last_char_pos=$(( ${#blah_wn_inputsandbox} - 1 ))
+      if [ "${blah_wn_inputsandbox:$last_char_pos:1}" != "/" ]; then
+         blah_wn_inputsandbox="${blah_wn_inputsandbox}/"
+      fi
+  fi
+  if [ -n "$blah_wn_outputsandbox" ]; then
+      last_char_pos=$(( ${#blah_wn_outputsandbox} - 1 ))
+      if [ "${blah_wn_outputsandbox:$last_char_pos:1}" != "/" ]; then
+         blah_wn_outputsandbox="${blah_wn_outputsandbox}/"
+      fi
+  fi
+
+  bls_setup_temp_files
 
   # Create unique extension for filenames
   uni_uid=`id -u`
