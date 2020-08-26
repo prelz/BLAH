@@ -142,6 +142,12 @@ else
     fi
 fi
 
+# Replace all instances of '$HOME' in the environment with the actual path
+# to the user's home dir. We only do this for '$HOME' instead of all vars
+# since it is the most likely to be the same on the submit host and WN.
+[[ "x$condor_expand_home_env" == "xyes" ]] && \
+    submit_file_environment=$(sed 's|$HOME|'"$HOME"'|' <<< $submit_file_environment)
+
 ### This appears to only be necessary if Condor is passing arguments
 ### with the "new_esc_format"
 # # NOTE: The arguments we are given are specially escaped for a shell,
