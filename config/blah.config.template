@@ -294,6 +294,10 @@ condor_binpath=/usr/bin
 #(the command is specified by batch_command_caching_filter)
 condor_batch_caching_enabled=
 
+#Expand any references to $HOME to the user's home directory
+#in the job environment
+condor_expand_home_env=no
+
 #If condor_history should be used or not to the final state info about the jobs.
 bupdater_use_condor_history=
 
