@@ -4,8 +4,8 @@
 %define bl_libexecdir %{_libexecdir}/%{name}
 
 Name:		blahp
-Version:	1.18.47
-Release:	1%{?gitrev:.%{gitrev}}%{?dist}
+Version:	1.18.48
+Release:	2%{?gitrev:.%{gitrev}}%{?dist}
 Summary:	gLite BLAHP daemon
 
 Group:		System/Libraries
@@ -107,6 +107,15 @@ fi
 %{_initrddir}/glite-ce-*
 
 %changelog
+* Tue Sep 15 2020 Brian Lin <blin@cs.wisc.edu> - 1.18.48-2
+- Update RPM packaging
+
+* Tue Sep 15 2020 Brian Lin <blin@cs.wisc.edu> - 1.18.48-1
+- Add an option for HTCondor batch system to expand references to $HOME in the job environment (#23)
+- Add efficient querying of LSF job statuses (#14)
+- Improve logic when proxy refresh is disabled (#24)
+- Fix invalid argument, output, and error format for HTCondor job submission (#22)
+
 * Mon Aug 03 2020 Carl Edquist <edquist@cs.wisc.edu> - 1.18.47
 - EL8 build fixes
 - Add submit debugging support to condor_submit.sh (SOFTWARE-3994)
