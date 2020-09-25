@@ -85,6 +85,14 @@ if [[ $bls_opt_mpinodes -gt 1 ]] ; then
   echo "#SBATCH --cpus-per-task=$bls_opt_mpinodes" >> $bls_tmp_file
 fi
 
+# add GPU support
+[ -z "$bls_opt_gpunumber" ] || [ -z "$bls_opt_gpumodel" ] || echo "#SBATCH --gres=gpu:${bls_opt_gpumodel}:${bls_opt_gpunumber}" >> $bls_tmp_file
+[ -z "$bls_opt_gpunumber" ] || [ ! -z "$bls_opt_gpumodel" ] || echo "#SBATCH --gres=gpu:${bls_opt_gpunumber}" >> $bls_tmp_file
+[ ! -z "$bls_opt_gpunumber" ] || [ -z "$bls_opt_gpumodel" ] || echo "#SBATCH --gres=gpu:${bls_opt_gpumodel}:1" >> $bls_tmp_file
+
+#add MIC support
+[ -z "$bls_opt_micnumber" ] || echo "#SBATCH --gres=mic:${bls_opt_micnumber}" >> $bls_tmp_file
+
 # Do the local and extra args after all #SBATCH commands, otherwise slurm ignores anything
 # after a non-#SBATCH command
 bls_set_up_local_and_extra_args

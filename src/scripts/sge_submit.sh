@@ -94,6 +94,10 @@ fi
 [ -z "$bls_opt_mpinodes" -o "x${bls_opt_mpinodes}" = "x1" ] || grep -q "^#\$ -pe *\\*" $bls_tmp_file \
     || echo "#\$ -pe $sge_pe_policy $bls_opt_mpinodes" >>$bls_tmp_file
 
+# GPU support
+[ -z "$bls_opt_gpunumber" ] || echo "#\$ -l gpu=$bls_opt_gpunumber" >>$bls_tmp_file
+# end of GPU support
+
 # Input and output sandbox setup.
 bls_fl_subst_and_accumulate inputsand "@@F_REMOTE@`hostname -f`:@@F_LOCAL" "@@@"
 [ -z "$bls_fl_subst_and_accumulate_result" ] || echo "#\$ -v SGE_stagein=$bls_fl_subst_and_accumulate_result" >> $bls_tmp_file

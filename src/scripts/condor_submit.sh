@@ -175,6 +175,21 @@ then
   echo "request_memory = $bls_opt_req_mem" >> $submit_file
 fi
 
+if [ "x$bls_opt_gpunumber" != "x" ]
+then
+  echo "request_GPUs = $bls_opt_gpunumber" >> $submit_file
+fi
+
+if [ "x$bls_opt_gpumodel" != "x" ]
+then
+  echo "requirements = CUDADeviceName == \"$bls_opt_gpumodel\"" >> $submit_file
+fi
+
+if [ "x$bls_opt_micnumber" != "x" ];
+then
+  echo "request_mics = $bls_opt_micnumber" >> $submit_file
+fi
+
 if [ "x$bls_opt_runtime" != "x" ]
 then
   echo "periodic_remove = JobStatus == 2 && time() - JobCurrentStartExecutingDate > $bls_opt_runtime" >> $submit_file

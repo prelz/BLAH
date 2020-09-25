@@ -1303,6 +1303,10 @@ cmd_submit_job(void *args)
 	    (set_cmd_string_option(&command, cad, "Iwd",        "-w", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 //	    (set_cmd_string_option(&command, cad, "Env",        "-v", SINGLE_QUOTE)  == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_string_option(&command, cad, "Queue",      "-q", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_string_option(&command, cad, "MICNumber",  "-P", INT_NOQUOTE)   == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_string_option(&command, cad, "GPUNumber",  "-g", INT_NOQUOTE)   == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_string_option(&command, cad, "GPUMode",    "-m", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
+	    (set_cmd_string_option(&command, cad, "GPUModel",   "-M", SINGLE_QUOTE)  == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_int_option   (&command, cad, "NodeNumber", "-n", INT_NOQUOTE)   == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_bool_option  (&command, cad, "WholeNodes", "-z", NO_QUOTE)      == C_CLASSAD_OUT_OF_MEMORY) ||
 	    (set_cmd_int_option   (&command, cad, "HostNumber", "-h", INT_NOQUOTE)   == C_CLASSAD_OUT_OF_MEMORY) ||
